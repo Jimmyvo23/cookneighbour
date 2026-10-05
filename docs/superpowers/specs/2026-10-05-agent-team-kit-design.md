@@ -188,19 +188,20 @@ Candidate hook events, confirmed by spike S-0: the Planner starting a subagent (
 
 ### 6.3 `team-status` CLI (story)
 ```
-node .team/bin/team-status status --agent backend --status working --task T-004 --progress 40 --next "Write free-trial tests"
-node .team/bin/team-status status --agent reviewer --status blocked --reason "Checks failing"
-node .team/bin/team-status task --id T-004 --title "Pricing function" --owner backend --state in_progress
-node .team/bin/team-status approval --id WO-3 --summary "..." --agents backend,frontend
-node .team/bin/team-status decide --id WO-3 --state approved --note "..."
-node .team/bin/team-status handoff --from backend --to tester --task T-004
+node .team/bin/team-status.mjs status --agent backend --status working --task T-004 --progress 40 --next "Write free-trial tests"
+node .team/bin/team-status.mjs status --agent reviewer --status blocked --reason "Checks failing"
+node .team/bin/team-status.mjs task --id T-004 --title "Pricing function" --owner backend --state in_progress
+node .team/bin/team-status.mjs approval --id WO-3 --summary "..." --agents backend,frontend
+node .team/bin/team-status.mjs decide --id WO-3 --state approved --note "..."
+node .team/bin/team-status.mjs handoff --from backend --to tester --task T-004
+node .team/bin/team-status.mjs escalate --task T-004 --summary "Failed review twice"
 ```
 Agent instructions require a `status` call at task start, at each milestone, when blocked, and at finish. Invalid arguments print a clear error and write nothing.
 
 ### 6.4 State reconstruction (dashboard server)
 The server reads the log and folds events into current state: latest values per agent, the task board, approvals, and the last 20 events per agent. It writes `agent-status.json` in the CLAUDE.md schema and serves it at `GET /api/team`. The page polls every **3 seconds**.
 
-`agent-status.json` keeps the CLAUDE.md schema unchanged and adds only optional fields: per agent `lastAction`, `stale`, `color`; top level `needsYou` (list of items waiting on Jimmy).
+`agent-status.json` keeps the CLAUDE.md schema unchanged and adds only optional fields (for example per agent `lastAction`, `stale`, `color`; top level `needsYou`). The full shape is the `TeamState` type in the implementation plan, Task 5.
 
 **Rules:**
 - **Facts beat stories:** after `agent_stop`, the agent shows `done` (or `idle` once its task is closed) even if its last report said 60%; the clipboard notes "stopped at 60%".
