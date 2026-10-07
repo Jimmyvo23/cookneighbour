@@ -1,0 +1,8 @@
+# agent-team-kit:start
+.team/events*.jsonl
+agent-status.json
+.superpowers/
+# agent-team-kit:end
+
+# Installer backup of the previous settings.json (local only)
+.claude/settings.json.bak

@@ -113,51 +113,12 @@ Each **dish** has: name, photo, description, cuisine, **estimated cooking time**
 - Queue of pending chefs with documents and approve / reject (with reason).
 - List of bookings, reports, and free-trial blocks.
 
-### 6.10 Agent Control Room (`/team` page)
-A page that shows **who is doing what** across the team as a fun, glanceable **stick-figure office**, and where Jimmy's pending approvals appear.
+### 6.10 Agent Control Room (provided by the Agent Team Kit)
+The stick-figure office that shows who is doing what, and where Jimmy's pending approvals appear, is **not built inside this app**. It comes from the Agent Team Kit (`Jimmyvo23/agent-team-kit`), installed in this repo:
 
-- Claude Code subagents cannot push live updates to a UI on their own. Use this design: every agent **must update `agent-status.json`** (at the repo root) when it **starts, finishes, or gets blocked** on a task.
-- `/team` reads this file through an API route (`/api/team`, polled every 3 seconds) and renders the office below. Respect `prefers-reduced-motion`.
-- **Office scene:** An SVG/CSS illustration of an office with one stick figure at a desk per team member: Planner, Backend, Frontend, Tester, Reviewer, and **Jimmy** (a corner office with an approvals tray). Each figure shows its state with a simple animation or icon: `working` (typing), `idle` (coffee cup), `blocked` (red "!" bubble), `awaiting_approval` (raised hand and yellow "?" bubble), `done` (green check). No external images are required.
-- **Hover** (also keyboard focus, and tap on mobile) over any figure to open a tooltip card showing: name and role, status, current task, a **progress bar (0 to 100%)**, the **next step**, and last-updated time. Clicking a figure opens its recent activity log (last 20 events).
-- **Approvals tray at Jimmy's desk:** a badge with the number of pending Work Orders; opening it lists each plan summary. In V1, Jimmy approves in Claude Code. *Stretch goal:* Approve / Reject buttons in local dev only, writing to `agent-status.json` through a local-only API route.
-- Below the office, show a task board strip (todo / in progress / in review / done) and a plain-text list view as a fallback for accessibility and small screens.
-- Agent `status` values: `idle | working | blocked | awaiting_approval | done`. Approval `state` values: `pending | approved | rejected | changes_requested`.
-- Schema (keep stable):
-
-```json
-{
-  "updatedAt": "ISO-8601",
-  "agents": [
-    {
-      "name": "backend",
-      "role": "Backend",
-      "status": "working",
-      "currentTask": "T-004 Booking pricing function",
-      "progress": 40,
-      "nextStep": "Write unit tests for the free-trial rule",
-      "updatedAt": "ISO-8601"
-    }
-  ],
-  "approvals": [
-    {
-      "id": "A-012",
-      "requestedBy": "planner",
-      "summary": "Work Order for T-004 to T-006: pricing, free-trial rules, API contract",
-      "state": "pending",
-      "requestedAt": "ISO-8601",
-      "decidedAt": null,
-      "note": ""
-    }
-  ],
-  "tasks": [
-    { "id": "T-004", "title": "...", "owner": "backend", "state": "in_progress", "notes": "" }
-  ],
-  "log": [
-    { "time": "ISO-8601", "agent": "backend", "event": "Started T-004" }
-  ]
-}
-```
+- Agents report through `node .team/bin/team-status.mjs` and Claude Code hooks; events go to `.team/events.jsonl` (git-ignored). Nobody edits `agent-status.json` by hand.
+- Open the office from the kit folder: `npm run office -- --project ../CookNeighbour` (local only, `127.0.0.1`). It also writes `agent-status.json` (the original top-level keys `updatedAt`, `agents`, `approvals`, `tasks`, `log`, plus extra fields) for anything that reads it.
+- Office features (rooms per agent with states, hover and pinned details, needs-you sign, approvals tray, task board, handoff animation, list view, themes, reduced motion) are specified and tested in the kit, not here.
 
 ## 7. OUT OF SCOPE (V1)
 
@@ -165,44 +126,28 @@ Real payments, real SMS, real ID / police / background checks, native mobile app
 
 ## 8. AGENT TEAM
 
-| Agent | Responsibility | Inputs | Outputs | Authority |
-|---|---|---|---|---|
-| **Planner (lead)** | Turns this spec into a task board, assigns work, sequences tasks, resolves conflicts, keeps `agent-status.json` current, closes tasks | This file, human answers | Task list, assignments, status | Decides order and in-scope clarifications. Cannot change requirements. |
-| **Backend** | Database schema and migrations, row-level security, auth, booking and pricing logic, free-trial rules, API routes, seed data, **API contract** | Task + spec | Migrations, API code, `docs/api-contract.md`, seed script | Owns data model and business rules |
-| **Frontend** | Pages, search UI, booking flow, chat UI, admin UI, `/team` Control Room | Task + API contract | UI code, components | Owns UI/UX; builds against the API contract (mock until backend ready) |
-| **Tester** | Unit tests, API tests, Playwright end-to-end tests, edge-case tests, bug reports | Finished builder work | Test code, pass/fail report, bug list | **Can block** a task from being "done" |
-| **Reviewer** | Code quality, security, privacy, accessibility, plan compliance, honesty about mocks | Tested work | Approve / request-changes notes | **Final gate** before a task closes |
-| **Jimmy (Product Owner / Approver)** | Approves or rejects each Work Order before agents start building; answers open questions; owns the requirements | Planner's Work Order summary | Approve / reject / approve-with-changes, with an optional note | **Highest authority.** Only Jimmy can change requirements, approve paid services, or approve real data or payments. |
+The team rules — approval gate, Work Orders, workflow per task, handoffs, escalation and status reporting — live in one place: the **Team** section at the end of this file and `.team/planner.md` (installed by the Agent Team Kit). Agent definitions are in `.claude/agents/`. This section keeps only what is specific to CookNeighbour.
 
-### Approval gate: Jimmy approves before agents build
+| Agent | CookNeighbour responsibility | Outputs | Authority |
+|---|---|---|---|
+| **Planner (lead)** | Turns this spec into a task board, assigns work, sequences tasks, resolves conflicts, records tasks and approvals with `team-status`, closes tasks | Task list, assignments, status | Decides order and in-scope clarifications. Cannot change requirements. |
+| **Backend** | Database schema and migrations, row-level security, auth, booking and pricing logic, free-trial rules, API routes, seed data, **API contract** | Migrations, API code, `docs/api-contract.md`, seed script | Owns data model and business rules |
+| **Frontend** | Pages, search UI, booking flow, chat UI, admin UI | UI code, components | Owns UI/UX; builds against the API contract (mock until backend ready) |
+| **Tester** | Unit tests, API tests, Playwright end-to-end tests, edge-case tests (section 10), bug reports | Test code, pass/fail report, bug list | **Can block** a task from being "done" |
+| **Reviewer** | Code quality, security, privacy, accessibility, plan compliance, honesty about mocks | Review notes on the PR | **Final gate** before a task closes |
+| **Jimmy (Product Owner / Approver)** | Approves or rejects each Work Order before agents start building; answers open questions; owns the requirements | Approve / reject / approve-with-changes, with an optional note | **Highest authority.** Only Jimmy can change requirements, approve paid services, or approve real data or payments. |
 
-**Goal:** Save tokens and keep Jimmy in control. Planning is cheap; building is expensive.
-
-1. **Allowed without approval:** reading files, brainstorming, and writing plans or summaries.
-2. **Requires an approved Work Order:** code edits, spawning subagents, package installs, database migrations, GitHub pushes or PRs, and any other token-heavy work.
-3. **Plan summaries.** Before each batch of work (one task or a small group, not every tiny step), each agent that will work submits a plan summary of **100 words or fewer**: goal, areas or files it will touch, approach, estimated effort (S / M / L), risks, and what it needs from others.
-4. **Work Order.** The Planner combines the summaries into one short Work Order: a table of agent, task, plan, effort, and risk, plus the Planner's recommendation and anything deliberately left out.
-5. **Decision.** The Planner presents the Work Order to Jimmy and asks for a decision **per agent** (Approve / Reject / Approve with changes) using Claude Code's question prompt. While waiting, the Planner sets each affected agent's status to `awaiting_approval` and records the request under `approvals` in `agent-status.json`. No work starts until the decision is recorded.
-6. **Notification.** The Planner stops and asks, and the `/team` page shows the pending Work Order at Jimmy's desk. Optionally, set up a Claude Code `Notification` hook for a desktop alert (check the current Claude Code docs for the hook setup).
-7. **Rejection.** A rejected plan is revised once using Jimmy's note and resubmitted. After a second rejection, the Planner asks Jimmy what he wants instead. Nothing is built for rejected items.
-8. **Scope.** An approved Work Order covers only what its summary says. If scope grows by more than about 25% or touches new areas, submit a new summary first.
-9. **Keep it short.** Do not re-explain context that Jimmy has already approved.
-10. Run the gate at the start of every build phase and every task batch.
-
-### Workflow per task
-`Planner assigns → Agents submit plan summaries → Jimmy approves the Work Order → Backend/Frontend build → Tester verifies → Reviewer approves → Planner closes`
-
-- Rejection by Tester or Reviewer returns the task to its builder with specific notes.
-- After **2 failed rounds** on the same task, the Planner stops and escalates to Jimmy with a summary.
-- Backend publishes the API contract **before** Frontend starts dependent pages.
-- Every agent updates `agent-status.json` at start, finish, and block.
-- **GitHub flow:** The Planner mirrors each task as a **GitHub Issue** (same ID as the task board, with labels for owner and phase). Each task is built on its own **feature branch** (`feature/T-004-booking-pricing`) and merged only through a **Pull Request** that references the Issue. Builders open the PR; GitHub Actions CI must pass (Tester's gate); the Reviewer reviews the PR and approves or requests changes; the Planner merges and closes the Issue. Use clear, small commits with descriptive messages.
-- If an agent lacks information, it states exactly what is missing instead of guessing.
+CookNeighbour-specific rules on top of the kit:
+- **Goal of the gate:** save tokens and keep Jimmy in control. Planning is cheap; building is expensive.
+- Backend publishes the API contract (`docs/api-contract.md`) **before** Frontend starts dependent pages.
+- GitHub Issues carry labels for owner and phase; feature branches are named `feature/T-004-booking-pricing`.
+- Notes for each finished task are recorded in `PLAN.md`.
+- Optional: a Claude Code `Notification` hook for a desktop alert when the Planner is waiting on Jimmy (check the current Claude Code docs).
 
 ## 9. BUILD PHASES
 
 1. **Plan:** Use Superpowers brainstorming and planning. Planner produces `PLAN.md` with the task board. Confirm the plan with Jimmy before coding.
-2. **Foundation:** GitHub repo setup (private repo, `main` branch protection, issue and PR templates, CI workflow, `.gitignore` that excludes `.env*`), Supabase schema, auth, roles, seed data (Mississauga/GTA chefs across several cuisines, including Vietnamese), `agent-status.json`, and the `/team` stick-figure office page (built early so approvals and progress are visible from the start).
+2. **Foundation:** GitHub repo setup (private repo, `main` branch protection, issue and PR templates, CI workflow, `.gitignore` that excludes `.env*`), Supabase schema, auth, roles, seed data (Mississauga/GTA chefs across several cuisines, including Vietnamese). The Agent Team Kit is installed so its office shows approvals and progress from the start (section 6.10).
 3. **Chef side:** Profile, dishes, availability, admin approval.
 4. **Customer side:** Search, chef detail, booking flow, estimate, free-trial logic, grocery options.
 5. **Engagement:** Messaging, reviews, report-a-problem.
@@ -242,7 +187,7 @@ Work test-first where practical (Superpowers TDD). Commit in small, meaningful s
 
 ## 12. QUALITY STANDARDS AND SUCCESS CRITERIA
 
-**Definition of done for each task:** code complete, tests written and passing, PR approved by the Reviewer and merged, `agent-status.json` updated, and notes recorded in `PLAN.md`.
+**Definition of done for each task:** code complete, tests written and passing, PR approved by the Reviewer and merged, task status recorded with `team-status`, and notes recorded in `PLAN.md`.
 
 **Prototype is successful when this demo works end to end:**
 1. A customer searches Mississauga for a Vietnamese chef and finds one.
@@ -250,7 +195,7 @@ Work test-first where practical (Superpowers TDD). Commit in small, meaningful s
 3. The chef accepts; both exchange messages.
 4. After the visit, the customer leaves a review.
 5. An admin approves a new chef; a second free-trial attempt is blocked.
-6. The `/team` stick-figure office shows each agent's status, progress, and next step on hover, and shows Jimmy's pending approvals.
+6. The Agent Team Kit office shows each agent's status, progress, and next step on hover, and shows Jimmy's pending approvals.
 7. All tests pass, the Reviewer has signed off, and the README includes setup steps and a demo script.
 
 ## 13. OPEN QUESTIONS AND RISKS (record in `PLAN.md`; do not decide alone)
@@ -269,16 +214,16 @@ Work test-first where practical (Superpowers TDD). Commit in small, meaningful s
 ## 14. FIRST ACTIONS
 
 1. Read this entire file. Run the environment check (section 5, Development environment) and report anything missing.
-2. Use Superpowers brainstorming/planning to produce `PLAN.md` (task board with IDs, owners, dependencies) and `agent-status.json`.
+2. Use Superpowers brainstorming/planning to produce `PLAN.md` (task board with IDs, owners, dependencies), and record the board with `node .team/bin/team-status.mjs task`.
 3. Show the plan to Jimmy and **wait for approval** before writing application code. After approval, set up the GitHub repo and mirror the task board as GitHub Issues. Every phase and task batch after that starts with a Work Order approval (section 8).
-4. Then run the phases in section 9, reporting status through `agent-status.json` and a brief summary at the end of each phase.
+4. Then run the phases in section 9, reporting status through `team-status` and a brief summary at the end of each phase.
 
 ## 15. TEMPLATE NOTES (for reusing this file on other projects)
 
 **Reusable as-is:**
 - The Planner-led team structure and the five agent roles (section 8)
 - The approval gate and Work Order process (section 8)
-- The Agent Control Room: the `/team` stick-figure office, `agent-status.json` schema, and approvals tray (section 6.10; keep it even though it sits under Core Requirements)
+- The Agent Control Room: now the Agent Team Kit (`Jimmyvo23/agent-team-kit`). Install it with its installer instead of copying section 6.10.
 - GitHub flow and safety rules (sections 5, 8, 11)
 - VS Code with Claude Code development environment and environment check (section 5)
 - General guardrails, definition of done, and first actions (sections 11, 12, 14)
@@ -295,3 +240,22 @@ Work test-first where practical (Superpowers TDD). Commit in small, meaningful s
 2. Replace the project-specific sections above. If the idea is still rough, run the interview and master-plan process first and write the new requirements from that.
 3. Keep the reusable sections unless a project clearly needs something different. Log any change as a decision in `PLAN.md`.
 4. After each project, note what worked and what wasted tokens, and improve this template.
+
+<!-- agent-team-kit:start -->
+## Team
+
+This project has a five-agent team: Planner (the main session), Backend, Frontend, Tester and Reviewer. Jimmy approves the work. Read `.team/planner.md` for the full rules.
+
+Approval gate:
+- Reading, brainstorming and writing plans need no approval.
+- Code edits, subagents, installs, migrations and pushes need a Work Order Jimmy approved.
+- Each agent submits a plan summary of 100 words or fewer. The Planner combines them into a Work Order and asks Jimmy per agent.
+- Never push to `main`, never force-push, never commit secrets.
+
+Workflow: Planner assigns, agents submit plans, Jimmy approves, builders build, Tester verifies, Reviewer approves, Planner merges.
+
+Status duties:
+- Every agent runs `node .team/bin/team-status.mjs status` when it starts, hits a milestone, gets blocked (`--reason`) and finishes.
+- Every agent writes `.team/handoffs/<task-id>.md` and runs `team-status handoff` when it finishes.
+- The Planner records tasks, approvals, decisions and escalations with `team-status`.
+<!-- agent-team-kit:end -->
