@@ -1,7 +1,7 @@
 # CookNeighbour — Plan and Task Board
 
 Owner: Planner. Approver: Jimmy. Source of truth for requirements: `CLAUDE.md`.
-Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved 2026-10-07. Every later phase still needs its own Work Order.
+Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved and finished 2026-10-07. Every later phase still needs its own Work Order.
 
 ---
 
@@ -15,7 +15,7 @@ Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved 2026-10-07. E
 | Repo + remote | OK, `Jimmyvo23/cookneighbour`, public (decision D-1) |
 | VS Code | Installed. `code` command not on PATH (optional fix: Command Palette → "Shell Command: Install 'code' command in PATH") |
 | Dev server | OK, verified in T-020 (Tester, fresh clone, 2026-10-07). |
-| `main` branch protection | Not set. Planned in T-024. |
+| `main` branch protection | OK, set in T-024 (2026-10-07). |
 | Supabase CLI, Vercel CLI | Not installed. Use through `npx` (Homebrew is broken on this Mac). |
 | Docker | Not installed. Not needed (decision D-2). |
 
@@ -110,7 +110,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-021 | Supabase setup: Jimmy creates hosted free project; `npx supabase init`, `src/lib/supabase/` clients, env vars in `.env.example`, connection check script | backend | T-020 | done |
 | T-022 | CI workflow `.github/workflows/ci.yml` (lint, type check, unit, local Supabase, Playwright smoke) | backend | T-020, T-021 | done |
 | T-023 | Issue and PR templates, labels (`owner:*`, `phase:*`), mirror board as Issues | planner | — | done |
-| T-024 | Branch protection on `main`: require `ci` check, no required reviews, block force-push and deletion | planner | T-022 merged | todo |
+| T-024 | Branch protection on `main`: require `ci` check, no required reviews, block force-push and deletion | planner | T-022 merged | done |
 
 ### Phase 2b — Foundation: data (Work Order WO-2)
 | ID | Task | Owner | Depends on | State |
@@ -218,4 +218,8 @@ Notes for each finished task are added here (CLAUDE.md §8).
 - `.prettierignore` now skips `PLAN.md`.
 - Green run 2m16s. Tester proved it goes red on a failing unit test (throwaway draft PR #49, closed, never merged). Reviewer approved.
 - Follow-ups in Issue #50: add `npm run build` to CI; pin the Supabase CLI version in CI to match the repo; move to `checkout@v5` / `setup-node@v5` before GitHub drops Node 20; confirm the failure artifact on the first real e2e failure.
+
+### T-024 — Branch protection on `main` (done 2026-10-07, settings change, no code PR)
+- Required status check `ci`; branch must be up to date with `main` before merging; applies to admins too; force-push and deletion blocked; no required reviews (D-6).
+- Effect: nothing reaches `main` without a green `ci` run on a PR, including Planner notes like this one.
 
