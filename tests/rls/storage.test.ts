@@ -19,6 +19,12 @@ async function canDownload(
   return !error && !!data;
 }
 
+async function publicUrlWorks(bucket: string, path: string): Promise<boolean> {
+  const { data } = anonClient().storage.from(bucket).getPublicUrl(path);
+  const res = await fetch(data.publicUrl);
+  return res.status === 200;
+}
+
 describe("storage: chef-documents (MOCK ID and food-handler verification)", () => {
   let h1: SupabaseClient;
   let h2: SupabaseClient;
@@ -179,7 +185,7 @@ describe("storage: receipts (booking parties only)", () => {
 });
 
 describe("storage: public photo buckets", () => {
-  it("owners write only in their own folder; everyone can read", async () => {
+  it("chefs write only in their own folder; public URLs work for everyone", async () => {
     const h1 = await clientFor(fx.h1);
     const h2 = await clientFor(fx.h2);
     const name = `${fx.h1.id}/dish-${rand(3)}.png`;
@@ -199,10 +205,10 @@ describe("storage: public photo buckets", () => {
           })
       ).error,
     ).not.toBeNull();
-    expect(await canDownload(anonClient(), "dish-photos", name)).toBe(true);
+    expect(await publicUrlWorks("dish-photos", name)).toBe(true);
     // another user cannot overwrite or delete it
     const del = await h2.storage.from("dish-photos").remove([name]);
     expect(del.data ?? []).toEqual([]);
-    expect(await canDownload(anonClient(), "dish-photos", name)).toBe(true);
+    expect(await publicUrlWorks("dish-photos", name)).toBe(true);
   });
 });

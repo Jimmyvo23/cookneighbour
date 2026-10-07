@@ -223,6 +223,10 @@ export default async function setup(project: TestProject) {
     ["chef-documents", `${hp.id}/id.pdf`, pdf, "application/pdf"],
     ["receipts", `${requestedC1H1.id}/r.png`, png, "image/png"],
     ["receipts", `${requestedC2H2.id}/r.png`, png, "image/png"],
+    ["profile-photos", `${h1.id}/p.png`, png, "image/png"],
+    ["dish-photos", `${h1.id}/d.png`, png, "image/png"],
+    ["kitchen-photos", `${h1.id}/k.png`, png, "image/png"],
+    ["kitchen-photos", `${h2.id}/k.png`, png, "image/png"],
   ] as const) {
     const { error } = await svc.storage
       .from(bucket)

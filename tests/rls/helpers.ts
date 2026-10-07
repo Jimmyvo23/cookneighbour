@@ -45,9 +45,16 @@ export function localEnv() {
       'Missing API_URL / ANON_KEY / SERVICE_ROLE_KEY / DB_URL. Run: eval "$(supabase status -o env)"',
     );
   }
-  const host = new URL(url).hostname;
-  if (host !== "127.0.0.1" && host !== "localhost") {
-    throw new Error(`Refusing to run RLS tests against non-local URL ${host}`);
+  for (const [label, raw] of [
+    ["API_URL", url],
+    ["DB_URL", dbUrl],
+  ] as const) {
+    const host = new URL(raw).hostname;
+    if (host !== "127.0.0.1" && host !== "localhost") {
+      throw new Error(
+        `Refusing to run RLS tests against non-local ${label} host ${host}`,
+      );
+    }
   }
   return { url, anon, service, dbUrl };
 }

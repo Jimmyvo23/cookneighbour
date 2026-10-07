@@ -127,34 +127,109 @@ describe("database-level guarantees", () => {
     expect(off).toEqual([]);
   });
 
-  it("anon has no write privilege and no read on private tables", async () => {
-    const q = async (role: string, priv: string, table: string) =>
-      (
-        await client.query("select has_table_privilege($1, $2, $3) as ok", [
-          role,
-          `public.${table}`,
-          priv,
-        ])
-      ).rows[0].ok;
-    for (const t of [
-      "bookings",
-      "profile_private",
-      "chef_private",
-      "messages",
-      "free_trial_claims",
-      "booking_addresses",
-    ]) {
-      expect(await q("anon", "select", t), `anon select ${t}`).toBe(false);
-    }
-    for (const t of ["chefs", "bookings", "free_trial_claims", "profiles"]) {
-      expect(await q("anon", "insert", t), `anon insert ${t}`).toBe(false);
-      expect(
-        await q("authenticated", "delete", t),
-        `authenticated delete ${t}`,
-      ).toBe(false);
-    }
-    // control: the grants that should exist do exist
-    expect(await q("anon", "select", "chefs")).toBe(true);
-    expect(await q("authenticated", "select", "bookings")).toBe(true);
+  // Expected client privileges, written out in full. Any grant added or removed in a migration
+  // must show up here (and get a test), so the change is reviewed on purpose.
+  const allTables = [
+    "availability",
+    "booking_addresses",
+    "booking_day_dishes",
+    "booking_days",
+    "bookings",
+    "chef_private",
+    "chefs",
+    "dishes",
+    "free_trial_blocks",
+    "free_trial_claims",
+    "intake_forms",
+    "messages",
+    "notifications",
+    "postal_prefixes",
+    "profile_private",
+    "profiles",
+    "receipts",
+    "reports",
+    "reviews",
+  ];
+  const expectedTable: string[] = [
+    ...["availability", "chefs", "dishes", "postal_prefixes", "reviews"].map(
+      (t) => `anon ${t} select`,
+    ),
+    ...allTables.map((t) => `authenticated ${t} select`),
+    ...["chef_private", "chefs", "profiles", "reports"].map(
+      (t) => `authenticated ${t} update`,
+    ),
+    ...["availability", "dishes"].flatMap((t) =>
+      ["delete", "insert", "update"].map((p) => `authenticated ${t} ${p}`),
+    ),
+  ].sort();
+  const expectedColumns: string[] = [
+    ...[
+      "author_id",
+      "author_role",
+      "booking_id",
+      "comment",
+      "rating",
+      "subject_id",
+    ].map((c) => `authenticated reviews.${c} insert`),
+    ...["body", "booking_id", "sender_id"].map(
+      (c) => `authenticated messages.${c} insert`,
+    ),
+    ...["booking_id", "category", "description", "reporter_id"].map(
+      (c) => `authenticated reports.${c} insert`,
+    ),
+    "authenticated notifications.read_at update",
+  ].sort();
+  const expectedFunctions: string[] = [
+    "booking_contact_unlocked",
+    "can_view_kitchen_photos",
+    "get_booking_contact",
+    "is_admin",
+    "is_booking_chef",
+    "is_booking_party",
+    "is_chef",
+    "shares_booking_with",
+    "storage_booking_id",
+    "storage_folder_uuid",
+  ]
+    .map((f) => `authenticated ${f} execute`)
+    .sort();
+
+  it("table privileges for anon and authenticated match the snapshot exactly", async () => {
+    const res = await client.query(`
+      select r.rolname || ' ' || c.relname || ' ' || lower(p.priv) as line
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+      cross join (values ('anon'), ('authenticated')) r(rolname)
+      cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p(priv)
+      where c.relkind in ('r','p','v','m','f') and has_table_privilege(r.rolname, c.oid, p.priv)`);
+    expect(res.rows.map((r) => r.line as string).sort()).toEqual(expectedTable);
+  });
+
+  it("column-level privileges for anon and authenticated match the snapshot exactly", async () => {
+    const res = await client.query(`
+      select pg_get_userbyid(x.grantee) || ' ' || c.relname || '.' || a.attname || ' ' || lower(x.privilege_type) as line
+      from pg_attribute a
+      join pg_class c on c.oid = a.attrelid
+      join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+      cross join lateral aclexplode(a.attacl) x
+      where a.attacl is not null and not a.attisdropped and x.grantee <> 0
+        and pg_get_userbyid(x.grantee) in ('anon', 'authenticated')`);
+    expect(res.rows.map((r) => r.line as string).sort()).toEqual(
+      expectedColumns,
+    );
+  });
+
+  it("function execute privileges for anon and authenticated match the snapshot exactly", async () => {
+    const res = await client.query(`
+      select r.rolname || ' ' || p.proname || ' execute' as line
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+      cross join (values ('anon'), ('authenticated')) r(rolname)
+      where p.prokind = 'f'
+        and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+        and has_function_privilege(r.rolname, p.oid, 'EXECUTE')`);
+    expect(res.rows.map((r) => r.line as string).sort()).toEqual(
+      expectedFunctions,
+    );
   });
 });
