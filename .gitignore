@@ -8,3 +8,21 @@ agent-status.json
 # Secrets (CLAUDE.md sections 5 and 11)
 .env*
 !.env.example
+
+# Next.js / build output
+/node_modules
+/.next/
+/out/
+/build
+/coverage
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+*.pem
+.vercel
+
+# Test output
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
