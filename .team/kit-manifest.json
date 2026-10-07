@@ -1,0 +1,27 @@
+{
+  "version": "0.1.0",
+  "files": {
+    ".claude/agents/backend.md": "d6f85ee29b3eb46c93b029294098773d4927c8e4359547a79e03898af7aa0439",
+    ".claude/agents/frontend.md": "dd6f6a94e63161ee53f354c05b0e19755d5e2f2285e4dc3b8337d54edb0365e8",
+    ".claude/agents/reviewer.md": "fc0ced9672dd4fc009357164aead07861d1110d54fd866f3b087cd6f0208d3a1",
+    ".claude/agents/tester.md": "3a901a204394d769d843e6773c0b09b3ac198ae737654c3f551e9b6084c92e0d",
+    ".team/bin/cli/team-status.mjs": "8f7a7a810acae2abe7b6b697b636b0b8c3915433d9f6969a6088f11a5ed7a8a1",
+    ".team/bin/hooks/record.mjs": "c36029a39ba80e4970e0a8a622c86a18322c66f4c662a5a56a8e37b2ea6bc15e",
+    ".team/bin/lib/events.mjs": "587f0b7eefaa377b557f1a6c82ab600d7cd3e801d831ebabc98950d6b1b6f393",
+    ".team/bin/lib/paths.mjs": "dbb8ce0ebba9471a306470a1240f46a081472d265f8fa3c0815658e94cb49e63",
+    ".team/bin/team-status.mjs": "620414a507938fb0883279f4cba437746d8229ce2d6edc5e3376a2354c7b0631",
+    ".team/handoffs/handoff-template.md": "c5ba7cc1ef0f5debacfdb41f7acd7f014ec1f82c149f19a404f95a87afc3778d",
+    ".team/planner.md": "7af1f5cf314873c5d5be1829c92bfafe2ade5f626cb80f5c2e100ccf879cc8d5",
+    ".team/work-order-template.md": "0477523fc1525d01daa0775e5d09df59d15dc7e1b3855eab1f3f37ce5c2adfc7"
+  },
+  "created": [
+    ".gitignore"
+  ],
+  "createdDirs": [
+    ".team/bin/cli",
+    ".team/bin/hooks",
+    ".team/bin/lib",
+    ".team/bin",
+    ".claude/agents"
+  ]
+}
