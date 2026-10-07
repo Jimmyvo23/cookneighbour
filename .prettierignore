@@ -1,0 +1,12 @@
+.next
+node_modules
+package-lock.json
+next-env.d.ts
+test-results
+playwright-report
+.team
+.claude
+.superpowers
+agent-status.json
+CLAUDE.md
+docs

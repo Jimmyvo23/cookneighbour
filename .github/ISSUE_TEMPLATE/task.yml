@@ -1,0 +1,40 @@
+name: Task
+description: A task from the PLAN.md task board
+title: "T-0NN <short title>"
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: Task
+      description: What needs to be built, copied from PLAN.md.
+    validations:
+      required: true
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner
+      options: [planner, backend, frontend, tester, reviewer]
+    validations:
+      required: true
+  - type: input
+    id: depends
+    attributes:
+      label: Depends on
+      placeholder: "T-020, T-021 or —"
+  - type: input
+    id: work-order
+    attributes:
+      label: Work Order
+      placeholder: "WO-1"
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      value: |
+        - [ ] Code complete
+        - [ ] Tests written and passing (CI green)
+        - [ ] Tester verified
+        - [ ] Reviewer approved and merged
+        - [ ] Notes recorded in PLAN.md
