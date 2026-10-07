@@ -6,7 +6,7 @@ describe("supabase env helpers", () => {
     expect(
       getPublicSupabaseEnv({
         NEXT_PUBLIC_SUPABASE_URL: "https://x.example",
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: "pub",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "pub",
       }),
     ).toEqual({ url: "https://x.example", publishableKey: "pub" });
   });
@@ -14,25 +14,27 @@ describe("supabase env helpers", () => {
   it("names the missing variable", () => {
     expect(() =>
       getPublicSupabaseEnv({ NEXT_PUBLIC_SUPABASE_URL: "https://x.example" }),
-    ).toThrow(/NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+    ).toThrow(/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   });
 
   it("treats blank values as missing", () => {
     expect(() =>
       getServiceSupabaseEnv({
         NEXT_PUBLIC_SUPABASE_URL: "https://x.example",
-        SUPABASE_SERVICE_ROLE_KEY: "  ",
+        SUPABASE_SECRET_KEY: "  ",
       }),
-    ).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
+    ).toThrow(/SUPABASE_SECRET_KEY/);
   });
 
   it("never includes a value in the error", () => {
+    expect.assertions(2);
     try {
       getServiceSupabaseEnv({
         NEXT_PUBLIC_SUPABASE_URL: "https://secret-url.example",
       });
     } catch (e) {
       expect(String(e)).not.toContain("secret-url");
+      expect(String(e)).toContain("SUPABASE_SECRET_KEY");
     }
   });
 });
