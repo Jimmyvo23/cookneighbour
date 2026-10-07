@@ -107,7 +107,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
 | T-020 | App scaffold: Next.js + TS + Tailwind, ESLint + Prettier, Vitest (one sample test), Playwright (home-page smoke test), npm scripts, `.env.example`, README setup stub | frontend | — | done |
-| T-021 | Supabase setup: Jimmy creates hosted free project; `npx supabase init`, `src/lib/supabase/` clients, env vars in `.env.example`, connection check script | backend | T-020 | todo |
+| T-021 | Supabase setup: Jimmy creates hosted free project; `npx supabase init`, `src/lib/supabase/` clients, env vars in `.env.example`, connection check script | backend | T-020 | done |
 | T-022 | CI workflow `.github/workflows/ci.yml` (lint, type check, unit, local Supabase, Playwright smoke) | backend | T-020, T-021 | todo |
 | T-023 | Issue and PR templates, labels (`owner:*`, `phase:*`), mirror board as Issues | planner | — | done |
 | T-024 | Branch protection on `main`: require `ci` check, no required reviews, block force-push and deletion | planner | T-022 merged | todo |
@@ -205,4 +205,11 @@ Notes for each finished task are added here (CLAUDE.md §8).
 - Tester PASS on a fresh clone; Reviewer approved.
 - `npm audit`: 5 high findings, dev-only lint chain (`braces` → … → `eslint-config-next`); production audit clean. Follow-up Issue #46.
 - Later cleanups: Geist font loaded but body uses Arial; unused template SVGs in `public/`. `next.config.ts` enables `cacheComponents` and `partialPrefetching`: Backend must account for this when loading Supabase data (T-021 onward).
+
+### T-021 — Supabase setup (done 2026-10-07, PR #47)
+- `supabase init` (local config only, not linked), `@supabase/supabase-js`, `@supabase/ssr`, `server-only`, Supabase CLI as dev dependency.
+- `src/lib/supabase/`: `env.ts` (names missing variables, never values), `client.ts` (browser), `server.ts` (cookies, per request), `admin.ts` (secret key, server-only). `npm run db:check` prints OK/FAIL only.
+- Jimmy's hosted project uses new-style keys (`sb_publishable_…`, `sb_secret_…`) in the `…ANON_KEY` / `…SERVICE_ROLE_KEY` variables. db:check passes. Rename to `…PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` awaits Jimmy.
+- With `cacheComponents`, call the server client inside `<Suspense>`, a Route Handler or a Server Function; session refresh needs a proxy that forwards the `setAll` headers (auth task T-028).
+- Tester PASS, Reviewer approved. Small follow-ups: `env.ts` comment should say server-only; `env.test.ts` "never includes a value" test needs `expect.assertions(1)`. For T-028: `config.toml` has `minimum_password_length = 6`, `enable_confirmations = false`, and references a `seed.sql` that does not exist yet.
 
