@@ -25,3 +25,14 @@ The migrations are not merged or applied anywhere yet, so edit the existing migr
 
 ## Tester (after backend pushes)
 On `feature/T-027-rls-tests` (merge the updated T-025 branch in): regression tests for B1 (signUp without display_name → 'New user', email not exposed) and B2 (foreign path rejected, own path allowed, status reset); tests for P1–P4; add the localhost guard to `DB_URL`; replace the grant spot-check with a full table × role × privilege snapshot.
+
+## Round 2 (re-review of e6b0aab): APPROVED
+Review: https://github.com/Jimmyvo23/cookneighbour/pull/55#issuecomment-6048642153
+B1, B2, P1–P5 fixed. Backend's extra (kitchen change turns `chef_home_enabled` off) accepted: §6.7 requires admin review before the option is enabled.
+
+Notes for later tasks:
+- T-035: admin verify must send the document path the admin reviewed; server rejects if the path changed since (swap-while-pending gap).
+- T-031/T-035: decide whether a new upload moves a `failed` check back to `pending`.
+- T-031: changing the kitchen address while a chef_home booking is accepted immediately changes what `get_booking_contact` shows that customer; block the change or notify.
+- Nit: `storage_folder_uuid` and `storage_booking_id` have identical bodies.
+- Storage policies are not in the privilege snapshot (behaviour tests cover them). Realtime delivery untested (WO-5).

@@ -71,7 +71,7 @@ Everything in CLAUDE.md §3, §6, §10, §11 and §12. Highlights the plan is bu
 - `src/app/api/` — route handlers that load data, call domain functions, and write through Supabase (RLS applies).
 - `supabase/migrations/` — schema and RLS policies. `supabase/seed.sql` (plus a TS seed script for generated data).
 - **Realtime chat** via Supabase Realtime on `messages`. **Maps** via Leaflet + OpenStreetMap tiles.
-- **Storage buckets:** chef documents (private, admin-only read), dish and kitchen photos (public read), receipts (booking parties only).
+- **Storage buckets:** chef documents (private, admin-only read), dish and profile photos (public URLs, no listing), kitchen photos (private, D-10), receipts (booking parties only).
 
 ### Core data model
 | Table | Key fields |
@@ -115,12 +115,12 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 ### Phase 2b — Foundation: data (Work Order WO-2)
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
-| T-025 | Core schema migrations + RLS policies (all tables above) | backend | T-021 | todo |
+| T-025 | Core schema migrations + RLS policies (all tables above) | backend | T-021 | done |
 | T-026 | API contract v1 `docs/api-contract.md` | backend | T-025 | todo |
-| T-027 | RLS test harness + "no access to others' bookings, messages, addresses" tests | tester | T-025, T-022 | todo |
+| T-027 | RLS test harness + "no access to others' bookings, messages, addresses" tests | tester | T-025, T-022 | done |
 | T-028 | Auth backend: sign-up as customer/chef, phone normalize + hash, MOCK SMS verify, address normalize + hash, chef starts `pending`, seeded admin | backend | T-025 | todo |
 | T-029 | Auth UI: sign-up, log-in, role choice, phone verify (MOCK badge), home address | frontend | T-026, T-028 | todo |
-| T-056 | Env variable rename (`…PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`), T-021 review fixes, CI hardening (#50) | backend | — | todo |
+| T-056 | Env variable rename (`…PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`), T-021 review fixes, CI hardening (#50) | backend | — | done |
 | T-030 | Seed data: GTA postal prefixes, cuisines, ~10 chefs (incl. Vietnamese in Mississauga; some pending/rejected), dishes, demo customers, admin | backend | T-025 | todo |
 
 ### Phase 3 — Chef side (WO-3)
@@ -176,6 +176,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-7 | 2026-10-07 | Commit every handoff file for a task (builder, tester, reviewer) in `.team/handoffs/`, in the task PR or the next Planner PR | Planner |
 | D-8 | 2026-10-07 | Rename Supabase key variables to match Supabase's new key names; fold Issue #50 into T-056 | Planner (Jimmy delegated) |
 | D-9 | 2026-10-07 | Seed admin password comes from `SEED_ADMIN_PASSWORD` in `.env.local`, not the README, because the repo is public | Planner (Jimmy delegated) |
+| D-10 | 2026-10-07 | Kitchen photos are private (chef, admin, customer of an accepted chef's-home booking); reverses the public-read line in §3 | Planner (Jimmy delegated), on Reviewer advice |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -191,6 +192,8 @@ New from planning:
 - Q-8 Cancellation timing rules (placeholder in A-6), and what happens on a late cancellation.
 - Q-9 Stripe test-mode checkout, or a pure mock payment step (A-10)? A pure mock is cheaper to build.
 - Q-10 Real eat-by window must be confirmed against Ontario public-health guidance before any real launch.
+- Q-11 How long may a `requested` booking hold a chef's date before it expires, and should customers be rate-limited on requests?
+- Q-12 Should contact details re-lock some days after a visit is completed?
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
 
@@ -225,4 +228,17 @@ Notes for each finished task are added here (CLAUDE.md §8).
 ### T-024 — Branch protection on `main` (done 2026-10-07, settings change, no code PR)
 - Required status check `ci`; branch must be up to date with `main` before merging; applies to admins too; force-push and deletion blocked; no required reviews (D-6).
 - Effect: nothing reaches `main` without a green `ci` run on a PR, including Planner notes like this one.
+
+### T-056 — Env rename and CI hardening (done 2026-10-07, PR #54)
+- Variables are now `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (D-8). Old names remain only in history notes on purpose.
+- CI now builds, pins Supabase CLI 2.120.0, uses checkout/setup-node v5. `supabase/.temp` ignored by Prettier. Closed #50 and #52.
+
+### T-025 — Core schema + RLS (done 2026-10-07, PR #55; applied to hosted project 2026-10-07)
+- 19 tables, RLS on all, deny-by-default grants (tables and functions), private data split into `profile_private`, `chef_private`, `booking_addresses`. Contact reveal only via `get_booking_contact` after acceptance. Clients cannot write bookings, claims, hashes or check statuses; the server does (service role), so every API route must authorize in code.
+- One active booking per chef per date; one free trial per customer, phone hash and address hash (released claims excluded).
+- Review round 1 fixed: no email-derived display names; chef file paths locked to own folder, re-verification on change, kitchen change disables chef's-home until admin re-enables; no bucket listing; kitchen photos private (D-10); only chefs upload chef files; column-level inserts; report categories enum.
+- Data model and migration checklist: `docs/data-model.md`. Later-task notes: `.team/handoffs/T-025-reviewer.md`.
+
+### T-027 — RLS test harness (done 2026-10-07, PR #56)
+- `npm run test:rls`: 8 files, 107 tests against local Supabase in CI, acting as real users, each denied case paired with an allowed one. Exact privilege snapshot for anon and authenticated. Localhost guards on API and DB URLs.
 
