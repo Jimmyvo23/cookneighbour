@@ -139,6 +139,7 @@ The team rules — approval gate, Work Orders, workflow per task, handoffs, esca
 
 CookNeighbour-specific rules on top of the kit:
 - **Goal of the gate:** save tokens and keep Jimmy in control. Planning is cheap; building is expensive.
+- The approval gate also covers **any other token-heavy work**, not only the items listed in the Team section, including opening pull requests. Plan summaries are per batch of work (one task or a small group), not for every tiny step. No work starts until Jimmy's decision is recorded with `team-status decide`.
 - Backend publishes the API contract (`docs/api-contract.md`) **before** Frontend starts dependent pages.
 - GitHub Issues carry labels for owner and phase; feature branches are named `feature/T-004-booking-pricing`.
 - Notes for each finished task are recorded in `PLAN.md`.
@@ -222,7 +223,7 @@ Work test-first where practical (Superpowers TDD). Commit in small, meaningful s
 
 **Reusable as-is:**
 - The Planner-led team structure and the five agent roles (section 8)
-- The approval gate and Work Order process (section 8)
+- The approval gate and Work Order process (now from the Agent Team Kit; section 8 keeps the project-specific parts)
 - The Agent Control Room: now the Agent Team Kit (`Jimmyvo23/agent-team-kit`). Install it with its installer instead of copying section 6.10.
 - GitHub flow and safety rules (sections 5, 8, 11)
 - VS Code with Claude Code development environment and environment check (section 5)

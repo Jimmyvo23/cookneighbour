@@ -6,3 +6,7 @@ agent-status.json
 
 # Installer backup of the previous settings.json (local only)
 .claude/settings.json.bak
+
+# Secrets (CLAUDE.md sections 5 and 11)
+.env*
+!.env.example
