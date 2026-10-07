@@ -37,6 +37,6 @@ Update the status board with the CLI (run from the project root). Use `--agent b
 
 ## Handoff
 
-1. Copy `.team/handoffs/handoff-template.md` to `.team/handoffs/<task-id>.md` and fill in every section.
+1. Copy `.team/handoffs/handoff-template.md` to `.team/handoffs/<task-id>-backend.md` and fill in every section. Keep earlier handoffs; on a second round, update your file.
 2. Run `node .team/bin/team-status.mjs handoff --from backend --to tester --task <task-id>`.
 3. Tell the Planner the handoff file is ready. Do not re-explain it in chat.

@@ -257,6 +257,7 @@ Workflow: Planner assigns, agents submit plans, Jimmy approves, builders build, 
 
 Status duties:
 - Every agent runs `node .team/bin/team-status.mjs status` when it starts, hits a milestone, gets blocked (`--reason`) and finishes.
-- Every agent writes `.team/handoffs/<task-id>.md` and runs `team-status handoff` when it finishes.
+- Every agent writes `.team/handoffs/<task-id>-<agent id>.md` (for example `T-004-backend.md`) and runs `team-status handoff` when it finishes.
+- Start team members with `subagent_type` set to their id (`backend`, `frontend`, `tester`, `reviewer`), never `general-purpose`.
 - The Planner records tasks, approvals, decisions and escalations with `team-status`.
 <!-- agent-team-kit:end -->

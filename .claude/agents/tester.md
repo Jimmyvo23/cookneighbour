@@ -36,7 +36,7 @@ Update the status board with the CLI (run from the project root). Use `--agent t
 
 ## Handoff
 
-1. Copy `.team/handoffs/handoff-template.md` to `.team/handoffs/<task-id>.md` and fill in every section.
+1. Read the builder's `.team/handoffs/<task-id>-<builder id>.md`. Copy `.team/handoffs/handoff-template.md` to `.team/handoffs/<task-id>-tester.md` and fill in every section.
 2. If the tests pass, run `node .team/bin/team-status.mjs handoff --from tester --to reviewer --task <task-id>`.
    If they fail, list the failures in the handoff and run it with `--to <builder id>` (backend or frontend) so the builder gets them back.
 3. Tell the Planner the handoff file is ready. Do not re-explain it in chat.
