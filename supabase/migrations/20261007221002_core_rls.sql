@@ -98,6 +98,42 @@ begin
 end;
 $$;
 
+create function public.is_chef() returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = (select auth.uid()) and p.role = 'chef'
+  );
+$$;
+
+-- Storage helper: first folder of an object path as a uuid (null for any other shape).
+create function public.storage_folder_uuid(p_name text) returns uuid
+language sql stable
+set search_path = ''
+as $$
+  select case
+    when (storage.foldername(p_name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    then ((storage.foldername(p_name))[1])::uuid
+  end;
+$$;
+
+-- Kitchen photos (<chef id>/<file>): the customer of an accepted/completed chef_home booking
+-- with that chef may view them.
+create function public.can_view_kitchen_photos(p_chef uuid) returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.bookings b
+    where b.chef_id = p_chef
+      and b.customer_id = (select auth.uid())
+      and b.location_type = 'chef_home'
+      and public.booking_contact_unlocked(b.status)
+  );
+$$;
+
 -- Storage helper: receipts live at <booking id>/<file>; returns null for any other path shape.
 create function public.storage_booking_id(p_name text) returns uuid
 language sql stable
@@ -118,6 +154,9 @@ grant execute on function public.shares_booking_with(uuid) to authenticated;
 grant execute on function public.booking_contact_unlocked(public.booking_status) to authenticated;
 grant execute on function public.get_booking_contact(uuid) to authenticated;
 grant execute on function public.storage_booking_id(text) to authenticated;
+grant execute on function public.is_chef() to authenticated;
+grant execute on function public.storage_folder_uuid(text) to authenticated;
+grant execute on function public.can_view_kitchen_photos(uuid) to authenticated;
 -- Trigger functions are not granted to anyone; triggers fire without an EXECUTE check.
 -- Future functions in this schema should also not be public:
 alter default privileges in schema public revoke execute on functions from public, anon, authenticated;
@@ -159,7 +198,10 @@ grant select on
   to authenticated;
 grant update on public.profiles, public.chefs, public.chef_private to authenticated;
 grant insert, update, delete on public.dishes, public.availability to authenticated;
-grant insert on public.messages, public.reviews, public.reports to authenticated;
+-- Column-level insert grants: clients cannot set ids, timestamps or server-managed columns.
+grant insert (booking_id, sender_id, body) on public.messages to authenticated;
+grant insert (booking_id, author_id, subject_id, author_role, rating, comment) on public.reviews to authenticated;
+grant insert (booking_id, reporter_id, category, description) on public.reports to authenticated;
 grant update on public.reports to authenticated;
 grant update (read_at) on public.notifications to authenticated;
 -- postal_prefixes, free_trial_*, bookings*, intake_forms, receipts: read-only for clients.

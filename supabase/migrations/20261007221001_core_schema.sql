@@ -20,6 +20,7 @@ create type public.cancelled_by as enum ('customer', 'chef');
 create type public.cancellation_timing as enum ('on_time', 'late');
 create type public.free_trial_state as enum ('held', 'consumed', 'released');
 create type public.free_trial_block_reason as enum ('customer', 'phone', 'address');
+create type public.report_category as enum ('safety', 'food_quality', 'no_show', 'payment', 'other');
 create type public.report_status as enum ('open', 'reviewing', 'resolved', 'dismissed');
 
 -- ---------------------------------------------------------------------------
@@ -105,9 +106,8 @@ begin
     new.id,
     case when new.raw_user_meta_data ->> 'role' = 'chef' then 'chef'::public.user_role
          else 'customer'::public.user_role end,
-    left(coalesce(nullif(trim(new.raw_user_meta_data ->> 'display_name'), ''),
-                  nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
-                  'New user'), 80)
+    -- Never derive a name from the email: local parts are often real names and would leak into public reviews.
+    left(coalesce(nullif(trim(new.raw_user_meta_data ->> 'display_name'), ''), 'New user'), 80)
   );
   insert into public.profile_private (profile_id) values (new.id);
   return new;
@@ -228,6 +228,65 @@ end;
 $$;
 create trigger chef_private_guard before update on public.chef_private
   for each row execute function public.guard_chef_private_update();
+
+-- B2: every stored file path must sit in the chef's own folder, so a chef cannot point a
+-- record at another user's file. Applies to every writer (client, admin and server).
+create function public.chef_private_check_paths() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  prefix text := new.chef_id::text || '/';
+  p text;
+begin
+  foreach p in array array[new.id_document_path, new.food_handler_path] loop
+    if p is not null and (left(p, length(prefix)) <> prefix or p like '%..%') then
+      raise exception 'file path must start with the chef''s own folder' using errcode = '23514';
+    end if;
+  end loop;
+  foreach p in array new.kitchen_photo_paths loop
+    if left(p, length(prefix)) <> prefix or p like '%..%' then
+      raise exception 'file path must start with the chef''s own folder' using errcode = '23514';
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+create trigger chef_private_paths before insert or update on public.chef_private
+  for each row execute function public.chef_private_check_paths();
+
+-- A chef who changes a verified document, the kitchen photos or the kitchen address goes back to
+-- 'pending' (MOCK re-check). Changing the kitchen also switches chef's-home bookings off until
+-- an admin re-enables them. Security definer so it may touch chefs.chef_home_enabled.
+create function public.chef_private_reset_checks() returns trigger
+language plpgsql security definer
+set search_path = ''
+as $$
+begin
+  -- Only client edits by a non-admin reset checks (the server and admin set statuses directly).
+  if (select auth.uid()) is null or public.is_admin() then
+    return new;
+  end if;
+  if new.id_document_path is distinct from old.id_document_path and old.id_check_status = 'verified' then
+    new.id_check_status := 'pending';
+  end if;
+  if new.food_handler_path is distinct from old.food_handler_path and old.food_handler_status = 'verified' then
+    new.food_handler_status := 'pending';
+  end if;
+  if (new.kitchen_photo_paths is distinct from old.kitchen_photo_paths
+      or new.kitchen_address_line is distinct from old.kitchen_address_line
+      or new.kitchen_city is distinct from old.kitchen_city
+      or new.kitchen_postal_code is distinct from old.kitchen_postal_code) then
+    if old.kitchen_status = 'verified' then
+      new.kitchen_status := 'pending';
+    end if;
+    update public.chefs set chef_home_enabled = false where profile_id = new.chef_id and chef_home_enabled;
+  end if;
+  return new;
+end;
+$$;
+create trigger chef_private_reset before update on public.chef_private
+  for each row execute function public.chef_private_reset_checks();
 
 -- ---------------------------------------------------------------------------
 -- dishes and availability
@@ -516,7 +575,7 @@ create table public.reports (
   id uuid primary key default gen_random_uuid(),
   booking_id uuid not null references public.bookings (id) on delete cascade,
   reporter_id uuid not null references public.profiles (id),
-  category text not null default 'other',
+  category public.report_category not null default 'other',
   description text not null check (char_length(description) between 1 and 2000),
   status public.report_status not null default 'open',
   admin_note text,
