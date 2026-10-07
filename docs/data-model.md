@@ -110,15 +110,37 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 
 | Bucket | Public | Policies |
 |---|---|---|
-| `chef-documents` (ID, food handler; MOCK verification) | no | authenticated may insert into folder `<own uid>/`; only admin can read or delete |
-| `profile-photos`, `dish-photos`, `kitchen-photos` | yes (read) | anyone can read; the owner can insert, update, delete in folder `<own uid>/` |
+| `chef-documents` (ID, food handler; MOCK verification) | no | users with role `chef` may insert into folder `<own uid>/`; only admin can read or delete |
+| `kitchen-photos` | **no** (decision D-10) | role `chef` inserts and updates in `<own uid>/`; the owner reads and deletes own; admin reads and deletes; the customer of an `accepted`/`completed`/no-show `chef_home` booking with that chef reads (`can_view_kitchen_photos`) |
+| `profile-photos` | public URLs work, **no listing** | any signed-in user inserts, updates, deletes in `<own uid>/`; only the folder owner and admin can select through the API |
+| `dish-photos` | public URLs work, **no listing** | same as profile photos, but only users with role `chef` may write; owner and admin can select |
 | `receipts` | no | path `<booking id>/<file>`: the booking's chef may insert; both parties and admin may read |
 
-Size limits 5 MB (photos) and 10 MB (documents, receipts); MIME types restricted.
+Size limits 5 MB (photos) and 10 MB (documents, receipts); MIME types restricted. Anonymous users have no storage policies at all.
+
+## Stored file paths (B2)
+
+Trigger `chef_private_check_paths` requires `id_document_path`, `food_handler_path` and every entry of `kitchen_photo_paths` to start with `<chef id>/` (and contain no `..`), for every writer. When a non-admin client changes a verified ID document, food-handler document, kitchen photos or kitchen address, trigger `chef_private_reset_checks` sets the matching MOCK status back to `pending`; a kitchen change also sets `chefs.chef_home_enabled` to false until an admin re-enables it. Admin and server edits do not reset anything.
+
+## Client insert columns
+
+Clients may insert only these columns (column grants): `messages (booking_id, sender_id, body)`, `reviews (booking_id, author_id, subject_id, author_role, rating, comment)`, `reports (booking_id, reporter_id, category, description)`. `reports.category` is the enum `report_category`: safety, food_quality, no_show, payment, other.
+
+## Why `phone_e164` is stored
+
+CLAUDE.md 6.8 says each party sees the other's phone number once the booking is accepted, which a hash cannot provide. It lives only in `profile_private` (owner and admin read) and reaches the other party only through `get_booking_contact()` after acceptance. Display names never fall back to the email local part (default `New user`), because names appear in public reviews.
+
+## Writing a new migration (checklist)
+
+Default privileges are revoked for tables **and** functions in schema `public`, so a new object is unusable by clients until you say so.
+
+1. New table: `enable row level security`, then `grant` the minimum privileges (column-level where possible) to `anon`/`authenticated`, then add explicit policies using `(select auth.uid())`. No policy means no access.
+2. New function: it is not executable by anyone; `grant execute` only to the roles that need it. Security definer functions must set `search_path = ''` and schema-qualify everything.
+3. Private data never goes in a publicly readable row; put it in an owner/admin-only table.
+4. Add tests to the T-027 RLS suite for every new table, policy and function (allowed and denied cases), and update this page.
 
 ## Known limits and notes for reviewers
 
-- Kitchen photos are public-read because the spec lists them with dish photos; a public URL reveals the photo, not the address.
 - Admin can read messages (to review reports). Admin writes to moderation columns are allowed by policy and trigger; the server can do it too.
 - `requested` bookings hold the chef's date until declined or cancelled; an expiry rule is not defined (open question for the Planner).
 - Hosted Supabase: the migrations are applied with `supabase db push` by the Planner after review, not by this task.
