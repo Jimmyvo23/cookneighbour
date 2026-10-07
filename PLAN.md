@@ -1,7 +1,7 @@
 # CookNeighbour — Plan and Task Board
 
 Owner: Planner. Approver: Jimmy. Source of truth for requirements: `CLAUDE.md`.
-Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved and finished 2026-10-07. Every later phase still needs its own Work Order.
+Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved and finished 2026-10-07. WO-2 (Phase 2b) approved 2026-10-07. Every later phase still needs its own Work Order.
 
 ---
 
@@ -120,6 +120,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-027 | RLS test harness + "no access to others' bookings, messages, addresses" tests | tester | T-025, T-022 | todo |
 | T-028 | Auth backend: sign-up as customer/chef, phone normalize + hash, MOCK SMS verify, address normalize + hash, chef starts `pending`, seeded admin | backend | T-025 | todo |
 | T-029 | Auth UI: sign-up, log-in, role choice, phone verify (MOCK badge), home address | frontend | T-026, T-028 | todo |
+| T-056 | Env variable rename (`…PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`), T-021 review fixes, CI hardening (#50) | backend | — | todo |
 | T-030 | Seed data: GTA postal prefixes, cuisines, ~10 chefs (incl. Vietnamese in Mississauga; some pending/rejected), dishes, demo customers, admin | backend | T-025 | todo |
 
 ### Phase 3 — Chef side (WO-3)
@@ -173,6 +174,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-5 | 2026-10-07 | Phase 2 split into 2a tooling and 2b data | Jimmy (design approval) |
 | D-6 | 2026-10-07 | `main` protection requires CI only, no required reviews | Jimmy |
 | D-7 | 2026-10-07 | Commit every handoff file for a task (builder, tester, reviewer) in `.team/handoffs/`, in the task PR or the next Planner PR | Planner |
+| D-8 | 2026-10-07 | Rename Supabase key variables to match Supabase's new key names; fold Issue #50 into T-056 | Planner (Jimmy delegated) |
+| D-9 | 2026-10-07 | Seed admin password comes from `SEED_ADMIN_PASSWORD` in `.env.local`, not the README, because the repo is public | Planner (Jimmy delegated) |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
