@@ -212,9 +212,9 @@ describe("B2: chef file paths and re-verification", () => {
       (id: string) => ({
         kitchen_photo_paths: [`${id}/k1.png`, `${id}/k9.png`],
       }),
-      (id: string) => ({ kitchen_address_line: "99 New Street" }),
-      (id: string) => ({ kitchen_city: "Brampton" }),
-      (id: string) => ({ kitchen_postal_code: "L6Y1A1" }),
+      () => ({ kitchen_address_line: "99 New Street" }),
+      () => ({ kitchen_city: "Brampton" }),
+      () => ({ kitchen_postal_code: "L6Y1A1" }),
     ]) {
       const chef = await verifiedChef(`reset-k-${rand(2)}`);
       const c = await clientFor(chef);
@@ -380,9 +380,7 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
         .select(),
       "42501",
     );
-    // control: the review may already exist from the engagement tests; either success or the unique violation proves the columns were accepted
-    const ok = await c1.from("reviews").insert(base).select();
-    if (ok.error) expect(ok.error.code).toBe("23505");
+    // The allowed insert (same columns, no extras) is covered in engagement.test.ts.
   });
 
   it("reports: status, admin_note, created_at, resolved_at are refused; valid categories work and a bogus one is rejected", async () => {
