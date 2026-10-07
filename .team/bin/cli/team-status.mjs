@@ -6,6 +6,10 @@ import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { appendEvent, validateEvent } from '../lib/events.mjs';
 import { findProjectRoot, logPath } from '../lib/paths.mjs';
+import { loadTeam } from '../lib/team.mjs';
+
+/** @param {unknown} v */
+const norm = (v) => String(v ?? '').trim().toLowerCase();
 
 /**
  * Per-subcommand spec: usage line, flags, and the event builder.
@@ -43,7 +47,7 @@ const COMMANDS = {
     usage: 'handoff --from <agent> --to <agent> --task <id> [--file <path>]',
     required: ['from', 'to', 'task'],
     optional: ['file'],
-    build: (v) => ({ type: 'handoff', agent: v.from, from: v.from, to: v.to, task: v.task, file: v.file ?? `.team/handoffs/${v.task}.md` }),
+    build: (v) => ({ type: 'handoff', agent: v.from, from: v.from, to: v.to, task: v.task, file: v.file ?? `.team/handoffs/${v.task}-${norm(v.from)}.md` }),
   },
   escalate: {
     usage: 'escalate --task <id> --summary <text>',
@@ -100,7 +104,27 @@ export function main(argv, opts) {
   } catch (e) {
     return fail(`${/** @type {Error} */ (e).message}. ${usage}`);
   }
+  const unknown = unknownIds(root, values);
+  if (unknown.length > 0) {
+    err(`Warning: ${unknown.map((id) => `"${id}"`).join(', ')} ${unknown.length === 1 ? 'is' : 'are'} not on the team in .team/team.json (a typo?); the event was still written.\n`);
+  }
   return 0;
+}
+
+/**
+ * Agent ids named in the flags that are not a member or the approver of .team/team.json.
+ * No team.json (or an invalid one) means nothing to check against.
+ * @param {string} root
+ * @param {Record<string, any>} values
+ * @returns {string[]}
+ */
+function unknownIds(root, values) {
+  const loaded = loadTeam(path.join(root, '.team', 'team.json'));
+  if (!loaded.ok) return [];
+  const known = new Set([loaded.team.approver.id, ...loaded.team.members.map((m) => m.id)]);
+  const named = ['agent', 'owner', 'from', 'to'].map((k) => values[k]).filter((v) => v !== undefined).map(norm);
+  if (values.agents !== undefined) named.push(...String(values.agents).split(',').map(norm));
+  return [...new Set(named.filter((id) => id && !known.has(id)))];
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

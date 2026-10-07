@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @ts-check
-// Claude Code hook recorder. Usage: node record.mjs <agent-start|agent-stop|tool>
+// Claude Code hook recorder. Usage: node record.mjs <agent-start|agent-stop|tool|turn-end>
 // Reads the hook input JSON on stdin and appends one event to <project>/.team/events.jsonl.
 // Contract: print NOTHING (stdout may reach Claude's context) and ALWAYS exit 0.
 import fs from 'node:fs';
@@ -75,7 +75,8 @@ function cleanSegment(words) {
  * Describe a Bash command for the dashboard. Leading directory changes (cd, pushd, popd)
  * are skipped and their arguments never shown; wrappers and VAR=value words are skipped;
  * the command word is shown as a basename; a second word (basename) is added only if it
- * cannot carry a secret (no '=', no leading '-', no whitespace).
+ * cannot carry a secret (no '=', '@' or ':', no leading '-', no whitespace).
+ * Returns '' for the team-status CLI (`node .../team-status.mjs`): it logs its own event.
  * @param {string} command
  * @returns {string}
  */
@@ -88,7 +89,8 @@ function describeBash(command) {
   const cmd = baseName(first[0]);
   if (/\s/.test(cmd) || cmd.includes('=') || cmd.startsWith('-')) return 'Running a command';
   const raw = first[1];
-  const next = raw && !raw.includes('=') && !raw.startsWith('-') ? baseName(raw) : '';
+  if (cmd === 'node' && raw && baseName(raw) === 'team-status.mjs') return '';
+  const next = raw && !/[=@:]/.test(raw) && !raw.startsWith('-') ? baseName(raw) : '';
   const sub = next && !/\s/.test(next) ? ` ${next}` : '';
   return `Running ${cmd}${sub}`;
 }
@@ -105,12 +107,16 @@ export function mapHookInput(kind, input) {
 
   if (kind === 'agent-start') return type ? { type: 'agent_start', agent: type, source: 'hook' } : null;
   if (kind === 'agent-stop') return type ? { type: 'agent_stop', agent: type, source: 'hook' } : null;
+  // Stop: the main session finished its turn. The state fold applies this only to a working planner.
+  if (kind === 'turn-end') return { type: 'status', agent: 'planner', status: 'idle', source: 'hook' };
   if (kind !== 'tool') return null;
 
   const ti = input.tool_input && typeof input.tool_input === 'object' ? input.tool_input : {};
   let action = '';
-  if (input.tool_name === 'Edit' || input.tool_name === 'Write') {
-    const base = str(ti.file_path).split(/[\\/]/).filter(Boolean).pop();
+  const editPath = ['Edit', 'Write', 'MultiEdit'].includes(input.tool_name) ? ti.file_path
+    : input.tool_name === 'NotebookEdit' ? ti.notebook_path : undefined;
+  if (editPath !== undefined) {
+    const base = str(editPath).split(/[\\/]/).filter(Boolean).pop();
     if (base) action = `Editing ${base}`;
   } else if (input.tool_name === 'Bash') {
     action = describeBash(str(ti.command));
