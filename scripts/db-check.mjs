@@ -1,8 +1,8 @@
 // Confirms the hosted Supabase project is reachable. Needs no tables.
 // Run: npm run db:check (loads .env.local). Prints only OK / FAIL lines, never key values.
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const publishable = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const secret = process.env.SUPABASE_SECRET_KEY;
 
 async function check(label, fn) {
   try {
@@ -17,8 +17,8 @@ async function check(label, fn) {
 
 const missing = [
   ["NEXT_PUBLIC_SUPABASE_URL", url],
-  ["NEXT_PUBLIC_SUPABASE_ANON_KEY", publishable],
-  ["SUPABASE_SERVICE_ROLE_KEY", secret],
+  ["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", publishable],
+  ["SUPABASE_SECRET_KEY", secret],
 ]
   .filter(([, v]) => !v?.trim())
   .map(([n]) => n);
