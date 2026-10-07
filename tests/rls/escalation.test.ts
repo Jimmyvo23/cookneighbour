@@ -4,6 +4,7 @@ import {
   anonClient,
   clientFor,
   dayPlus,
+  expectCode,
   expectDenied,
   expectRows,
   makeBooking,
@@ -555,11 +556,14 @@ describe("clients cannot forge bookings, claims or server-written rows", () => {
     expectDenied(
       await h1.from("dishes").delete().eq("chef_id", fx.h2.id).select(),
     );
-    expectDenied(
+    // A customer passes the policy (chef_id = own id) but the foreign key to chefs stops it:
+    // no dish can exist for a user without a chef row.
+    expectCode(
       await c1
         .from("dishes")
         .insert({ chef_id: fx.c1.id, name: "x", cuisine: "x", cook_minutes: 1 })
         .select(),
+      "23503",
     );
     const { data } = await svc
       .from("dishes")
