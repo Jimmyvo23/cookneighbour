@@ -1,0 +1,255 @@
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+
+<h2>Sunny cutaway, version 2</h2>
+<p class="subtitle">The office is a little building with the front wall removed. Each agent has a room painted in their colour, and a room's lights show its state. The paper plane is gone. Handoffs now travel through the mail tube on the ceiling. Below the building are three options for the task board.</p>
+
+<style>
+  .bld {
+    --sky: #9fd3f0; --sky2: #c9ecff; --ink: #2e2a4f; --frame: #2f6f73; --wood: #c98b4f;
+    --alert: #f25c54; --ask: #ffc233; --ok: #3fae6a; --paper: #fffdf7; --cork: #d6a96b;
+    --planner: #b9a7ff; --backend: #9ee0bf; --frontend: #ffc49a; --tester: #a9d2ff; --reviewer: #ffb3c9; --jimmy: #ffe08a;
+    font-family: 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink);
+    background: linear-gradient(var(--sky) 0%, var(--sky2) 70%, #e8f6d9 70%, #cfe8b4 100%);
+    border-radius: 18px; padding: 20px 18px 18px; position: relative; overflow: hidden;
+  }
+  .cloud { position: absolute; top: 18px; width: 90px; height: 26px; background: #fff; border-radius: 20px; opacity: .85; animation: drift 60s linear infinite; }
+  .cloud::before { content: ''; position: absolute; width: 40px; height: 34px; background: #fff; border-radius: 50%; left: 18px; top: -16px; }
+  .cloud.c2 { top: 60px; transform: scale(.7); animation-duration: 90s; animation-delay: -40s; }
+
+  .wrap { display: grid; grid-template-columns: 1fr 250px; gap: 18px; position: relative; z-index: 1; }
+
+  .roof { margin: 0 auto -2px; width: 92%; height: 34px; background: var(--frame); clip-path: polygon(4% 100%, 12% 0, 88% 0, 96% 100%);
+          display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: .01em; }
+  .house { border: 6px solid var(--frame); border-radius: 6px; background: var(--frame); display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+  .rm { position: relative; height: 150px; background: var(--wall); cursor: pointer; overflow: hidden; outline-offset: -4px; transition: filter .4s; }
+  .rm:focus-visible, .rm.sel { outline: 4px solid var(--ink); }
+  .rm::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: var(--wood); }
+  .rm .win { position: absolute; top: 14px; left: 12px; width: 34px; height: 40px; background: var(--sky2); border: 3px solid var(--paper); border-radius: 4px 4px 0 0; }
+  .rm .lamp { position: absolute; top: 0; left: 50%; width: 2px; height: 16px; background: var(--ink); }
+  .rm .lamp::after { content: ''; position: absolute; top: 14px; left: -9px; width: 20px; height: 10px; border-radius: 10px 10px 0 0; background: var(--ink); }
+  .rm .glow { position: absolute; top: 24px; left: 50%; width: 160px; height: 120px; margin-left: -80px; background: radial-gradient(ellipse at top, rgba(255,236,150,.75), rgba(255,236,150,0) 70%); pointer-events: none; }
+  .rm .fig { position: absolute; bottom: 14px; left: 50%; margin-left: -45px; }
+  .rm .who { position: absolute; left: 10px; bottom: 2px; z-index: 2; font-weight: 800; font-size: 13px; color: var(--ink); }
+  .rm .door { position: absolute; right: 10px; bottom: 22px; width: 30px; height: 52px; background: var(--paper); border: 2px solid var(--ink); border-bottom: 0; border-radius: 4px 4px 0 0; }
+  .rm .plaque { position: absolute; right: 6px; bottom: 80px; font-size: 11px; font-weight: 600; background: var(--paper); border: 2px solid var(--ink); border-radius: 6px; padding: 1px 6px; }
+
+  /* Lights tell the state */
+  .rm.idle, .rm.done { filter: brightness(.86) saturate(.75); }
+  .rm.idle .glow, .rm.done .glow { opacity: 0; }
+  .rm.blocked .glow { background: radial-gradient(ellipse at top, rgba(242,92,84,.55), rgba(242,92,84,0) 70%); animation: siren 1.1s ease-in-out infinite; }
+  .rm.awaiting .glow { background: radial-gradient(ellipse at top, rgba(255,194,51,.6), rgba(255,194,51,0) 70%); }
+  .bub { position: absolute; top: 30px; left: 58%; background: var(--paper); border: 2px solid var(--ink); border-radius: 12px; font-weight: 800; padding: 0 8px; font-size: 16px; }
+  .awaiting .bub { background: var(--ask); animation: nudge 1.4s ease-in-out infinite; }
+  .blocked .bub { background: var(--alert); color: #fff; }
+
+  /* Figure motion is only for state */
+  .working .armL { transform-box: fill-box; transform-origin: top right; animation: tap .3s infinite alternate; }
+  .working .armR { transform-box: fill-box; transform-origin: top left; animation: tap .3s infinite alternate-reverse; }
+  .awaiting .armR { transform-box: fill-box; transform-origin: bottom left; animation: wave .8s infinite alternate; }
+  .idle .steam { animation: steam 2.6s infinite; } .idle .steam.s2 { animation-delay: 1.2s; }
+  .steam { opacity: 0; }
+
+  .tray { position: absolute; left: 54px; bottom: 26px; width: 34px; height: 12px; border: 2px solid var(--ink); border-top: 0; background: var(--wood); }
+  .tray i { position: absolute; left: 3px; width: 26px; height: 3px; background: var(--paper); border: 1px solid var(--ink); }
+
+  .sign { display: inline-flex; gap: 8px; align-items: center; margin: 10px 0 0 auto; float: right; background: var(--ask); border: 3px solid var(--ink); border-radius: 10px;
+          padding: 4px 12px; font-weight: 800; font-size: 14px; transform-origin: top center; animation: swing 3s ease-in-out infinite; cursor: pointer; }
+  .sign small { font-weight: 600; font-size: 12px; }
+  .sign::before, .sign::after { content: ''; position: absolute; top: -14px; width: 2px; height: 12px; background: var(--ink); }
+  .sign::before { left: 18px; } .sign::after { right: 18px; }
+  .signwrap { position: relative; height: 54px; }
+
+  .tube { position: absolute; top: 160px; left: 14%; right: 14%; height: 12px; border: 2px solid var(--ink); border-radius: 8px; background: rgba(255,255,255,.55); z-index: 3; pointer-events: none; }
+  .tube::before, .tube::after { content: ''; position: absolute; top: 8px; width: 2px; height: 14px; background: var(--ink); }
+  .tube::before { left: 0; } .tube::after { right: 0; }
+  .folder { position: absolute; top: -5px; width: 22px; height: 16px; background: var(--ask); border: 2px solid var(--ink); border-radius: 3px; animation: send 7s ease-in-out infinite; }
+  .folder::before { content: ''; position: absolute; top: -6px; left: 2px; width: 9px; height: 5px; background: var(--ask); border: 2px solid var(--ink); border-bottom: 0; border-radius: 2px 2px 0 0; }
+  .rm.incoming .plaque { animation: arrive 7s ease-in-out infinite; }
+  .rm .plaque .new { display: none; }
+
+  .cork { margin-top: 12px; background: var(--cork); border: 6px solid var(--wood); border-radius: 8px; padding: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .col h5 { margin: 0 0 6px; font-size: 13px; font-weight: 800; color: var(--ink); }
+  .note { background: var(--n, #fff6a8); padding: 5px 7px; font-size: 12px; margin-bottom: 6px; box-shadow: 1px 2px 0 rgba(46,42,79,.25); transform: rotate(var(--r, -1deg)); }
+
+  .clip { background: var(--paper); border: 3px solid var(--ink); border-radius: 10px; padding: 26px 16px 16px; position: relative; align-self: start; box-shadow: 4px 5px 0 var(--ink); }
+  .clip::before { content: ''; position: absolute; top: -12px; left: 50%; margin-left: -34px; width: 68px; height: 22px; background: #9aa0a6; border: 3px solid var(--ink); border-radius: 6px; }
+  .clip h4 { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.1; }
+  .clip .role { font-size: 13px; margin-bottom: 10px; }
+  .state { display: inline-block; font-weight: 800; font-size: 13px; padding: 2px 10px; border-radius: 20px; border: 2px solid var(--ink); }
+  .clip dl { margin: 12px 0 0; font-size: 14px; }
+  .clip dt { font-weight: 800; font-size: 12px; margin-top: 8px; }
+  .clip dd { margin: 0; }
+  .meter { height: 14px; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; background: #fff; margin-top: 4px; }
+  .meter div { height: 100%; }
+  .hist { margin-top: 12px; padding-top: 8px; border-top: 2px dashed var(--ink); font-size: 12px; line-height: 1.7; }
+  .hist time { font-weight: 600; margin-right: 6px; }
+
+  @keyframes drift { from { left: -120px } to { left: 110% } }
+  @keyframes siren { 0%,100% { opacity: .35 } 50% { opacity: 1 } }
+  @keyframes nudge { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+  @keyframes tap { from { transform: rotate(0) } to { transform: rotate(-10deg) } }
+  @keyframes wave { from { transform: rotate(-8deg) } to { transform: rotate(20deg) } }
+  @keyframes steam { 0% { opacity: 0; transform: translateY(0) } 40% { opacity: .8 } 100% { opacity: 0; transform: translateY(-12px) } }
+  @keyframes swing { 0%,100% { transform: rotate(-2deg) } 50% { transform: rotate(2deg) } }
+  @keyframes send { 0%,10% { left: 0; opacity: 0 } 15% { opacity: 1 } 55% { left: calc(100% - 22px); opacity: 1 } 62%,100% { left: calc(100% - 22px); opacity: 0 } }
+  @keyframes arrive { 0%,58% { background: var(--paper) } 62%,92% { background: var(--ask); transform: scale(1.12) } 100% { background: var(--paper) } }
+
+  @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; } .house { grid-template-columns: repeat(2, 1fr); } .cork { grid-template-columns: repeat(2, 1fr); } }
+  @media (prefers-reduced-motion: reduce) { .bld *, .bld *::before, .bld *::after { animation: none !important; } }
+</style>
+
+<div class="bld">
+  <div class="cloud"></div><div class="cloud c2"></div>
+  <div class="wrap">
+    <div>
+      <div class="signwrap"><div class="sign">Jimmy, 2 things need you <small>Approve Work Order WO-3. The Reviewer is stuck.</small></div></div>
+      <div class="roof">CookNeighbour team</div>
+      <div class="house" id="house" style="position:relative">
+        <div class="tube" aria-hidden="true"><div class="folder"></div></div>
+      </div>
+    </div>
+    <aside class="clip" id="clip" aria-live="polite"></aside>
+  </div>
+</div>
+
+<style>
+  .boards { --ink:#2e2a4f; --frame:#2f6f73; --wood:#c98b4f; --paper:#fffdf7; --ask:#ffc233;
+            --planner:#b9a7ff; --backend:#9ee0bf; --frontend:#ffc49a; --tester:#a9d2ff; --reviewer:#ffb3c9;
+            font-family:'Bricolage Grotesque', system-ui, sans-serif; color:var(--ink); }
+  .bopt { margin-top: 10px; }
+  .k4 { display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .k4 h5 { margin:0 0 6px; font-size:13px; font-weight:800; display:flex; justify-content:space-between; }
+  .k4 h5 b { font-weight:600; font-size:12px; background:var(--paper); border:2px solid var(--ink); border-radius:10px; padding:0 7px; }
+  .tk { background:var(--paper); border:2px solid var(--ink); border-left:8px solid var(--o); border-radius:6px; padding:4px 7px; font-size:12px; margin-bottom:6px; }
+  .tk span { display:block; font-size:11px; opacity:.7; }
+  /* A: lobby floor */
+  .lobby { border:6px solid var(--frame); border-top:0; background:#e9f4f1; padding:12px 12px 30px; position:relative; border-radius:0 0 6px 6px; }
+  .lobby::after { content:''; position:absolute; left:0; right:0; bottom:0; height:20px; background:var(--wood); }
+  .lobby .board { background:#fff; border:3px solid var(--ink); border-radius:8px; padding:10px; }
+  .lobby .lbl { position:absolute; bottom:1px; left:10px; z-index:1; font-weight:800; font-size:13px; }
+  /* B: clean columns */
+  .clean .k4 > div { background:#f3f6fb; border-radius:10px; padding:8px; }
+  .clean .tk { border:0; border-left:6px solid var(--o); box-shadow:0 1px 0 #d9dfe8; }
+  /* C: clipboard tab */
+  .cliptab { max-width: 300px; background:var(--paper); border:3px solid var(--ink); border-radius:10px; padding:0 14px 14px; box-shadow:4px 5px 0 var(--ink); }
+  .tabs { display:flex; gap:0; margin:0 -14px 10px; border-bottom:3px solid var(--ink); }
+  .tabs div { flex:1; text-align:center; padding:6px; font-weight:800; font-size:13px; }
+  .tabs .on { background:var(--ask); }
+  .cliptab h6 { margin:10px 0 4px; font-size:12px; font-weight:800; }
+</style>
+
+<div class="boards">
+<div class="options">
+  <div class="option" data-choice="lobby" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Lobby floor</h3>
+      <p>The board becomes the building's ground floor: a lobby with a noticeboard on the wall. Each ticket's coloured edge shows who owns it. It stays part of the building instead of floating underneath.</p>
+      <div class="bopt lobby">
+        <div class="board k4">
+          <div><h5>To do <b>2</b></h5><div class="tk" style="--o:var(--backend)">T-005 Search API<span>Backend</span></div><div class="tk" style="--o:var(--frontend)">T-006 Chef page<span>Frontend</span></div></div>
+          <div><h5>In progress <b>1</b></h5><div class="tk" style="--o:var(--backend)">T-004 Pricing<span>Backend, 40%</span></div></div>
+          <div><h5>In review <b>1</b></h5><div class="tk" style="--o:var(--reviewer)">T-003 Sign-up<span>Reviewer</span></div></div>
+          <div><h5>Done <b>2</b></h5><div class="tk" style="--o:var(--planner)">T-001 Repo setup<span>Planner</span></div><div class="tk" style="--o:var(--backend)">T-002 Database<span>Backend</span></div></div>
+        </div>
+        <div class="lbl">Lobby</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="clean" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Plain columns</h3>
+      <p>A quiet, standard task board under the building. Easiest to read, and it doesn't compete with the office, but it doesn't feel like part of the scene.</p>
+      <div class="bopt clean k4">
+        <div><h5>To do <b>2</b></h5><div class="tk" style="--o:var(--backend)">T-005 Search API<span>Backend</span></div><div class="tk" style="--o:var(--frontend)">T-006 Chef page<span>Frontend</span></div></div>
+        <div><h5>In progress <b>1</b></h5><div class="tk" style="--o:var(--backend)">T-004 Pricing<span>Backend, 40%</span></div></div>
+        <div><h5>In review <b>1</b></h5><div class="tk" style="--o:var(--reviewer)">T-003 Sign-up<span>Reviewer</span></div></div>
+        <div><h5>Done <b>2</b></h5><div class="tk" style="--o:var(--planner)">T-001 Repo setup<span>Planner</span></div><div class="tk" style="--o:var(--backend)">T-002 Database<span>Backend</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="cliptab" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Inside the clipboard</h3>
+      <p>No board under the building at all. The clipboard gets two tabs: the selected agent, or all tasks. The office stays uncluttered, but you need one click to see the board.</p>
+      <div class="bopt cliptab">
+        <div class="tabs"><div>Agent</div><div class="on">Tasks</div></div>
+        <h6>In progress</h6><div class="tk" style="--o:var(--backend)">T-004 Pricing<span>Backend, 40%</span></div>
+        <h6>In review</h6><div class="tk" style="--o:var(--reviewer)">T-003 Sign-up<span>Reviewer</span></div>
+        <h6>To do</h6><div class="tk" style="--o:var(--backend)">T-005 Search API<span>Backend</span></div>
+        <h6>Done</h6><div style="font-size:12px">2 tasks</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function () {
+  const team = [
+    { id:'planner',  name:'Planner',  role:'Plans the work and hands it out', state:'working',  task:'Writing Work Order WO-3', pct:70, next:'Ask Jimmy to approve WO-3', log:[['14:03','Drafted WO-3'],['14:01','Closed T-002'],['13:55','Merged pull request #4']] },
+    { id:'reviewer', name:'Reviewer', role:'Final check before anything ships', state:'blocked', task:'Pull request #5', pct:20, next:'Re-review once the checks pass', why:'Automatic checks are failing (lint errors)', log:[['14:02','Stuck: checks failing'],['13:59','Opened pull request #5']] },
+    { id:'jimmy',    name:'Jimmy',    role:'Product owner. Approves every Work Order', state:'awaiting', task:'2 decisions waiting', pct:0, next:'Decide on WO-3 and WO-4', log:[['13:30','Approved WO-2']] },
+    { id:'backend',  name:'Backend',  role:'Database, APIs and business rules', state:'working', task:'T-004 Pricing function', pct:40, next:'Write the free-trial tests', log:[['14:02','Editing pricing.ts'],['14:01','Ran tests: 3 failing'],['13:58','Started T-004']] },
+    { id:'frontend', name:'Frontend', role:'Pages and screens', state:'awaiting', task:'Waiting for WO-3', pct:0, next:'Build the search page', log:[['14:00','Sent plan summary'],['13:40','Finished T-003']] },
+    { id:'tester',   name:'Tester',   role:'Writes tests and reports bugs', state:'idle', task:'Nothing assigned', pct:0, next:'Test T-004 when Backend hands it over', log:[['13:50','T-003 passed'],['13:44','Wrote 12 tests']] },
+  ];
+  const stateText = { working:'Working', idle:'On a break', blocked:'Stuck', awaiting:'Waiting for approval', done:'Finished' };
+  const stateBg = { working:'#c8f2dc', idle:'#e6e6ee', blocked:'#f25c54', awaiting:'#ffc233', done:'#c8f2dc' };
+  const bubble = { blocked:'!', awaiting:'?' };
+
+  function fig(m) {
+    const armR = m.state === 'awaiting'
+      ? '<line class="armR" x1="40" y1="34" x2="52" y2="14"/>'
+      : '<line class="armR" x1="40" y1="34" x2="54" y2="46"/>';
+    const cup = m.state === 'idle'
+      ? '<rect x="64" y="44" width="8" height="8" rx="2" fill="#fffdf7" stroke-width="1.5"/><path class="steam" d="M66 42 q2 -4 0 -8" stroke-width="1.5"/><path class="steam s2" d="M70 42 q2 -4 0 -8" stroke-width="1.5"/>'
+      : '';
+    const screen = m.id === 'jimmy' ? '' : '<rect x="54" y="30" width="20" height="15" rx="2" fill="#2e2a4f"/><rect x="56" y="32" width="16" height="11" fill="#9fd3f0" stroke="none"/>';
+    return '<svg class="fig" width="90" height="74" viewBox="0 0 90 74" fill="none" stroke="#2e2a4f" stroke-width="3" stroke-linecap="round">' +
+      screen +
+      '<circle cx="40" cy="15" r="8" fill="#fffdf7"/>' +
+      '<line x1="40" y1="23" x2="40" y2="48"/>' +
+      '<line class="armL" x1="40" y1="34" x2="28" y2="46"/>' + armR +
+      '<line x1="40" y1="48" x2="33" y2="62"/><line x1="40" y1="48" x2="47" y2="62"/>' +
+      '<rect x="14" y="50" width="66" height="6" rx="2" fill="#c98b4f" stroke-width="2"/>' + cup +
+      '</svg>';
+  }
+
+  function pin(m) {
+    const fill = m.state === 'blocked' ? '#f25c54' : 'var(--' + m.id + ')';
+    document.getElementById('clip').innerHTML =
+      '<h4>' + m.name + '</h4><div class="role">' + m.role + '</div>' +
+      '<span class="state" style="background:' + stateBg[m.state] + (m.state === 'blocked' ? ';color:#fff' : '') + '">' + stateText[m.state] + '</span>' +
+      '<dl><dt>Working on</dt><dd>' + m.task + '</dd>' +
+      (m.why ? '<dt>Why it is stuck</dt><dd>' + m.why + '</dd>' : '') +
+      '<dt>Progress</dt><dd>' + m.pct + '%<div class="meter"><div style="width:' + m.pct + '%;background:' + fill + '"></div></div></dd>' +
+      '<dt>Next step</dt><dd>' + m.next + '</dd></dl>' +
+      '<div class="hist">' + m.log.map(function (l) { return '<div><time>' + l[0] + '</time>' + l[1] + '</div>'; }).join('') +
+      '<div style="opacity:.6;margin-top:4px">Updated 12 seconds ago</div></div>';
+    document.querySelectorAll('.rm').forEach(function (r) { r.classList.toggle('sel', r.dataset.id === m.id); });
+  }
+
+  const house = document.getElementById('house');
+  team.forEach(function (m) {
+    const r = document.createElement('div');
+    r.className = 'rm ' + m.state + (m.id === 'tester' ? ' incoming' : ''); r.dataset.id = m.id; r.tabIndex = 0;
+    r.setAttribute('role', 'button'); r.setAttribute('aria-label', m.name + ': ' + stateText[m.state] + ', ' + m.task);
+    r.style.setProperty('--wall', 'var(--' + m.id + ')');
+    r.innerHTML = '<div class="win"></div><div class="lamp"></div><div class="glow"></div>' +
+      (bubble[m.state] ? '<div class="bub">' + bubble[m.state] + '</div>' : '') +
+      fig(m) +
+      (m.id === 'jimmy' ? '<div class="tray"><i style="top:-4px"></i><i style="top:-8px"></i></div>' : '') +
+      '<div class="door"></div><div class="plaque">' + (m.id === 'tester' ? 'New from Backend' : stateText[m.state]) + '</div><div class="who">' + m.name + '</div>';
+    r.onclick = function () { pin(m); };
+    r.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pin(m); } };
+    house.appendChild(r);
+  });
+  pin(team[3]);
+})();
+</script>
