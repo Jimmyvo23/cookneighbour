@@ -40,6 +40,15 @@ jobs:
       - name: Start local Supabase
         run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor
 
+      # T-027: RLS tests against the throwaway local stack. URL and keys are the public local
+      # defaults printed by the CLI (never repo secrets).
+      - name: RLS tests
+        run: |
+          set -a
+          eval "$(supabase status -o env)"
+          set +a
+          npm run test:rls
+
       - run: npx playwright install --with-deps chromium
       - name: Playwright smoke test
         run: npm run test:e2e
