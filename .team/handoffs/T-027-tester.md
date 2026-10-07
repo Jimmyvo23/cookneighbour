@@ -8,9 +8,13 @@ From: tester  To: reviewer
 - Files: `vitest.rls.config.mts`, `tests/rls/` (`helpers.ts`, `global-setup.ts`, `visibility`, `privacy`, `escalation`, `engagement`, `booking-rules`, `storage` test files, `README.md`), `package.json` (`test:rls`, dev deps `pg`, `@types/pg`), `.github/workflows/ci.yml` (`RLS tests` step after `supabase start`), this handoff.
 
 ## How to verify
-- CI run (green): https://github.com/Jimmyvo23/cookneighbour/actions/runs/37697131032 : step "RLS tests" = 6 files, 83 tests passed. (First run 37696780728: 82/83, the one failure was a wrong expectation in my own test, fixed.)
+- CI run (green): https://github.com/Jimmyvo23/cookneighbour/actions/runs/37697131032 : step "RLS tests" = 6 files, 83 tests passed (now 107, see update). (First run 37696780728: 82/83, the one failure was a wrong expectation in my own test, fixed.)
 - Locally (needs Docker): `supabase start`, then `set -a; eval "$(supabase status -o env)"; set +a; npm run test:rls`.
 - Design: global setup builds the cast once through the service client (admin, 2 customers, approved chefs h1 and h2, pending, rejected, bookings in requested/accepted/chef-home/declined/completed states, claims, receipts, storage objects). Tests act as each user through RLS. Writes always chain `.select()` so a successful write returns rows and fails the assertion. Most tests pair the forbidden case with an allowed control on the same data. The helper refuses a non-local `API_URL`.
+
+## Update after T-025 review fixes (e6b0aab merged in)
+- Added `hardening.test.ts` (B1 display name, B2 paths and re-verification, P4 column grants and report category) and `storage-hardening.test.ts` (P1 no listing, P2 private kitchen photos, P3 who may upload). Grant spot-check replaced by exact table, column and function privilege snapshots in `visibility.test.ts`. `DB_URL` host now also guarded to localhost.
+- CI run https://github.com/Jimmyvo23/cookneighbour/actions/runs/37699321934 : green, RLS step 8 files, 107 tests passed. (Earlier run 37699066078 failed only on a test-order dependency I introduced, fixed.)
 
 ## Known gaps or risks
 - Not run locally (no Docker); CI is the proof.
