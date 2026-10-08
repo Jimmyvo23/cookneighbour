@@ -1,6 +1,6 @@
 # CookNeighbour API contract v1
 
-Status: v1 (T-026), covers WO-2 (sign-up, phone, address) and WO-3 (chef application, admin chef queue, public chef basics). Later work orders extend it (search with distance, bookings, pricing, free trial, chat, reviews, reports). Implementations: T-028 (auth), T-031 (chef application, implemented and clarified; changes are marked **(T-031)**), T-035 (admin). Shared types: `src/lib/api/types.ts` (types only). If code and this page disagree, fix one of them in the same PR.
+Status: v1.1 (T-032), covers WO-2 (sign-up, phone, address) and WO-3 (chef application, dishes, availability, admin chef queue, public chef basics). v1.1 adds sections 5A (dishes) and 5B (availability) and moves dishes and availability to routes only; changes are marked **(T-032)**. Later work orders extend it (search with distance, bookings, pricing, free trial, chat, reviews, reports). Implementations: T-028 (auth), T-031 (chef application, implemented and clarified; changes are marked **(T-031)**), T-035 (admin). Shared types: `src/lib/api/types.ts` (types only). If code and this page disagree, fix one of them in the same PR.
 
 Everything involving SMS, ID, food-handler, kitchen and police checks is **MOCK**. Responses and UI must say so. In practice: `POST /api/chef/application/submit` carries `mock: true`; the other chef responses return `checks` as plain statuses with no flag in the JSON, so **the UI must label every check status MOCK** (T-033, T-036). The code that writes a check status is commented MOCK.
 
@@ -40,7 +40,7 @@ Row-level security protects the browser path, but route handlers that use the **
 1. **Identity from the session only.** Call `supabase.auth.getUser()` on the server client (it re-validates with Supabase). Never use `getSession()` for decisions. Never accept `userId`, `chefId` or `role` from the body, query or headers (except the `:id` of an admin route, which is checked against admin rights first).
 2. **Role from the database**, not from JWT metadata or the request: read `profiles.role` for the caller. `user_metadata` is user-editable and must never be trusted for authorization.
 3. **Prefer the user-scoped client** (publishable key + cookie) for reads so RLS applies. Use the service-role client for the writes marked "service" below, and only after steps 1 and 2 pass. The service-role module is `server-only` and never imported into client code.
-   - **Routes are the only writers of `chefs` and `chef_private` (decision B2 option a, D-12).** The browser must not update these tables directly, because direct updates would skip the checks below (acknowledgement timestamps from the server clock, hourly-rate bounds, photo and document path ownership, registered and existing objects). **The T-028 migration (applied)** revoked client `UPDATE` on `public.chefs` and `public.chef_private`, dropped the own-row update policies (`chefs_update_own`, `chef_private_update_own`), and added folder checks so a stored `dishes.photo_path` and `chefs.photo_path` must start with the owner's own folder (`<chefId>/`). Dishes and availability stay client-writable under RLS.
+   - **Routes are the only writers of `chefs` and `chef_private` (decision B2 option a, D-12).** The browser must not update these tables directly, because direct updates would skip the checks below (acknowledgement timestamps from the server clock, hourly-rate bounds, photo and document path ownership, registered and existing objects). **The T-028 migration (applied)** revoked client `UPDATE` on `public.chefs` and `public.chef_private`, dropped the own-row update policies (`chefs_update_own`, `chef_private_update_own`), and added folder checks so a stored `dishes.photo_path` and `chefs.photo_path` must start with the owner's own folder (`<chefId>/`). **(T-032, decision)** Dishes and availability are routes-only too: the T-032 migration revoked client `INSERT`, `UPDATE` and `DELETE` on `public.dishes` and `public.availability` and dropped their own-row write policies (select policies are unchanged), because bounds, unsafe-text rules, photo path ownership plus object existence, the past-date rule and the active-dish cap cannot be enforced from the browser. The `dishes.photo_path` folder check stays as a second line of defence. Photo **files** are still uploaded by the browser straight to Storage (bucket `dish-photos`, owner-writable by design, see `docs/data-model.md`).
 4. **Admin routes** (`/api/admin/**`): first check `role = 'admin'`; otherwise 403 before any query. Unauthenticated is 401.
 5. **Ownership:** chef routes act on the caller's own `chefs.profile_id` only. A path or body that names another chef's file or id is rejected (403 for a foreign path prefix).
 6. **Whitelist columns.** Build the update object from the allowed fields of the request type; never spread the request body into an update. Moderation columns (`chefs.status`, `chef_home_enabled`, `rating_avg`, `review_count`, all `chef_private` check statuses and `reject_reason`) are written only by the admin routes, `POST /api/chef/application/submit` (sets statuses to `pending` and moves `rejected` to `pending`), the chef documents/PATCH routes (re-verification reset, see N1 below) and the sign-up route (initial rows). The database also guards them for clients.
@@ -148,7 +148,7 @@ All routes: 401 without a session; role must be `chef` (else 403, for customers 
 1. The browser uploads the file **directly to Supabase Storage** with the user session (`supabase.storage.from(bucket).upload(path, file)`). RLS lets a user with role chef write only under `<own uid>/`.
    - `id_document` and `food_handler`: bucket `chef-documents`, JPEG/PNG/PDF, 10 MB. Path: `<chefId>/id-<uuid>.<ext>` and `<chefId>/food-handler-<uuid>.<ext>`. Only admin can read these files back (the chef cannot).
    - `kitchen_photo`: bucket `kitchen-photos` (private), JPEG/PNG/WebP, 5 MB. Path: `<chefId>/kitchen-<uuid>.<ext>`. **(T-031, tester F3)** The chef can only **insert new objects** here: Storage RLS gives the chef no update and no delete on this bucket (migration `20261008150000_kitchen_photos_insert_only`), so a photo cannot be changed in place under a verified check. Replace a photo by uploading a new file and registering it; remove one with `DELETE /api/chef/application/documents`, which deletes the object with the service role.
-   - Profile photo: bucket `profile-photos` (public URL, no listing), path `<chefId>/photo-<uuid>.<ext>`, then set `photoPath` via PATCH. Dish photos use `dish-photos` (WO-3 dishes, contract v1.1).
+   - Profile photo: bucket `profile-photos` (public URL, no listing), path `<chefId>/photo-<uuid>.<ext>`, then set `photoPath` via PATCH. Dish photos use `dish-photos`, path `<chefId>/dish-<uuid>.<ext>` (section 5A); the browser uploads, then sends `photoPath` to the dish routes.
    - Use a fresh uuid per upload (lower case, e.g. `crypto.randomUUID()`); do not overwrite (the chef has no update right on `chef-documents` or `kitchen-photos`). The file name **must** follow these patterns, in lower case, or the route answers 422. **(T-031)**
 2. The browser then registers the path with the route below. Uploading alone changes nothing in the application.
 
@@ -169,6 +169,63 @@ All routes: 401 without a session; role must be `chef` (else 403, for customers 
 - **Request:** none (a body is ignored; the request still needs `Content-Type: application/json`). **Response 200:** `SubmitApplicationResponse` `{ application, mock: true }`.
 - **Does (service, because check statuses are moderation columns):** requires `missing` to be empty. Moves only checks that are `not_started` or `failed` to `pending` (`id_check_status`, `food_handler_status`, and `kitchen_status` when `chef_home` is selected); **never overwrites `verified` or an already `pending` check** (N2) and never touches the police check or `chef_home_enabled`. If the chef was `rejected`, sets status to `pending` and clears `reject_reason` (B3). If the chef is already `pending` with nothing to move, it is an idempotent no-op returning 200 (nothing is written). MOCK: nothing is verified automatically; an admin sets results (section 6).
 - **Errors:** 409 `APPLICATION_INCOMPLETE` with `error.missing`, 409 `INVALID_STATE` if already `approved` (checked first, even when items are missing), 401, 403, 400.
+
+## 5A. Dishes (own) **(T-032)**
+
+All routes: 401 without a session; role `chef` (else 403, decided from `profiles.role`); acts only on dishes whose `chef_id` is the caller. Order of checks: session (401), role (403), content type (400), body fields (422), then state (404, 409). `Cache-Control: no-store`. They use the same gate as section 5 (`requireChef`), including the idempotent row repair. A chef of **any** status (`pending`, `approved`, `rejected`) manages dishes, because a sample dish with a photo is part of the application (`missing.sampleDish` in section 5 becomes satisfiable by `POST /api/chef/dishes` with a `photoPath`). Customers and anonymous visitors see only **active** dishes of **approved** chefs (RLS `dishes_select_public`); the customer-facing read route comes with the public chef detail in WO-4.
+
+`Dish` (response):
+
+```json
+{ "id": "uuid", "name": "Pho bo", "photoPath": "<chefId>/dish-<uuid>.jpg", "description": "Slow-cooked beef broth.", "cuisine": "Vietnamese", "cookMinutes": 180, "ingredientCostCents": 2500, "servings": 4, "allergens": ["soy", "wheat"], "shelfLifeDays": 2, "isActive": true, "currency": "CAD", "createdAt": "ISO", "updatedAt": "ISO" }
+```
+
+Field rules (bounds confirmed as **Decision D-16 (Jimmy, 2026-10-08)**; they live in `src/lib/domain/dishes.ts`):
+
+| Field | Rule |
+|---|---|
+| `name` | required on create; 1 to 120 characters after trimming; no control characters or lone surrogates (`Fields.text` rule: "Remove control or invalid characters.") |
+| `description` | optional; string up to 1000 after trimming or `null`; blank is stored as `null`; line feed, carriage return and tab are allowed (several lines), other control characters and lone surrogates are 422 |
+| `cuisine` | required on create; 1 to 40 characters, no control characters (free text, like the chef's `cuisines`) |
+| `cookMinutes` | required on create; integer 5 to 360 (360 = the 6 hour soft visit limit of CLAUDE.md 6.5, so no single dish is unbookable) |
+| `ingredientCostCents` | optional, default 0; integer 0 to 50000 |
+| `servings` | optional, default 1; integer 1 to 50 |
+| `allergens` | optional, default `[]`; array of up to 14 strings, each trimmed 1 to 40 characters without control characters; stored **lower case**, de-duplicated, order kept (so the WO-4 intake-form conflict check can compare them). Free text; the UI offers a picker with the Canadian priority allergens |
+| `shelfLifeDays` | optional, default 2 (A-7); integer 0 to 7 (database check). The "eat by" date is visit date plus this value |
+| `photoPath` | optional or `null`. Otherwise the storage path rule (section 2, rule 7) for bucket `dish-photos`, name `dish-<uuid>.<ext>` (jpg, jpeg, png, webp), in the caller's own folder. A foreign folder is 403 (stops at once, no storage call); a malformed name or an object that was never uploaded is 422 `fields.photoPath`. Sending the photo already stored skips the storage check. The old object stays in Storage |
+| `isActive` | PATCH only; boolean |
+
+Unknown keys are 422 `fields.<key> = "Unknown field."` (this includes `id`, `chefId`, `currency`, `createdAt`). All field errors are reported at once; nothing is saved on any error.
+
+### GET /api/chef/dishes
+- **Response 200:** `ChefDishListResponse` `{ items: Dish[] }`: all of the caller's dishes, active and inactive, newest first (`created_at` desc, then `id`). No pagination: a chef has at most 50 active dishes and inactive ones are few.
+
+### POST /api/chef/dishes
+- **Request:** `CreateDishRequest` (`name`, `cuisine`, `cookMinutes` required; the rest optional). **Response 201:** `Dish` (always created active).
+- **Errors:** 401, 403, 400, 422, 409 `INVALID_STATE` when the chef already has 50 active dishes (limit: **Decision D-16 (Jimmy, 2026-10-08)**, enforced by a database trigger under an advisory lock, so parallel creates cannot pass the cap).
+- **Does (service):** `chef_id` is always the caller; the insert is built from the whitelist.
+
+### PATCH /api/chef/dishes/:id
+- **Request:** `UpdateDishRequest`: any subset of the create fields plus `isActive`; `{}` is a valid no-op returning the dish. **Response 200:** `Dish`.
+- **Deactivate** with `{ "isActive": false }`; **reactivate** with `{ "isActive": true }` (409 `INVALID_STATE` over the cap). There is deliberately no DELETE: a deactivated dish disappears from the public menu and from new bookings, while bookings that used it keep their snapshot (`booking_day_dishes`), and nothing is deleted (deleting data needs Jimmy's approval).
+- **Ownership:** the update is one statement filtered by `id` **and** `chef_id = caller`. A dish that does not exist, belongs to another chef, or whose `:id` is not a uuid is 404 `NOT_FOUND` (the same answer, so other chefs' dishes cannot be probed).
+- **Errors:** 401, 403, 400, 404, 422, 409 `INVALID_STATE`.
+- Editing or deactivating the **last** active dish with a photo of an `approved` chef is allowed (same as open point 6 for the profile); the public menu is then empty.
+
+## 5B. Availability (own) **(T-032)**
+
+Same gate and check order as section 5A. **Meaning (Decision D-15, Jimmy, 2026-10-08):** a date is bookable only if the chef marked it available; a date with no row is **not** available. Only rows with `available = true` are stored; clearing a date deletes its row. WO-4 enforces this at booking time together with the double-booking rule. Marking or clearing a date does not touch existing bookings (a booked date stays booked even if the chef clears it; WO-4 owns cancellation rules).
+
+Dates are `YYYY-MM-DD` calendar dates in **America/Toronto** (the server decides what "today" is, with the same rule as the booking-day trigger). The bookable window is **today up to today + 180 days** (**Decision D-15**, Jimmy, 2026-10-08).
+
+### GET /api/chef/availability
+- **Response 200:** `AvailabilityResponse` `{ days: string[], today: string, lastBookableDay: string }`: the caller's available dates from today on, ascending. `today` and `lastBookableDay` (today + 180) are the server's window, so the calendar needs no clock of its own.
+
+### PUT /api/chef/availability
+- **Request:** `SetAvailabilityRequest` `{ add?: string[], remove?: string[] }`. Mark dates available with `add`, clear dates with `remove`; either may be omitted. **Response 200:** `AvailabilityResponse` (the new state).
+- **Validation (422, nothing saved on any error):** unknown keys; at least one date overall (`fields.add`); each list is an array of at most 200 strings; every entry is a real calendar date in `YYYY-MM-DD` (`2026-02-30` and year `0000` are refused; Postgres has no year 0); every `add` date is **not in the past** and **not after the horizon** (`fields.add`, message names the window); `remove` dates may be any valid date, including past ones (cleaning up); a date in both lists is refused (`fields.remove`). Duplicates inside a list are ignored.
+- **Does (service):** one upsert of the `add` dates (`available = true`) and one delete of the `remove` dates, both filtered to `chef_id = caller`. The two sets are disjoint and each statement is idempotent, so a failed request can simply be sent again.
+- **Errors:** 401, 403, 400, 422.
 
 ## 6. Admin chef queue (all checks are MOCK)
 
@@ -216,7 +273,7 @@ User-scoped (anon-capable) client only; RLS returns approved chefs. No service r
 - **Errors:** 422 (bad `prefix`, `limit`). **Tables:** `chefs`, `postal_prefixes` (city).
 
 ### GET /api/chefs/:id
-- **Response:** `PublicChef`. 404 for unknown, pending or rejected (same response, so existence is not leaked). **Tables:** `chefs`. Dishes and availability come in contract v1.1.
+- **Response:** `PublicChef`. 404 for unknown, pending or rejected (same response, so existence is not leaked). **Tables:** `chefs`. Dishes and availability of a chef: the customer-facing read routes come with WO-4 (search and chef detail); until then RLS already limits reads to active dishes and availability of **approved** chefs (T-032 tests).
 
 ### GET /api/reference/postal-prefixes
 - **Response:** `PostalPrefixListResponse`. Public reference data for the city picker and client-side hints; cacheable. **Tables:** `postal_prefixes`.
@@ -257,11 +314,13 @@ CLAUDE.md section 10 lists "duplicate or malformed phone numbers". The free tria
 | POST, DELETE /api/chef/application/documents | chef | service (storage info/delete, table write) | service |
 | POST /api/chef/application/submit | chef | service | service (check statuses) |
 | /api/admin/chefs/** | admin | service after admin check | service |
+| GET, POST /api/chef/dishes; PATCH /api/chef/dishes/:id | chef | service after checks (storage `exists`) | service (routes are the only writers, T-032) |
+| GET, PUT /api/chef/availability | chef | service after checks | service |
 | GET /api/chefs, /api/chefs/:id, /api/reference/postal-prefixes | anyone | anon-capable user-scoped | none |
 
 ## 11. Not in v1 (planned)
 
-Dishes and availability CRUD (WO-3, v1.1), search with distance, bookings, estimate, free trial, receipts (WO-4), messaging, reviews, reports, notifications read API (WO-5), admin booking/report/free-trial lists. Dishes and availability can already be written by the chef's browser under RLS (with the `dishes.photo_path` folder check from the T-028 migration); a route contract is added when Frontend needs one.
+Search with distance, bookings, estimate, free trial, receipts (WO-4), messaging, reviews, reports, notifications read API (WO-5), customer-facing dish and availability reads (WO-4), admin booking/report/free-trial lists. Dishes and availability CRUD is section 5A and 5B (T-032).
 
 Recorded for later work orders:
 - N3 (WO-4): changing the kitchen address while a `chef_home` booking is `accepted` must be blocked or must notify the customer and re-confirm.

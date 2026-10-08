@@ -56,7 +56,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 - **1 to 3 days:** `day_number` check 1..3, unique per booking. **Past date** rejected by trigger (Toronto time).
 - **Booking insert rules (trigger):** chef must be `approved`; the location must be in the chef's `location_options`; `chef_home` also needs `chef_home_enabled`; the customer must have role `customer`; a chef's-home booking must have `est_travel_cents = 0`; customer cannot book themselves.
 - **Free trial:** partial unique indexes on `free_trial_claims` for `customer_id`, `phone_hash` and `address_hash` where `state <> 'released'`. Releasing a claim (booking cancelled before it happened) frees the trial; `held` and `consumed` block. Which state to set is the API's job.
-- **Role cannot be changed by a client** (trigger `guard_profile_update`). **Moderation fields** on `chefs` (`status`, `chef_home_enabled`, `rating_avg`, `review_count`) and `chef_private` (reject reason and all check statuses) can be changed only by an admin or the server. Since the T-028 migration **no client can update `profiles`, `chefs` or `chef_private` at all** (table `UPDATE` revoked, update policies dropped): the API routes write them with the service role. The triggers `guard_profile_update`, `guard_chef_update` and `guard_chef_private_update` remain as a second line of defence. Stored photo paths must start with the owner's folder (`chefs.photo_path`, `dishes.photo_path` check constraints). A verified phone hash can belong to one account only (unique partial index `profile_private_phone_hash_verified`).
+- **Role cannot be changed by a client** (trigger `guard_profile_update`). **Moderation fields** on `chefs` (`status`, `chef_home_enabled`, `rating_avg`, `review_count`) and `chef_private` (reject reason and all check statuses) can be changed only by an admin or the server. Since the T-032 migration **no client can insert, update or delete `dishes` or `availability` either** (grants revoked, own-row write policies dropped; routes validate and write with the service role). Since the T-028 migration **no client can update `profiles`, `chefs` or `chef_private` at all** (table `UPDATE` revoked, update policies dropped): the API routes write them with the service role. The triggers `guard_profile_update`, `guard_chef_update` and `guard_chef_private_update` remain as a second line of defence. Stored photo paths must start with the owner's folder (`chefs.photo_path`, `dishes.photo_path` check constraints). A verified phone hash can belong to one account only (unique partial index `profile_private_phone_hash_verified`).
 - Chef `rating_avg` / `review_count` are recalculated by trigger from customer reviews.
 - No-shows are statuses (`no_show_customer`, `no_show_chef`), not separate flags.
 
@@ -86,10 +86,10 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | | booking counterparty | the chef of a shared booking |
 | `chef_private` | owner, admin | own row / all; **no client update** (routes write it, T-028) |
 | `dishes` | anon, authenticated | active dishes of approved chefs |
-| | owner | all own dishes; insert, update, delete own (`chef_id` = self) |
+| | owner | all own dishes (select only). **No client insert, update or delete** (routes write them, T-032); at most 50 active dishes per chef (trigger `dishes_active_cap`) |
 | | admin | all |
 | `availability` | anon, authenticated | rows of approved chefs |
-| | owner | all own; insert, update, delete own |
+| | owner | all own (select only). **No client insert, update or delete** (routes write them, T-032) |
 | | admin | all |
 | `bookings` | party | bookings where self is customer or chef. No client writes |
 | | admin | all |
@@ -120,7 +120,7 @@ Size limits 5 MB (photos) and 10 MB (documents, receipts); MIME types restricted
 
 **Why kitchen photos are insert-only for the chef (T-031, F3).** A verified MOCK kitchen check refers to a path, and the N1 reset only fires when the stored path changes. If the chef could overwrite or delete an object in place, the picture could change under a `verified` check. Without update or delete rights a changed picture needs a new name, which is a path change, which resets the check and switches chef's home off. `chef-documents` was already insert-only for chefs.
 
-**profile-photos and dish-photos stay owner-writable on purpose.** No verified check depends on those files, and a chef can already point a dish or profile row at a different new file at any time, so an in-place overwrite adds no power. Content moderation of public photos is a separate, later concern. Revisit when T-032 (dishes) decides whether dishes move to routes; if photo cleanup moves to the server then, the owner delete policy can go too.
+**profile-photos and dish-photos stay owner-writable on purpose.** No verified check depends on those files, and a chef can already point a dish or profile row at a different new file at any time, so an in-place overwrite adds no power. Content moderation of public photos is a separate, later concern. T-032 decided: dishes and availability rows moved to routes (the route checks the photo path and that the object exists), but the dish-photos bucket stays owner-writable for the same reason. If photo cleanup moves to the server later, the owner delete policy can go too.
 
 ## Stored file paths (B2)
 

@@ -287,7 +287,7 @@ describe("F3 (T-031): kitchen photos are insert-only for the chef", () => {
   });
 
   it("DECISION: profile-photos and dish-photos stay owner-writable (no verified check depends on them)", async () => {
-    // Pinned so that T-032 (dishes) changes this knowingly. See docs/data-model.md, Storage.
+    // Pinned on purpose; T-032 moved the dish rows to routes but kept this decision. See docs/data-model.md, Storage.
     const h1 = await clientFor(fx.h1);
     for (const bucket of ["profile-photos", "dish-photos"]) {
       const name = `${fx.h1.id}/f3-${rand(4)}.png`;

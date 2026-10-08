@@ -8,6 +8,7 @@ import {
   expectRows,
   ids,
   localEnv,
+  serviceClient,
 } from "./helpers";
 
 const fx = inject("fx");
@@ -86,7 +87,8 @@ describe("search visibility: approved chefs only", () => {
 
   it("an inactive dish of an approved chef is hidden from the public but visible to its chef", async () => {
     const h1 = await clientFor(fx.h1);
-    const created = await h1
+    // T-032: clients cannot write dishes any more; the route (service role) creates it
+    const created = await serviceClient()
       .from("dishes")
       .insert({
         chef_id: fx.h1.id,
@@ -157,9 +159,7 @@ describe("database-level guarantees", () => {
     ...allTables.map((t) => `authenticated ${t} select`),
     // T-028: chef_private, chefs and profiles are written by routes only (no client update).
     "authenticated reports update",
-    ...["availability", "dishes"].flatMap((t) =>
-      ["delete", "insert", "update"].map((p) => `authenticated ${t} ${p}`),
-    ),
+    // T-032: dishes and availability are written by routes only (no client write privilege).
   ].sort();
   const expectedColumns: string[] = [
     ...[

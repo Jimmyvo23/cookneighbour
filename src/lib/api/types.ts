@@ -252,6 +252,67 @@ export interface SubmitApplicationResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Dishes and availability (own; contract sections 5A and 5B, v1.1)
+// ---------------------------------------------------------------------------
+export interface Dish {
+  id: string;
+  name: string;
+  /** Object name in bucket dish-photos, "<chefId>/dish-<uuid>.<ext>". Never a URL. */
+  photoPath: string | null;
+  description: string | null;
+  cuisine: string;
+  /** 5 to 360. */
+  cookMinutes: number;
+  /** 0 to 50000. */
+  ingredientCostCents: number;
+  /** 1 to 50. */
+  servings: number;
+  /** Lower case, up to 14 entries. */
+  allergens: string[];
+  /** 0 to 7: the "eat by" date is the visit date plus this. */
+  shelfLifeDays: number;
+  isActive: boolean;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateDishRequest {
+  /** 1 to 120 characters. */
+  name: string;
+  cuisine: string;
+  cookMinutes: number;
+  photoPath?: string | null;
+  description?: string | null;
+  ingredientCostCents?: number;
+  servings?: number;
+  allergens?: string[];
+  shelfLifeDays?: number;
+}
+/** Any subset of the create fields. `isActive: false` deactivates, `true` reactivates. */
+export interface UpdateDishRequest extends Partial<CreateDishRequest> {
+  isActive?: boolean;
+}
+export interface ChefDishListResponse {
+  items: Dish[];
+}
+
+export interface AvailabilityResponse {
+  /** Available dates (YYYY-MM-DD, America/Toronto) from `today` on, ascending. */
+  days: string[];
+  /** The server's today, so a calendar needs no clock of its own. */
+  today: string;
+  /** Last date that can be marked: today + 180 days. */
+  lastBookableDay: string;
+}
+export interface SetAvailabilityRequest {
+  /** Dates to mark available: not in the past, not after `lastBookableDay`. */
+  add?: string[];
+  /** Dates to clear (any valid date). */
+  remove?: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Admin: chef queue and MOCK checks
 // ---------------------------------------------------------------------------
 export interface AdminChefListItem {

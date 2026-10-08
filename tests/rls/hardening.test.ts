@@ -158,9 +158,9 @@ describe("B2 (T-028): routes are the only writers of chef data; path rules hold 
     expect((await upd(`${chef.id}/me.png`)).error).toBeNull();
     expect((await upd(null)).error).toBeNull();
 
-    const c = await clientFor(chef);
+    // T-032: clients cannot write dishes; the constraint holds for the server (service role).
     const dish = (photo: string | null) =>
-      c
+      svc
         .from("dishes")
         .insert({
           chef_id: chef.id,
@@ -181,7 +181,7 @@ describe("B2 (T-028): routes are the only writers of chef data; path rules hold 
       .limit(1)
       .single();
     expectCode(
-      await c
+      await svc
         .from("dishes")
         .update({ photo_path: `${fx.h1.id}/stolen.png` })
         .eq("id", mine.data!.id)
