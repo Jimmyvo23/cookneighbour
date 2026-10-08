@@ -1,12 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { chefs, customers } from "../../scripts/seed-data";
-import {
-  addressHash,
-  parsePostalPrefixes,
-  phoneHash,
-  stableUuid,
-} from "../../scripts/seed-lib";
+import { parsePostalPrefixes, stableUuid } from "../../scripts/seed-lib";
+import { addressHash, phoneHash } from "./domain/hash";
+import { addressColumns, phoneColumns } from "./domain/private-rows";
 
 const prefixes = parsePostalPrefixes(readFileSync("supabase/seed.sql", "utf8"));
 const prefixSet = new Set(prefixes.map((p) => p.prefix));
@@ -99,12 +96,27 @@ describe("seed helpers", () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
   });
-  it("hashes depend on the pepper and normalize addresses", () => {
-    expect(phoneHash("+14165550101", "p1")).not.toBe(
-      phoneHash("+14165550101", "p2"),
-    );
-    expect(addressHash("100  Fictional Way", "l5b 1a1", "p")).toBe(
-      addressHash("100 fictional way", "L5B1A1", "p"),
-    );
+  it("seed and app compute identical hashes for the demo customers", () => {
+    const pepper = "test-pepper";
+    for (const c of customers) {
+      // What the seed writes (private-rows builders) versus what the app would compute from the
+      // same input typed differently by a user.
+      const seeded = {
+        ...phoneColumns(c.phone, pepper),
+        ...addressColumns(c.addressLine, c.city, c.postalCode, pepper),
+      };
+      expect(seeded.phone_hash).toBe(phoneHash(c.phone.slice(2), pepper));
+      expect(seeded.phone_hash).toBe(
+        phoneHash(
+          `(${c.phone.slice(2, 5)}) ${c.phone.slice(5, 8)}-${c.phone.slice(8)}`,
+          pepper,
+        ),
+      );
+      const typed = `${c.addressLine.toUpperCase()}.`;
+      const spaced =
+        `${c.postalCode.slice(0, 3)} ${c.postalCode.slice(3)}`.toLowerCase();
+      expect(seeded.address_hash).toBe(addressHash(typed, spaced, pepper));
+      expect(seeded.postal_prefix).toBe(c.postalCode.slice(0, 3));
+    }
   });
 });
