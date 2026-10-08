@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "db:check": "node --env-file-if-exists=.env.local scripts/db-check.mjs",
+    "db:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/seed.ts",
     "test:rls": "vitest run --config vitest.rls.config.mts"
   },
   "dependencies": {
