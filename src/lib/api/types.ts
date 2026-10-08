@@ -328,6 +328,9 @@ export interface AdminChefListItem {
 export interface AdminChefListQuery {
   /** Default "pending". */
   status?: ChefStatus | "all";
+  /** "pending": only chefs with at least one MOCK check (ID, food handler, kitchen) still `pending`. */
+  checks?: "pending";
+  /** 1 to 50, default 20. */
   limit?: number;
   cursor?: string;
 }
@@ -373,8 +376,11 @@ export interface KitchenReviewRequest {
   note?: string;
   /** Kitchen photo paths the admin viewed. Must equal the stored paths, else 409 INVALID_STATE. */
   reviewedPhotoPaths: string[];
-  /** Kitchen address the admin viewed. Must equal the stored address, else 409 INVALID_STATE. */
-  reviewedAddress: { line: string; city: string; postalCode: string };
+  /**
+   * Kitchen address the admin viewed. Must equal the stored address, else 409 INVALID_STATE.
+   * `null` when no kitchen address is stored (then it must still be missing).
+   */
+  reviewedAddress: { line: string; city: string; postalCode: string } | null;
 }
 
 // ---------------------------------------------------------------------------

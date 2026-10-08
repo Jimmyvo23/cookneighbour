@@ -143,6 +143,10 @@ Default privileges are revoked for tables **and** functions in schema `public`, 
 3. Private data never goes in a publicly readable row; put it in an owner/admin-only table.
 4. Add tests to the T-027 RLS suite for every new table, policy and function (allowed and denied cases), and update this page.
 
+## Admin decision functions (T-035)
+
+`admin_approve_chef(uuid)`, `admin_reject_chef(uuid, text)` and `admin_review_kitchen(uuid, text, text, text[], jsonb)` (migration `20261010120000`) make an admin decision one transaction: they lock the chef's `chefs` and `chef_private` rows (`for no key update`, always in that order), re-read everything, decide, write and insert the `notifications` row. They are `SECURITY INVOKER` with `search_path = ''`, EXECUTE only for `service_role`, and return jsonb `{ result: ... }`. The routes call them after checking `profiles.role = 'admin'`. Approve's completeness rules mirror `computeMissing()` and add "the stored file exists in `storage.objects`"; `tests/api/admin-chefs-decisions.test.ts` compares both lists. The RLS suite (`tests/rls/admin-decisions.test.ts`) checks that no browser role can call them.
+
 ## Known limits and notes for reviewers
 
 - Admin can read messages (to review reports). Admin writes to moderation columns are allowed by policy and trigger; the server can do it too.
