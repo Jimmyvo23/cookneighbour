@@ -204,6 +204,7 @@ New from planning:
 - Q-12 Should contact details re-lock some days after a visit is completed?
 - Q-13 May an approved chef clear their bio or photo and stay listed in search? (Planner suggests blocking it: an approved profile must stay complete.)
 - Q-14 Should replaced ID and food-handler files be deleted from Storage? (Deleting data needs Jimmy's OK; today they stay as orphans.)
+- Q-15 ~~Confirm or replace the draft allergen-awareness and kitchen-hygiene acknowledgement wording from T-033.~~ Resolved by D-14 (2026-10-08).
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
 
@@ -298,7 +299,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Uploads go to Storage as `<uid>/<prefix>-<uuid>.<ext>` (fresh lower-case uuid, `upsert: false`), then are registered via the API. Focus moves to the error after every error path. Mock adapter reuses the server's pure rules. New dev dependency `@axe-core/playwright` (MPL-2.0).
 - Tests: unit 236, mock Playwright 19, real-route Playwright 11 (CI). Tester round 1 FAIL (F1 display name accepted control characters → client fix here, server fix T-059; F3 focus after photo removal), round 2 PASS. Reviewer APPROVE.
 - Follow-ups:
-  - T-034: server guard on every `/chef/*` page (a `src/app/chef/layout.tsx`); reword "sends its check back to pending" (only true once reviewed); remove "dish editor not available yet" (`src/lib/chef/form.ts:91-92`); remove the "draft" labels on the acknowledgements (D-14).
+  - T-034: server guard on every `/chef/*` page (a `src/app/chef/layout.tsx`); reword "sends its check back to pending" (only true once reviewed); remove "dish editor not available yet" (`src/lib/chef/form.ts:91-92`); remove the word "draft" on the acknowledgements (D-14) but keep the "not legal advice" note and the MOCK "nobody checks this" note (CLAUDE.md §11, Q-3); reword "You can remove a photo" (`ChefApplicationView.tsx:593`) to say removal takes it off the application and the file stays stored privately.
   - T-035: approve recomputes completeness in the same conditional write (T-031 R2); verdict writes bump `updated_at`; consider a `submittedAt` field (the "submitted" label is inferred today).
   - T-036 / booking (WO-4): tell chefs the kitchen address is shared with the customer once a chef's-home booking is accepted; verify unlinked (removed) kitchen photos are not visible to customers via `kitchen_photos_select_customer`.
   - T-054 README known limits: orphan uploads and removed kitchen photos stay stored; meta-refresh guard.
