@@ -103,6 +103,8 @@ test("the server guard keeps visitors and customers out (no private page content
   const body = await signedOut.text();
   expect(body).toMatch(/http-equiv="refresh"[^>]*url=\/login/);
   expect(body).not.toContain("Display name");
+  // The page body itself ("Loading your application") is server-rendered only when the guard passes.
+  expect(body).not.toContain("Loading your application");
 
   await page.goto("/chef/apply");
   await expect(page).toHaveURL(/\/login$/);
@@ -111,6 +113,7 @@ test("the server guard keeps visitors and customers out (no private page content
   const asCustomer = await (await page.request.get("/chef/apply")).text();
   expect(asCustomer).toMatch(/http-equiv="refresh"[^>]*url=\/"/);
   expect(asCustomer).not.toContain("Display name");
+  expect(asCustomer).not.toContain("Loading your application");
   await page.goto("/chef/apply");
   await expect(page).toHaveURL(/\/$/);
 });
