@@ -36,3 +36,10 @@ From: tester  To: planner (then reviewer)
 ## What the next agent needs
 - Reviewer: look at findings 1 to 5. None blocks the merge in my view; 2 is a one-class fix.
 - Planner: after merge nothing new for Supabase (no migration in T-034). Correct the PLAN T-033 follow-up wording about removed kitchen photos.
+
+## Round 2 (head 8890b65): PASS
+- Re-tested frontend fixes at `5e4d427`; tester commit `8890b65` (tests only).
+- LOW 1 fixed: `uploadRejected(err)` (`src/lib/chef/dishes.ts`) drops the upload only for 403 or a `photoPath` field error. Unit cases added: 409, 422 on another field, network, 500, 404, plain Error and undefined keep it; 403 and 422 with `photoPath` beside other errors drop it. Mock e2e `e2e-mock/chef-dish-retry-mock.spec.ts` counts `crypto.randomUUID` calls: after a 409 with a photo, a second 409 retry makes no new upload; after freeing a place the retry saves with the FIRST upload's file name; choosing a new file after a 409 uploads again and the saved path is the new name, not the old one.
+- LOW 2 fixed: `buttonCls` and `secondaryButtonCls` now dim and show `not-allowed` for `aria-disabled`; e2e checks computed opacity 0.6 and cursor on the disabled Previous month button and opacity 1 on Next month.
+- Results: lint, typecheck, prettier clean; `npm test` 388 passed; mock Playwright 39 passed. CI run 37834144423 on head 8890b65: success (unit 388, RLS 115, API 261, real routes 17, mock 39).
+- Remaining non-blocking: findings 3 (duplicate allergen count), 4 (bidi/C1 text), 5 (200 not 307) unchanged by design; no live admin raw-HTML guard test.
