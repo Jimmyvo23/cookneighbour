@@ -34,3 +34,5 @@ end;
 $$;
 create trigger dishes_active_cap before insert or update of is_active, chef_id on public.dishes
   for each row execute function public.dishes_active_cap();
+-- Trigger functions are not callable by clients (the RLS suite snapshots function privileges).
+revoke execute on function public.dishes_active_cap() from public, anon, authenticated;
