@@ -245,3 +245,20 @@ test("keyboard only: every control in every section is reachable by Tab", async 
   }
   expect(seen.size).toBe(expected);
 });
+
+test("sign-up form rejects a name with control characters and focuses the field", async ({
+  page,
+}) => {
+  await page.goto("/signup");
+  await page.getByLabel("Your name").fill("Mai\u0007Tran");
+  await page.getByLabel("Email").fill("chef@example.com");
+  await page.getByLabel("Password").fill("longenough1");
+  await page.getByRole("radio", { name: /chef/ }).check();
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await expect(page.getByLabel("Your name")).toBeFocused();
+  await expect(page.getByLabel("Your name")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(page).toHaveURL(/\/signup$/);
+});

@@ -41,3 +41,10 @@ Verdict: **FAIL (one Medium finding, F1; everything else passes).** Head tested:
 ## What the next agent needs
 - Frontend: fix F1 (and optionally F3), delete `test.fail()` in the edge spec, run the full local suite, push, and re-hand to the tester.
 - Planner: decide who fixes the `PATCH /api/me` and sign-up unsafe-text gap (backend, T-028 code); suggest a small follow-up task.
+
+## Round 2 (head 6b7410b plus my added test)
+Verdict: **PASS.**
+- F1 fixed client-side: `displayNameProblem` (`src/lib/validation/auth.ts:21`) uses `hasUnsafeText`, used by the chef name section, the sign-up form (`validateSignUp`) and the mock `PATCH /api/me`. The `test.fail()` was removed and the test now passes. I added a sign-up form test (control character in "Your name": error, field focused, `aria-invalid`, stays on /signup). The server-side gap is tracked in T-059 (PR #72) and is not held against T-033.
+- F3 fixed: after "Remove kitchen photo" focus moves to the "Kitchen photos" heading (`tabIndex=-1`); the builder's mock spec asserts it.
+- No regressions. Fresh `npm ci`: lint, typecheck, `prettier --check .` and build clean; `npm test` 236 passed; mock Playwright 19 passed (axe, 375px, dark mode and keyboard tests included). CI run 37793629271 on 6b7410b is green (counts below in the final report); the commit that adds my sign-up test only touches `e2e-mock/`.
+- Next: reviewer. Remaining Planner items: T-059 (server-side unsafe text), Jimmy to approve the draft acknowledgement wording.
