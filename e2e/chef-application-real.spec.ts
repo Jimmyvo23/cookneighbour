@@ -86,7 +86,9 @@ async function openApplication(page: Page) {
   await expect(
     page.getByRole("heading", { level: 1, name: "Chef application" }),
   ).toBeVisible();
-  await expect(page.getByLabel("Display name")).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Display name" }),
+  ).toBeVisible();
 }
 async function expectNoAxeViolations(page: Page) {
   const r = await new AxeBuilder({ page }).analyze();
@@ -225,7 +227,9 @@ test("a chef completes the application against the real routes and submits", asy
   expect(dish.error).toBeNull();
 
   await page.reload();
-  await expect(page.getByLabel("Display name")).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Display name" }),
+  ).toBeVisible();
   await expect(page.getByText("Everything needed is in place.")).toBeVisible();
   await expectNoAxeViolations(page);
   await page.getByRole("button", { name: "Submit application" }).click();
