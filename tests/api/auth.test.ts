@@ -79,6 +79,26 @@ describe("CSRF content-type rule on every state-changing route", () => {
 });
 
 describe("POST /api/auth/signup", () => {
+  it("rejects unsafe display names (422) and accepts accented ones", async () => {
+    const b = new Browser();
+    for (const displayName of ["Mai\u0000", "Ma\ti", "Mai\ud83d"]) {
+      const res = await b.call(signup, {
+        body: {
+          email: newEmail("customer"),
+          password: PASSWORD,
+          role: "customer",
+          displayName,
+        },
+      });
+      expect(res.status, JSON.stringify(displayName)).toBe(422);
+      expect(res.body.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(res.body.error.fields)).toEqual(["displayName"]);
+    }
+    const ok = await signedUp("customer", "Nguyễn Thị Mai");
+    const me = await ok.b.call(getMe, { method: "GET" });
+    expect(me.body.profile.displayName).toBe("Nguyễn Thị Mai");
+  });
+
   it("validates fields (422) and rejects unknown keys and the admin role", async () => {
     const b = new Browser();
     const res = await b.call(signup, {
@@ -322,6 +342,36 @@ describe("GET and PATCH /api/me", () => {
       .eq("id", chef.id)
       .single();
     expect(prof.data).toEqual({ display_name: "Chef New", role: "chef" });
+  });
+
+  it("PATCH rejects control characters and lone surrogates (422 on displayName), accepts accented names", async () => {
+    const { b, id } = await signedUp("customer", "Keep Me");
+    for (const displayName of [
+      "Mai\u0000",
+      "Ma\ni",
+      "Mai\ud83d",
+      "\udc00Mai",
+    ]) {
+      const r = await b.call(patchMe, {
+        method: "PATCH",
+        body: { displayName },
+      });
+      expect(r.status, JSON.stringify(displayName)).toBe(422);
+      expect(r.body.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(r.body.error.fields)).toEqual(["displayName"]);
+    }
+    const kept = await svc
+      .from("profiles")
+      .select("display_name")
+      .eq("id", id)
+      .single();
+    expect(kept.data?.display_name).toBe("Keep Me");
+    const ok = await b.call(patchMe, {
+      method: "PATCH",
+      body: { displayName: "Nguyễn Thị Mai" },
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.body.displayName).toBe("Nguyễn Thị Mai");
   });
 
   it("PATCH rejects unknown keys (role, id, country) and bad names with 422 and changes nothing", async () => {

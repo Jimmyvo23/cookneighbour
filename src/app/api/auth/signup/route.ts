@@ -28,7 +28,7 @@ export function POST(request: Request) {
     const role = body.role;
     if (role !== "customer" && role !== "chef")
       f.errors.role = "Choose customer or chef.";
-    const displayName = f.string(body, "displayName", 1, 80);
+    const displayName = f.text(body, "displayName", 1, 80);
     f.done();
 
     const supabase = await createClient();
