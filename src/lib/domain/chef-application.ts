@@ -36,6 +36,8 @@ export const PLACEHOLDER_DISPLAY_NAME = "New user";
 // Storage paths (contract section 2, rule 7)
 // ---------------------------------------------------------------------------
 export type StorageTarget = DocumentKind | "profile_photo";
+/** `dish_photo` (T-032) is checked here too; it is not an upload target of the application page. */
+export type PathTarget = StorageTarget | "dish_photo";
 
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
@@ -43,7 +45,7 @@ const DOCUMENT_EXTS = ["jpg", "jpeg", "png", "pdf"];
 
 /** Bucket, file-name prefix and allowed extensions per target. Mirrors the bucket MIME limits. */
 const STORAGE_RULES: Record<
-  StorageTarget,
+  PathTarget,
   { bucket: string; prefix: string; exts: string[] }
 > = {
   id_document: { bucket: "chef-documents", prefix: "id", exts: DOCUMENT_EXTS },
@@ -62,6 +64,7 @@ const STORAGE_RULES: Record<
     prefix: "photo",
     exts: IMAGE_EXTS,
   },
+  dish_photo: { bucket: "dish-photos", prefix: "dish", exts: IMAGE_EXTS },
 };
 
 export type PathCheck =
@@ -76,7 +79,7 @@ export type PathCheck =
  * Whether the object really exists is the route's job (it needs the service role).
  */
 export function checkStoragePath(
-  target: StorageTarget,
+  target: PathTarget,
   chefId: string,
   raw: unknown,
 ): PathCheck {

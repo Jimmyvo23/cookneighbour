@@ -329,8 +329,11 @@ describe("privilege escalation", () => {
 describe("clients cannot forge bookings, claims or server-written rows", () => {
   let c1: SupabaseClient;
   let h1: SupabaseClient;
+  let admin: SupabaseClient;
   beforeAll(async () => {
-    [c1, h1] = await Promise.all([fx.c1, fx.h1].map(clientFor));
+    [c1, h1, admin] = await Promise.all(
+      [fx.c1, fx.h1, fx.admin].map(clientFor),
+    );
   });
 
   it("a customer cannot insert a booking (even one claiming to be free)", async () => {
@@ -552,76 +555,61 @@ describe("clients cannot forge bookings, claims or server-written rows", () => {
     );
   });
 
-  it("dishes: a chef manages their own dishes but not another chef's", async () => {
-    const mine = await h1
-      .from("dishes")
-      .insert({
-        chef_id: fx.h1.id,
-        name: "mine",
-        cuisine: "Thai",
-        cook_minutes: 20,
-      })
-      .select();
-    expectRows(mine, 1);
-    expectDenied(
-      await h1
+  it("dishes: no client can insert, update or delete a dish (T-032: routes only)", async () => {
+    const insert = (client: SupabaseClient, chef: string) =>
+      client
         .from("dishes")
-        .insert({
-          chef_id: fx.h2.id,
-          name: "planted",
-          cuisine: "Thai",
-          cook_minutes: 20,
-        })
-        .select(),
-    );
-    expectDenied(
+        .insert({ chef_id: chef, name: "x", cuisine: "Thai", cook_minutes: 20 })
+        .select();
+    // own id, someone else's id, a customer, an admin: all refused by the missing privilege
+    for (const [client, chef] of [
+      [h1, fx.h1.id],
+      [h1, fx.h2.id],
+      [c1, fx.c1.id],
+      [admin, fx.h1.id],
+    ] as const)
+      expectCode(await insert(client, chef), "42501");
+    expectCode(
       await h1
         .from("dishes")
         .update({ name: "defaced" })
-        .eq("chef_id", fx.h2.id)
+        .eq("id", fx.approvedDishId)
         .select(),
+      "42501",
     );
-    expectDenied(
-      await h1.from("dishes").delete().eq("chef_id", fx.h2.id).select(),
-    );
-    // A customer passes the policy (chef_id = own id) but the foreign key to chefs stops it:
-    // no dish can exist for a user without a chef row.
     expectCode(
-      await c1
-        .from("dishes")
-        .insert({ chef_id: fx.c1.id, name: "x", cuisine: "x", cook_minutes: 1 })
-        .select(),
-      "23503",
+      await h1.from("dishes").delete().eq("id", fx.approvedDishId).select(),
+      "42501",
     );
     const { data } = await svc
       .from("dishes")
       .select("name")
-      .eq("chef_id", fx.h2.id);
-    expect((data ?? []).map((d) => d.name)).not.toEqual(
-      expect.arrayContaining(["planted", "defaced"]),
-    );
+      .eq("id", fx.approvedDishId)
+      .single();
+    expect(data?.name).not.toBe("defaced");
   });
 
-  it("availability: a chef manages their own calendar but not another's", async () => {
-    expectRows(
-      await h1
-        .from("availability")
-        .insert({ chef_id: fx.h1.id, day: dayPlus(fx.baseDay, 5) })
-        .select(),
-      1,
+  it("availability: no client can insert, update or delete a row (T-032: routes only)", async () => {
+    const day = dayPlus(fx.baseDay, 5);
+    expectCode(
+      await h1.from("availability").insert({ chef_id: fx.h1.id, day }).select(),
+      "42501",
     );
-    expectDenied(
-      await h1
-        .from("availability")
-        .insert({ chef_id: fx.h2.id, day: dayPlus(fx.baseDay, 5) })
-        .select(),
-    );
-    expectDenied(
+    expectCode(
       await h1
         .from("availability")
         .update({ available: false })
-        .eq("chef_id", fx.h2.id)
+        .eq("chef_id", fx.h1.id)
         .select(),
+      "42501",
+    );
+    expectCode(
+      await h1.from("availability").delete().eq("chef_id", fx.h1.id).select(),
+      "42501",
+    );
+    // the chef still reads their own calendar
+    expectRows(
+      await h1.from("availability").select("day").eq("chef_id", fx.h1.id),
     );
   });
 
