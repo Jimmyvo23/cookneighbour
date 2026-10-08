@@ -8,10 +8,12 @@
 //   password "wrongpass"           -> 401 INVALID_CREDENTIALS (login)
 //   phone ending 0000              -> 409 PHONE_IN_USE
 //   postal code not starting M or L -> 422 "Not a GTA postal code." (MOCK approximation)
-//   chef display name containing "with dish" -> the chef already has a sample dish (dishes arrive in
-//     T-034, so without this a chef could never finish the application in mock mode)
+//   chef display name containing "with dish" -> the chef starts with one real mock dish that has a
+//     photo (so the application can be finished without visiting the dish editor first)
 //   chef display name containing "rejected" / "approved" -> that chef starts in that status
 //   log-in email starting "chef" (no sign-up first) -> a demo chef
+// Dishes and availability (T-034) follow contract 5A and 5B and reuse src/lib/domain/dishes.ts.
+//   MOCK dish photos are never stored; a photo path is accepted when its name is well formed.
 // Chef application rules reuse the real pure functions in src/lib/domain/chef-application.ts.
 // MOCK: files are never stored (see mockUploader); a path is accepted if its name is well formed.
 import type {
@@ -32,7 +34,10 @@ import type {
   SignUpResponse,
 } from "@/lib/api/types";
 import type {
+  AvailabilityResponse,
   ChefApplication,
+  ChefDishListResponse,
+  Dish,
   ChefOwnSummary,
   DocumentKind,
   RegisterDocumentRequest,
@@ -53,6 +58,17 @@ import {
   type PrivateState,
 } from "@/lib/domain/chef-application";
 import {
+  AVAILABILITY_HORIZON_DAYS,
+  AVAILABILITY_KEYS,
+  CREATE_DISH_KEYS,
+  MAX_ACTIVE_DISHES,
+  UPDATE_DISH_KEYS,
+  addDays,
+  parseAvailabilityBody,
+  parseDishBody,
+  torontoToday,
+} from "@/lib/domain/dishes";
+import {
   displayNameProblem,
   validateAddress,
   validateCode,
@@ -69,8 +85,10 @@ interface MockState {
   address: AddressResponse["address"] | null;
   /** MOCK chef application (chef accounts only). `missing` is recomputed on every read. */
   chef: Omit<ChefApplication, "missing"> | null;
-  /** MOCK: stands in for "has an active dish with a photo" until dishes exist (T-034). */
-  chefHasDish: boolean;
+  /** MOCK dishes of the signed-in chef (newest first). */
+  dishes: Dish[];
+  /** MOCK available dates (YYYY-MM-DD), ascending. */
+  availability: string[];
 }
 
 const KEY = "cookneighbour-mock-api-state";
@@ -80,14 +98,16 @@ const EMPTY: MockState = {
   phoneVerified: false,
   address: null,
   chef: null,
-  chefHasDish: false,
+  dishes: [],
+  availability: [],
 };
 let memory: MockState = { ...EMPTY };
 
 function load(): MockState {
   try {
     const raw = globalThis.sessionStorage?.getItem(KEY);
-    if (raw) return JSON.parse(raw) as MockState;
+    // `...EMPTY` fills fields that older saved state does not have.
+    if (raw) return { ...EMPTY, ...(JSON.parse(raw) as MockState) };
   } catch {
     /* fall through to memory */
   }
@@ -150,6 +170,27 @@ function toE164(phone: string) {
   return `+1${d.length === 11 ? d.slice(1) : d}`;
 }
 
+/** MOCK: a finished sample dish with a (fake) photo. */
+function sampleDish(userId: string): Dish {
+  const now = new Date().toISOString();
+  return {
+    id: "00000000-0000-4000-8000-0000000000d1",
+    name: "Pho bo (sample)",
+    photoPath: `${userId}/dish-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.png`,
+    description: "MOCK sample dish.",
+    cuisine: "Vietnamese",
+    cookMinutes: 180,
+    ingredientCostCents: 2500,
+    servings: 4,
+    allergens: ["soy"],
+    shelfLifeDays: 2,
+    isActive: true,
+    currency: "CAD",
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 function newChef(displayName: string): Omit<ChefApplication, "missing"> {
   const name = displayName.toLowerCase();
   const status = name.includes("rejected")
@@ -210,7 +251,7 @@ function application(s: MockState): ChefApplication {
       foodHandlerPath: c.documents.foodHandlerPath,
       allergenAckAt: c.allergenAckAt,
       phoneVerified: s.phoneVerified,
-      sampleDishCount: s.chefHasDish ? 1 : 0,
+      sampleDishCount: s.dishes.filter((d) => d.isActive && d.photoPath).length,
       kitchenAddress: c.kitchenAddress,
       kitchenPhotoPaths: c.documents.kitchenPhotoPaths,
       kitchenHygieneAckAt: c.kitchenHygieneAckAt,
@@ -344,7 +385,10 @@ export async function mockFetch(
         ...EMPTY,
         profile,
         chef: b.role === "chef" ? newChef(profile.displayName) : null,
-        chefHasDish: /with dish/i.test(profile.displayName),
+        dishes:
+          b.role === "chef" && /with dish/i.test(profile.displayName)
+            ? [sampleDish(profile.id)]
+            : [],
       });
     return json(201, {
       user: profile,
@@ -452,6 +496,9 @@ export async function mockFetch(
 
   if (path.startsWith("/api/chef/application"))
     return chefRoutes(route, body, s);
+  if (path.startsWith("/api/chef/dishes")) return dishRoutes(route, body, s);
+  if (path === "/api/chef/availability")
+    return availabilityRoutes(route, body, s);
 
   return fail(404, "NOT_FOUND", "Not found.");
 }
@@ -595,4 +642,125 @@ function chefRoutes(route: string, body: unknown, s: MockState): Response {
   }
 
   return fail(404, "NOT_FOUND", "Not found.");
+}
+
+function chefOnly(s: MockState): Response | null {
+  return s.profile!.role !== "chef" || !s.chef
+    ? fail(403, "FORBIDDEN", "Only chefs can do that.")
+    : null;
+}
+
+const CAP_MESSAGE = `You already have ${MAX_ACTIVE_DISHES} active dishes. Deactivate one first.`;
+
+/**
+ * MOCK dish routes (contract 5A). Order of checks as in the real routes: role (403); for PATCH the
+ * dish must exist and be the caller's (404); unknown keys (422); a photo in another folder (403);
+ * field errors (422); then the 50-active-dish cap (409).
+ */
+function dishRoutes(route: string, body: unknown, s: MockState): Response {
+  const denied = chefOnly(s);
+  if (denied) return denied;
+  const userId = s.profile!.id;
+  const obj = (body ?? {}) as Record<string, unknown>;
+  const active = s.dishes.filter((d) => d.isActive).length;
+
+  if (route === "GET /api/chef/dishes")
+    return json(200, { items: s.dishes } satisfies ChefDishListResponse);
+
+  const m = /^(POST|PATCH) \/api\/chef\/dishes(?:\/([^/]+))?$/.exec(route);
+  if (!m || (m[1] === "POST") !== (m[2] === undefined))
+    return fail(404, "NOT_FOUND", "Not found.");
+  const mode = m[1] === "POST" ? "create" : "update";
+  const current =
+    mode === "update" ? s.dishes.find((d) => d.id === m[2]) : null;
+  if (mode === "update" && !current)
+    return fail(404, "NOT_FOUND", "Dish not found.");
+
+  const allowed: readonly string[] =
+    mode === "create" ? CREATE_DISH_KEYS : UPDATE_DISH_KEYS;
+  const unknown: Record<string, string> = {};
+  for (const k of Object.keys(obj))
+    if (!allowed.includes(k)) unknown[k] = "Unknown field.";
+  if (Object.keys(unknown).length) return validation(unknown);
+
+  const { value, errors } = parseDishBody(obj, mode);
+  if (typeof value.photoPath === "string") {
+    const c = checkStoragePath("dish_photo", userId, value.photoPath);
+    if (!c.ok && c.kind === "foreign") return fail(403, "FORBIDDEN", c.message);
+    if (!c.ok) errors.photoPath = c.message;
+  }
+  if (Object.keys(errors).length) return validation(errors);
+
+  if (mode === "create") {
+    if (active >= MAX_ACTIVE_DISHES)
+      return fail(409, "INVALID_STATE", CAP_MESSAGE);
+    const now = new Date().toISOString();
+    const dish: Dish = {
+      id: crypto.randomUUID(),
+      name: value.name!,
+      photoPath: value.photoPath ?? null,
+      description: value.description ?? null,
+      cuisine: value.cuisine!,
+      cookMinutes: value.cookMinutes!,
+      ingredientCostCents: value.ingredientCostCents!,
+      servings: value.servings!,
+      allergens: value.allergens!,
+      shelfLifeDays: value.shelfLifeDays!,
+      isActive: true,
+      currency: "CAD",
+      createdAt: now,
+      updatedAt: now,
+    };
+    save({ ...s, dishes: [dish, ...s.dishes] });
+    return json(201, dish);
+  }
+
+  if (
+    value.isActive === true &&
+    !current!.isActive &&
+    active >= MAX_ACTIVE_DISHES
+  )
+    return fail(409, "INVALID_STATE", CAP_MESSAGE);
+  const changed = Object.keys(value).length > 0;
+  const next: Dish = {
+    ...current!,
+    ...value,
+    updatedAt: changed ? new Date().toISOString() : current!.updatedAt,
+  } as Dish;
+  save({ ...s, dishes: s.dishes.map((d) => (d.id === next.id ? next : d)) });
+  return json(200, next);
+}
+
+/** MOCK availability routes (contract 5B). Opt-in dates; window today..today+180 (Toronto). */
+function availabilityRoutes(
+  route: string,
+  body: unknown,
+  s: MockState,
+): Response {
+  const denied = chefOnly(s);
+  if (denied) return denied;
+  const today = torontoToday();
+  const view = (days: string[]): AvailabilityResponse => ({
+    days: days.filter((d) => d >= today).sort(),
+    today,
+    lastBookableDay: addDays(today, AVAILABILITY_HORIZON_DAYS),
+  });
+  if (route === "GET /api/chef/availability")
+    return json(200, view(s.availability));
+  if (route !== "PUT /api/chef/availability")
+    return fail(404, "NOT_FOUND", "Not found.");
+  const obj = (body ?? {}) as Record<string, unknown>;
+  const unknown: Record<string, string> = {};
+  for (const k of Object.keys(obj))
+    if (!(AVAILABILITY_KEYS as readonly string[]).includes(k))
+      unknown[k] = "Unknown field.";
+  if (Object.keys(unknown).length) return validation(unknown);
+  const { add, remove, errors } = parseAvailabilityBody(obj, today);
+  if (Object.keys(errors).length) return validation(errors);
+  const days = new Set(s.availability);
+  for (const d of add) days.add(d);
+  for (const d of remove) days.delete(d);
+  const next = [...days].sort();
+  save({ ...s, availability: next });
+  return json(200, view(next));
 }

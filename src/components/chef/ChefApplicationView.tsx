@@ -52,7 +52,8 @@ import {
 
 const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
 
-// Draft wording for the two acknowledgements. Not legal text and not reviewed by anyone yet.
+// Wording of the two acknowledgements: confirmed by Jimmy as the prototype wording (D-14). It is
+// still not legal text; the UI says so next to each statement.
 const ALLERGEN_STATEMENT =
   "I understand that customers can have food allergies. I will read each customer's allergy and dietary form before I accept a booking, and I will tell the customer about any allergen in the dishes I cook.";
 const HYGIENE_STATEMENT =
@@ -461,7 +462,8 @@ function DocumentsSection({
         Your ID and certificate are stored in a private folder. Only
         CookNeighbour admins can open them, and you cannot view them again after
         uploading. <strong>MOCK:</strong> no one checks them automatically in
-        this prototype. Uploading a new file sends its check back to pending.
+        this prototype. If a file was already reviewed, uploading a new one
+        sends its check back to pending review.
       </p>
       <div className="flex flex-col gap-2">
         <h3 className="font-medium">Government ID</h3>
@@ -590,8 +592,10 @@ function KitchenSection({
           Kitchen photos ({paths.length} of 10)
         </h3>
         <p className={hintCls}>
-          Add at least one clear photo of your kitchen. You can remove a photo,
-          but you cannot replace one in place: add a new one instead.
+          Add at least one clear photo of your kitchen. Removing a photo takes
+          it off your application and also tries to delete the file (if that
+          fails, the file may stay stored). You cannot replace a photo in place:
+          add a new one instead.
         </p>
         <Alert id={photos.alertId} message={photos.error} />
         <Notice message={photos.notice} />
@@ -656,8 +660,8 @@ function KitchenSection({
           Kitchen hygiene acknowledgement <MockBadge>MOCK</MockBadge>
         </h3>
         <p className={hintCls} id="hygiene-statement">
-          {HYGIENE_STATEMENT} (Draft wording. Nobody checks this in the
-          prototype.)
+          {HYGIENE_STATEMENT} (MOCK: nobody checks this in the prototype. This
+          is not legal advice.)
         </p>
         {app.kitchenHygieneAckAt ? (
           <p>
@@ -715,7 +719,7 @@ function AllergenSection({
   return (
     <Section title="Allergen awareness">
       <p className={hintCls} id="allergen-statement">
-        {ALLERGEN_STATEMENT} (Draft wording, not legal advice.)
+        {ALLERGEN_STATEMENT} (This is not legal advice.)
       </p>
       {app.allergenAckAt ? (
         <p>
@@ -782,6 +786,14 @@ function SubmitSection({
             {app.missing.map((m) => (
               <li key={m}>
                 {describeMissing(m)}
+                {m === "sampleDish" && (
+                  <>
+                    {" "}
+                    <Link className={linkCls} href="/chef/dishes">
+                      Add a dish
+                    </Link>
+                  </>
+                )}
                 {m === "phoneVerified" && (
                   <>
                     {" "}

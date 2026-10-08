@@ -28,7 +28,18 @@ const DOC_TYPES = {
   "application/pdf": "pdf",
 };
 
-export const UPLOAD_RULES: Record<StorageTarget, Rule> = {
+/** Everything a chef can upload: the application files and, since T-034, dish photos. */
+export type UploadKind = StorageTarget | "dish_photo";
+
+export const UPLOAD_RULES: Record<UploadKind, Rule> = {
+  dish_photo: {
+    bucket: "dish-photos",
+    prefix: "dish",
+    maxBytes: 5 * MB,
+    types: PHOTO_TYPES,
+    kindsText: "JPEG, PNG or WebP",
+    allowedText: "JPEG, PNG or WebP, up to 5 MB",
+  },
   id_document: {
     bucket: "chef-documents",
     prefix: "id",
@@ -72,7 +83,7 @@ export class UploadError extends Error {
 
 /** Returns a message for the user, or null when the file may be uploaded. */
 export function validateUploadFile(
-  target: StorageTarget,
+  target: UploadKind,
   file: { type: string; size: number } | null | undefined,
 ): string | null {
   if (!file) return "Choose a file first.";
@@ -88,7 +99,7 @@ export function validateUploadFile(
 
 /** A fresh object name: `<userId>/<prefix>-<uuid>.<ext>`, all lower case. */
 export function newObjectPath(
-  target: StorageTarget,
+  target: UploadKind,
   userId: string,
   mimeType: string,
   uuid: string = crypto.randomUUID(),
@@ -112,7 +123,7 @@ export interface ChefUploader {
 
 /** Uploads one file and returns where it went. Never retries into the same name. */
 export async function uploadChefFile(
-  target: StorageTarget,
+  target: UploadKind,
   userId: string,
   file: File,
   uploader: ChefUploader,
@@ -155,3 +166,14 @@ export async function browserUploader(): Promise<ChefUploader> {
 export const mockUploader: ChefUploader = {
   upload: async () => ({ error: null }),
 };
+
+/** Uploads with the right uploader for the run mode (MOCK mode stores nothing) and returns the path. */
+export async function uploadForChef(
+  target: UploadKind,
+  userId: string,
+  file: File,
+): Promise<string> {
+  const { isMockEnabled } = await import("@/lib/api/client");
+  const uploader = isMockEnabled() ? mockUploader : await browserUploader();
+  return (await uploadChefFile(target, userId, file, uploader)).path;
+}

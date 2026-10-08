@@ -264,3 +264,207 @@ describe("MOCK chef application", () => {
     ).toBe("Nana Lan");
   });
 });
+
+describe("MOCK dishes (contract 5A)", () => {
+  const dish = (over: Record<string, unknown> = {}) => ({
+    name: "Pho bo",
+    cuisine: "Vietnamese",
+    cookMinutes: 180,
+    ...over,
+  });
+  const photo = (id: string) => `${id}/dish-${UUID}.png`;
+
+  it("is for chefs only and needs a session", async () => {
+    expect((await call("GET", "/api/chef/dishes")).status).toBe(401);
+    await signUp("customer");
+    expect((await call("GET", "/api/chef/dishes")).status).toBe(403);
+    expect(
+      (await call("PUT", "/api/chef/availability", { add: [] })).status,
+    ).toBe(403);
+  });
+  it("creates with defaults, lists newest first, and lower-cases allergens", async () => {
+    await signUp("chef");
+    const a = await call(
+      "POST",
+      "/api/chef/dishes",
+      dish({ allergens: ["Soy", "SOY"] }),
+    );
+    expect(a.status).toBe(201);
+    expect(a.data).toMatchObject({
+      isActive: true,
+      servings: 1,
+      shelfLifeDays: 2,
+      ingredientCostCents: 0,
+      allergens: ["soy"],
+      photoPath: null,
+    });
+    await call("POST", "/api/chef/dishes", dish({ name: "Second" }));
+    const list = await call("GET", "/api/chef/dishes");
+    expect(list.data.items.map((d: { name: string }) => d.name)).toEqual([
+      "Second",
+      "Pho bo",
+    ]);
+  });
+  it("uses the real bounds and rejects unknown keys", async () => {
+    await signUp("chef");
+    const bounds = await call(
+      "POST",
+      "/api/chef/dishes",
+      dish({ cookMinutes: 4, servings: 51 }),
+    );
+    expect(bounds.status).toBe(422);
+    expect(bounds.data.error.fields.cookMinutes).toBeTruthy();
+    expect(bounds.data.error.fields.servings).toBeTruthy();
+    // Like the real route, unknown keys are answered on their own (isActive is not a create field).
+    const unknown = await call(
+      "POST",
+      "/api/chef/dishes",
+      dish({ isActive: false }),
+    );
+    expect(unknown.status).toBe(422);
+    expect(unknown.data.error.fields.isActive).toBe("Unknown field.");
+  });
+  it("answers a foreign photo folder with 403 before field errors", async () => {
+    await signUp("chef");
+    const r = await call(
+      "POST",
+      "/api/chef/dishes",
+      dish({ name: "", photoPath: `someone-else/dish-${UUID}.png` }),
+    );
+    expect(r.status).toBe(403);
+  });
+  it("PATCH: 404 for a missing dish before 422, 422 for bad fields, edits and deactivates", async () => {
+    await signUp("chef");
+    expect(
+      (await call("PATCH", "/api/chef/dishes/nope", { name: "" })).status,
+    ).toBe(404);
+    const d = (await call("POST", "/api/chef/dishes", dish())).data;
+    expect(
+      (await call("PATCH", `/api/chef/dishes/${d.id}`, { name: "" })).status,
+    ).toBe(422);
+    expect(
+      (await call("PATCH", `/api/chef/dishes/${d.id}`, {})).data.name,
+    ).toBe("Pho bo");
+    const off = await call("PATCH", `/api/chef/dishes/${d.id}`, {
+      isActive: false,
+      servings: 3,
+    });
+    expect(off.data).toMatchObject({ isActive: false, servings: 3 });
+    const on = await call("PATCH", `/api/chef/dishes/${d.id}`, {
+      isActive: true,
+    });
+    expect(on.data.isActive).toBe(true);
+  });
+  it("stops at 50 active dishes with 409, and a deactivated dish frees a place", async () => {
+    await signUp("chef");
+    let first = "";
+    for (let i = 0; i < 50; i++) {
+      const r = await call("POST", "/api/chef/dishes", dish({ name: `D${i}` }));
+      expect(r.status).toBe(201);
+      first ||= r.data.id;
+    }
+    const over = await call("POST", "/api/chef/dishes", dish());
+    expect(over.status).toBe(409);
+    expect(over.data.error.code).toBe("INVALID_STATE");
+    await call("PATCH", `/api/chef/dishes/${first}`, { isActive: false });
+    const again = await call("POST", "/api/chef/dishes", dish());
+    expect(again.status).toBe(201);
+    expect(
+      (await call("PATCH", `/api/chef/dishes/${first}`, { isActive: true }))
+        .status,
+    ).toBe(409);
+  }, 30000);
+  it("an active dish with a photo satisfies missing.sampleDish; deactivating brings it back", async () => {
+    await signUp("chef");
+    const id = await uid();
+    const d = (
+      await call("POST", "/api/chef/dishes", dish({ photoPath: photo(id) }))
+    ).data;
+    expect(
+      ((await call("GET", "/api/chef/application")).data as ChefApplication)
+        .missing,
+    ).not.toContain("sampleDish");
+    await call("PATCH", `/api/chef/dishes/${d.id}`, { isActive: false });
+    expect(
+      ((await call("GET", "/api/chef/application")).data as ChefApplication)
+        .missing,
+    ).toContain("sampleDish");
+  });
+  it('a chef named "with dish" starts with a real dish with a photo', async () => {
+    await signUp("chef", "Mai With Dish");
+    const items = (await call("GET", "/api/chef/dishes")).data.items;
+    expect(items).toHaveLength(1);
+    expect(items[0].photoPath).toMatch(/dish-/);
+    expect(
+      ((await call("GET", "/api/chef/application")).data as ChefApplication)
+        .missing,
+    ).not.toContain("sampleDish");
+  });
+});
+
+describe("MOCK availability (contract 5B)", () => {
+  it("returns the server window and starts empty", async () => {
+    await signUp("chef");
+    const r = await call("GET", "/api/chef/availability");
+    expect(r.data.days).toEqual([]);
+    expect(r.data.lastBookableDay > r.data.today).toBe(true);
+  });
+  it("adds and removes dates, de-duplicated and sorted", async () => {
+    await signUp("chef");
+    const { today } = (await call("GET", "/api/chef/availability")).data;
+    const d = (n: number) => {
+      const x = new Date(`${today}T12:00:00Z`);
+      x.setUTCDate(x.getUTCDate() + n);
+      return x.toISOString().slice(0, 10);
+    };
+    const a = await call("PUT", "/api/chef/availability", {
+      add: [d(3), d(1), d(1)],
+    });
+    expect(a.data.days).toEqual([d(1), d(3)]);
+    const b = await call("PUT", "/api/chef/availability", {
+      remove: [d(1)],
+      add: [d(2)],
+    });
+    expect(b.data.days).toEqual([d(2), d(3)]);
+  });
+  it("refuses past dates, dates after the window, overlaps, empty bodies and unknown keys", async () => {
+    await signUp("chef");
+    const { today, lastBookableDay } = (
+      await call("GET", "/api/chef/availability")
+    ).data;
+    expect(
+      (await call("PUT", "/api/chef/availability", { add: ["2020-01-01"] }))
+        .status,
+    ).toBe(422);
+    const after = new Date(`${lastBookableDay}T12:00:00Z`);
+    after.setUTCDate(after.getUTCDate() + 1);
+    expect(
+      (
+        await call("PUT", "/api/chef/availability", {
+          add: [after.toISOString().slice(0, 10)],
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await call("PUT", "/api/chef/availability", {
+          add: [today],
+          remove: [today],
+        })
+      ).status,
+    ).toBe(422);
+    expect((await call("PUT", "/api/chef/availability", {})).status).toBe(422);
+    expect(
+      (
+        await call("PUT", "/api/chef/availability", {
+          add: [today],
+          chefId: "x",
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (await call("PUT", "/api/chef/availability", { add: ["2026-02-30"] }))
+        .status,
+    ).toBe(422);
+  });
+});
