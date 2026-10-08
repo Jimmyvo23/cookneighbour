@@ -120,6 +120,9 @@ test("route guards", async ({ page }) => {
   await page.getByLabel("Password").fill("longenough1");
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/verify-phone$/);
+  // Unverified phone: /address sends the user back to /verify-phone.
+  await page.goto("/address");
+  await expect(page).toHaveURL(/\/verify-phone$/);
   await page.getByLabel("Mobile phone number").fill("416 555 0123");
   await page.getByRole("button", { name: "Send code" }).click();
   await page.getByLabel("6-digit code").fill("123456");

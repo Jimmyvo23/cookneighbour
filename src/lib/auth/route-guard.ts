@@ -20,5 +20,9 @@ export function redirectFor(
       ? "/login"
       : null;
   }
-  return pathname === "/signup" || pathname === "/login" ? "/" : null;
+  if (pathname === "/signup" || pathname === "/login") return "/";
+  // The address step comes after the phone step.
+  if (pathname === "/address" && !me.private.phoneVerified)
+    return "/verify-phone";
+  return null;
 }

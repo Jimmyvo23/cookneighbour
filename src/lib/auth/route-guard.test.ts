@@ -58,4 +58,7 @@ describe("redirectFor", () => {
     expect(redirectFor("/verify-phone", me(false, false))).toBeNull();
     expect(redirectFor("/address", me(true, false))).toBeNull();
   });
+  it("sends an unverified phone from /address back to /verify-phone", () => {
+    expect(redirectFor("/address", me(false, false))).toBe("/verify-phone");
+  });
 });

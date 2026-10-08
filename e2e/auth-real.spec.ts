@@ -1,6 +1,6 @@
 import {
+  test as base,
   expect,
-  test,
   type APIRequestContext,
   type Page,
 } from "@playwright/test";
@@ -10,15 +10,33 @@ import {
 // server's MOCK SMS (any 6 digits); nothing else here is mocked.
 const PASSWORD = "e2e-password-1";
 
+const test = base.extend({
+  extraHTTPHeaders: async ({}, provide) => {
+    await provide({ "x-forwarded-for": randomIp() });
+  },
+});
+
 function uniq() {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 function email(tag: string) {
   return `e2e-${tag}-${uniq()}@example.com`;
 }
-/** A random Canadian number in the 416 555 range, unique enough per run. */
+let phoneCounter = 0;
+/** A valid-looking North American number (NXX NXX XXXX) with a wide random range: random area and
+ *  exchange codes plus a time-based line number, so old verified numbers in a persistent local
+ *  database are very unlikely to collide. */
 function phone() {
-  return `416555${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`;
+  const rnd = (lo: number, hi: number) =>
+    lo + Math.floor(Math.random() * (hi - lo + 1));
+  const line = (Date.now() + phoneCounter++ * 7919) % 10000;
+  return `${rnd(200, 999)}${rnd(200, 999)}${String(line).padStart(4, "0")}`;
+}
+/** A random client IP per test, so the in-memory sign-up limit (trusts the first X-Forwarded-For
+ *  entry) gives each test its own bucket and CI retries cannot run into a 429. Test-only. */
+function randomIp() {
+  const o = () => Math.floor(Math.random() * 254) + 1;
+  return `10.${o()}.${o()}.${o()}`;
 }
 const json = { "Content-Type": "application/json" };
 
@@ -122,8 +140,10 @@ test("route guards and onboarding redirects", async ({ page }) => {
   await apiSignUp(page.request, addr, "Guard Person");
   await apiLogout(page.request);
 
-  // Unverified phone: log-in goes to /verify-phone.
+  // Unverified phone: log-in goes to /verify-phone, and /address bounces back there.
   await uiLogin(page, addr);
+  await expect(page).toHaveURL(/\/verify-phone$/);
+  await page.goto("/address");
   await expect(page).toHaveURL(/\/verify-phone$/);
 
   // Signed in: /login and /signup go home.
