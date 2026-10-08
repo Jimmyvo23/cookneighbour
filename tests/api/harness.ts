@@ -23,6 +23,9 @@ export class Browser {
       body?: unknown;
       contentType?: string | null;
       raw?: string;
+      /** Send no body at all. With `contentType: null` the request has no Content-Type header either
+       *  (a string body makes `Request` add text/plain itself), like a bare `fetch(url, {method})`. */
+      noBody?: boolean;
     } = {},
   ): Promise<Reply> {
     setCurrentJar(this.jar);
@@ -32,7 +35,7 @@ export class Browser {
       opts.contentType === undefined ? "application/json" : opts.contentType;
     if (ct !== null) headers["content-type"] = ct;
     const init: RequestInit = { method, headers };
-    if (method !== "GET")
+    if (method !== "GET" && !opts.noBody)
       init.body = opts.raw ?? JSON.stringify(opts.body ?? {});
     const res = await handler(new Request("http://localhost/api/test", init));
     const text = await res.text();

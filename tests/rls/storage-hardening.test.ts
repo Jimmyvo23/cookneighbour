@@ -1,9 +1,11 @@
+import pg from "pg";
 import { describe, expect, inject, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   anonClient,
   clientFor,
   dayPlus,
+  localEnv,
   makeBooking,
   makeChef,
   makeCustomer,
@@ -200,5 +202,106 @@ describe("P3: who may upload where", () => {
         `${fx.h1.id}/k.png`,
       ),
     ).toBe(true);
+  });
+});
+
+describe("F3 (T-031): kitchen photos are insert-only for the chef", () => {
+  // png() is 4 bytes, so a 9-byte body is easy to tell apart.
+  const bigger = () =>
+    new Blob([new Uint8Array(9).fill(7)], { type: "image/png" });
+  async function sizeOf(bucket: string, path: string): Promise<number> {
+    const { data, error } = await svc.storage.from(bucket).download(path);
+    expect(error, `${bucket}/${path}`).toBeNull();
+    return data!.size;
+  }
+
+  it("the policies on kitchen-photos are exactly: chef insert, owner/admin/customer read, admin delete", async () => {
+    const client = new pg.Client({ connectionString: localEnv().dbUrl });
+    await client.connect();
+    try {
+      const res = await client.query(
+        `select policyname, cmd from pg_policies
+          where schemaname = 'storage' and tablename = 'objects' and policyname like 'kitchen_photos%'
+          order by policyname`,
+      );
+      expect(res.rows).toEqual([
+        { policyname: "kitchen_photos_delete_admin", cmd: "DELETE" },
+        { policyname: "kitchen_photos_insert_own", cmd: "INSERT" },
+        { policyname: "kitchen_photos_select_admin", cmd: "SELECT" },
+        { policyname: "kitchen_photos_select_customer", cmd: "SELECT" },
+        { policyname: "kitchen_photos_select_own", cmd: "SELECT" },
+      ]);
+    } finally {
+      await client.end();
+    }
+  });
+
+  it("a chef can add a new kitchen photo and read it back, but cannot overwrite it in place", async () => {
+    const h1 = await clientFor(fx.h1);
+    const name = `${fx.h1.id}/f3-${rand(4)}.png`;
+    expect((await up(h1, "kitchen-photos", name)).error).toBeNull(); // allowed: a new name
+    expect(await canDownload(h1, "kitchen-photos", name)).toBe(true);
+    const bucket = h1.storage.from("kitchen-photos");
+    const asUpsert = await bucket.upload(name, bigger(), {
+      contentType: "image/png",
+      upsert: true,
+    });
+    expect(asUpsert.error).not.toBeNull();
+    const asUpdate = await bucket.update(name, bigger(), {
+      contentType: "image/png",
+    });
+    expect(asUpdate.error).not.toBeNull();
+    const asInsert = await bucket.upload(name, bigger(), {
+      contentType: "image/png",
+    });
+    expect(asInsert.error).not.toBeNull(); // the name is taken
+    expect(await sizeOf("kitchen-photos", name)).toBe(4); // still the original picture
+  });
+
+  it("the owner cannot delete a kitchen photo; the admin can", async () => {
+    const h1 = await clientFor(fx.h1);
+    const admin = await clientFor(fx.admin);
+    const name = `${fx.h1.id}/f3-del-${rand(4)}.png`;
+    expect((await up(h1, "kitchen-photos", name)).error).toBeNull();
+    const del = await h1.storage.from("kitchen-photos").remove([name]);
+    expect(del.data ?? []).toEqual([]); // nothing removed
+    expect(await sizeOf("kitchen-photos", name)).toBe(4);
+    const adminDel = await admin.storage.from("kitchen-photos").remove([name]);
+    expect((adminDel.data ?? []).length).toBe(1);
+    expect(await canDownload(admin, "kitchen-photos", name)).toBe(false);
+  });
+
+  it("the service role (the chef routes) can still delete one", async () => {
+    const h1 = await clientFor(fx.h1);
+    const name = `${fx.h1.id}/f3-svc-${rand(4)}.png`;
+    expect((await up(h1, "kitchen-photos", name)).error).toBeNull();
+    const del = await svc.storage.from("kitchen-photos").remove([name]);
+    expect(del.error).toBeNull();
+    expect((del.data ?? []).length).toBe(1);
+  });
+
+  it("a chef still cannot write into another chef's kitchen folder", async () => {
+    const h2 = await clientFor(fx.h2);
+    const name = `${fx.h1.id}/f3-evil-${rand(4)}.png`;
+    expect((await up(h2, "kitchen-photos", name)).error).not.toBeNull();
+  });
+
+  it("DECISION: profile-photos and dish-photos stay owner-writable (no verified check depends on them)", async () => {
+    // Pinned so that T-032 (dishes) changes this knowingly. See docs/data-model.md, Storage.
+    const h1 = await clientFor(fx.h1);
+    for (const bucket of ["profile-photos", "dish-photos"]) {
+      const name = `${fx.h1.id}/f3-${rand(4)}.png`;
+      expect((await up(h1, bucket, name)).error, bucket).toBeNull();
+      const over = await h1.storage.from(bucket).upload(name, bigger(), {
+        contentType: "image/png",
+        upsert: true,
+      });
+      expect(over.error, `${bucket} overwrite`).toBeNull();
+      expect(await sizeOf(bucket, name)).toBe(9);
+      await h1.storage.from(bucket).remove([name]);
+      expect(await canDownload(svc, bucket, name), `${bucket} delete`).toBe(
+        false,
+      );
+    }
   });
 });
