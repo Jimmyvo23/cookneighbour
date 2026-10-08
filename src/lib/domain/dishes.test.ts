@@ -246,6 +246,11 @@ describe("dates", () => {
       expect(isRealDate(d), d).toBe(false);
     expect(isRealDate(20261008 as unknown as string)).toBe(false);
   });
+  it("isRealDate refuses year 0000, which Postgres cannot store (tester T-032)", () => {
+    expect(isRealDate("0000-01-01")).toBe(false);
+    expect(isRealDate("0000-12-31")).toBe(false);
+    expect(isRealDate("0001-01-01")).toBe(true);
+  });
   it("addDays crosses month and year ends", () => {
     expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
     expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
