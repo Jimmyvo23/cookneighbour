@@ -41,3 +41,13 @@ From: tester  To: backend
 
 ## What the next agent needs
 Backend: fix finding 1 only, push, confirm CI green, then hand back to the tester for a quick re-check (or straight to the reviewer if the Planner agrees, since the change is one line plus tests). Planner: `npx supabase db push` after merge (migration `20261009120000`).
+
+## Round 2
+
+Result: **PASS**. Head aa426de, CI run 37803416710 `ci` green (read from the log): unit 285 (19 files), RLS 115 (9 files), API 261 (11 files), Playwright 11 and 19 passed.
+
+- F1 fixed: `isRealDate` now has `if (v < "0001-01-01") return false` (`src/lib/domain/dishes.ts`). My unit test (year 0000 refused, 0001 accepted) passes, and the API test "remove of 0000-01-01 is a 422" ran and passed in CI.
+- F2: `tests/api/dishes-roles-tester.test.ts` ran in CI, 3 tests passed (customer claiming chef/admin is 403 on all five handlers with no writes; chef claiming admin still works).
+- Contract matches: 5A bounds and 50-dish cap cite D-16, 5B opt-in meaning and today..today+180 Toronto cite D-15, and 5B validation names year 0000. Remaining ASSUMPTION marks in the contract belong to other sections.
+- INFO (no action needed to merge, fix when next touching the file): the comment at `src/lib/domain/dishes.ts:6` still says "the bounds are ASSUMPTIONS", but D-16 decided them.
+- Reminder: Planner runs `npx supabase db push` after merge (migration 20261009120000).
