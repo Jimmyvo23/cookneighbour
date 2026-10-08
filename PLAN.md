@@ -127,12 +127,13 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 ### Phase 3 — Chef side (WO-3)
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
-| T-031 | Chef onboarding API: profile, document uploads, MOCK ID / food-handler / police / kitchen checks, allergen and hygiene acks, location options | backend | T-028 | todo |
+| T-031 | Chef onboarding API: profile, document uploads, MOCK ID / food-handler / police / kitchen checks, allergen and hygiene acks, location options | backend | T-028 | done |
 | T-032 | Dishes and availability API | backend | T-025 | todo |
 | T-033 | Chef onboarding and profile UI | frontend | T-031 | todo |
 | T-034 | Dish menu and availability calendar UI | frontend | T-032 | todo |
 | T-035 | Admin chef-queue API: approve / reject with reason, kitchen review, police status | backend | T-031 | todo |
 | T-036 | Admin chef-queue UI | frontend | T-035 | todo |
+| T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | in_review |
 
 ### Phase 4 — Customer side (WO-4, may split into two)
 | ID | Task | Owner | Depends on | State |
@@ -198,6 +199,8 @@ New from planning:
 - Q-10 Real eat-by window must be confirmed against Ontario public-health guidance before any real launch.
 - Q-11 How long may a `requested` booking hold a chef's date before it expires, and should customers be rate-limited on requests?
 - Q-12 Should contact details re-lock some days after a visit is completed?
+- Q-13 May an approved chef clear their bio or photo and stay listed in search? (Planner suggests blocking it: an approved profile must stay complete.)
+- Q-14 Should replaced ID and food-handler files be deleted from Storage? (Deleting data needs Jimmy's OK; today they stay as orphans.)
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
 
@@ -270,4 +273,17 @@ Notes for each finished task are added here (CLAUDE.md §8).
 
 ### WO-2 summary (finished 2026-10-07)
 Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supabase has all 4 migrations; demo data not yet loaded (needs `SEED_ADMIN_PASSWORD`). Open issue: #46 (dev-only audit findings, no upstream fix yet).
+
+### T-031 — Chef onboarding API (done 2026-10-08, PR #67; migration applied to hosted 2026-10-08)
+- Routes: GET/PATCH `/api/chef/application`, POST/DELETE `/api/chef/application/documents`, POST `/api/chef/application/submit`. Identity from `getUser()`, role from `profiles` (JWT `user_metadata.role` ignored, tested). Service-role client only after the role check; GET repairs missing chef rows (display name copied from `profiles`, never from the email).
+- Every client storage path goes through `checkStoragePath` (own folder, no `..`/`/`/backslash/control chars, lower-case `<prefix>-<uuid>.<ext>`) and an object-exists probe. N1 reset in routes: registering a new ID or food-handler file moves its check (including `failed`) back to `pending`; a kitchen-address change or photo removal resets the kitchen check and turns chef's home off. All check statuses commented MOCK; submit returns `mock: true`.
+- `chef_private` writes are conditional on `updated_at` (retry, 409 after 12 losses); rejected → pending on submit is conditional on `status = 'rejected'`.
+- Migration `20261008150000_kitchen_photos_insert_only.sql` (Planner-decided fix for tester F3): kitchen-photo and document buckets are insert-only for the chef. Applied with `npx supabase db push`.
+- Tests: 165 unit, 111 RLS, 207 API, Playwright real-route 7 + mock 6. Tester PASS (round 2), Reviewer APPROVE.
+- Reviewer follow-ups:
+  - R1 (backlog): a kitchen photo deleted in parallel can be re-registered after a race (`src/lib/server/chef-application.ts:472-495`); fails safe (check pending, chef's-home off). Fix: re-probe Storage when the path was skipped as already registered.
+  - R2 (T-035): submit completeness reads `chefs`/`dishes` without a lock. Admin approve must recompute completeness server-side in the same conditional write and refuse if anything is missing.
+  - R3: done (db push above).
+  - R4 (info): `20261007221003_storage_buckets.sql:5` comment is stale; already applied, do not edit.
+  - R5 carry-forwards: T-033 — MOCK badge on every check status; uploads use fresh lower-case uuid names with `upsert: false`. T-035 — admin verdict writes stay conditional on the reviewed paths and bump `chef_private.updated_at`. T-054 README known limits — orphan uploads the chef never registered can no longer be deleted by the chef.
 
