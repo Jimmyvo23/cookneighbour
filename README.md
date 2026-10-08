@@ -26,6 +26,7 @@ cp .env.example .env.local        # placeholders only; never commit .env.local
 | `npm test`          | Vitest unit tests                                              |
 | `npm run test:e2e`  | Playwright smoke test (Chromium; starts the app itself)        |
 | `npm run db:check`  | Checks the hosted Supabase project is reachable (OK/FAIL only) |
+| `npm run db:seed`   | Demo data (needs `--local` or `--hosted`, see Demo data below) |
 | `npm run format`    | Prettier                                                       |
 
 ## Supabase setup
@@ -42,5 +43,22 @@ Code lives in `src/lib/supabase/`: `client.ts` (browser), `server.ts` (server, c
 With `cacheComponents` on, `server.ts` reads `cookies()`, so call it per request from inside a `<Suspense>` boundary, a Route Handler or a Server Function; never at module level or in a `"use cache"` function.
 
 Local Supabase (`supabase/config.toml`) needs Docker and runs only in CI (T-022). Tables and migrations arrive in a later task.
+
+## Demo data (T-030)
+
+All seed data is **fictional**: invented names, `@example.com` emails, 555-01xx phone numbers and made-up street addresses. ID, food-handler, police and kitchen statuses on chefs are **MOCK** values; nobody verified anything. Seeded chefs have no photos or uploaded documents.
+
+- `supabase/seed.sql` loads about 60 GTA postal-code prefixes (Mississauga L4T to L5W, Toronto, Brampton, Oakville, Markham, Vaughan, Richmond Hill). Coordinates are **approximate** area centres, only used for straight-line distance. It runs automatically on `supabase start` and `supabase db reset`.
+- `scripts/seed.ts` creates the accounts, 11 chefs, dishes and 3 weeks of availability. It is server-only (secret key), idempotent, and refuses to run unless you pass a target: `npm run db:seed -- --local` (running local stack) or `npm run db:seed -- --hosted` (needs `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `HASH_PEPPER` and `SEED_ADMIN_PASSWORD` in `.env.local`). Add `--verify` to check the result without writing.
+- The **admin** password is never in this repo. Set `SEED_ADMIN_PASSWORD` in `.env.local` (or the shell) before seeding; without it the admin account is skipped. Admin login: `admin@example.com`.
+
+Demo logins (local and demo use only):
+
+| Role     | Email                                                                                                                                                                                                                                                                                     | Password            |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| Customer | `customer1@example.com`, `customer2@example.com`, `customer3@example.com`                                                                                                                                                                                                                 | `DemoCustomer!2026` |
+| Chef     | `chef.lan@example.com` (Vietnamese, Mississauga, both locations), `chef.hoa@`, `chef.maria@`, `chef.harpreet@`, `chef.giulia@`, `chef.devon@`, `chef.minjun@`, `chef.layla@` (approved); `chef.wei@`, `chef.selam@`, `chef.ana@` (pending); `chef.carlos@` (rejected), all `@example.com` | `DemoChef!2026`     |
+
+Pending and rejected chefs exist so you can show they never appear in search.
 
 More setup (demo script) arrives in later tasks.
