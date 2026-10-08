@@ -91,7 +91,7 @@ describe("admin decision functions", () => {
       ]);
       for (const r of res.rows) {
         expect(r.prosecdef, r.proname).toBe(false);
-        expect(r.proconfig, r.proname).toContain("search_path=");
+        expect(r.proconfig, r.proname).toContain('search_path=""');
         expect(r.public_exec, r.proname).toBe(false);
         expect(r.service_exec, r.proname).toBe(true);
       }
