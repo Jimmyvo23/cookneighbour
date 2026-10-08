@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-08 (after WO-1, WO-2 and T-031).
+Last updated: 2026-10-08 (after WO-1, WO-2, T-031, T-033 and T-059).
 
 ## 1. Office status (Planner and every agent)
 
@@ -20,7 +20,7 @@ The office only shows what agents report. Nothing updates on its own.
 
 ## 3. Bugs reviews keep finding. Builders check these before handing off
 
-Each of these reached the Tester or Reviewer at least once. Catching them in the builder's own check saves a full fix round.
+Each of these reached the Tester or Reviewer at least once, except the rows marked "(preventive)". Validate free text on the server too, not only in the form (T-033/T-059). Catching them in the builder's own check saves a full fix round.
 
 | Bug class | Example we had | Check |
 |---|---|---|
