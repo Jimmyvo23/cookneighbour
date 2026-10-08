@@ -131,7 +131,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-032 | Dishes and availability API | backend | T-025 | done |
 | T-033 | Chef onboarding and profile UI | frontend | T-031 | done |
 | T-034 | Dish menu and availability calendar UI | frontend | T-032 | done |
-| T-035 | Admin chef-queue API: approve / reject with reason, kitchen review, police status | backend | T-031 | todo |
+| T-035 | Admin chef-queue API: approve / reject with reason, kitchen review, police status | backend | T-031 | done |
 | T-036 | Admin chef-queue UI | frontend | T-035 | todo |
 | T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | done |
 | T-059 | Reject unsafe text in display name and address (server; T-033 tester F1) | backend | T-028 | done |
@@ -207,6 +207,7 @@ New from planning:
 - Q-13 May an approved chef clear their bio or photo and stay listed in search? (Planner suggests blocking it: an approved profile must stay complete.)
 - Q-14 Should replaced ID and food-handler files be deleted from Storage? (Deleting data needs Jimmy's OK; today they stay as orphans.)
 - Q-15 ~~Confirm or replace the draft allergen-awareness and kitchen-hygiene acknowledgement wording from T-033.~~ Resolved by D-14 (2026-10-08).
+- Q-16 Admin MOCK-check rules (T-035 builder defaults, contract §6 open points 12–13; in place until decided): (a) an admin may set a MOCK check back to `not_started` or `pending`, and setting an approved chef's check to `failed` does not change the chef's status; (b) kitchen review is allowed for a chef of any status, so chef's home can be enabled while pending or rejected; (c) the "checks pending" filter ignores the police check; (d) rejecting a chef leaves `chef_home_enabled` on, so a re-approved chef gets chef's home back if the kitchen did not change. Planner suggests: (a) keep, but an approved chef with a `failed` check should be flagged; (b) allow only for pending or approved chefs; (c) keep; (d) turn chef's home off on reject. Search and booking must require `approved` AND `chef_home_enabled` either way (WO-4).
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
 
@@ -342,4 +343,16 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
   - T-036: server guard on `/admin/*` (page by page where data is read on the server); MOCK badge on every check status; fix the layout comment.
   - WO-4: search shows only active dishes and ticked dates inside the D-15 window.
   - T-054 README: dish photos, including replaced ones, are public by link; guard answers 200 with a streamed redirect.
+
+### T-035 — Admin chef-queue API (done 2026-10-08, PR #79; migration applied to hosted 2026-10-08)
+- Six routes under `/api/admin/chefs` (contract v1.2 §6): list (`status` and `checks=pending` filters, `limit` 1–50, strict opaque keyset cursor, newest first), detail (300-second signed URLs only for our own file names, never cached or logged, no hashes), approve, reject (reason 3–500, unsafe text refused), PATCH checks (MOCK), kitchen review (MOCK). `requireAdmin()` reads `profiles.role` before any query; service role only after; JWT metadata ignored (tested). Logs carry only admin and chef ids.
+- Migration `20261010120000_admin_chef_decisions.sql`: `admin_approve_chef`, `admin_reject_chef`, `admin_review_kitchen` (SECURITY INVOKER, `search_path ''`, EXECUTE for service_role only). Each locks the chef's rows, re-reads, decides and writes with its notification in one transaction. Approve recomputes the 16 completeness items plus stored-file existence and requires both MOCK checks still `verified` (closes T-031 R2). PATCH checks is one conditional UPDATE keyed on the reviewed paths (B1). Adds functions only. Applied with `npx supabase db push`.
+- Tests: unit 426, RLS 118, API 315, Playwright real 18 + mock 39 (CI). Real-route suite creates a local-only admin (`e2e/helpers/local-admin.ts`, host-guarded) and checks raw `/chef` HTML for a signed-in admin (closes T-034 finding 5). Tester PASS; added a static guard test that fails if the SQL and TypeScript completeness rules drift, or if the migration's security settings weaken. Reviewer APPROVE.
+- Findings (none blocking): rejecting leaves `chef_home_enabled` on (→ Q-16 d); kitchen review for any status and check rollback on approved chefs (→ Q-16 a, b); SQL `btrim` vs TS `trim()`; DB error text in logged messages (not sensitive today); approve's `missing` can name a vanished file the chef's own list does not show.
+- Known gap: the approve rules live in SQL and TypeScript; a new rule needs both, plus a new `create or replace function` migration (the guard test catches drift).
+- Follow-ups:
+  - T-036: MOCK badge on every check status incl. police; server guard on `/admin/*`; fix the `src/app/chef/layout.tsx` comment (T-034 finding 1); refetch signed URLs after ~5 min and show "not available" for a listed file without a URL; send exactly the reviewed paths and address (`null` when none); on 409 ask to reload and focus the error; `Content-Type: application/json` on every write incl. approve; reason and note as plain text; explain approve's `missing` for vanished files; mock adapter admin routes.
+  - WO-4: chef's-home search and booking require `approved` AND `chef_home_enabled`; decide what happens to future bookings when an approved chef is rejected.
+  - WO-5: notification read API. Not built: `submittedAt` (optional).
+  - Hosted demo admin still needs Jimmy's `SEED_ADMIN_PASSWORD` (hosted seeding needs Jimmy).
 
