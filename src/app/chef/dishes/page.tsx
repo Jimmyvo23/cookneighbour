@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { ChefApplicationView } from "@/components/chef/ChefApplicationView";
+import { DishesView } from "@/components/chef/DishesView";
 
 // The chef-only guard for this page is in src/app/chef/layout.tsx.
 export const metadata: Metadata = {
-  title: "Chef application — CookNeighbour",
+  title: "Your dishes — CookNeighbour",
 };
 
 export default function Page() {
-  return <ChefApplicationView />;
+  return <DishesView />;
 }

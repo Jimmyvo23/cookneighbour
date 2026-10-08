@@ -166,3 +166,14 @@ export async function browserUploader(): Promise<ChefUploader> {
 export const mockUploader: ChefUploader = {
   upload: async () => ({ error: null }),
 };
+
+/** Uploads with the right uploader for the run mode (MOCK mode stores nothing) and returns the path. */
+export async function uploadForChef(
+  target: UploadKind,
+  userId: string,
+  file: File,
+): Promise<string> {
+  const { isMockEnabled } = await import("@/lib/api/client");
+  const uploader = isMockEnabled() ? mockUploader : await browserUploader();
+  return (await uploadChefFile(target, userId, file, uploader)).path;
+}

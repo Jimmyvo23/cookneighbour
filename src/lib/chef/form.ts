@@ -88,8 +88,7 @@ const MISSING_TEXT: Record<ApplicationMissingItem, string> = {
   foodHandler: "A Food Handler Certificate file",
   allergenAcknowledgement: "The allergen-awareness acknowledgement",
   phoneVerified: "Phone verification (MOCK)",
-  sampleDish:
-    "At least one dish with a photo (the dish editor is not available yet)",
+  sampleDish: "At least one active dish with a photo",
   kitchenAddress: "Your kitchen address",
   kitchenPhotos: "At least one kitchen photo",
   kitchenHygieneAcknowledgement: "The kitchen-hygiene acknowledgement (MOCK)",

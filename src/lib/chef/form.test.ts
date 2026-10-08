@@ -143,8 +143,9 @@ describe("describeMissing", () => {
     ] as const;
     for (const k of all) expect(describeMissing(k).length).toBeGreaterThan(5);
   });
-  it("says dishes are not built yet", () => {
-    expect(describeMissing("sampleDish")).toMatch(/dish/i);
+  it("points at a real dish with a photo", () => {
+    expect(describeMissing("sampleDish")).toMatch(/active dish with a photo/i);
+    expect(describeMissing("sampleDish")).not.toMatch(/not available yet/i);
   });
 });
 

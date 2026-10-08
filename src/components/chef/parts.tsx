@@ -60,8 +60,16 @@ export function useSection() {
     setTick((t) => t + 1);
   }
 
-  /** Runs `action`; shows `success` afterwards. Any thrown error becomes a clear message. */
-  async function run(action: () => Promise<void>, success: string) {
+  /** Runs `action`; shows `success` afterwards. Any thrown error becomes a clear message
+   *  (`describe` and `fields` let a page word its own errors, for example dollars instead of cents). */
+  async function run(
+    action: () => Promise<void>,
+    success: string,
+    opts: {
+      describe?: (err: unknown) => string;
+      fields?: (f: FieldErrors) => FieldErrors;
+    } = {},
+  ) {
     if (busy) return;
     setError(null);
     setNotice(null);
@@ -71,7 +79,11 @@ export function useSection() {
       await action();
       setNotice(success);
     } catch (err) {
-      fail(describeError(err), err instanceof ApiClientError ? err.fields : {});
+      const raw = err instanceof ApiClientError ? err.fields : {};
+      fail(
+        (opts.describe ?? describeError)(err),
+        opts.fields ? opts.fields(raw) : raw,
+      );
     } finally {
       setBusy(false);
     }
