@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { buildDishBody, emptyDishForm } from "@/lib/chef/dishes";
+import { ApiClientError } from "@/lib/api/client";
+import {
+  buildDishBody,
+  emptyDishForm,
+  uploadRejected,
+} from "@/lib/chef/dishes";
 import {
   addDays,
   dayLabel,
@@ -242,5 +247,32 @@ describe("calendar never reads the browser clock or time zone", () => {
       expect(torontoToday(new Date("2026-11-02T04:59:59Z"))).toBe("2026-11-01");
       expect(torontoToday(new Date("2026-11-02T05:00:00Z"))).toBe("2026-11-02");
     }
+  });
+});
+
+describe("uploadRejected (round 2)", () => {
+  const e = (
+    status: number,
+    code: ApiClientError["code"],
+    fields?: Record<string, string>,
+  ) => new ApiClientError(status, code, "x", fields ? { fields } : {});
+  it("keeps the upload for the cap, other field errors, network and server errors", () => {
+    expect(uploadRejected(e(409, "INVALID_STATE"))).toBe(false);
+    expect(uploadRejected(e(422, "VALIDATION_FAILED", { name: "x" }))).toBe(
+      false,
+    );
+    expect(uploadRejected(e(0, "NETWORK"))).toBe(false);
+    expect(uploadRejected(e(500, "UNKNOWN"))).toBe(false);
+    expect(uploadRejected(e(404, "NOT_FOUND"))).toBe(false);
+    expect(uploadRejected(new Error("boom"))).toBe(false);
+    expect(uploadRejected(undefined)).toBe(false);
+  });
+  it("drops the upload for 403 and for a photoPath error, even beside other errors", () => {
+    expect(uploadRejected(e(403, "FORBIDDEN"))).toBe(true);
+    expect(
+      uploadRejected(
+        e(422, "VALIDATION_FAILED", { name: "x", photoPath: "y" }),
+      ),
+    ).toBe(true);
   });
 });
