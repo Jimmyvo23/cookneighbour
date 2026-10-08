@@ -128,7 +128,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
 | T-031 | Chef onboarding API: profile, document uploads, MOCK ID / food-handler / police / kitchen checks, allergen and hygiene acks, location options | backend | T-028 | done |
-| T-032 | Dishes and availability API | backend | T-025 | todo |
+| T-032 | Dishes and availability API | backend | T-025 | done |
 | T-033 | Chef onboarding and profile UI | frontend | T-031 | done |
 | T-034 | Dish menu and availability calendar UI | frontend | T-032 | todo |
 | T-035 | Admin chef-queue API: approve / reject with reason, kitchen review, police status | backend | T-031 | todo |
@@ -185,6 +185,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-12 | 2026-10-07 | Routes are the only writers of `profiles`, `chefs`, `chef_private` (client UPDATE revoked); rejected chefs may edit and resubmit; admin approves only from `pending`; admin verify must name the reviewed files | Planner (Jimmy delegated), from T-026 review |
 | D-13 | 2026-10-07 | WO-3 to WO-6 pre-approved; Planner writes each Work Order and starts without pausing. Quality over speed: full Builder → Tester → Reviewer on every task, no loosening of branch protection. WO-7 deploy and hosted seeding still need Jimmy | Jimmy |
 | D-14 | 2026-10-08 | The allergen-awareness and kitchen-hygiene acknowledgement texts drafted in T-033 are confirmed as the prototype wording; remove the "draft" labels in T-034 (was Q-15) | Jimmy |
+| D-15 | 2026-10-08 | Availability is opt-in: a chef marks bookable dates; the window is today to today + 180 days, Toronto time (server sends `today` and `lastBookableDay`) | Jimmy |
+| D-16 | 2026-10-08 | Dish bounds kept: cook time 5–360 min, ingredient cost 0–50000 cents, servings 1–50, shelf life 0–7 days (default 2), at most 50 active dishes per chef | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -299,7 +301,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Uploads go to Storage as `<uid>/<prefix>-<uuid>.<ext>` (fresh lower-case uuid, `upsert: false`), then are registered via the API. Focus moves to the error after every error path. Mock adapter reuses the server's pure rules. New dev dependency `@axe-core/playwright` (MPL-2.0).
 - Tests: unit 236, mock Playwright 19, real-route Playwright 11 (CI). Tester round 1 FAIL (F1 display name accepted control characters → client fix here, server fix T-059; F3 focus after photo removal), round 2 PASS. Reviewer APPROVE.
 - Follow-ups:
-  - T-034: server guard on every `/chef/*` page (a `src/app/chef/layout.tsx`); reword "sends its check back to pending" (only true once reviewed); remove "dish editor not available yet" (`src/lib/chef/form.ts:91-92`); remove the word "draft" on the acknowledgements (D-14) but keep the "not legal advice" note and the MOCK "nobody checks this" note (CLAUDE.md §11, Q-3); reword "You can remove a photo" (`ChefApplicationView.tsx:593`) to say removal takes it off the application and the file stays stored privately.
+  - T-034: server guard on every `/chef/*` page (a `src/app/chef/layout.tsx`); reword "sends its check back to pending" (only true once reviewed); remove "dish editor not available yet" (`src/lib/chef/form.ts:91-92`); remove the word "draft" on the acknowledgements (D-14) but keep the "not legal advice" note and the MOCK "nobody checks this" note (CLAUDE.md §11, Q-3); reword "You can remove a photo" (`ChefApplicationView.tsx:593`) to say removal takes it off the application and the file stays stored (superseded wording: do not promise "privately"; see T-032 follow-ups).
   - T-035: approve recomputes completeness in the same conditional write (T-031 R2); verdict writes bump `updated_at`; consider a `submittedAt` field (the "submitted" label is inferred today).
   - T-036 / booking (WO-4): tell chefs the kitchen address is shared with the customer once a chef's-home booking is accepted; verify unlinked (removed) kitchen photos are not visible to customers via `kitchen_photos_select_customer`.
   - T-054 README known limits: orphan uploads and removed kitchen photos stay stored; meta-refresh guard.
@@ -309,3 +311,16 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Tests: unit 191, API 213 (CI). Tester PASS, Reviewer APPROVE.
 - Not changed on purpose: email validation (Supabase Auth validates; login email is not stored). Bare `tsc --noEmit` needs `next typegen` first; use `npm run typecheck`.
 - Follow-up: T-060 (#73) bidi / zero-width / C1 characters in public text, keep ZWJ for emoji, client/server agreement test.
+
+### T-032 — Dishes and availability API (done 2026-10-08, PR #75; migration applied to hosted 2026-10-08)
+- Routes: GET/POST `/api/chef/dishes`, PATCH `/api/chef/dishes/:id` (edit, deactivate, reactivate; no DELETE), GET/PUT `/api/chef/availability` (`{add?, remove?}`). Contract v1.1 §§5A–5B cites D-15 and D-16.
+- Migration `20261009120000_dishes_availability_routes_only.sql`: routes are the only writers of `dishes` and `availability` (extends D-12; client writes revoked, six write policies dropped, read policies kept); 50-active-dish cap trigger under a per-chef advisory lock, EXECUTE revoked. Applied with `npx supabase db push`.
+- Dish photo paths go through `checkStoragePath` (403 for another chef's folder). PATCH is one conditional statement. Pending/rejected chefs' dishes and dates stay hidden; approved chefs show active dishes only.
+- Tests: unit 285, RLS 115, API 261, Playwright 11 + 19 (CI run 37822068827). Tester round 1 FAIL (year 0000 passed `isRealDate`, Postgres would answer 500) → fixed; round 2 PASS. Reviewer APPROVE.
+- Reviewer findings:
+  - LOW: `docs/api-contract.md:175` says 422 before 404/409; the code checks ownership first (404, 403 foreign path) then 422. Code is right; contract sentence corrected in #76 (including unknown keys, which are 422 on their own before the 403).
+  - INFO: `src/lib/domain/dishes.ts:6` said "ASSUMPTIONS"; comment fixed in #76 (names which bounds are D-15, D-16 or still assumptions). Migration line 16 says the same; already applied, do not edit.
+  - Accepted gaps: PUT availability is two statements, not one transaction (resend fixes it); replaced dish photos stay in Storage; a chef can delete their own photo between check and save; clearing a booked date does not change the booking.
+- Follow-ups:
+  - T-034: mock adapter dish and availability routes; dish photos with a fresh lower-case uuid; expect 404 before 422, 403 foreign path, 409 at the cap; use the server's `today` and `lastBookableDay`; missing-photo fallback; labelled fields and focus to errors. The T-033 "removed photo" wording must say the file stays stored, without promising "privately".
+  - WO-4: booking requires an available date and a double-booking check; decide what clearing a booked date does; customer read routes for dishes and availability; compare intake allergies with the stored lower-case allergens.
