@@ -180,7 +180,7 @@ All routes: 401 without a session; role `chef` (else 403, decided from `profiles
 { "id": "uuid", "name": "Pho bo", "photoPath": "<chefId>/dish-<uuid>.jpg", "description": "Slow-cooked beef broth.", "cuisine": "Vietnamese", "cookMinutes": 180, "ingredientCostCents": 2500, "servings": 4, "allergens": ["soy", "wheat"], "shelfLifeDays": 2, "isActive": true, "currency": "CAD", "createdAt": "ISO", "updatedAt": "ISO" }
 ```
 
-Field rules (all bounds are **ASSUMPTION** unless a database check is named; they live in `src/lib/domain/dishes.ts`):
+Field rules (bounds confirmed as **Decision D-16 (Jimmy, 2026-10-08)**; they live in `src/lib/domain/dishes.ts`):
 
 | Field | Rule |
 |---|---|
@@ -198,11 +198,11 @@ Field rules (all bounds are **ASSUMPTION** unless a database check is named; the
 Unknown keys are 422 `fields.<key> = "Unknown field."` (this includes `id`, `chefId`, `currency`, `createdAt`). All field errors are reported at once; nothing is saved on any error.
 
 ### GET /api/chef/dishes
-- **Response 200:** `ChefDishListResponse` `{ items: Dish[] }`: all of the caller's dishes, active and inactive, newest first (`created_at` desc, then `id`). No pagination: a chef has at most 50 active dishes and inactive ones are few (**ASSUMPTION**).
+- **Response 200:** `ChefDishListResponse` `{ items: Dish[] }`: all of the caller's dishes, active and inactive, newest first (`created_at` desc, then `id`). No pagination: a chef has at most 50 active dishes and inactive ones are few.
 
 ### POST /api/chef/dishes
 - **Request:** `CreateDishRequest` (`name`, `cuisine`, `cookMinutes` required; the rest optional). **Response 201:** `Dish` (always created active).
-- **Errors:** 401, 403, 400, 422, 409 `INVALID_STATE` when the chef already has 50 active dishes (limit **ASSUMPTION**, enforced by a database trigger under an advisory lock, so parallel creates cannot pass the cap).
+- **Errors:** 401, 403, 400, 422, 409 `INVALID_STATE` when the chef already has 50 active dishes (limit: **Decision D-16 (Jimmy, 2026-10-08)**, enforced by a database trigger under an advisory lock, so parallel creates cannot pass the cap).
 - **Does (service):** `chef_id` is always the caller; the insert is built from the whitelist.
 
 ### PATCH /api/chef/dishes/:id
@@ -214,16 +214,16 @@ Unknown keys are 422 `fields.<key> = "Unknown field."` (this includes `id`, `che
 
 ## 5B. Availability (own) **(T-032)**
 
-Same gate and check order as section 5A. **Meaning (ASSUMPTION, needs Jimmy's nod):** a date is bookable only if the chef marked it available; a date with no row is **not** available. Only rows with `available = true` are stored; clearing a date deletes its row. WO-4 enforces this at booking time together with the double-booking rule. Marking or clearing a date does not touch existing bookings (a booked date stays booked even if the chef clears it; WO-4 owns cancellation rules).
+Same gate and check order as section 5A. **Meaning (Decision D-15, Jimmy, 2026-10-08):** a date is bookable only if the chef marked it available; a date with no row is **not** available. Only rows with `available = true` are stored; clearing a date deletes its row. WO-4 enforces this at booking time together with the double-booking rule. Marking or clearing a date does not touch existing bookings (a booked date stays booked even if the chef clears it; WO-4 owns cancellation rules).
 
-Dates are `YYYY-MM-DD` calendar dates in **America/Toronto** (the server decides what "today" is, with the same rule as the booking-day trigger). The bookable window is **today up to today + 180 days** (**ASSUMPTION**).
+Dates are `YYYY-MM-DD` calendar dates in **America/Toronto** (the server decides what "today" is, with the same rule as the booking-day trigger). The bookable window is **today up to today + 180 days** (**Decision D-15**, Jimmy, 2026-10-08).
 
 ### GET /api/chef/availability
 - **Response 200:** `AvailabilityResponse` `{ days: string[], today: string, lastBookableDay: string }`: the caller's available dates from today on, ascending. `today` and `lastBookableDay` (today + 180) are the server's window, so the calendar needs no clock of its own.
 
 ### PUT /api/chef/availability
 - **Request:** `SetAvailabilityRequest` `{ add?: string[], remove?: string[] }`. Mark dates available with `add`, clear dates with `remove`; either may be omitted. **Response 200:** `AvailabilityResponse` (the new state).
-- **Validation (422, nothing saved on any error):** unknown keys; at least one date overall (`fields.add`); each list is an array of at most 200 strings; every entry is a real calendar date in `YYYY-MM-DD` (`2026-02-30` is refused); every `add` date is **not in the past** and **not after the horizon** (`fields.add`, message names the window); `remove` dates may be any valid date, including past ones (cleaning up); a date in both lists is refused (`fields.remove`). Duplicates inside a list are ignored.
+- **Validation (422, nothing saved on any error):** unknown keys; at least one date overall (`fields.add`); each list is an array of at most 200 strings; every entry is a real calendar date in `YYYY-MM-DD` (`2026-02-30` and year `0000` are refused; Postgres has no year 0); every `add` date is **not in the past** and **not after the horizon** (`fields.add`, message names the window); `remove` dates may be any valid date, including past ones (cleaning up); a date in both lists is refused (`fields.remove`). Duplicates inside a list are ignored.
 - **Does (service):** one upsert of the `add` dates (`available = true`) and one delete of the `remove` dates, both filtered to `chef_id = caller`. The two sets are disjoint and each statement is idempotent, so a failed request can simply be sent again.
 - **Errors:** 401, 403, 400, 422.
 

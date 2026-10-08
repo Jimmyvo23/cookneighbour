@@ -195,6 +195,8 @@ export function parseDishBody(
 // ---------------------------------------------------------------------------
 export function isRealDate(v: unknown): v is string {
   if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  // Postgres has no year 0 (JavaScript does), so year 0000 would be a 500 at the database.
+  if (v < "0001-01-01") return false;
   const d = new Date(`${v}T12:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
 }
