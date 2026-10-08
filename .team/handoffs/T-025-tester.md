@@ -25,6 +25,16 @@ Re-run the CI run above, or locally with Docker: see `.team/handoffs/T-027-teste
 - Storage: chef-documents readable by admin only, write only in own folder; receipts readable by parties and admin, uploaded only by the booking's chef, non-uuid folders refused; public photo buckets write own folder only.
 - Catalog check: RLS enabled on all public tables; anon and authenticated grants match the design.
 
+## Re-test after review fixes (commit e6b0aab): PASS
+CI run https://github.com/Jimmyvo23/cookneighbour/actions/runs/37699321934 (PR #56, merged with e6b0aab): job `ci` green, RLS step 8 files, 107 tests, 0 failed. No bug found; no BLOCK.
+- B1: user created without display_name (and blank) gets 'New user'; email local part not stored; explicit name kept.
+- B2: foreign path, other chef's folder, `..`, prefix lookalike and bare filename rejected (23514) for chef, admin and server; own folder allowed. Verified ID or food-handler status resets to pending when the chef changes the file; kitchen photos or address change resets kitchen check and turns chef_home_enabled off (chef-home booking then blocked until admin re-enables; chef cannot re-enable). Admin and server changes do not reset. Unrelated edits do not reset.
+- P1: anon lists nothing in any bucket; non-owners list nothing in profile-photos/dish-photos; owner and admin can; public URLs for profile and dish photos still return 200.
+- P2: kitchen-photos private (public URL not 200); owner, admin, and customer of accepted/completed chef_home booking can read; requested, declined, customer_home-only, other customers, other chefs, anon cannot.
+- P3: customer cannot upload to chef-documents, kitchen-photos, dish-photos; can upload own profile photo (not into others' folders); chef can in own folder only.
+- P4: created_at, id, author_display_name, status, admin_note, resolved_at refused on insert (42501); bogus report category rejected (22P02); all five categories accepted; default 'other'.
+- Exact snapshots of table, column and function privileges for anon and authenticated match the migrations. DB_URL localhost guard added.
+
 ## Known gaps or risks
 - Observations, not bugs: `requested` bookings hold a chef's date with no expiry (already an open item); a customer can pass the dishes insert policy but the foreign key to `chefs` stops it (code 23503); chef-private documents are not readable by the owning chef (design: admin only).
 - Not covered: see T-027 handoff.
