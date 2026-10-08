@@ -85,6 +85,12 @@ describe("POST /api/chef/application/documents: validation", () => {
       ["food_handler", `${c}/id-${uuid()}.png`],
       ["kitchen_photo", `${c}/kitchen-${uuid()}.pdf`],
       ["kitchen_photo", `${c}/photo-${uuid()}.png`],
+      // lower case only (tester F6): the app generates these names
+      ["id_document", `${c}/ID-${uuid()}.png`],
+      ["id_document", `${c}/id-${uuid().toUpperCase()}.png`],
+      ["id_document", `${c}/id-${uuid()}.PNG`],
+      ["food_handler", `${c}/FOOD-HANDLER-${uuid()}.pdf`],
+      ["kitchen_photo", `${c}/kitchen-${uuid()}.JPG`],
     ] as const) {
       const r = await chef.b.call(postDoc, { body: { kind, path } });
       expect(r.status, `${kind} ${path}`).toBe(422);
@@ -262,6 +268,18 @@ describe.each(DOCS)(
       expect(r.body.application.checks[d.key]).toBe("verified");
     });
 
+    it("re-registering the same path leaves a failed check failed and does not touch the row at all (tester T12)", async () => {
+      const chef = await newChef();
+      const p = d.make(chef.id);
+      await upload("chef-documents", p);
+      await setPriv(chef.id, { [d.pathCol]: p, [d.statusCol]: "failed" });
+      const before = await privRow(chef.id);
+      const r = await chef.b.call(postDoc, { body: { kind: d.kind, path: p } });
+      expect(r.status, r.text).toBe(200);
+      expect(r.body.application.checks[d.key]).toBe("failed");
+      expect(await privRow(chef.id)).toEqual(before); // not even updated_at moved
+    });
+
     it("the replaced file stays in storage for the admin's records; the new path is what is stored", async () => {
       const chef = await newChef();
       const oldPath = d.make(chef.id);
@@ -276,11 +294,83 @@ describe.each(DOCS)(
   },
 );
 
+describe.each(["approved", "rejected"] as const)(
+  "a %s chef registering new files (tester T4)",
+  (status) => {
+    async function setup() {
+      const chef = await newChef();
+      const oldPhoto = kitchenPath(chef.id);
+      await setChef(chef.id, {
+        status,
+        location_options: BOTH,
+        chef_home_enabled: true,
+      });
+      await setPriv(chef.id, {
+        reject_reason: status === "rejected" ? "Photo unclear" : null,
+        id_check_status: "verified",
+        food_handler_status: "verified",
+        kitchen_status: "verified",
+        kitchen_photo_paths: [oldPhoto],
+      });
+      return chef;
+    }
+
+    it("a new ID and food-handler file reset only their own check; the status and reason stay", async () => {
+      const chef = await setup();
+      const idp = idPath(chef.id);
+      const fhp = fhPath(chef.id);
+      await upload("chef-documents", idp);
+      await upload("chef-documents", fhp);
+      const a = await chef.b.call(postDoc, {
+        body: { kind: "id_document", path: idp },
+      });
+      expect(a.status, a.text).toBe(200);
+      expect(a.body.application).toMatchObject({
+        status,
+        checks: { id: "pending", foodHandler: "verified", kitchen: "verified" },
+        chefHomeEnabled: true,
+      });
+      const b = await chef.b.call(postDoc, {
+        body: { kind: "food_handler", path: fhp },
+      });
+      expect(b.body.application).toMatchObject({
+        status,
+        checks: { id: "pending", foodHandler: "pending", kitchen: "verified" },
+      });
+      expect(b.body.application.rejectReason).toBe(
+        status === "rejected" ? "Photo unclear" : null,
+      );
+      expect((await chefRow(chef.id)).status).toBe(status);
+    });
+
+    it("a new kitchen photo resets the kitchen and switches chef's home off; the status stays", async () => {
+      const chef = await setup();
+      const p = kitchenPath(chef.id);
+      await upload("kitchen-photos", p);
+      const r = await chef.b.call(postDoc, {
+        body: { kind: "kitchen_photo", path: p },
+      });
+      expect(r.status, r.text).toBe(200);
+      expect(r.body.application).toMatchObject({
+        status,
+        checks: { id: "verified", kitchen: "pending" },
+        chefHomeEnabled: false,
+      });
+      const row = await chefRow(chef.id);
+      expect(row.status).toBe(status);
+      expect(row.chef_home_enabled).toBe(false);
+    });
+  },
+);
+
 describe("registering kitchen photos", () => {
-  async function kitchenChef(status: string) {
+  async function kitchenChef(status: string, options: string[] = BOTH) {
     const chef = await newChef();
     const first = kitchenPath(chef.id);
-    await setChef(chef.id, { location_options: BOTH, chef_home_enabled: true });
+    await setChef(chef.id, {
+      location_options: options,
+      chef_home_enabled: true,
+    });
     await setPriv(chef.id, {
       kitchen_photo_paths: [first],
       kitchen_status: status,
@@ -339,6 +429,32 @@ describe("registering kitchen photos", () => {
     expect(r.body.application.documents.kitchenPhotoPaths).toEqual([first]);
   });
 
+  it("a new photo resets the kitchen even when chef's home is not currently offered (tester T2)", async () => {
+    const { chef } = await kitchenChef("verified", ["customer_home"]);
+    const p = kitchenPath(chef.id);
+    await upload("kitchen-photos", p);
+    const r = await chef.b.call(postDoc, {
+      body: { kind: "kitchen_photo", path: p },
+    });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.application.checks.kitchen).toBe("pending");
+    expect(r.body.application.chefHomeEnabled).toBe(false);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(false);
+  });
+
+  it("a failed kitchen check stays failed when the same photo is registered again (tester T12)", async () => {
+    const { chef, first } = await kitchenChef("failed");
+    await upload("kitchen-photos", first);
+    const before = await privRow(chef.id);
+    const r = await chef.b.call(postDoc, {
+      body: { kind: "kitchen_photo", path: first },
+    });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.application.checks.kitchen).toBe("failed");
+    expect(await privRow(chef.id)).toEqual(before);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(true);
+  });
+
   it("an 11th photo is 409 INVALID_STATE, and a re-registration at the limit still works", async () => {
     const chef = await newChef();
     const paths = Array.from({ length: 10 }, () => kitchenPath(chef.id));
@@ -372,6 +488,74 @@ describe("registering kitchen photos", () => {
     ).toEqual(paths.map(() => 200));
     const stored = (await privRow(chef.id)).kitchen_photo_paths as string[];
     expect([...stored].sort()).toEqual([...paths].sort());
+  });
+});
+
+describe("parallel requests at the photo limit (tester T9)", () => {
+  async function uploaded(chefId: string, n: number): Promise<string[]> {
+    const paths = Array.from({ length: n }, () => kitchenPath(chefId));
+    for (const p of paths) await upload("kitchen-photos", p);
+    return paths;
+  }
+  const register = (chef: Chef, path: string) =>
+    chef.b.call(postDoc, { body: { kind: "kitchen_photo", path } });
+
+  it("the maximum of 10 photos registered at once from an empty list: all 200, all 10 stored", async () => {
+    const chef = await newChef();
+    const paths = await uploaded(chef.id, 10);
+    const replies = await Promise.all(paths.map((p) => register(chef, p)));
+    expect(
+      replies.map((r) => r.status),
+      replies.map((r) => r.text).join("\n"),
+    ).toEqual(paths.map(() => 200));
+    const stored = (await privRow(chef.id)).kitchen_photo_paths as string[];
+    expect([...stored].sort()).toEqual([...paths].sort());
+  });
+
+  it("10 stored and 2 more registered at once: both are 409 and nothing changes", async () => {
+    const chef = await newChef();
+    const stored = Array.from({ length: 10 }, () => kitchenPath(chef.id));
+    await setPriv(chef.id, { kitchen_photo_paths: stored });
+    const extra = await uploaded(chef.id, 2);
+    const replies = await Promise.all(extra.map((p) => register(chef, p)));
+    expect(replies.map((r) => r.status)).toEqual([409, 409]);
+    expect(replies.map((r) => r.body.error.code)).toEqual([
+      "INVALID_STATE",
+      "INVALID_STATE",
+    ]);
+    expect((await privRow(chef.id)).kitchen_photo_paths).toEqual(stored);
+  });
+
+  it("5 stored and 8 more at once: exactly 5 succeed (the limit holds under a race)", async () => {
+    const chef = await newChef();
+    const stored = Array.from({ length: 5 }, () => kitchenPath(chef.id));
+    await setPriv(chef.id, { kitchen_photo_paths: stored });
+    const extra = await uploaded(chef.id, 8);
+    const replies = await Promise.all(extra.map((p) => register(chef, p)));
+    const ok = replies.filter((r) => r.status === 200).length;
+    const full = replies.filter((r) => r.status === 409).length;
+    expect({ ok, full }).toEqual({ ok: 5, full: 3 });
+    expect(
+      ((await privRow(chef.id)).kitchen_photo_paths as string[]).length,
+    ).toBe(10);
+  });
+
+  it("an acknowledgement saved at the same time as a photo registration: both survive", async () => {
+    const chef = await newChef();
+    const [p] = await uploaded(chef.id, 1);
+    const [ack, reg] = await Promise.all([
+      chef.b.call(patchApp, {
+        method: "PATCH",
+        body: { acknowledgeAllergenStatement: true, bio: "parallel" },
+      }),
+      register(chef, p),
+    ]);
+    expect(ack.status, ack.text).toBe(200);
+    expect(reg.status, reg.text).toBe(200);
+    const priv = await privRow(chef.id);
+    expect(priv.allergen_ack_at).not.toBeNull();
+    expect(priv.kitchen_photo_paths).toEqual([p]);
+    expect((await chefRow(chef.id)).bio).toBe("parallel");
   });
 });
 
@@ -443,6 +627,31 @@ describe("DELETE /api/chef/application/documents", () => {
     expect((await chefRow(victim.id)).chef_home_enabled).toBe(true);
   });
 
+  it("a path with another kind's file name is 422 and no object is deleted (tester T10)", async () => {
+    const chef = await newChef();
+    const id = idPath(chef.id);
+    const photo = photoPath(chef.id);
+    // the same names exist in the chef-documents / profile-photos buckets and in kitchen-photos
+    await upload("chef-documents", id);
+    await upload("kitchen-photos", id);
+    await upload("profile-photos", photo);
+    await upload("kitchen-photos", photo);
+    await setPriv(chef.id, { kitchen_photo_paths: [id, photo] });
+    for (const path of [id, photo]) {
+      const r = await chef.b.call(deleteDoc, {
+        method: "DELETE",
+        body: { kind: "kitchen_photo", path },
+      });
+      expect(r.status, path).toBe(422);
+      expect(r.body.error.fields.path).toBeTruthy();
+    }
+    expect(await objectExists("chef-documents", id)).toBe(true);
+    expect(await objectExists("kitchen-photos", id)).toBe(true);
+    expect(await objectExists("profile-photos", photo)).toBe(true);
+    expect(await objectExists("kitchen-photos", photo)).toBe(true);
+    expect((await privRow(chef.id)).kitchen_photo_paths).toEqual([id, photo]);
+  });
+
   it("404 for a photo that is not registered, and the object is NOT deleted", async () => {
     const chef = await newChef();
     const p = kitchenPath(chef.id);
@@ -494,6 +703,7 @@ describe("DELETE /api/chef/application/documents", () => {
     async (status) => {
       const chef = await newChef();
       const p = kitchenPath(chef.id);
+      await setChef(chef.id, { chef_home_enabled: true });
       await setPriv(chef.id, {
         kitchen_photo_paths: [p],
         kitchen_status: status,
@@ -504,6 +714,8 @@ describe("DELETE /api/chef/application/documents", () => {
       });
       expect(r.status, r.text).toBe(200);
       expect(r.body.application.checks.kitchen).toBe(AFTER_CHANGE[status]);
+      expect(r.body.application.chefHomeEnabled).toBe(false);
+      expect((await chefRow(chef.id)).chef_home_enabled).toBe(false);
     },
   );
 
@@ -740,15 +952,29 @@ describe("lost-race handling (optimistic lock on chef_private)", () => {
     },
   });
 
-  it("PATCH gives up the same way (409 INVALID_STATE) and saves no kitchen address", async () => {
+  it("PATCH gives up the same way (409 INVALID_STATE): chef_private fields are not saved, but chefs fields of the same request already are (tester F2)", async () => {
     const chef = await newChef();
+    await setChef(chef.id, {
+      location_options: BOTH,
+      chef_home_enabled: true,
+      bio: "old bio",
+    });
+    await setPriv(chef.id, {
+      kitchen_status: "verified",
+      kitchen_address_line: "1 Old St",
+      kitchen_city: "Mississauga",
+      kitchen_postal_code: "L5B1A1",
+    });
     const c = await asChef(chef);
     await expect(
       patchApplication(
         c,
         {
+          bio: "saved anyway",
+          hourlyRateCents: 4100,
+          acknowledgeAllergenStatement: true,
           kitchenAddress: {
-            line: "1 A St",
+            line: "2 New St",
             city: "Mississauga",
             postalCode: "L5B1A1",
           },
@@ -756,7 +982,16 @@ describe("lost-race handling (optimistic lock on chef_private)", () => {
         loseEveryRace(chef.id),
       ),
     ).rejects.toMatchObject({ code: "INVALID_STATE" });
-    expect((await privRow(chef.id)).kitchen_address_line).toBeNull();
+    // chef_private: the conditional write never landed
+    const priv = await privRow(chef.id);
+    expect(priv.kitchen_address_line).toBe("1 Old St");
+    expect(priv.allergen_ack_at).toBeNull();
+    expect(priv.kitchen_status).toBe("verified");
+    // chefs: written first, so these are already saved, including the safe switch-off of chef's home
+    const row = await chefRow(chef.id);
+    expect(row.bio).toBe("saved anyway");
+    expect(row.hourly_rate_cents).toBe(4100);
+    expect(row.chef_home_enabled).toBe(false);
   });
 
   it("removing a kitchen photo gives up the same way and keeps the photo and its object", async () => {

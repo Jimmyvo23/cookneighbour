@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GET as getMe } from "@/app/api/me/route";
+import { PUT as putAddress } from "@/app/api/me/address/route";
 import { freshLimits } from "./harness";
 import {
   AFTER_CHANGE,
@@ -10,6 +11,7 @@ import {
   chefRow,
   deleteDoc,
   getApp,
+  idPath,
   login,
   newAdmin,
   newChef,
@@ -19,6 +21,7 @@ import {
   photoPath,
   postDoc,
   privRow,
+  readyChef,
   setChef,
   setPriv,
   submit,
@@ -120,6 +123,21 @@ describe("CSRF content-type rule on the state-changing chef routes", () => {
       }
     },
   );
+
+  it("a request with no Content-Type header at all and no body is 400 on every state-changing route (tester T1)", async () => {
+    // The `null` entry above still sends a string body, and Request adds text/plain itself. This
+    // is the bare fetch(url, { method }) a browser sends when the fetch helper is not used.
+    const chef = await newChef();
+    for (const [name, h, method] of ROUTES.filter((r) => r[2] !== "GET")) {
+      const r = await chef.b.call(h, {
+        method,
+        contentType: null,
+        noBody: true,
+      });
+      expect(r.status, name).toBe(400);
+      expect(r.body.error.code, name).toBe("BAD_REQUEST");
+    }
+  });
 
   it("PATCH, POST and DELETE with a malformed or non-object JSON body are 400", async () => {
     const chef = await newChef();
@@ -489,6 +507,54 @@ describe("PATCH /api/chef/application: validation (422)", () => {
     expect(priv.kitchen_hygiene_ack_at).toBeNull();
   });
 
+  it("bio and other text with NUL, control characters or a lone surrogate is 422, never a database error (tester F1)", async () => {
+    const chef = await newChef();
+    for (const bio of [
+      "a\u0000b",
+      "\u0000",
+      "x\u0001y",
+      "tab ok\u007f",
+      "a\ud800",
+      "\udc00b",
+    ]) {
+      const r = await chef.b.call(patchApp, { method: "PATCH", body: { bio } });
+      expect(r.status, JSON.stringify(bio)).toBe(422);
+      expect(r.body.error.code).toBe("VALIDATION_FAILED");
+      expect(r.body.error.fields.bio).toBeTruthy();
+    }
+    for (const body of [
+      { cuisines: ["bad\u0000name"] },
+      { languages: ["x\ud800"] },
+      {
+        kitchenAddress: {
+          line: "1 A St\u0000",
+          city: "Mississauga",
+          postalCode: "L5B1A1",
+        },
+      },
+      {
+        kitchenAddress: {
+          line: "1 A St",
+          city: "Mis\ud800",
+          postalCode: "L5B1A1",
+        },
+      },
+    ]) {
+      const r = await chef.b.call(patchApp, { method: "PATCH", body });
+      expect(r.status, JSON.stringify(body)).toBe(422);
+    }
+    expect((await chefRow(chef.id)).bio).toBeNull();
+    // line breaks, tabs and real emoji are fine
+    const ok = await chef.b.call(patchApp, {
+      method: "PATCH",
+      body: { bio: "Line one\nLine two\twith a tab \u{1F35C}" },
+    });
+    expect(ok.status, ok.text).toBe(200);
+    expect((await chefRow(chef.id)).bio).toBe(
+      "Line one\nLine two\twith a tab \u{1F35C}",
+    );
+  });
+
   it("a validation failure writes nothing, even for the valid fields in the same request", async () => {
     const chef = await newChef();
     const r = await chef.b.call(patchApp, {
@@ -747,10 +813,13 @@ describe("PATCH: MOCK re-verification reset for the kitchen (N1)", () => {
     postalCode: "L5B1A1",
   };
 
-  async function chefWithKitchen(kitchen: string) {
+  async function chefWithKitchen(
+    kitchen: string,
+    options: string[] = ["customer_home", "chef_home"],
+  ) {
     const chef = await newChef();
     await setChef(chef.id, {
-      location_options: ["customer_home", "chef_home"],
+      location_options: options,
       chef_home_enabled: true,
     });
     await setPriv(chef.id, {
@@ -853,6 +922,70 @@ describe("PATCH: MOCK re-verification reset for the kitchen (N1)", () => {
     expect(r.body.chefHomeEnabled).toBe(true);
   });
 
+  it("a kitchen change resets the check and chef's home even when chef's home is not currently offered (tester T2)", async () => {
+    const chef = await chefWithKitchen("verified", ["customer_home"]);
+    const r = await chef.b.call(patchApp, {
+      method: "PATCH",
+      body: {
+        kitchenAddress: {
+          line: "2 New Street",
+          city: "Mississauga",
+          postalCode: "L5B 1A1",
+        },
+      },
+    });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.checks.kitchen).toBe("pending");
+    expect(r.body.chefHomeEnabled).toBe(false);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(false);
+  });
+
+  it("removing chef_home from locationOptions touches neither chef's home nor the kitchen check, and adding it back needs no admin (tester T3)", async () => {
+    const chef = await chefWithKitchen("verified");
+    const off = await chef.b.call(patchApp, {
+      method: "PATCH",
+      body: { locationOptions: ["customer_home"] },
+    });
+    expect(off.status, off.text).toBe(200);
+    expect(off.body.locationOptions).toEqual(["customer_home"]);
+    expect(off.body.checks.kitchen).toBe("verified");
+    expect(off.body.chefHomeEnabled).toBe(true);
+    const on = await chef.b.call(patchApp, {
+      method: "PATCH",
+      body: { locationOptions: ["customer_home", "chef_home"] },
+    });
+    expect(on.body.checks.kitchen).toBe("verified");
+    expect(on.body.chefHomeEnabled).toBe(true);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(true);
+  });
+
+  it("remove chef_home, change the kitchen, add chef_home back: the kitchen still needs a new review (no bypass)", async () => {
+    const chef = await chefWithKitchen("verified");
+    await chef.b.call(patchApp, {
+      method: "PATCH",
+      body: { locationOptions: ["customer_home"] },
+    });
+    const edit = await chef.b.call(patchApp, {
+      method: "PATCH",
+      body: {
+        kitchenAddress: {
+          line: "99 Sneaky Road",
+          city: "Mississauga",
+          postalCode: "L5B 1A1",
+        },
+      },
+    });
+    expect(edit.body.checks.kitchen).toBe("pending");
+    expect(edit.body.chefHomeEnabled).toBe(false);
+    const back = await chef.b.call(patchApp, {
+      method: "PATCH",
+      body: { locationOptions: ["customer_home", "chef_home"] },
+    });
+    expect(back.body.checks.kitchen).toBe("pending");
+    expect(back.body.chefHomeEnabled).toBe(false);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(false);
+  });
+
   it("the police check is never touched by the chef", async () => {
     const chef = await chefWithKitchen("verified");
     await setPriv(chef.id, { police_check_status: "verified" });
@@ -880,5 +1013,67 @@ describe("responses never carry other people's data", () => {
     const me = await chef.b.call(getMe, { method: "GET" });
     expect(me.status).toBe(200);
     expect(me.body.chef.hourlyRateCents).toBe(5000);
+  });
+
+  it("no route response holds the chef's phone, home address, email or any hash (tester T6)", async () => {
+    const chef = await readyChef({ chefHome: true });
+    const home = await chef.b.call(putAddress, {
+      method: "PUT",
+      body: {
+        line: "100 Private Avenue",
+        city: "Mississauga",
+        postalCode: "L5C 1A1",
+      },
+    });
+    expect(home.status, home.text).toBe(200);
+    const newId = idPath(chef.id);
+    await upload("chef-documents", newId);
+    const replies: [string, string][] = [];
+    const record = async (name: string, p: ReturnType<Browser["call"]>) => {
+      const r = await p;
+      replies.push([`${name} ${r.status}`, r.text]);
+      return r;
+    };
+    await record("GET", chef.b.call(getApp, { method: "GET" }));
+    await record(
+      "PATCH",
+      chef.b.call(patchApp, { method: "PATCH", body: { bio: "new bio" } }),
+    );
+    await record(
+      "POST documents",
+      chef.b.call(postDoc, { body: { kind: "id_document", path: newId } }),
+    );
+    await record("POST submit", chef.b.call(submit));
+    await record(
+      "DELETE documents",
+      chef.b.call(deleteDoc, {
+        method: "DELETE",
+        body: { kind: "kitchen_photo", path: chef.kitchen },
+      }),
+    );
+    // the application is now incomplete (no kitchen photo), so this is the 409 body
+    const incomplete = await record("POST submit (409)", chef.b.call(submit));
+    expect(incomplete.status).toBe(409);
+    expect(replies).toHaveLength(6);
+
+    const forbidden = [
+      chef.phoneNumber,
+      chef.phoneNumber.slice(2),
+      "+1******",
+      chef.email,
+      "100 Private",
+      "L5C1A1",
+      "L5C 1A1",
+      "phone_e164",
+      "address_line",
+    ];
+    for (const [name, text] of replies) {
+      for (const f of forbidden)
+        expect(
+          text,
+          `${name} must not contain ${f.slice(0, 6)}...`,
+        ).not.toContain(f);
+      expect(text, name).not.toMatch(/hash/i);
+    }
   });
 });

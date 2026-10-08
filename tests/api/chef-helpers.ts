@@ -260,7 +260,8 @@ export async function readyChef(
     expect(r.status, r.text).toBe(200);
   }
   // MOCK SMS: any 6 digits verify the (fictional) number.
-  const ph = await c.b.call(phone, { body: { phone: uniquePhone() } });
+  const phoneNumber = uniquePhone();
+  const ph = await c.b.call(phone, { body: { phone: phoneNumber } });
   expect(ph.status, ph.text).toBe(200);
   const vf = await c.b.call(verify, { body: { code: "123456" } });
   expect(vf.status, vf.text).toBe(200);
@@ -274,5 +275,5 @@ export async function readyChef(
   expect(dish.error).toBeNull();
   const app = await application(c.b);
   expect(app.missing, JSON.stringify(app.missing)).toEqual([]);
-  return { ...c, photo, idp, fhp, kitchen };
+  return { ...c, photo, idp, fhp, kitchen, phoneNumber };
 }
