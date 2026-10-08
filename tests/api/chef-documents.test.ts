@@ -732,4 +732,58 @@ describe("lost-race handling (optimistic lock on chef_private)", () => {
     expect(reads).toBeGreaterThan(1);
     expect((await privRow(chef.id)).kitchen_photo_paths).toEqual([]);
   });
+
+  // Any change to the row bumps updated_at, so the chef's conditional write loses every time.
+  const loseEveryRace = (id: string) => ({
+    afterRead: async () => {
+      await setPriv(id, { reject_reason: uuid() });
+    },
+  });
+
+  it("PATCH gives up the same way (409 INVALID_STATE) and saves no kitchen address", async () => {
+    const chef = await newChef();
+    const c = await asChef(chef);
+    await expect(
+      patchApplication(
+        c,
+        {
+          kitchenAddress: {
+            line: "1 A St",
+            city: "Mississauga",
+            postalCode: "L5B1A1",
+          },
+        },
+        loseEveryRace(chef.id),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_STATE" });
+    expect((await privRow(chef.id)).kitchen_address_line).toBeNull();
+  });
+
+  it("removing a kitchen photo gives up the same way and keeps the photo and its object", async () => {
+    const chef = await newChef();
+    const p = kitchenPath(chef.id);
+    await upload("kitchen-photos", p);
+    await setPriv(chef.id, { kitchen_photo_paths: [p] });
+    const c = await asChef(chef);
+    await expect(
+      removeKitchenPhoto(
+        c,
+        { bucket: "kitchen-photos", path: p },
+        loseEveryRace(chef.id),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_STATE" });
+    expect((await privRow(chef.id)).kitchen_photo_paths).toEqual([p]);
+    expect(await objectExists("kitchen-photos", p)).toBe(true);
+  });
+
+  it("submit gives up the same way and starts no check", async () => {
+    const chef = await readyChef();
+    const c = await asChef(chef);
+    await expect(
+      submitApplication(c, loseEveryRace(chef.id)),
+    ).rejects.toMatchObject({ code: "INVALID_STATE" });
+    const priv = await privRow(chef.id);
+    expect(priv.id_check_status).toBe("not_started");
+    expect(priv.food_handler_status).toBe("not_started");
+  });
 });
