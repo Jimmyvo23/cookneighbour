@@ -1,6 +1,6 @@
 # CookNeighbour data model and row-level security
 
-Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buckets`). This page describes it in plain English for the Tester (T-027) and the Reviewer. Money is integer cents. `country`, `currency` and `language` default to `CA`, `CAD`, `en`. Everything about payments, ID, food-handler, kitchen and police checks and SMS is **MOCK**.
+Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buckets`, `auth_backend`, `kitchen_photos_insert_only`). This page describes it in plain English for the Tester (T-027) and the Reviewer. Money is integer cents. `country`, `currency` and `language` default to `CA`, `CAD`, `en`. Everything about payments, ID, food-handler, kitchen and police checks and SMS is **MOCK**.
 
 ## How access works
 
@@ -111,12 +111,16 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | Bucket | Public | Policies |
 |---|---|---|
 | `chef-documents` (ID, food handler; MOCK verification) | no | users with role `chef` may insert into folder `<own uid>/`; only admin can read or delete |
-| `kitchen-photos` | **no** (decision D-10) | role `chef` inserts and updates in `<own uid>/`; the owner reads and deletes own; admin reads and deletes; the customer of an `accepted`/`completed`/no-show `chef_home` booking with that chef reads (`can_view_kitchen_photos`) |
+| `kitchen-photos` | **no** (decision D-10) | role `chef` may only **insert new objects** in `<own uid>/` (no update, no delete: migration `20261008150000_kitchen_photos_insert_only`, T-031 tester finding F3); the owner reads own; admin reads and deletes; the customer of an `accepted`/`completed`/no-show `chef_home` booking with that chef reads (`can_view_kitchen_photos`). The chef routes delete a removed photo with the service role |
 | `profile-photos` | public URLs work, **no listing** | any signed-in user inserts, updates, deletes in `<own uid>/`; only the folder owner and admin can select through the API |
 | `dish-photos` | public URLs work, **no listing** | same as profile photos, but only users with role `chef` may write; owner and admin can select |
 | `receipts` | no | path `<booking id>/<file>`: the booking's chef may insert; both parties and admin may read |
 
 Size limits 5 MB (photos) and 10 MB (documents, receipts); MIME types restricted. Anonymous users have no storage policies at all.
+
+**Why kitchen photos are insert-only for the chef (T-031, F3).** A verified MOCK kitchen check refers to a path, and the N1 reset only fires when the stored path changes. If the chef could overwrite or delete an object in place, the picture could change under a `verified` check. Without update or delete rights a changed picture needs a new name, which is a path change, which resets the check and switches chef's home off. `chef-documents` was already insert-only for chefs.
+
+**profile-photos and dish-photos stay owner-writable on purpose.** No verified check depends on those files, and a chef can already point a dish or profile row at a different new file at any time, so an in-place overwrite adds no power. Content moderation of public photos is a separate, later concern. Revisit when T-032 (dishes) decides whether dishes move to routes; if photo cleanup moves to the server then, the owner delete policy can go too.
 
 ## Stored file paths (B2)
 
