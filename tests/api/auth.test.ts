@@ -630,3 +630,66 @@ describe("PUT /api/me/address", () => {
     expect(me.text).not.toMatch(/hash/i);
   });
 });
+
+describe("unsafe text: tester additions (T-059)", () => {
+  const good = {
+    line: "100 Fictional Street",
+    city: "Mississauga",
+    postalCode: "l5b 1a1",
+  };
+
+  it("sign-up with a DEL character is 422 and creates no profile", async () => {
+    const res = await new Browser().call(signup, {
+      body: {
+        email: newEmail("customer"),
+        password: PASSWORD,
+        role: "customer",
+        displayName: "Ma\u007fi T-059 del",
+      },
+    });
+    expect(res.status).toBe(422);
+    expect(Object.keys(res.body.error.fields)).toEqual(["displayName"]);
+    const rows = await svc
+      .from("profiles")
+      .select("id")
+      .eq("display_name", "Ma\u007fi T-059 del");
+    expect(rows.data).toEqual([]);
+  });
+
+  it("a rejected PATCH leaves a chef's public copy unchanged; emoji pairs, apostrophes and hyphens pass", async () => {
+    const { b, id } = await signedUp("chef", "Chef Keep");
+    const bad = await b.call(patchMe, {
+      method: "PATCH",
+      body: { displayName: "Chef\u0000Bad" },
+    });
+    expect(bad.status).toBe(422);
+    const copy = await svc
+      .from("chefs")
+      .select("display_name")
+      .eq("profile_id", id)
+      .single();
+    expect(copy.data?.display_name).toBe("Chef Keep");
+    const name = "Siobhán O'Brien-Smith 👩‍🍳";
+    const ok = await b.call(patchMe, {
+      method: "PATCH",
+      body: { displayName: name },
+    });
+    expect(ok.status, ok.text).toBe(200);
+    expect(ok.body.displayName).toBe(name);
+  });
+
+  it("address line and city accept apostrophes, hyphens, accents and emoji pairs; DEL is refused", async () => {
+    const { b } = await signedUp();
+    const bad = await b.call(address, {
+      method: "PUT",
+      body: { ...good, line: "1 Main\u007f St" },
+    });
+    expect(bad.status).toBe(422);
+    expect(Object.keys(bad.body.error.fields)).toEqual(["line"]);
+    const ok = await b.call(address, {
+      method: "PUT",
+      body: { ...good, line: "5 O'Connor-Lane 🏠", city: "Île-Perrot" },
+    });
+    expect(ok.status, ok.text).toBe(200);
+  });
+});
