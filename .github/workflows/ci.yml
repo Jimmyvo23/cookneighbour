@@ -49,6 +49,17 @@ jobs:
           set +a
           npm run test:rls
 
+      # T-030: seed the throwaway local stack, then check the result. Runs after the RLS tests so
+      # the seed accounts cannot collide with their fixtures. The admin password is a local-only
+      # throwaway for this runner (not a secret, never used outside this job).
+      - name: Seed demo data and verify
+        env:
+          SEED_ADMIN_PASSWORD: ci-throwaway-admin-password-local-only
+        run: |
+          npm run db:seed -- --local
+          npm run db:seed -- --local   # second run proves it is idempotent
+          npm run db:seed -- --local --verify
+
       - run: npx playwright install --with-deps chromium
       - name: Playwright smoke test
         run: npm run test:e2e
