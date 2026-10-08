@@ -180,7 +180,7 @@ All routes: 401 without a session; role `chef` (else 403, decided from `profiles
 { "id": "uuid", "name": "Pho bo", "photoPath": "<chefId>/dish-<uuid>.jpg", "description": "Slow-cooked beef broth.", "cuisine": "Vietnamese", "cookMinutes": 180, "ingredientCostCents": 2500, "servings": 4, "allergens": ["soy", "wheat"], "shelfLifeDays": 2, "isActive": true, "currency": "CAD", "createdAt": "ISO", "updatedAt": "ISO" }
 ```
 
-Field rules (bounds confirmed as **Decision D-16 (Jimmy, 2026-10-08)**; they live in `src/lib/domain/dishes.ts`):
+Field rules (cook time, cost, servings and shelf life confirmed as **Decision D-16 (Jimmy, 2026-10-08)**; the cuisine and allergen bounds are still assumptions; all live in `src/lib/domain/dishes.ts`):
 
 | Field | Rule |
 |---|---|
