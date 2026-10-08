@@ -15,7 +15,11 @@ export default defineConfig({
   testDir: "./e2e",
   testIgnore: hasStack
     ? []
-    : ["**/auth-real.spec.ts", "**/chef-application-real.spec.ts"],
+    : [
+        "**/auth-real.spec.ts",
+        "**/chef-application-real.spec.ts",
+        "**/chef-dishes-real.spec.ts",
+      ],
   forbidOnly: !!env.CI,
   retries: env.CI ? 1 : 0,
   reporter: env.CI ? [["list"], ["html", { open: "never" }]] : "list",

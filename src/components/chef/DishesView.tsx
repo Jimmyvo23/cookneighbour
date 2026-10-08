@@ -320,18 +320,18 @@ function DishCard({
           <button
             type="button"
             className={secondaryButtonCls}
-            disabled={busy}
+            aria-disabled={busy}
             aria-label={`Edit ${dish.name}`}
-            onClick={onEdit}
+            onClick={() => !busy && onEdit()}
           >
             Edit
           </button>
           <button
             type="button"
             className={secondaryButtonCls}
-            disabled={busy}
+            aria-disabled={busy}
             aria-label={`${dish.isActive ? "Deactivate" : "Reactivate"} ${dish.name}`}
-            onClick={onToggle}
+            onClick={() => !busy && onToggle()}
           >
             {dish.isActive ? "Deactivate" : "Reactivate"}
           </button>

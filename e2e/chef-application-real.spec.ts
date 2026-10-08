@@ -9,7 +9,7 @@ import {
 
 // Runs against the REAL /api routes and a throwaway local Supabase (see playwright.config.ts).
 // Files go to real (local) Storage buckets. The ID, food-handler and kitchen checks are MOCK
-// (an admin would set them; the UI says so). Chefs have no dish editor yet (T-034), so the test
+// (an admin would set them; the UI says so). The dish editor has its own spec (chef-dishes-real); here the test
 // inserts one sample dish with the local service role, exactly as tests/api/chef-helpers.ts does.
 const PASSWORD = "e2e-password-1";
 const json = { "Content-Type": "application/json" };
@@ -208,7 +208,7 @@ test("a chef completes the application against the real routes and submits", asy
   await page.getByRole("button", { name: "Save acknowledgement" }).click();
   await expect(page.getByText(/Acknowledged on/)).toHaveCount(2);
 
-  // Still missing: the sample dish (no dish editor until T-034).
+  // Still missing: the sample dish (created below with a fixture to keep this spec about the application).
   await expect(page.getByTestId("missing-list")).toContainText("dish");
   await page.getByRole("button", { name: "Submit application" }).click();
   await expect(
