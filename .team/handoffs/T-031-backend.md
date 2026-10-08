@@ -1,4 +1,4 @@
-# Handoff: T-031 Chef onboarding API
+# Handoff: T-031 Chef onboarding API (round 2: tester findings folded in)
 
 From: backend  To: tester
 
@@ -30,6 +30,18 @@ From: backend  To: tester
 - No rate limit on the chef routes (none specified).
 - `displayName` counts as missing when blank or the placeholder "New user" (my reading of the contract's `displayName` item).
 - Attribution: commits carry `Co-Authored-By: Claude Sonnet 5.5` (the harness line); the Work Order text said Opus 5.5.
+
+## Round 2: tester findings folded into PR #67 (Planner decisions)
+Source: `.team/handoffs/T-031-tester.md` (committed). New migration: `supabase/migrations/20261008150000_kitchen_photos_insert_only.sql` (NOT applied to hosted; the Planner applies it after review, like the earlier ones).
+- **F3 (kitchen photo overwrite).** The migration drops `kitchen_photos_update_own` and `kitchen_photos_delete_own`: a chef can only insert new kitchen-photo objects. Tests in `tests/rls/storage-hardening.test.ts` (describe "F3"): exact policy set via `pg_policies`; owner can insert and read, upsert/update/re-insert of the same name are refused and the content stays; owner delete removes nothing; admin and the service role can delete; another chef still cannot write into the folder. The privilege snapshot covers table and function grants only, so it is unchanged (storage policies were never part of it). **profile-photos and dish-photos checked:** both still let the owner update and delete. No verified check depends on those files and the chef can already point a row at a new file, so I left them and pinned that decision in a test (T-032 should revisit it knowingly). Recorded in `docs/data-model.md` (Storage) and contract open point 10.
+- **F6.** The `i` flag is gone: file names must be lower case. Unit tests plus API tests pin that `ID-...`, an upper-case uuid and `.PNG` are 422. Contract rule 7 and the upload flow say so.
+- **F1.** `bio` rejects NUL and other control characters (line feed, carriage return and tab are allowed). I also reject lone UTF-16 surrogates in every text field (bio, cuisines, languages, kitchen address), because the database cannot store those either. Unit and API tests (422, row unchanged).
+- **F2.** Contract (PATCH) says `chefs` columns may already be saved when PATCH returns 409 after lost races. Pinned by an API test: bio and rate saved, `chef_home_enabled` switched off, kitchen address / acknowledgement / kitchen status not saved.
+- **F4 (MOCK in JSON).** The contract preamble now says only submit carries `mock: true` and the UI must label every check MOCK. No code change.
+- **F5.** The `contentType: null` case was a string body that `Request` gave text/plain. T1 adds a harness option `noBody` and tests a truly absent header.
+- **T1-T12** (new or extended tests): T1 `src/lib/api/request.test.ts` plus an API case on every state-changing route; T2 and T3 kitchen reset when chef's home is not offered, removing and re-adding `chef_home`, and the "remove chef_home, edit kitchen, add back" bypass; T4 approved and rejected chefs on the documents routes; T5 and T8 `tests/api/chef-storage-probe.test.ts` (a spy that wraps the real `objectExists`: zero calls for foreign, malformed and already-registered paths, one call for a new path); T6 no phone, home address, email or hash in any route response of a chef with data; T7 is the F1 test; T9 10 parallel registrations, 10 stored plus 2 parallel (409 both), 5 stored plus 8 parallel (exactly 5 succeed), acknowledgement plus photo in parallel; T10 DELETE with another kind's file name is 422 and no object is deleted; T11 `tests/api/chef-visibility.test.ts` (anon and a customer cannot read a pending or rejected chef, its dishes or chef_private after edits, submit, rejection and rejected -> pending; an approved chef is visible as the control); T12 `failed` check stays failed on a same-path re-register and the row is untouched, chef's home asserted off in the photo-removal test, F2 pin.
+- Counts are in the PR checks (see the CI run on the PR head). Local, no Docker: lint, typecheck, prettier, `npm test` (165 unit tests) and `npm run build` pass.
+- Open for the Tester to re-verify: the F3 migration needs a fresh `supabase start` so the policies are dropped (CI does this); tell me if you want the HTTP-level 409 for the give-up path (it is covered at library level, and the mapping is the shared `ApiFailure` -> `errorResponse`).
 
 ## What the next agent needs
 - Decisions applied: failed re-upload goes to pending (Planner); the kitchen reset also covers `failed` and photo removal; the first acknowledgement time is kept; an 11th kitchen photo is 409 `INVALID_STATE`; every chef route repairs missing rows; lost races retry up to 12 times then 409 `INVALID_STATE`.
