@@ -1,6 +1,6 @@
 // Abuse-check hashes (CLAUDE.md 6.6, PLAN.md A-2/A-3): HMAC-SHA256 keyed with the server-only
 // HASH_PEPPER. The pepper is always passed in; this file never reads the environment. The app
-// (src/lib/server/hashes.ts) and the seed script (scripts/seed.ts) both use these functions, so
+// (src/app/api/me/ routes, through private-rows.ts) and the seed script (scripts/seed.ts) both use these functions, so
 // demo hashes match what the app computes.
 import { createHmac } from "node:crypto";
 import { addressKey } from "./address.ts";

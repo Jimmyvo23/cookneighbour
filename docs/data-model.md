@@ -120,7 +120,7 @@ Size limits 5 MB (photos) and 10 MB (documents, receipts); MIME types restricted
 
 ## Stored file paths (B2)
 
-Trigger `chef_private_check_paths` requires `id_document_path`, `food_handler_path` and every entry of `kitchen_photo_paths` to start with `<chef id>/` (and contain no `..`), for every writer. When a non-admin client changes a verified ID document, food-handler document, kitchen photos or kitchen address, trigger `chef_private_reset_checks` sets the matching MOCK status back to `pending`; a kitchen change also sets `chefs.chef_home_enabled` to false until an admin re-enables it. Admin and server edits do not reset anything.
+Trigger `chef_private_check_paths` requires `id_document_path`, `food_handler_path` and every entry of `kitchen_photo_paths` to start with `<chef id>/` (and contain no `..`), for every writer. Trigger `chef_private_reset_checks` would set a matching MOCK status back to `pending` when a non-admin client changes a verified document or the kitchen, but since T-028 clients cannot update `chef_private`, so it is **inert** (the server and admin never fire it). The chef routes apply the N1 re-verification reset themselves (contract section 2): changed ID or food-handler document sets that check from `verified` to `pending`; changed kitchen photos or address sets `kitchen_status` to `pending` and `chefs.chef_home_enabled` to false until an admin re-enables it.
 
 ## Client insert columns
 

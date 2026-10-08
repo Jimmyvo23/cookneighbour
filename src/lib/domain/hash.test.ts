@@ -19,7 +19,7 @@ describe("hashes", () => {
       addressHash("100 fictional st.", "L5B1A1", "p"),
     );
   });
-  it("phone and address hashes never collide for the same text, and bad input throws", () => {
+  it("invalid input or an empty pepper throws", () => {
     expect(() => phoneHash("nope", "p")).toThrow();
     expect(() => addressHash("x", "nope", "p")).toThrow();
     expect(() => phoneHash("+14165550101", "")).toThrow();

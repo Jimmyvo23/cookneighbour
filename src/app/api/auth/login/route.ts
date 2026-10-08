@@ -28,6 +28,17 @@ export function POST(request: Request) {
       password: body.password as string,
     });
     if (error || !data.user) {
+      if (
+        error &&
+        (error.status === 429 || error.code === "over_request_rate_limit")
+      )
+        throw new ApiFailure(
+          "RATE_LIMITED",
+          "Too many attempts. Please try again later.",
+          {
+            retryAfterSeconds: 60,
+          },
+        );
       if (error && error.status !== undefined && error.status >= 500)
         throw new Error(`signIn failed: ${error.code ?? error.status}`);
       // One message for unknown email and wrong password.
