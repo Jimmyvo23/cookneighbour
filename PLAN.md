@@ -43,7 +43,7 @@ Everything in CLAUDE.md §3, §6, §10, §11 and §12. Highlights the plan is bu
 
 ### Assumptions (need Jimmy's confirmation; never treated as requirements)
 - A-1 **Location:** a seeded table maps GTA postal-code prefixes (first 3 characters, e.g. `L5B`) to a centre point. Distance = straight-line (haversine) in code. Postal codes whose prefix is not in the table are rejected as non-GTA. No geocoding service.
-- A-2 **Address normalization for the free-trial hash:** lowercase, trim, collapse spaces, strip punctuation, standard street abbreviations (Street→st, Avenue→ave…), unit number kept, postal code uppercase without space. Hash = SHA-256 with a server-only secret (`HASH_PEPPER`).
+- A-2 **Address normalization for the free-trial hash:** lowercase, trim, collapse spaces, strip punctuation, standard street abbreviations (Street→st, Avenue→ave…), unit number kept, postal code uppercase without space. Hash = HMAC-SHA256 keyed with a server-only secret (`HASH_PEPPER`), domain-separated (`phone:` / `address:`).
 - A-3 **Phone:** normalized to Canadian E.164 (`+1XXXXXXXXXX`); anything else is malformed. Hashed like A-2.
 - A-4 **Login** uses Supabase Auth email + password. Phone verification is a separate step with a **MOCK** SMS code (real SMS OTP needs a paid provider).
 - A-5 **Notifications** are in-app only (a notifications list and badge). No email or push.
@@ -116,12 +116,13 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
 | T-025 | Core schema migrations + RLS policies (all tables above) | backend | T-021 | done |
-| T-026 | API contract v1 `docs/api-contract.md` | backend | T-025 | todo |
+| T-026 | API contract v1 `docs/api-contract.md` | backend | T-025 | done |
 | T-027 | RLS test harness + "no access to others' bookings, messages, addresses" tests | tester | T-025, T-022 | done |
-| T-028 | Auth backend: sign-up as customer/chef, phone normalize + hash, MOCK SMS verify, address normalize + hash, chef starts `pending`, seeded admin | backend | T-025 | todo |
-| T-029 | Auth UI: sign-up, log-in, role choice, phone verify (MOCK badge), home address | frontend | T-026, T-028 | todo |
+| T-028 | Auth backend: sign-up as customer/chef, phone normalize + hash, MOCK SMS verify, address normalize + hash, chef starts `pending`, seeded admin | backend | T-025 | done |
+| T-029 | Auth UI: sign-up, log-in, role choice, phone verify (MOCK badge), home address | frontend | T-026, T-028 | done |
 | T-056 | Env variable rename (`…PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`), T-021 review fixes, CI hardening (#50) | backend | — | done |
-| T-030 | Seed data: GTA postal prefixes, cuisines, ~10 chefs (incl. Vietnamese in Mississauga; some pending/rejected), dishes, demo customers, admin | backend | T-025 | todo |
+| T-057 | Connect auth UI to real routes (mock off by default, route guards, e2e against real routes) | frontend | T-028, T-029 | in progress |
+| T-030 | Seed data: GTA postal prefixes, cuisines, ~10 chefs (incl. Vietnamese in Mississauga; some pending/rejected), dishes, demo customers, admin | backend | T-025 | done |
 
 ### Phase 3 — Chef side (WO-3)
 | ID | Task | Owner | Depends on | State |
@@ -177,6 +178,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-8 | 2026-10-07 | Rename Supabase key variables to match Supabase's new key names; fold Issue #50 into T-056 | Planner (Jimmy delegated) |
 | D-9 | 2026-10-07 | Seed admin password comes from `SEED_ADMIN_PASSWORD` in `.env.local`, not the README, because the repo is public | Planner (Jimmy delegated) |
 | D-10 | 2026-10-07 | Kitchen photos are private (chef, admin, customer of an accepted chef's-home booking); reverses the public-read line in §3 | Planner (Jimmy delegated), on Reviewer advice |
+| D-11 | 2026-10-07 | A verified phone number belongs to one account only (unique index on verified `phone_hash`, 409 `PHONE_IN_USE`) | Planner (Jimmy delegated) |
+| D-12 | 2026-10-07 | Routes are the only writers of `profiles`, `chefs`, `chef_private` (client UPDATE revoked); rejected chefs may edit and resubmit; admin approves only from `pending`; admin verify must name the reviewed files | Planner (Jimmy delegated), from T-026 review |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -241,4 +244,22 @@ Notes for each finished task are added here (CLAUDE.md §8).
 
 ### T-027 — RLS test harness (done 2026-10-07, PR #56)
 - `npm run test:rls`: 8 files, 107 tests against local Supabase in CI, acting as real users, each denied case paired with an allowed one. Exact privilege snapshot for anon and authenticated. Localhost guards on API and DB URLs.
+
+### T-026 — API contract v1 (done 2026-10-07, PR #58)
+- `docs/api-contract.md` + shared types `src/lib/api/types.ts`: auth, profile, phone (MOCK), address, chef application, admin queue (MOCK checks), public chef list. §2 lists the authorization every route must do in code (service role bypasses RLS). Two review rounds; decisions D-11, D-12.
+- For T-035: approve must also require both checks still `verified` in the same update; allow `reviewedAddress: null`; a "checks pending" queue filter.
+
+### T-030 — Seed data (done 2026-10-07, PR #59; not yet loaded into hosted)
+- `npm run db:seed -- --local|--hosted|--verify`, idempotent. 61 GTA postal prefixes (approximate centroids), admin (only with `SEED_ADMIN_PASSWORD`), 3 demo customers, 12 chefs (8 approved incl. Lan, Vietnamese, Mississauga L5B, both locations; 3 pending; 1 rejected), 31 dishes, 21 days of availability. All fictional, `@example.com`, 555 numbers. Demo logins in README.
+- Hosted run waits for Jimmy to set `SEED_ADMIN_PASSWORD`. Anyone reading the public README can log in to hosted demo accounts (fictional data, A-11).
+
+### T-028 — Auth backend (done 2026-10-07, PR #61; migration applied to hosted 2026-10-07)
+- Routes: signup, login, logout, GET/PATCH /api/me, phone + MOCK verify, address. Identity from `getUser()`, role from `profiles`, column whitelists, exact JSON content type (CSRF), `no-store`, in-memory placeholder rate limits (disclosed). Session refresh in `src/proxy.ts`.
+- Domain: `src/lib/domain/{phone,address,hash,private-rows}.ts` (E.164; full A-2 normalization; HMAC-SHA256). Seed imports the same code; a test proves identical hashes for demo customers.
+- Migration revokes client UPDATE on profiles/chefs/chef_private (D-12), photo-path folder checks, unique verified phone (D-11). Tests: 81 unit, 105 RLS, 29 API.
+- Follow-ups: tighten phone (N11 codes) and postal-letter validation (WO-4 domain tests); README known limits (T-054): address-hash evasion (`5-100` vs `Unit 5,`, accents, unit position), MOCK SMS lets anyone claim a number, one phone cannot hold a chef and a customer account; `X-Forwarded-For` trust (WO-7); T-031 must repair missing chef rows and apply the N1 re-verification reset in routes; test that JWT metadata role is ignored.
+
+### T-029 — Auth UI (done 2026-10-07, PR #60)
+- /signup (role choice), /login, /verify-phone (MOCK SMS badge), /address, log out in AccountBar. One fetch helper (JSON content type always, contract error shape, 429 retry). "MOCK API" badge whenever the mock adapter is on. axe: zero violations; keyboard-only flow; 375px OK.
+- Review caught a false privacy hint and lost focus after client navigation (fixed, regression test). Integration with real routes is T-057.
 
