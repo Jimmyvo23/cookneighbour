@@ -31,3 +31,9 @@ From: frontend  To: tester
 ## What the next agent needs
 - Try: keyboard-only through the editor (all checkboxes, file input), the calendar grid in a screen reader (names read "Thursday, October 8, 2026, today", pressed state), 375px width, dark mode, 50 active dishes, cancel and Escape behaviour, a second tab after log-out, opening /chef/* as customer, admin and signed out (HTML must carry no chef content).
 - Lessons-learned section 3 self-check: ids come from the loaded list only; photo paths are built from the signed-in user id; names are new uuids, `upsert: false`; shared text rule is applied before sending; labels and MOCK notes match behaviour; focus moves to the error or first invalid field after every error; server guard on every /chef page.
+
+## Round 2 (tester LOW findings)
+- **Upload kept on save failure:** `DishesView` now drops the stored upload only when `uploadRejected(err)` is true (403, or a `photoPath` field error); other failures (409 cap, 422 on other fields, network) keep it so a retry does not upload again. Choosing a different file still uploads anew. Unit test `uploadRejected` in `src/lib/chef/dishes.test.ts`.
+- **Visible disabled style:** `buttonCls` and `secondaryButtonCls` get `aria-disabled:opacity-60 aria-disabled:cursor-not-allowed` (month Prev/Next, Edit/Deactivate while busy, Save availability). They stay focusable.
+- Finding 3 untouched (`src/lib/domain/dishes.ts`), backlog.
+- Local: lint, typecheck, npm test (386), mock Playwright (36) pass. CI green on head 60c8a16ae856f655d60ff14bd99d173fa9d5135d (run 37832780391).
