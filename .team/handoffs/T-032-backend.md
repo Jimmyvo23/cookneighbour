@@ -45,3 +45,9 @@ name 1-120 (`Fields.text`-style unsafe-text rule), description null or <=1000 (n
   - direct browser writes with a chef session now fail with 42501.
 - Test data: helpers in `tests/api/dish-helpers.ts`; `readyChef()` still inserts its sample dish with the service role.
 - T-034 (Frontend) builds from contract sections 5A and 5B only.
+
+## Round 2 (fix round 1, after tester FAIL)
+- **Finding 1 fixed:** `isRealDate` in `src/lib/domain/dishes.ts` now rejects years before 0001 (`v < "0001-01-01"`), so `remove: ["0000-01-01"]` is 422, not a 500. The helper is used only by `parseAvailabilityBody`; no other gap. Contract 5B notes the rule.
+- **Finding 2:** tester's `tests/api/dishes-roles-tester.test.ts` (metadata role claims, year 0000) ran in CI and passed.
+- **Jimmy's decisions recorded** in `docs/api-contract.md` (no code change): D-15 (availability opt-in, window today..today+180 Toronto) and D-16 (dish bounds, 50 active dishes cap) replace the ASSUMPTION marks. `docs/data-model.md` had none to change.
+- Checks: lint, typecheck, prettier, `npm test` (285), build pass locally; CI `ci` green on the head (PR #75). Migration unchanged: Planner runs `npx supabase db push` after merge.
