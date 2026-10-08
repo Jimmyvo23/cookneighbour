@@ -218,7 +218,8 @@ describe("GET /api/admin/chefs", () => {
     expect(new Set(seen).size).toBe(seen.length);
     const total = await svc
       .from("chef_private")
-      .select("profile_id", { count: "exact", head: true });
+      .select("chef_id", { count: "exact", head: true });
+    expect(total.error).toBeNull();
     expect(seen.length).toBe(total.count);
     // The five new chefs come out in reverse creation order.
     const order = made.map((m) => seen.indexOf(m.id));
