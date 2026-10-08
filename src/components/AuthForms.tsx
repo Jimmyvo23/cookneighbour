@@ -66,7 +66,7 @@ export function SignUpForm() {
         className="flex flex-col gap-4"
         onSubmit={(e) => f.submit(e, { email, password, displayName, role })}
       >
-        <FormAlert message={f.formError} />
+        <FormAlert message={f.formError} id={f.alertId} />
         <fieldset
           className="flex flex-col gap-2"
           aria-describedby={f.errors.role ? "field-role-error" : undefined}
@@ -159,7 +159,7 @@ export function LoginForm() {
         className="flex flex-col gap-4"
         onSubmit={(e) => f.submit(e, { email, password })}
       >
-        <FormAlert message={f.formError} />
+        <FormAlert message={f.formError} id={f.alertId} />
         <TextField
           label="Email"
           name="email"
@@ -216,7 +216,7 @@ export function PhoneVerifyForm() {
           className="flex flex-col gap-4"
           onSubmit={(e) => submitForm.submit(e, { phone })}
         >
-          <FormAlert message={submitForm.formError} />
+          <FormAlert message={submitForm.formError} id={submitForm.alertId} />
           <TextField
             label="Mobile phone number"
             name="phone"
@@ -225,7 +225,7 @@ export function PhoneVerifyForm() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             error={submitForm.errors.phone}
-            hint="Canadian number, for example 416 555 0123. It is never shown to chefs."
+            hint="Canadian number, for example 416 555 0123. Chefs see it only after they accept your booking."
           />
           <SubmitButton busy={submitForm.busy}>Send code</SubmitButton>
         </form>
@@ -238,7 +238,7 @@ export function PhoneVerifyForm() {
           <p role="status">
             {sent.mockHint} Number: {sent.phoneMasked}
           </p>
-          <FormAlert message={verifyForm.formError} />
+          <FormAlert message={verifyForm.formError} id={verifyForm.alertId} />
           <TextField
             label="6-digit code"
             name="code"
@@ -289,7 +289,7 @@ export function AddressForm() {
         className="flex flex-col gap-4"
         onSubmit={(e) => f.submit(e, { line, city, postalCode })}
       >
-        <FormAlert message={f.formError} />
+        <FormAlert message={f.formError} id={f.alertId} />
         <TextField
           label="Street address"
           name="line"

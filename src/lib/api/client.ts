@@ -1,5 +1,5 @@
 import type { ApiError, ApiErrorCode } from "@/lib/api/types";
-import { mockFetch } from "@/lib/api/mock-adapter";
+import { mockFetch } from "@/lib/mocks/mock-adapter";
 
 /** MOCK switch. NEXT_PUBLIC_API_MOCK=1 forces the mock adapter, =0 forces real routes.
  *  Unset: on in development (until T-028 lands the real routes), off in production builds. */

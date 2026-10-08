@@ -5,7 +5,7 @@ From: frontend  To: tester
 ## What changed
 - Branch: `feature/T-029-auth-ui`
 - Pull request: see PR for branch `feature/T-029-auth-ui` (Closes #17)
-- Files: `src/lib/api/client.ts` (fetch helper), `src/lib/api/mock-adapter.ts` (MOCK), `src/lib/validation/auth.ts`, `src/components/{MockBadge,forms,AuthForms,AccountBar}.tsx`, pages `src/app/{signup,login,verify-phone,address}/page.tsx`, `src/app/layout.tsx` (AccountBar), `.env.example`, tests `src/lib/api/client.test.ts`, `src/lib/validation/auth.test.ts`, `e2e/auth.spec.ts`.
+- Files: `src/lib/api/client.ts` (fetch helper), `src/lib/api/mocks/mock-adapter.ts` (MOCK), `src/lib/validation/auth.ts`, `src/components/{MockBadge,forms,AuthForms,AccountBar}.tsx`, pages `src/app/{signup,login,verify-phone,address}/page.tsx`, `src/app/layout.tsx` (AccountBar), `.env.example`, tests `src/lib/api/client.test.ts`, `src/lib/validation/auth.test.ts`, `e2e/auth.spec.ts`.
 
 ## How to verify
 `npm ci && npm run lint && npm run typecheck && npx prettier --check . && npm test && npm run build && npm run test:e2e`. All pass locally (21 unit tests, 3 e2e).

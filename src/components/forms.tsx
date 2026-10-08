@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ApiClientError, formatRetry } from "@/lib/api/client";
 import type { FieldErrors } from "@/lib/validation/auth";
 
@@ -53,10 +53,16 @@ export function TextField({
   );
 }
 
-export function FormAlert({ message }: { message: string | null }) {
+export function FormAlert({
+  message,
+  id,
+}: {
+  message: string | null;
+  id: string;
+}) {
   return (
     <div
-      id="form-alert"
+      id={id}
       tabIndex={-1}
       role="alert"
       className={
@@ -112,18 +118,23 @@ export function useApiForm<V, R>(opts: {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const alertId = useId();
+  // The submitted form element. Focus lookups are scoped to it, because hidden earlier pages stay
+  // mounted (cacheComponents) and a document-wide query could focus the wrong page.
+  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
   const [focusTick, setFocusTick] = useState(0);
 
   // Move focus after errors render: first invalid field, else the alert.
   useEffect(() => {
     if (!focusTick) return;
-    const bad = document.querySelector<HTMLElement>('[aria-invalid="true"]');
-    (bad ?? document.getElementById("form-alert"))?.focus();
-  }, [focusTick]);
+    const bad = formEl?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    (bad ?? formEl?.querySelector<HTMLElement>(`[id="${alertId}"]`))?.focus();
+  }, [focusTick, formEl, alertId]);
 
   async function submit(e: React.FormEvent, values: V) {
     e.preventDefault();
     if (busy) return;
+    setFormEl(e.currentTarget as HTMLFormElement);
     setFormError(null);
     const local = opts.validate(values);
     setErrors(local);
@@ -148,5 +159,5 @@ export function useApiForm<V, R>(opts: {
       setBusy(false);
     }
   }
-  return { errors, formError, busy, submit };
+  return { errors, formError, busy, alertId, submit };
 }

@@ -34,6 +34,7 @@ import {
 
 interface MockState {
   profile: MeProfile | null;
+  /** Masked only (e.g. "+1******0123"); the full number is never kept. */
   phone: string | null;
   phoneVerified: boolean;
   address: AddressResponse["address"] | null;
@@ -118,7 +119,7 @@ function me(s: MockState): MeResponse {
   return {
     profile: s.profile!,
     private: {
-      phoneMasked: s.phone ? mask(s.phone) : null,
+      phoneMasked: s.phone,
       phoneVerified: s.phoneVerified,
       address: s.address,
     },
@@ -213,7 +214,7 @@ export async function mockFetch(
     const e164 = toE164(b.phone);
     if (e164.endsWith("0000"))
       return fail(409, "PHONE_IN_USE", "That phone number can't be used.");
-    save({ ...s, phone: e164, phoneVerified: false });
+    save({ ...s, phone: mask(e164), phoneVerified: false });
     return json(200, {
       phoneMasked: mask(e164),
       mock: true,
