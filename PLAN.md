@@ -1,7 +1,7 @@
 # CookNeighbour — Plan and Task Board
 
 Owner: Planner. Approver: Jimmy. Source of truth for requirements: `CLAUDE.md`.
-Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved and finished 2026-10-07. WO-2 (Phase 2b) approved and finished 2026-10-07. Every later phase still needs its own Work Order.
+Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved and finished 2026-10-07. WO-2 (Phase 2b) approved and finished 2026-10-07. WO-3 to WO-6 pre-approved by Jimmy 2026-10-07 (D-13). Every later phase still needs its own Work Order.
 
 ---
 
@@ -180,6 +180,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-10 | 2026-10-07 | Kitchen photos are private (chef, admin, customer of an accepted chef's-home booking); reverses the public-read line in §3 | Planner (Jimmy delegated), on Reviewer advice |
 | D-11 | 2026-10-07 | A verified phone number belongs to one account only (unique index on verified `phone_hash`, 409 `PHONE_IN_USE`) | Planner (Jimmy delegated) |
 | D-12 | 2026-10-07 | Routes are the only writers of `profiles`, `chefs`, `chef_private` (client UPDATE revoked); rejected chefs may edit and resubmit; admin approves only from `pending`; admin verify must name the reviewed files | Planner (Jimmy delegated), from T-026 review |
+| D-13 | 2026-10-07 | WO-3 to WO-6 pre-approved; Planner writes each Work Order and starts without pausing. Quality over speed: full Builder → Tester → Reviewer on every task, no loosening of branch protection. WO-7 deploy and hosted seeding still need Jimmy | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
