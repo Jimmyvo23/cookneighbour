@@ -193,8 +193,8 @@ export interface ChefApplication extends ChefOwnSummary {
   missing: string[];
 }
 
+/** The display name is not editable here: use PATCH /api/me (profiles is the single source). */
 export interface UpdateChefApplicationRequest {
-  displayName?: string;
   bio?: string | null;
   /** Object name in bucket profile-photos, "<chefId>/...". */
   photoPath?: string | null;
@@ -244,6 +244,12 @@ export interface AdminChefListItem {
   chefHomeEnabled: boolean;
   locationOptions: LocationType[];
 }
+export interface AdminChefListQuery {
+  /** Default "pending". */
+  status?: ChefStatus | "all";
+  limit?: number;
+  cursor?: string;
+}
 export type AdminChefListResponse = Page<AdminChefListItem>;
 
 export interface SignedDocumentUrl {
@@ -268,16 +274,26 @@ export interface AdminChefActionResponse {
   application: ChefApplication;
 }
 
-/** MOCK checks. Any subset may be sent. */
+/**
+ * MOCK checks. Any subset may be sent, at least one. Sending idCheck requires idDocumentPath and
+ * sending foodHandlerCheck requires foodHandlerPath: the paths the admin viewed. The server saves
+ * only if they still match the stored values, else 409 INVALID_STATE.
+ */
 export interface AdminChecksRequest {
   idCheck?: MockCheckStatus;
+  idDocumentPath?: string;
   foodHandlerCheck?: MockCheckStatus;
+  foodHandlerPath?: string;
   policeCheck?: PoliceCheckStatus;
 }
 export interface KitchenReviewRequest {
   decision: "approve" | "reject";
   /** Required for reject (3 to 500 characters). */
   note?: string;
+  /** Kitchen photo paths the admin viewed. Must equal the stored paths, else 409 INVALID_STATE. */
+  reviewedPhotoPaths: string[];
+  /** Kitchen address the admin viewed. Must equal the stored address, else 409 INVALID_STATE. */
+  reviewedAddress: { line: string; city: string; postalCode: string };
 }
 
 // ---------------------------------------------------------------------------

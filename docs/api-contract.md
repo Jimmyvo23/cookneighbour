@@ -10,7 +10,7 @@ Items marked **ASSUMPTION** or **PROPOSED** are not requirements; they need a no
 
 - Routes are Next.js Route Handlers under `src/app/api/`. JSON in, JSON out, `Content-Type: application/json`. Success responses are the bare response type (no envelope). Money is integer cents. Dates are ISO 8601 strings.
 - **Session:** Supabase Auth email + password. The session lives in HttpOnly cookies set by `@supabase/ssr`; no tokens appear in request or response bodies. The browser never calls these routes with an `Authorization` header. **ASSUMPTION:** email confirmation is switched off on the hosted project for the demo, so sign-up returns a signed-in session (`signedIn: true`). If it is on, `signedIn` is false and the UI shows "check your email".
-- **CSRF (ASSUMPTION):** state-changing routes require `Content-Type: application/json` (rejects plain form posts, 400 `BAD_REQUEST`) and rely on SameSite=Lax cookies. A stricter `Origin` check may be added in hardening (WO-8).
+- **CSRF (ASSUMPTION):** every state-changing request (POST, PUT, PATCH, DELETE), **including login and logout** and body-less actions such as approve and submit, must send `Content-Type: application/json`. The server compares the media type exactly (`application/json`, optionally with a `charset` parameter; `text/plain`, `multipart/*`, `application/x-www-form-urlencoded` and a missing header are all rejected with 400 `BAD_REQUEST`) and relies on SameSite=Lax cookies. Frontend: use one fetch helper that always sets the header. A stricter `Origin` check may be added in hardening (WO-8).
 - **Error format** (every non-2xx):
 
 ```json
@@ -19,12 +19,12 @@ Items marked **ASSUMPTION** or **PROPOSED** are not requirements; they need a no
 
 | HTTP | `code` | When |
 |---|---|---|
-| 400 | `BAD_REQUEST` | Malformed JSON, wrong content type |
+| 400 | `BAD_REQUEST` | Malformed JSON, content type is not exactly `application/json` |
 | 401 | `UNAUTHENTICATED` | No valid session |
 | 401 | `INVALID_CREDENTIALS` | Login failed (same message for unknown email and wrong password) |
 | 403 | `FORBIDDEN` | Signed in but wrong role (or not allowed) |
 | 404 | `NOT_FOUND` | Missing row, or a row the caller must not know exists |
-| 409 | `EMAIL_IN_USE`, `PHONE_IN_USE`, `PHONE_NOT_SUBMITTED`, `PHONE_NOT_VERIFIED`, `INVALID_STATE`, `APPLICATION_INCOMPLETE` | State conflicts |
+| 409 | `EMAIL_IN_USE`, `PHONE_IN_USE`, `PHONE_NOT_SUBMITTED`, `PHONE_NOT_VERIFIED`, `INVALID_STATE`, `APPLICATION_INCOMPLETE` | State conflicts. `APPLICATION_INCOMPLETE` always carries `error.missing` (list of item names, same vocabulary as `ChefApplication.missing`). `INVALID_STATE` also covers a stale admin review (stored file or kitchen data changed since the admin viewed it) |
 | 422 | `VALIDATION_FAILED` | Field errors in `fields` (keyed by request field names) |
 | 429 | `RATE_LIMITED` | `retryAfterSeconds` plus `Retry-After` header |
 | 500 | `INTERNAL` | Generic message only; details go to server logs, never the body |
@@ -39,15 +39,17 @@ Row-level security protects the browser path, but route handlers that use the **
 
 1. **Identity from the session only.** Call `supabase.auth.getUser()` on the server client (it re-validates with Supabase). Never use `getSession()` for decisions. Never accept `userId`, `chefId` or `role` from the body, query or headers (except the `:id` of an admin route, which is checked against admin rights first).
 2. **Role from the database**, not from JWT metadata or the request: read `profiles.role` for the caller. `user_metadata` is user-editable and must never be trusted for authorization.
-3. **Prefer the user-scoped client** (publishable key + cookie) so RLS applies. Use the service-role client only for the operations marked "service" below, and only after steps 1 and 2 pass. The service-role module is `server-only` and never imported into client code.
+3. **Prefer the user-scoped client** (publishable key + cookie) for reads so RLS applies. Use the service-role client for the writes marked "service" below, and only after steps 1 and 2 pass. The service-role module is `server-only` and never imported into client code.
+   - **Routes are the only writers of `chefs` and `chef_private` (decision B2 option a).** The browser must not update these tables directly, because direct updates would skip the checks below (acknowledgement timestamps from the server clock, hourly-rate bounds, photo and document path ownership, registered and existing objects). **The T-028 migration** (not this PR) revokes client `UPDATE` on `public.chefs` and `public.chef_private`, drops the own-row update policies (`chefs_update_own`, `chef_private_update_own`), and adds folder checks so a stored `dishes.photo_path` and `chefs.photo_path` must start with the owner's own folder (`<chefId>/`). Until that migration is applied, routes still must not rely on the client doing the right thing. Dishes and availability stay client-writable under RLS.
 4. **Admin routes** (`/api/admin/**`): first check `role = 'admin'`; otherwise 403 before any query. Unauthenticated is 401.
 5. **Ownership:** chef routes act on the caller's own `chefs.profile_id` only. A path or body that names another chef's file or id is rejected (403 for a foreign path prefix).
-6. **Whitelist columns.** Build the update object from the allowed fields of the request type; never spread the request body into an update. Moderation columns (`chefs.status`, `chef_home_enabled`, `rating_avg`, `review_count`, all `chef_private` check statuses and `reject_reason`) are written only by admin routes or the sign-up route, even though the database also guards them for clients.
+6. **Whitelist columns.** Build the update object from the allowed fields of the request type; never spread the request body into an update. Moderation columns (`chefs.status`, `chef_home_enabled`, `rating_avg`, `review_count`, all `chef_private` check statuses and `reject_reason`) are written only by the admin routes, `POST /api/chef/application/submit` (sets statuses to `pending` and moves `rejected` to `pending`), the chef documents/PATCH routes (re-verification reset, see N1 below) and the sign-up route (initial rows). The database also guards them for clients.
+   - **Re-verification reset is done by the routes (N1).** The database trigger `chef_private_reset_checks` fires only for user-scoped writes, so it will not fire for route writes. Therefore `PATCH /api/chef/application` and the documents routes must, in the same update: set `id_check_status` / `food_handler_status` from `verified` to `pending` when that document path changes; and when the kitchen photos or kitchen address change, set `kitchen_status` from `verified` to `pending` and `chefs.chef_home_enabled = false`. Never touch a status that is not `verified` except as `submit` describes. These resets need route tests.
 7. **Storage paths:** a path is accepted only if it starts with `<caller id>/`, has no `..`, no leading `/`, and the object exists in the expected bucket (check with a service-role `list`/`info`, not trust). Stored paths are object names; the bucket is implied by the field.
 8. **Private data never leaves in a list or public response:** no phone (full), hashes, address, documents, reject reason, check statuses in public routes. Hashes (`phone_hash`, `address_hash`) are never returned by any route, including to admin.
 9. **Secrets:** `HASH_PEPPER` and the secret key are read only in server-only modules; never logged, never in error bodies.
 10. **Validation** with a schema on every body and query before touching the database; reject unknown role values (`admin` can never be requested at sign-up).
-11. **Status transitions** are checked against the current row inside the same request (e.g. approve only from `pending` or `rejected` as listed below), preferably as one conditional `update ... where status = ...` to avoid races.
+11. **Status transitions** are checked against the current row inside the same request (approve only from `pending`; reject from `pending` or `approved`; submit from `pending` or `rejected`), preferably as one conditional `update ... where status = ...` to avoid races.
 
 ## 3. Auth and own profile
 
@@ -78,8 +80,8 @@ Row-level security protects the browser path, but route handlers that use the **
 
 ### PATCH /api/me
 - **Who:** signed in, own profile. **Request:** `UpdateMeRequest` `{ displayName? }`. **Response:** `MeProfile`.
-- **MUST:** only `display_name` is written (`role`, `country`, etc. ignored/rejected as unknown keys with 422). For a chef, also update `chefs.display_name` so the public name matches (service, same request).
-- **Errors:** 401, 422. **Tables:** `profiles` (+ `chefs`).
+- **MUST:** only `display_name` is written (`role`, `country`, etc. ignored/rejected as unknown keys with 422). `profiles.display_name` is the single source of truth. For a chef, the same route also writes the denormalized copy `chefs.display_name` (needed for the public listing) in the same request (service). `PATCH /api/chef/application` does not accept a display name.
+- **Errors:** 401, 422. **Tables:** `profiles` (+ `chefs` for chefs). Sign-up writes both with the same value.
 
 ## 4. Phone (MOCK SMS) and home address
 
@@ -118,9 +120,9 @@ All routes: role must be `chef` (else 403). Acts only on `chefs.profile_id = cal
 ### PATCH /api/chef/application
 - **Request:** `UpdateChefApplicationRequest` (all fields optional). **Response 200:** `ChefApplication`.
 - **Validation:** `bio` up to 2000; `cuisines` and `languages` 1 to 10 entries each, trimmed, 1 to 40 chars (**ASSUMPTION:** free text now; a fixed list may come later); `hourlyRateCents` integer 500 to 20000 (**ASSUMPTION** bounds, DB only requires > 0); `servicePostalPrefix` must exist in `postal_prefixes`; `serviceRadiusKm` 1 to 200; `locationOptions` non-empty subset of `customer_home`, `chef_home`; `kitchenAddress.postalCode` must be a GTA postal code; acknowledgements accept only `true`.
-- **Does:** user-scoped client update on `chefs` (public fields) and `chef_private` (kitchen address, acknowledgement timestamps set by the server clock). Editing kitchen address or photos makes the database reset the kitchen MOCK status to `pending` and set `chef_home_enabled = false`; the response shows this.
-- **MUST check:** whitelist of columns (no `status`, `chefHomeEnabled`, ratings, checks, reject reason); role chef. `photoPath` must pass the storage path rule (prefix `<chefId>/`, object exists in `profile-photos`). Selecting `chef_home` in `locationOptions` is allowed, but the option only works for bookings once an admin sets `chef_home_enabled` (trigger on bookings enforces it).
-- **Errors:** 401, 403, 422, 409 `INVALID_STATE` if the chef is `rejected` and tries to edit (they must be reopened by `POST /api/chef/application/submit`, see below; **ASSUMPTION:** rejected chefs may edit and resubmit once).
+- **Does (service, after the checks below):** updates `chefs` (public fields) and `chef_private` (kitchen address, acknowledgement timestamps from the server clock). Because the server is the writer, the route itself applies the re-verification reset: a kitchen address change sets `kitchen_status` from `verified` to `pending` and `chef_home_enabled = false` (N1). The response shows the new state.
+- **MUST check:** whitelist of columns (no `status`, `chefHomeEnabled`, ratings, checks, reject reason); role chef. `photoPath` must pass the storage path rule (prefix `<chefId>/`, object exists in `profile-photos`). Allowed while the chef is `pending`, `rejected` or `approved`. Selecting `chef_home` in `locationOptions` is allowed, but the option only works for bookings once an admin sets `chef_home_enabled` (trigger on bookings enforces it).
+- **Errors:** 401, 403, 422. A `rejected` chef may edit while still `rejected` (the reason stays visible); sending the application again is `POST /api/chef/application/submit`, which moves `rejected` to `pending`. There is no resubmit limit in v1 (Planner decision B3). An `approved` chef who edits stays approved and public; changed documents or kitchen data are re-verified through the MOCK reset (N5, MOCK, acceptable).
 
 ### Document upload flow (ID, food handler, kitchen photos)
 1. The browser uploads the file **directly to Supabase Storage** with the user session (`supabase.storage.from(bucket).upload(path, file)`). RLS lets a user with role chef write only under `<own uid>/`.
@@ -132,17 +134,17 @@ All routes: role must be `chef` (else 403). Acts only on `chefs.profile_id = cal
 
 ### POST /api/chef/application/documents
 - **Request:** `RegisterDocumentRequest` `{ kind, path }`. **Response 200:** `RegisterDocumentResponse`.
-- **Does:** sets `chef_private.id_document_path` / `food_handler_path`, or appends to `kitchen_photo_paths` (max 10, **ASSUMPTION**). Changing an already-verified document or the kitchen photos makes the DB reset the matching MOCK status to `pending` (and disable chef's-home).
-- **MUST check:** role chef; path starts with `<caller id>/`, no `..`, matches the kind's file pattern; object exists in the right bucket (service-role storage `info`); the path was not already registered by someone else (it cannot be: prefix is the owner id). Database trigger `chef_private_check_paths` is the backstop.
+- **Does (service):** sets `chef_private.id_document_path` / `food_handler_path`, or appends to `kitchen_photo_paths` (max 10, **ASSUMPTION**). The route applies the re-verification reset itself (section 2, N1): changing a verified document sets that MOCK status to `pending`; changing kitchen photos sets `kitchen_status` to `pending` (if verified) and `chef_home_enabled = false`.
+- **MUST check:** role chef; path starts with `<caller id>/`, no `..`, matches the kind's file pattern; object exists in the right bucket (service-role storage `info`); the path was not already registered by someone else (it cannot be: prefix is the owner id). The database trigger `chef_private_check_paths` is a backstop.
 - **Errors:** 403 (foreign prefix), 404 (object not uploaded), 422 (bad kind/path), 401.
 - **Tables:** `chef_private`; storage `chef-documents`, `kitchen-photos`.
 
 ### DELETE /api/chef/application/documents
-- **Request:** `RemoveDocumentRequest` `{ kind: "kitchen_photo", path }` (only kitchen photos are removable by the chef; replacing an ID or food-handler document is done by registering a new one). **Response 200:** `RegisterDocumentResponse`. Same checks as above; removes the path from the array and, with the service role, deletes the object. Resets kitchen check as for any kitchen change.
+- **Request:** `RemoveDocumentRequest` `{ kind: "kitchen_photo", path }` (only kitchen photos are removable by the chef; replacing an ID or food-handler document is done by registering a new one). **Response 200:** `RegisterDocumentResponse`. Same checks as above; removes the path from the array and, with the service role, deletes the object. Applies the same kitchen reset (section 2, N1).
 
 ### POST /api/chef/application/submit
 - **Request:** none. **Response 200:** `SubmitApplicationResponse` `{ application, mock: true }`.
-- **Does (service, because check statuses are moderation columns):** requires `missing` to be empty; sets `id_check_status`, `food_handler_status` to `pending`, and `kitchen_status` to `pending` when `chef_home` is selected; if the chef was `rejected`, sets status back to `pending` and clears `reject_reason`. MOCK: nothing is verified automatically; an admin sets results (section 6).
+- **Does (service, because check statuses are moderation columns):** requires `missing` to be empty. Moves only checks that are `not_started` or `failed` to `pending` (`id_check_status`, `food_handler_status`, and `kitchen_status` when `chef_home` is selected); **never overwrites `verified` or an already `pending` check** (N2). If the chef was `rejected`, sets status to `pending` and clears `reject_reason` (B3). If the chef is already `pending` with nothing to move, it is an idempotent no-op returning 200. MOCK: nothing is verified automatically; an admin sets results (section 6).
 - **Errors:** 409 `APPLICATION_INCOMPLETE` with `missing`, 409 `INVALID_STATE` if already `approved`, 401, 403.
 
 ## 6. Admin chef queue (all checks are MOCK)
@@ -150,7 +152,7 @@ All routes: role must be `chef` (else 403). Acts only on `chefs.profile_id = cal
 All routes: caller must be `admin` (check 4 in section 2). Writes use the service role after that check. Every change should append a line to the server log with the admin id and chef id (no document content).
 
 ### GET /api/admin/chefs
-- **Query:** `status` (`pending` default, `approved`, `rejected`, `all`), `limit`, `cursor`. **Response:** `AdminChefListResponse`. Newest first (`created_at`).
+- **Query:** `AdminChefListQuery` `status` (`pending` default, `approved`, `rejected`, `all`), `limit`, `cursor`. **Response:** `AdminChefListResponse`. Newest first (`created_at`).
 - **Tables:** `chefs`, `chef_private` (checks).
 
 ### GET /api/admin/chefs/:id
@@ -159,8 +161,8 @@ All routes: caller must be `admin` (check 4 in section 2). Writes use the servic
 
 ### POST /api/admin/chefs/:id/approve
 - **Request:** none. **Response:** `AdminChefActionResponse`.
-- **Preconditions (else 409 `APPLICATION_INCOMPLETE` + `missing`):** status is `pending` (a `rejected` chef must resubmit first; approved is 409 `INVALID_STATE`); display name, bio, photo, at least one cuisine and language, hourly rate, service prefix, `allergen_ack_at`, ID and food-handler documents present; the chef's phone is verified (**ASSUMPTION**); at least one active dish with a photo (the "sample menu with photos", CLAUDE.md 6.7; depends on WO-3 dishes). MOCK `id_check_status` and `food_handler_status` must be `verified` (**ASSUMPTION**, the admin sets them first via `/checks`; a demo shortcut may be added later).
-- **Does:** `chefs.status = 'approved'`, clear `reject_reason`, add a row to `notifications` for the chef ("approved"). Does **not** enable chef's-home (see kitchen review).
+- **Preconditions (else 409 `APPLICATION_INCOMPLETE` + `missing`):** status is `pending` (a `rejected` chef must call `/submit` first, which moves it to `pending`; `rejected` and `approved` give 409 `INVALID_STATE`; B3); display name, bio, photo, at least one cuisine and language, hourly rate, service prefix, `allergen_ack_at`, ID and food-handler documents present **and each stored object confirmed to exist** in its bucket (service-role storage `info`; B2); the chef's phone is verified (**ASSUMPTION**); at least one active dish with a photo (the "sample menu with photos", CLAUDE.md 6.7; depends on WO-3 dishes). MOCK `id_check_status` and `food_handler_status` must be `verified` (**ASSUMPTION**, the admin sets them first via `/checks`; a demo shortcut may be added later).
+- **Does:** re-reads the row in one conditional update `where status = 'pending'`; sets `chefs.status = 'approved'`, clear `reject_reason`, add a row to `notifications` for the chef ("approved"). Does **not** enable chef's-home (see kitchen review).
 - **Tables:** `chefs`, `chef_private`, `dishes`, `profile_private`, `notifications`.
 
 ### POST /api/admin/chefs/:id/reject
@@ -169,11 +171,13 @@ All routes: caller must be `admin` (check 4 in section 2). Writes use the servic
 - Pending and rejected chefs never appear in public routes (RLS plus the route filter).
 
 ### PATCH /api/admin/chefs/:id/checks
-- **Request:** `AdminChecksRequest` `{ idCheck?, foodHandlerCheck?, policeCheck? }`. **Response:** `AdminChefActionResponse`.
+- **Request:** `AdminChecksRequest` `{ idCheck?, idDocumentPath?, foodHandlerCheck?, foodHandlerPath?, policeCheck? }`. **Response:** `AdminChefActionResponse`.
+- **Stale-review protection (B1):** sending `idCheck` requires `idDocumentPath`, and sending `foodHandlerCheck` requires `foodHandlerPath`; these are the paths the admin actually viewed (from `GET /api/admin/chefs/:id`). The route saves only if they still equal the stored `id_document_path` / `food_handler_path`; otherwise 409 `INVALID_STATE` and nothing is written (the chef replaced the file after the admin opened it). A missing reviewed path is 422. `policeCheck` has no file. The comparison and the update are one conditional statement to avoid races.
 - **MOCK:** these are simulated outcomes recorded by the admin, not real checks. Writes the matching `chef_private` status columns. At least one field required (422). The UI labels each with MOCK.
 
 ### POST /api/admin/chefs/:id/kitchen-review
-- **Request:** `KitchenReviewRequest` `{ decision, note? }`. **Response:** `AdminChefActionResponse`.
+- **Request:** `KitchenReviewRequest` `{ decision, note?, reviewedPhotoPaths, reviewedAddress }`. **Response:** `AdminChefActionResponse`.
+- **Stale-review protection (B1):** `reviewedPhotoPaths` (set-equal compare) and `reviewedAddress` are what the admin viewed. If they differ from the stored `kitchen_photo_paths` or kitchen address, 409 `INVALID_STATE` and nothing is written. Both are required for `approve` and `reject` (422 if missing).
 - **Does:** `approve` requires `chef_home` in `location_options`, kitchen address, at least 1 kitchen photo, `kitchen_hygiene_ack_at`, else 409 `APPLICATION_INCOMPLETE`; then `kitchen_status = 'verified'` and `chef_home_enabled = true`. `reject` (note required) sets `kitchen_status = 'failed'` and `chef_home_enabled = false`, and notifies the chef. MOCK.
 - **Tables:** `chef_private`, `chefs`, `notifications`.
 
@@ -219,23 +223,34 @@ CLAUDE.md section 10 lists "duplicate or malformed phone numbers". The free tria
 |---|---|---|---|
 | POST /api/auth/signup | anon | anon + service (chef rows) | service for `chefs`, `chef_private` |
 | POST /api/auth/login, /logout | anon / any | SSR client | Supabase Auth |
-| GET, PATCH /api/me | any signed in | user-scoped (+ service for chef display name) | user / service |
+| GET /api/me | any signed in | user-scoped | none |
+| PATCH /api/me | any signed in | service (profiles + chefs copy) | service |
 | POST /api/me/phone, /phone/verify | customer, chef | service for `profile_private` | service |
 | PUT /api/me/address | customer, chef | service | service |
-| GET, PATCH /api/chef/application | chef | user-scoped | RLS + guard triggers |
-| POST, DELETE /api/chef/application/documents | chef | user-scoped + service (storage info/delete) | RLS |
+| GET /api/chef/application | chef | user-scoped read (+ service to repair rows) | none (repair only) |
+| PATCH /api/chef/application | chef | service after checks | service (route is the only writer, B2) |
+| POST, DELETE /api/chef/application/documents | chef | service (storage info/delete, table write) | service |
 | POST /api/chef/application/submit | chef | service | service (check statuses) |
 | /api/admin/chefs/** | admin | service after admin check | service |
 | GET /api/chefs, /api/chefs/:id, /api/reference/postal-prefixes | anyone | anon-capable user-scoped | none |
 
 ## 11. Not in v1 (planned)
 
-Dishes and availability CRUD (WO-3, v1.1), search with distance, bookings, estimate, free trial, receipts (WO-4), messaging, reviews, reports, notifications read API (WO-5), admin booking/report/free-trial lists. Dishes and availability can already be written by the chef's browser under RLS; a route contract is added when Frontend needs one.
+Dishes and availability CRUD (WO-3, v1.1), search with distance, bookings, estimate, free trial, receipts (WO-4), messaging, reviews, reports, notifications read API (WO-5), admin booking/report/free-trial lists. Dishes and availability can already be written by the chef's browser under RLS (with the `dishes.photo_path` folder check from the T-028 migration); a route contract is added when Frontend needs one.
 
-## 12. Open points for the Planner
+Recorded for later work orders:
+- N3 (WO-4): changing the kitchen address while a `chef_home` booking is `accepted` must be blocked or must notify the customer and re-confirm.
+- N4 (WO-5): public reviews currently expose `author_id` and `booking_id`; the reviews contract should return a view without them.
+- N5 (WO-4 question for Jimmy): what happens to accepted bookings when an admin rejects an already-approved chef. An approved chef who re-uploads an ID stays public while the check is `pending` (MOCK, accepted).
+
+## 12. Open points and README known limits
+
+For the README (T-054): MOCK SMS lets anyone claim a real phone number; one phone number cannot hold both a chef and a customer account (follows from phone uniqueness).
+
+Open points for the Planner
 
 1. Confirm the phone uniqueness rule (section 8) so T-028 adds the migration.
 2. Approve preconditions (phone verified, sample dish, MOCK checks verified before approve) are assumptions beyond CLAUDE.md 6.7.
-3. Rejected chefs editing and resubmitting (section 5) is an assumption.
+3. Rejected chefs may edit and resubmit without limit: Planner decision B3 (no longer an assumption).
 4. Cuisine and language lists are free text for now; a fixed list is a product choice.
 5. Rate-limit numbers (section 9) are placeholders.
