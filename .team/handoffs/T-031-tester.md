@@ -1,7 +1,7 @@
 # Handoff: T-031 Chef onboarding API (Tester)
 
 From: tester  To: reviewer
-Verdict: **PASS** (no blockers). 1 likely validation defect, 1 design gap outside this task, 2 small behaviour notes and a list of missing tests, all non-blocking. See "Findings" and "Missing test cases".
+Round 1 verdict: **PASS** (no blockers). **Round 2 verdict (head ab0007b): PASS, see the end of this file.** 1 likely validation defect, 1 design gap outside this task, 2 small behaviour notes and a list of missing tests, all non-blocking. See "Findings" and "Missing test cases".
 
 ## What changed
 Nothing in the application. I only verified. Nothing pushed, PR untouched, no test files changed (missing tests are listed below for the builder).
@@ -82,3 +82,69 @@ Covered: non-GTA postal codes (service prefix and kitchen address), pending/reje
 - Planner: decide Finding 3 (kitchen photo overwrite) and whether the builder folds Finding 1 and tests T1 to T9 into this PR or a follow-up. If they go into this PR, I will re-verify on request (CI run plus a re-read of the diff).
 - T-033 (Frontend): the contract is accurate against the code. Remember Finding 4 (label every check MOCK in the UI), upload with a fresh uuid name and register after, expect nested keys `kitchenAddress.line|city|postalCode`, 409 `APPLICATION_INCOMPLETE` carries `error.missing`, and an 11th kitchen photo is 409.
 - T-035 (Admin): the admin verdict writes must change `chef_private.updated_at` (the trigger does); keep the conditional-on-reviewed-paths rule. Finding 3 interacts with the swap-while-pending protection.
+
+
+---
+
+# Round 2 (re-verification of head ab0007b)
+
+From: tester  To: reviewer
+Verdict: **PASS.** Every round-1 finding and every listed missing test is fixed or covered, the tests can fail, and no new defect found. Three small notes below, none blocking.
+
+## What I ran
+1. CI: `ci` green on PR #67, run 37722340651, head ab0007b (matches the PR head). Unit **165** (13 files), RLS **111** (8 files; `storage-hardening` 15 tests), API **207** (7 files: chef-documents 60, chef-application 65, chef-submit 40, auth 29, chef-storage-probe 6, chef-roles 5, chef-visibility 2), seed + verify ok, Playwright real-route 7, mock 6. No skipped tests. The only stderr blocks are the two intentional ones in older unit tests; the API and RLS steps print no stderr and no "unhandled error".
+2. Fresh checkout of the new head in the scratch clone: `npm ci`, lint, typecheck, `prettier --check .`, `npm test` (165), `npm run build` (the three chef routes listed) all pass.
+3. Read every changed file: the migration, the RLS F3 tests, the new and extended API tests, the new unit tests, the source diff of `chef-application.ts`, and the contract and data-model diffs.
+4. Mutation tests (unit level, in the scratch clone, reverted after each): every mutation turned a test red.
+   - remove the bio control-character check: 2 tests red (F1 bio test and the surrogate test, which also covers bio)
+   - lone-surrogate test replaced by `false`: 1 red
+   - loosen the control range so NUL is allowed in bio: 1 red
+   - restore the `i` flag on the file-name regex: 1 red (the F6 test)
+   - `failed` no longer resets to `pending`: 5 red
+   - `requireJson` accepts an absent header (`if (!raw)` -> `if (false)`): 2 red (T1 unit tests)
+   - submit overwrites `verified`/`pending` checks: 4 red
+   - `MAX_KITCHEN_PHOTOS` 10 -> 11: 1 red
+   I could not run mutations against the API and RLS suites (no Docker). For those I reasoned from the test bodies what each mutation does: removing the `.eq("updated_at")` lock leaves `verified` over a changed file and the hook-based race tests fail; calling `objectExists` before the path check fails the spy tests (zero calls expected); restoring the two kitchen policies fails the exact `pg_policies` list and the overwrite/delete tests; dropping the route's reset fails the reset matrix. CI is the run evidence.
+
+## F3: kitchen photos insert-only (migration `20261008150000_kitchen_photos_insert_only.sql`)
+- Migration drops exactly `kitchen_photos_update_own` and `kitchen_photos_delete_own`. File name sorts after the last migration. Not applied to hosted (Planner applies after review, as before).
+- RLS tests ("F3", 6 tests): the exact policy set from `pg_policies` (chef insert; owner, admin and customer read; admin delete), so any extra or missing policy fails; the owner inserts a new name and reads it back; `upload` with `upsert: true`, `update` and a second plain `upload` of the same name are all refused and the stored size stays 4 bytes (the test writes a 9-byte body so a swap would show); the owner's `remove` removes nothing and the file stays; the admin delete still works (1 object removed, then not downloadable); the service role (used by the route's DELETE) still deletes; another chef still cannot write into the folder. All confirmed green in CI. Chef documents were already insert-only.
+- Judgement: the fix closes the in-place swap, and the remaining paths (new name = new path = reset) are covered by the route tests. Note: with no delete right, a chef cannot clean up files they uploaded but never registered; those orphans stay until an admin or service-role cleanup, and each upload is up to 5 MB. On a free-tier project that is a storage-quota nuisance, not a security issue; worth one line in the README known limits or a later cleanup task. T-033 should always upload with a fresh name and `upsert: false`.
+
+## F1, F6, F2, F4, F5
+- F1: bio rejects NUL and control characters except LF, CR and tab; lone UTF-16 surrogates are refused in bio, cuisines, languages and both kitchen address text fields. Unit tests (including real emoji and accents accepted) and an API test (422, `fields.bio`, row unchanged, multi-line bio saved). Mutations above prove the unit tests bite. The surrogate regex works on code units; I checked the valid pair, high-high-low and low-high cases are handled by the tests.
+- F6: `i` flag removed; unit and API tests pin `ID-`, upper-case uuid, `.PNG`, `.JPG`. Contract rule 7 says lower case.
+- F2: contract documents that the `chefs` columns may be saved when PATCH returns 409; an API test pins it (bio and rate saved, `chef_home_enabled` off, kitchen address, acknowledgement and kitchen status not saved). Error list in the contract now names 409.
+- F4: contract preamble now says only submit carries `mock: true` and the UI must label every check MOCK (T-033, T-036).
+- F5: harness option `noBody` really omits the header and body; used on all four state-changing routes (400 `BAD_REQUEST`), plus unit tests with a bare `new Request(url, {method})`.
+
+## T1 to T12 coverage (each read in the test body, not just the title)
+| Gap | Covered by | Can fail? |
+|---|---|---|
+| T1 absent Content-Type | `request.test.ts` (POST, PATCH, DELETE bare); API case on every state-changing route with `noBody` | yes, mutation M5 |
+| T2 kitchen reset when chef_home not offered | PATCH address with `["customer_home"]`; photo add with `["customer_home"]`; both assert check pending and `chef_home_enabled` false in the DB | yes (the setup puts `chef_home_enabled: true` and `verified`) |
+| T3 remove chef_home / add back | PATCH removal and re-add keep `verified` and `chef_home_enabled`; plus the bypass test: remove, change the kitchen, add back -> pending and off | yes |
+| T4 approved and rejected chefs on documents routes | `describe.each(["approved","rejected"])`: ID and food-handler resets, kitchen photo resets and chef's home off, `status` and `rejectReason` unchanged | yes |
+| T5 no storage call for stored paths | `chef-storage-probe.test.ts`: object deleted, re-register ID, food handler, kitchen photo and PATCH same `photoPath` all 200 with zero calls; a different missing path still 404 with one call | yes (spy wraps the real function; control test shows the spy sees calls) |
+| T6 no leak with real data | readyChef with chef's home, verified phone and a home address; six responses (GET, PATCH, POST documents, submit, DELETE, submit 409) checked for the full number, the last digits, the masked form, email, street, home postal code, `phone_e164`, `address_line`, `hash` | yes |
+| T7 NUL in bio | API test (F1) with six bad bios and four other fields | yes |
+| T8 foreign path never reaches Storage | spy: zero calls for foreign folders on POST, DELETE and PATCH (existing and ghost files), for malformed paths on all three, and for DELETE | yes |
+| T9 concurrency at the limit | 10 parallel from empty (all 200, all stored); 10 stored + 2 parallel (both 409, unchanged); 5 stored + 8 parallel (exactly 5 ok, 3 409, 10 stored); acknowledgement + photo in parallel (both survive). Outcomes are fixed by the invariant, not by timing, and 12 attempts exceed the 9 possible losses for 10 parallel | yes |
+| T10 DELETE with another kind's name | id- and photo- names in four buckets, kind `kitchen_photo`: 422 and all four objects still exist, registration unchanged | yes |
+| T11 pending/rejected invisible | `chef-visibility.test.ts`: anon and a signed-in customer cannot read the chef row or its dishes in six states (complete, edited, submitted, rejected, rejected then edited, rejected -> pending), `chef_private` closed to anon; control: approved is visible, so the probes can fail | yes |
+| T12 smaller gaps | `chef_home_enabled` asserted off in the four-status photo-removal test; `failed` stays `failed` on a same-path re-register for ID, food handler and kitchen, whole row equal including `updated_at`; F2 and F6 pins | yes |
+
+Still only at library level: the HTTP 409 for the give-up path (the mapping is the shared `ApiFailure` -> `errorResponse`, already unit-tested for status codes). The builder offered an HTTP-level test; I do not need it.
+
+## Profile and dish photo buckets left owner-writable (contract open point 10): acceptable
+Reasoning: (1) No MOCK check refers to those files, so an in-place overwrite does not invalidate a verdict; the chef can already point the row at any new file with PATCH `photoPath`, even as an approved chef (open point 6), so an overwrite adds no power. (2) Keeping owner delete is useful: it is how a chef removes an old public profile photo, which I flagged in round 1 as staying reachable by URL. (3) The decision is written down in `docs/data-model.md`, the contract and a pinned test (`DECISION: profile-photos and dish-photos stay owner-writable`), so T-032 changes it knowingly. Residual risk, already open and not a T-031 matter: no review of public photo content after approval. I accept it for the prototype.
+
+## Notes (non-blocking)
+- N-a: orphan kitchen files cannot be deleted by the chef any more (see F3 judgement). README known-limit candidate.
+- N-b: the F3 migration is not applied to the hosted project yet; the API tests rely on CI's fresh `supabase start`. The Planner must apply it with the other migrations.
+- N-c: still true from round 1: no rate limit on the chef routes (open point 9); an outage looks like a sign-out (T-028). The kitchen-address-while-accepted-booking case (N3) waits for WO-4.
+
+## What the next agent needs
+- Reviewer: findings F1 to F6 and T1 to T12 are closed; the new risk surface is only the migration (two `drop policy` lines) and the extra validation. The privilege snapshot is unaffected (storage policies were never in it).
+- Planner: apply `20261008150000_kitchen_photos_insert_only.sql` with the others; add the orphan-upload limit to the README known limits (T-054).
+- T-033: upload with a fresh lower-case uuid name and `upsert: false`; label every check MOCK in the UI (JSON carries no flag except submit).
