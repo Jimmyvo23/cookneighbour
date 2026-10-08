@@ -171,6 +171,26 @@ export interface ChefOwnSummary {
   language: string;
 }
 
+/** Items still needed before an application can be submitted (also sent as `error.missing`). */
+export type ApplicationMissingItem =
+  | "displayName"
+  | "bio"
+  | "photo"
+  | "cuisines"
+  | "languages"
+  | "hourlyRate"
+  | "servicePostalPrefix"
+  | "locationOptions"
+  | "idDocument"
+  | "foodHandler"
+  | "allergenAcknowledgement"
+  | "phoneVerified"
+  | "sampleDish"
+  // Only when "chef_home" is in locationOptions:
+  | "kitchenAddress"
+  | "kitchenPhotos"
+  | "kitchenHygieneAcknowledgement";
+
 export interface ChefApplication extends ChefOwnSummary {
   rejectReason: string | null;
   /** MOCK statuses, read-only for the chef. */
@@ -189,8 +209,8 @@ export interface ChefApplication extends ChefOwnSummary {
   kitchenAddress: { line: string; city: string; postalCode: string } | null;
   allergenAckAt: string | null;
   kitchenHygieneAckAt: string | null;
-  /** What is still missing before the application can be submitted. */
-  missing: string[];
+  /** What is still missing before the application can be submitted. Empty means ready to submit. */
+  missing: ApplicationMissingItem[];
 }
 
 /** The display name is not editable here: use PATCH /api/me (profiles is the single source). */

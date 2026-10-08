@@ -35,6 +35,27 @@ describe("requireJson (CSRF rule)", () => {
   );
 });
 
+describe("requireJson with a really absent Content-Type header (tester T1)", () => {
+  // new Request(url, { body: "<string>" }) adds text/plain itself, so req(null) above still has a
+  // header. A bare fetch(url, { method: "POST" }) has no body and no header at all.
+  it("a POST with no body and no header has no content-type and is rejected", () => {
+    const bare = new Request("http://x/api", { method: "POST" });
+    expect(bare.headers.get("content-type")).toBeNull();
+    expect(() => requireJson(bare)).toThrow(ApiFailure);
+    try {
+      requireJson(bare);
+    } catch (e) {
+      expect((e as ApiFailure).code).toBe("BAD_REQUEST");
+    }
+  });
+  it("the same holds for PATCH and DELETE without a body", () => {
+    for (const method of ["PATCH", "DELETE"])
+      expect(() =>
+        requireJson(new Request("http://x/api", { method })),
+      ).toThrow(ApiFailure);
+  });
+});
+
 describe("readJsonObject", () => {
   it("parses objects and rejects bad JSON, arrays and scalars", async () => {
     expect(await readJsonObject(req("application/json", '{"a":1}'))).toEqual({
