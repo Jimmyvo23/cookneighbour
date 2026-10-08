@@ -49,7 +49,7 @@ Local Supabase (`supabase/config.toml`) needs Docker and runs only in CI (T-022)
 All seed data is **fictional**: invented names, `@example.com` emails, 555-01xx phone numbers and made-up street addresses. ID, food-handler, police and kitchen statuses on chefs are **MOCK** values; nobody verified anything. Seeded chefs have no photos or uploaded documents.
 
 - `supabase/seed.sql` loads about 60 GTA postal-code prefixes (Mississauga L4T to L5W, Toronto, Brampton, Oakville, Markham, Vaughan, Richmond Hill). Coordinates are **approximate** area centres, only used for straight-line distance. It runs automatically on `supabase start` and `supabase db reset`.
-- `scripts/seed.ts` creates the accounts, 11 chefs, dishes and 3 weeks of availability. It is server-only (secret key), idempotent, and refuses to run unless you pass a target: `npm run db:seed -- --local` (running local stack) or `npm run db:seed -- --hosted` (needs `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `HASH_PEPPER` and `SEED_ADMIN_PASSWORD` in `.env.local`). Add `--verify` to check the result without writing.
+- `scripts/seed.ts` creates the accounts, 12 chefs, dishes and 3 weeks of availability. It is server-only (secret key), idempotent, and refuses to run unless you pass a target: `npm run db:seed -- --local` (running local stack) or `npm run db:seed -- --hosted` (needs `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `HASH_PEPPER` and `SEED_ADMIN_PASSWORD` in `.env.local`). Add `--verify` to check the result without writing.
 - The **admin** password is never in this repo. Set `SEED_ADMIN_PASSWORD` in `.env.local` (or the shell) before seeding; without it the admin account is skipped. Admin login: `admin@example.com`.
 
 Demo logins (local and demo use only):
