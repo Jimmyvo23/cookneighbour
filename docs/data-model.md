@@ -56,7 +56,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 - **1 to 3 days:** `day_number` check 1..3, unique per booking. **Past date** rejected by trigger (Toronto time).
 - **Booking insert rules (trigger):** chef must be `approved`; the location must be in the chef's `location_options`; `chef_home` also needs `chef_home_enabled`; the customer must have role `customer`; a chef's-home booking must have `est_travel_cents = 0`; customer cannot book themselves.
 - **Free trial:** partial unique indexes on `free_trial_claims` for `customer_id`, `phone_hash` and `address_hash` where `state <> 'released'`. Releasing a claim (booking cancelled before it happened) frees the trial; `held` and `consumed` block. Which state to set is the API's job.
-- **Role cannot be changed by a client** (trigger `guard_profile_update`). **Moderation fields** on `chefs` (`status`, `chef_home_enabled`, `rating_avg`, `review_count`) and `chef_private` (reject reason and all check statuses) can be changed only by an admin or the server (triggers `guard_chef_update`, `guard_chef_private_update`), even though the owner may update the rest of their row.
+- **Role cannot be changed by a client** (trigger `guard_profile_update`). **Moderation fields** on `chefs` (`status`, `chef_home_enabled`, `rating_avg`, `review_count`) and `chef_private` (reject reason and all check statuses) can be changed only by an admin or the server. Since the T-028 migration **no client can update `profiles`, `chefs` or `chef_private` at all** (table `UPDATE` revoked, update policies dropped): the API routes write them with the service role. The triggers `guard_profile_update`, `guard_chef_update` and `guard_chef_private_update` remain as a second line of defence. Stored photo paths must start with the owner's folder (`chefs.photo_path`, `dishes.photo_path` check constraints). A verified phone hash can belong to one account only (unique partial index `profile_private_phone_hash_verified`).
 - Chef `rating_avg` / `review_count` are recalculated by trigger from customer reviews.
 - No-shows are statuses (`no_show_customer`, `no_show_chef`), not separate flags.
 
@@ -76,15 +76,15 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | Table | Who | Rule |
 |---|---|---|
 | `postal_prefixes` | anon, authenticated | all rows |
-| `profiles` | self | own row; update own row (role locked by trigger) |
+| `profiles` | self | own row; **no client update** (routes write it, T-028) |
 | | admin | all |
 | | counterparty | profiles of the other party in any shared booking |
 | `profile_private` | self, admin | own row / all. No client writes |
 | `chefs` | anon, authenticated | rows with `status = 'approved'` only |
-| | owner | own row (any status); update own row (moderation columns locked by trigger) |
-| | admin | all; update |
+| | owner | own row (any status); **no client update** (routes write it, T-028) |
+| | admin | all; **no client update** (admin routes use the service role) |
 | | booking counterparty | the chef of a shared booking |
-| `chef_private` | owner, admin | own row / all; update own (verification columns locked) / admin update |
+| `chef_private` | owner, admin | own row / all; **no client update** (routes write it, T-028) |
 | `dishes` | anon, authenticated | active dishes of approved chefs |
 | | owner | all own dishes; insert, update, delete own (`chef_id` = self) |
 | | admin | all |
@@ -120,7 +120,7 @@ Size limits 5 MB (photos) and 10 MB (documents, receipts); MIME types restricted
 
 ## Stored file paths (B2)
 
-Trigger `chef_private_check_paths` requires `id_document_path`, `food_handler_path` and every entry of `kitchen_photo_paths` to start with `<chef id>/` (and contain no `..`), for every writer. When a non-admin client changes a verified ID document, food-handler document, kitchen photos or kitchen address, trigger `chef_private_reset_checks` sets the matching MOCK status back to `pending`; a kitchen change also sets `chefs.chef_home_enabled` to false until an admin re-enables it. Admin and server edits do not reset anything.
+Trigger `chef_private_check_paths` requires `id_document_path`, `food_handler_path` and every entry of `kitchen_photo_paths` to start with `<chef id>/` (and contain no `..`), for every writer. Trigger `chef_private_reset_checks` would set a matching MOCK status back to `pending` when a non-admin client changes a verified document or the kitchen, but since T-028 clients cannot update `chef_private`, so it is **inert** (the server and admin never fire it). The chef routes apply the N1 re-verification reset themselves (contract section 2): changed ID or food-handler document sets that check from `verified` to `pending`; changed kitchen photos or address sets `kitchen_status` to `pending` and `chefs.chef_home_enabled` to false until an admin re-enables it.
 
 ## Client insert columns
 

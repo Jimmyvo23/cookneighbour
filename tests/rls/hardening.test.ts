@@ -5,7 +5,6 @@ import {
   clientFor,
   dayPlus,
   expectCode,
-  expectDenied,
   expectRows,
   makeBooking,
   makeChef,
@@ -80,17 +79,46 @@ describe("B1: display name never falls back to the email", () => {
   });
 });
 
-describe("B2: chef file paths and re-verification", () => {
-  let admin: SupabaseClient;
-  beforeAll(async () => {
-    admin = await clientFor(fx.admin);
+describe("B2 (T-028): routes are the only writers of chef data; path rules hold for every writer", () => {
+  it("a chef's own client cannot update chefs, chef_private or profiles at all", async () => {
+    const chef = await makeChef(svc, "no-client-writes");
+    const c = await clientFor(chef);
+    expectCode(
+      await c
+        .from("chef_private")
+        .update({ id_document_path: `${chef.id}/new-id.pdf` })
+        .eq("chef_id", chef.id)
+        .select(),
+      "42501",
+    );
+    expectCode(
+      await c
+        .from("chefs")
+        .update({ bio: "edited by client" })
+        .eq("profile_id", chef.id)
+        .select(),
+      "42501",
+    );
+    expectCode(
+      await c
+        .from("profiles")
+        .update({ display_name: "edited by client" })
+        .eq("id", chef.id)
+        .select(),
+      "42501",
+    );
+    const row = await svc
+      .from("chef_private")
+      .select("id_document_path")
+      .eq("chef_id", chef.id)
+      .single();
+    expect(row.data?.id_document_path).toBe(`${chef.id}/id.pdf`);
   });
 
-  it("a chef cannot point documents or kitchen photos at another user's files; own folder is allowed", async () => {
+  it("the document path rule holds for the server: foreign or odd paths are refused, own folder is allowed", async () => {
     const chef = await makeChef(svc, "paths-chef");
-    const c = await clientFor(chef);
     const upd = (patch: Record<string, unknown>) =>
-      c.from("chef_private").update(patch).eq("chef_id", chef.id).select();
+      svc.from("chef_private").update(patch).eq("chef_id", chef.id);
     expectCode(await upd({ id_document_path: `${fx.h1.id}/id.pdf` }), "23514");
     expectCode(await upd({ food_handler_path: `${fx.h1.id}/id.pdf` }), "23514");
     expectCode(
@@ -105,38 +133,77 @@ describe("B2: chef file paths and re-verification", () => {
     );
     expectCode(await upd({ id_document_path: `${chef.id}x/id.pdf` }), "23514");
     expectCode(await upd({ id_document_path: "id.pdf" }), "23514");
-    const before = await svc
-      .from("chef_private")
-      .select("id_document_path")
-      .eq("chef_id", chef.id)
-      .single();
-    expect(before.data?.id_document_path).toBe(`${chef.id}/id.pdf`);
     // allowed controls
-    expectRows(await upd({ id_document_path: `${chef.id}/new-id.pdf` }), 1);
-    expectRows(await upd({ food_handler_path: `${chef.id}/fh.pdf` }), 1);
-    expectRows(
-      await upd({
-        kitchen_photo_paths: [`${chef.id}/k1.png`, `${chef.id}/k2.png`],
-      }),
-      1,
-    );
+    expect(
+      (await upd({ id_document_path: `${chef.id}/new-id.pdf` })).error,
+    ).toBeNull();
+    expect(
+      (
+        await upd({
+          kitchen_photo_paths: [`${chef.id}/k1.png`, `${chef.id}/k2.png`],
+        })
+      ).error,
+    ).toBeNull();
   });
 
-  it("the path rule also holds for the admin and the server", async () => {
-    const chef = await makeChef(svc, "paths-chef2");
-    const viaServer = await svc
-      .from("chef_private")
-      .update({ id_document_path: `${fx.h1.id}/id.pdf` })
-      .eq("chef_id", chef.id);
-    expectCode(viaServer, "23514");
+  it("chefs.photo_path and dishes.photo_path must start with the owner's folder", async () => {
+    const chef = await makeChef(svc, "photo-paths");
+    const upd = (photo: string | null) =>
+      svc.from("chefs").update({ photo_path: photo }).eq("profile_id", chef.id);
+    expectCode(await upd(`${fx.h1.id}/me.png`), "23514");
+    expectCode(await upd("me.png"), "23514");
+    expectCode(await upd(`/${chef.id}/me.png`), "23514");
+    expectCode(await upd(`${chef.id}/../${fx.h1.id}/me.png`), "23514");
+    expectCode(await upd(`${chef.id}x/me.png`), "23514");
+    expect((await upd(`${chef.id}/me.png`)).error).toBeNull();
+    expect((await upd(null)).error).toBeNull();
+
+    const c = await clientFor(chef);
+    const dish = (photo: string | null) =>
+      c
+        .from("dishes")
+        .insert({
+          chef_id: chef.id,
+          name: "photo dish",
+          cuisine: "Thai",
+          cook_minutes: 10,
+          photo_path: photo,
+        })
+        .select();
+    expectCode(await dish(`${fx.h1.id}/dish.png`), "23514");
+    expectCode(await dish("dish.png"), "23514");
+    expectRows(await dish(`${chef.id}/dish.png`), 1);
+    // updating an existing dish to a foreign path is refused too
+    const mine = await svc
+      .from("dishes")
+      .select("id")
+      .eq("chef_id", chef.id)
+      .limit(1)
+      .single();
     expectCode(
-      await admin
-        .from("chef_private")
-        .update({ food_handler_path: `${fx.h1.id}/id.pdf` })
-        .eq("chef_id", chef.id)
+      await c
+        .from("dishes")
+        .update({ photo_path: `${fx.h1.id}/stolen.png` })
+        .eq("id", mine.data!.id)
         .select(),
       "23514",
     );
+  });
+
+  it("a verified phone hash can belong to one account only; unverified duplicates are allowed", async () => {
+    const hash = `uniq-${rand(4)}`;
+    const a = await makeCustomer(svc, "uniq-a");
+    const b2 = await makeCustomer(svc, "uniq-b");
+    const set = (id: string, verified: boolean) =>
+      svc
+        .from("profile_private")
+        .update({ phone_hash: hash, phone_verified: verified })
+        .eq("profile_id", id);
+    expect((await set(a.id, true)).error).toBeNull();
+    expectCode(await set(b2.id, true), "23505");
+    // control: an unverified holder does not conflict, and the owner can keep it
+    expect((await set(b2.id, false)).error).toBeNull();
+    expect((await set(a.id, true)).error).toBeNull();
   });
 
   async function verifiedChef(name: string) {
@@ -170,115 +237,15 @@ describe("B2: chef file paths and re-verification", () => {
     return { ...cp.data, chef_home_enabled: ch.data?.chef_home_enabled };
   };
 
-  it("a chef replacing a verified ID document goes back to pending; the other checks stay verified", async () => {
-    const chef = await verifiedChef("reset-id");
-    const c = await clientFor(chef);
-    expectRows(
-      await c
-        .from("chef_private")
-        .update({ id_document_path: `${chef.id}/id2.pdf` })
-        .eq("chef_id", chef.id)
-        .select(),
-      1,
-    );
-    expect(await state(chef.id)).toEqual({
-      id_check_status: "pending",
-      food_handler_status: "verified",
-      kitchen_status: "verified",
-      chef_home_enabled: true,
-    });
-  });
-
-  it("replacing the food-handler certificate resets only that check", async () => {
-    const chef = await verifiedChef("reset-fh");
-    const c = await clientFor(chef);
-    expectRows(
-      await c
-        .from("chef_private")
-        .update({ food_handler_path: `${chef.id}/fh2.pdf` })
-        .eq("chef_id", chef.id)
-        .select(),
-      1,
-    );
-    expect(await state(chef.id)).toMatchObject({
-      id_check_status: "verified",
-      food_handler_status: "pending",
-      kitchen_status: "verified",
-    });
-  });
-
-  it("changing kitchen photos or the kitchen address resets the kitchen check and switches chef-home off", async () => {
-    for (const patch of [
-      (id: string) => ({
-        kitchen_photo_paths: [`${id}/k1.png`, `${id}/k9.png`],
-      }),
-      () => ({ kitchen_address_line: "99 New Street" }),
-      () => ({ kitchen_city: "Brampton" }),
-      () => ({ kitchen_postal_code: "L6Y1A1" }),
-    ]) {
-      const chef = await verifiedChef(`reset-k-${rand(2)}`);
-      const c = await clientFor(chef);
-      expectRows(
-        await c
-          .from("chef_private")
-          .update(patch(chef.id))
-          .eq("chef_id", chef.id)
-          .select(),
-        1,
-      );
-      expect(await state(chef.id)).toMatchObject({
-        kitchen_status: "pending",
-        chef_home_enabled: false,
-        id_check_status: "verified",
-      });
-    }
-  });
-
-  it("an unrelated edit (allergen acknowledgement) does not reset anything", async () => {
-    const chef = await verifiedChef("reset-none");
-    const c = await clientFor(chef);
-    expectRows(
-      await c
-        .from("chef_private")
-        .update({ allergen_ack_at: new Date().toISOString() })
-        .eq("chef_id", chef.id)
-        .select(),
-      1,
-    );
-    expect(await state(chef.id)).toEqual({
-      id_check_status: "verified",
-      food_handler_status: "verified",
-      kitchen_status: "verified",
-      chef_home_enabled: true,
-    });
-  });
-
-  it("admin and server changes do not reset verified statuses", async () => {
-    const chef = await verifiedChef("reset-admin");
-    expectRows(
-      await admin
-        .from("chef_private")
-        .update({
-          id_document_path: `${chef.id}/by-admin.pdf`,
-          kitchen_city: "Oakville",
-        })
-        .eq("chef_id", chef.id)
-        .select(),
-      1,
-    );
-    expect(await state(chef.id)).toEqual({
-      id_check_status: "verified",
-      food_handler_status: "verified",
-      kitchen_status: "verified",
-      chef_home_enabled: true,
-    });
+  it("server changes (what the routes do) do not fire the client reset trigger; the routes apply N1 themselves", async () => {
+    const chef = await verifiedChef("reset-server");
     expect(
       (
         await svc
           .from("chef_private")
           .update({
-            food_handler_path: `${chef.id}/by-server.pdf`,
-            kitchen_address_line: "5 Server Rd",
+            id_document_path: `${chef.id}/by-server.pdf`,
+            kitchen_city: "Oakville",
           })
           .eq("chef_id", chef.id)
       ).error,
@@ -291,23 +258,35 @@ describe("B2: chef file paths and re-verification", () => {
     });
   });
 
-  it("a chef still cannot re-enable chef-home themselves after the reset", async () => {
+  it("a chef cannot re-enable chef-home themselves, and a chef_home booking is blocked while it is off", async () => {
     const chef = await verifiedChef("reset-reenable");
+    // what the route does after a kitchen change (N1):
+    expect(
+      (
+        await svc
+          .from("chef_private")
+          .update({ kitchen_status: "pending", kitchen_city: "Toronto" })
+          .eq("chef_id", chef.id)
+      ).error,
+    ).toBeNull();
+    expect(
+      (
+        await svc
+          .from("chefs")
+          .update({ chef_home_enabled: false })
+          .eq("profile_id", chef.id)
+      ).error,
+    ).toBeNull();
     const c = await clientFor(chef);
-    await c
-      .from("chef_private")
-      .update({ kitchen_city: "Toronto" })
-      .eq("chef_id", chef.id)
-      .select();
-    expectDenied(
+    expectCode(
       await c
         .from("chefs")
         .update({ chef_home_enabled: true })
         .eq("profile_id", chef.id)
         .select(),
+      "42501",
     );
     expect((await state(chef.id)).chef_home_enabled).toBe(false);
-    // and a chef_home booking is blocked until an admin re-enables it
     const cust = await makeCustomer(svc, "reset-cust");
     await expect(
       makeBooking(svc, {

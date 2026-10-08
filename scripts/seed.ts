@@ -21,12 +21,11 @@ import {
   chefs,
   customers,
 } from "./seed-data.ts";
+import { parsePostalPrefixes, stableUuid } from "./seed-lib.ts";
 import {
-  addressHash,
-  parsePostalPrefixes,
-  phoneHash,
-  stableUuid,
-} from "./seed-lib.ts";
+  addressColumns,
+  phoneColumns,
+} from "../src/lib/domain/private-rows.ts";
 
 const USAGE = `CookNeighbour demo seed (fictional data, MOCK statuses)
 
@@ -35,9 +34,9 @@ Usage:
   npm run db:seed -- --hosted           seed the hosted project
   npm run db:seed -- --local --verify   only check that the seed is in place
 
---hosted needs NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, HASH_PEPPER and SEED_ADMIN_PASSWORD.
+--hosted needs NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY and HASH_PEPPER (SEED_ADMIN_PASSWORD optional, see below).
 --local reads URL and key from \`supabase status\` (the stack must be running).
-The admin account is only created when SEED_ADMIN_PASSWORD is set in the environment.
+SEED_ADMIN_PASSWORD is optional: without it the admin account is skipped.
 `;
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -186,14 +185,10 @@ async function seed(db: Db, pepper: string, adminPassword: string | undefined) {
       await db.from("profile_private").upsert(
         {
           profile_id: id,
-          phone_e164: c.phone,
-          phone_hash: phoneHash(c.phone, pepper),
+          // Same builders as the API routes, so the hashes match what the app computes.
+          ...phoneColumns(c.phone, pepper),
           phone_verified: true, // MOCK SMS verification
-          address_line: c.addressLine,
-          city: c.city,
-          postal_code: c.postalCode,
-          postal_prefix: c.postalCode.slice(0, 3),
-          address_hash: addressHash(c.addressLine, c.postalCode, pepper),
+          ...addressColumns(c.addressLine, c.city, c.postalCode, pepper),
         },
         { onConflict: "profile_id" },
       ),
@@ -302,11 +297,19 @@ async function verify(db: Db) {
     .eq("city", "Mississauga");
   if (pe) die(`verify prefixes: ${pe.message}`);
   const miss = new Set((prefixes ?? []).map((p) => p.prefix as string));
+  // Only the seeded @example.com accounts count, so other data in the project cannot satisfy the check.
+  const ids: Record<string, string> = {};
+  for (const c of chefs) {
+    const id = await findUserId(db, c.email);
+    if (id) ids[c.key] = id;
+  }
+  const chefIds = Object.values(ids);
   const { data: rows, error } = await db
     .from("chefs")
     .select(
-      "status, cuisines, service_postal_prefix, location_options, chef_home_enabled",
-    );
+      "profile_id, status, cuisines, service_postal_prefix, location_options, chef_home_enabled",
+    )
+    .in("profile_id", chefIds);
   if (error) die(`verify chefs: ${error.message}`);
   const list = rows ?? [];
   const viet = list.filter(
@@ -326,9 +329,22 @@ async function verify(db: Db) {
     problems.push("no pending chef");
   if (!list.some((c) => c.status === "rejected"))
     problems.push("no rejected chef");
+  const lan = ids["lan-vietnamese"];
+  if (lan) {
+    const { count: open } = await db
+      .from("availability")
+      .select("day", { count: "exact", head: true })
+      .eq("chef_id", lan)
+      .eq("available", true)
+      .gte("day", isoDay(0))
+      .lte("day", isoDay(DAYS_AHEAD));
+    if (!open)
+      problems.push("chef.lan has no available day in the next 21 days");
+  } else problems.push("chef.lan account not found");
   const { count } = await db
     .from("dishes")
-    .select("id", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true })
+    .in("chef_id", chefIds);
   if (!count) problems.push("no dishes");
   if (problems.length) die(`verify failed: ${problems.join("; ")}`);
   console.log(

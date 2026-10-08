@@ -30,7 +30,7 @@ describe("privilege escalation", () => {
     );
   });
 
-  it("a customer cannot make themselves admin, but can edit their own display name", async () => {
+  it("a customer cannot make themselves admin or edit their profile at all (routes are the only writer)", async () => {
     expectDenied(
       await c1
         .from("profiles")
@@ -44,15 +44,22 @@ describe("privilege escalation", () => {
       .eq("id", fx.c1.id)
       .single();
     expect(data?.role).toBe("customer");
-    // allowed control: same row, harmless column
-    expectRows(
-      await c1
-        .from("profiles")
-        .update({ display_name: "Customer One" })
-        .eq("id", fx.c1.id)
-        .select(),
-      1,
-    );
+    // T-028: even a harmless column on the own row is refused now (no UPDATE privilege)
+    const res = await c1
+      .from("profiles")
+      .update({ display_name: "Customer One" })
+      .eq("id", fx.c1.id)
+      .select();
+    expectCode(res, "42501");
+    // control: the server (what PATCH /api/me uses) can still write it
+    expect(
+      (
+        await svc
+          .from("profiles")
+          .update({ display_name: "Customer One" })
+          .eq("id", fx.c1.id)
+      ).error,
+    ).toBeNull();
   });
 
   it("a customer cannot change another user's profile", async () => {
@@ -111,7 +118,7 @@ describe("privilege escalation", () => {
     expect(d2?.role).toBe("chef");
   });
 
-  it("a pending chef cannot approve themselves; they can still edit their bio", async () => {
+  it("a pending chef cannot approve themselves or edit their chefs row directly", async () => {
     expectDenied(
       await hp
         .from("chefs")
@@ -125,14 +132,20 @@ describe("privilege escalation", () => {
       .eq("profile_id", fx.hp.id)
       .single();
     expect(data?.status).toBe("pending");
-    expectRows(
+    expectCode(
       await hp
         .from("chefs")
         .update({ bio: "I cook well" })
         .eq("profile_id", fx.hp.id)
         .select(),
-      1,
+      "42501",
     );
+    const after = await svc
+      .from("chefs")
+      .select("bio")
+      .eq("profile_id", fx.hp.id)
+      .single();
+    expect(after.data?.bio).not.toBe("I cook well");
   });
 
   it("a rejected chef cannot flip to approved", async () => {
@@ -198,7 +211,7 @@ describe("privilege escalation", () => {
     expect(data?.chef_home_enabled).toBe(false);
   });
 
-  it("a chef cannot mark their own police, ID, food-handler or kitchen checks verified; acknowledgements are allowed", async () => {
+  it("a chef cannot mark their own checks verified or write chef_private at all, acknowledgements included", async () => {
     expectDenied(
       await hp
         .from("chef_private")
@@ -241,13 +254,14 @@ describe("privilege escalation", () => {
       .single();
     expect(data?.police_check_status).toBe("pending");
     expect(data?.id_check_status).toBe("not_started");
-    expectRows(
+    // T-028: acknowledgements are stamped by the route (server clock), not by the client
+    expectCode(
       await hp
         .from("chef_private")
         .update({ allergen_ack_at: new Date().toISOString() })
         .eq("chef_id", fx.hp.id)
         .select(),
-      1,
+      "42501",
     );
   });
 
@@ -269,32 +283,46 @@ describe("privilege escalation", () => {
     );
   });
 
-  it("admin CAN approve and reject chefs (allowed control)", async () => {
+  it("even an admin session cannot update these tables directly; the server (admin routes) can", async () => {
     const pending = await makeChef(svc, `to-approve-${rand(2)}`, {
       status: "pending",
     });
-    expectRows(
+    expectCode(
       await admin
         .from("chefs")
         .update({ status: "approved" })
         .eq("profile_id", pending.id)
         .select(),
-      1,
+      "42501",
     );
+    expectCode(
+      await admin
+        .from("chef_private")
+        .update({ police_check_status: "verified", reject_reason: "n/a" })
+        .eq("chef_id", pending.id)
+        .select(),
+      "42501",
+    );
+    expectCode(
+      await admin
+        .from("profiles")
+        .update({ display_name: "by admin" })
+        .eq("id", pending.id)
+        .select(),
+      "42501",
+    );
+    // allowed control: the service role (what /api/admin/chefs/** uses)
+    const ok = await svc
+      .from("chefs")
+      .update({ status: "approved" })
+      .eq("profile_id", pending.id);
+    expect(ok.error).toBeNull();
     const { data } = await svc
       .from("chefs")
       .select("status")
       .eq("profile_id", pending.id)
       .single();
     expect(data?.status).toBe("approved");
-    expectRows(
-      await admin
-        .from("chef_private")
-        .update({ police_check_status: "verified", reject_reason: "n/a" })
-        .eq("chef_id", pending.id)
-        .select(),
-      1,
-    );
   });
 });
 

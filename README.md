@@ -26,6 +26,8 @@ cp .env.example .env.local        # placeholders only; never commit .env.local
 | `npm test`          | Vitest unit tests                                              |
 | `npm run test:e2e`  | Playwright smoke test (Chromium; starts the app itself)        |
 | `npm run db:check`  | Checks the hosted Supabase project is reachable (OK/FAIL only) |
+| `npm run test:rls`  | RLS tests (needs local Supabase, see `tests/rls/README.md`)    |
+| `npm run test:api`  | API route tests (same local Supabase env as `test:rls`)        |
 | `npm run db:seed`   | Demo data (needs `--local` or `--hosted`, see Demo data below) |
 | `npm run format`    | Prettier                                                       |
 
