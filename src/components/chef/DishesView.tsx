@@ -16,6 +16,7 @@ import {
   dishPhotoUrl,
   dishToForm,
   eatByText,
+  uploadRejected,
   emptyDishForm,
   formFieldErrors,
   formatDollars,
@@ -422,8 +423,8 @@ function DishEditor({
                       body,
                     });
               } catch (err) {
-                // The server could not use that upload: the next try uploads a fresh file.
-                uploaded.current = null;
+                // Drop the upload only when the server refused that path; any other failure keeps it for the retry.
+                if (uploadRejected(err)) uploaded.current = null;
                 throw err;
               }
               onSaved(saved, !dish);

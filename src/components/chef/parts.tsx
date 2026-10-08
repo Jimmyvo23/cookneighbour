@@ -8,9 +8,9 @@ export const cardCls =
   "flex flex-col gap-4 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700";
 export const hintCls = "text-sm text-zinc-700 dark:text-zinc-300";
 export const buttonCls =
-  "min-h-11 rounded-md bg-emerald-800 px-4 font-semibold text-white hover:bg-emerald-900 disabled:opacity-60";
+  "min-h-11 rounded-md bg-emerald-800 px-4 font-semibold text-white hover:bg-emerald-900 disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
 export const secondaryButtonCls =
-  "min-h-11 rounded-md border-2 border-emerald-800 px-4 font-semibold text-emerald-900 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-200 dark:hover:bg-emerald-950";
+  "min-h-11 rounded-md border-2 border-emerald-800 px-4 font-semibold text-emerald-900 hover:bg-emerald-50 disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 dark:text-emerald-200 dark:hover:bg-emerald-950";
 
 export function Section({
   title,

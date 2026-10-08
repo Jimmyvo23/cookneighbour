@@ -174,3 +174,12 @@ export const LIMITS = {
   servings: [1, SERVINGS_MAX],
   shelfLifeDays: [0, SHELF_LIFE_MAX_DAYS],
 } as const;
+
+/** True when the server refused the uploaded photo path (403, or a photoPath field error), so the
+ *  file must be uploaded again. Any other save failure keeps the upload for the retry. */
+export function uploadRejected(err: unknown): boolean {
+  return (
+    err instanceof ApiClientError &&
+    (err.status === 403 || Boolean(err.fields.photoPath))
+  );
+}

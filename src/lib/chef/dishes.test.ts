@@ -11,6 +11,7 @@ import {
   formFieldErrors,
   formatMinutes,
   COST_MESSAGE,
+  uploadRejected,
 } from "@/lib/chef/dishes";
 
 const valid = () => ({
@@ -174,5 +175,34 @@ describe("messages and formats", () => {
     expect(dishPhotoUrl("a/dish-b.png", "http://x/")).toBe(
       "http://x/storage/v1/object/public/dish-photos/a/dish-b.png",
     );
+  });
+});
+
+describe("uploadRejected", () => {
+  it("drops the upload only when the server refused the photo path", () => {
+    expect(uploadRejected(new ApiClientError(403, "FORBIDDEN", "x"))).toBe(
+      true,
+    );
+    expect(
+      uploadRejected(
+        new ApiClientError(422, "VALIDATION_FAILED", "x", {
+          fields: { photoPath: "Upload the photo first" },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      uploadRejected(
+        new ApiClientError(422, "VALIDATION_FAILED", "x", {
+          fields: { name: "bad" },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      uploadRejected(new ApiClientError(409, "INVALID_STATE", "cap")),
+    ).toBe(false);
+    expect(uploadRejected(new ApiClientError(0, "NETWORK", "down"))).toBe(
+      false,
+    );
+    expect(uploadRejected(new Error("x"))).toBe(false);
   });
 });
