@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-07 (after WO-1, WO-2 and part of WO-3).
+Last updated: 2026-10-08 (after WO-1, WO-2 and T-031).
 
 ## 1. Office status (Planner and every agent)
 
@@ -10,7 +10,7 @@ The office only shows what agents report. Nothing updates on its own.
 
 - **Right after every `team-status decide`**, the Planner sets its own status to `working`. *(The office said "waiting for Jimmy's approval" long after Jimmy had approved.)*
 - **After every handoff, merge or interruption**, the Planner sets each agent that is not running to `idle` or `done`. *(Agents stopped by the usage limit kept showing "working".)*
-- Agents set `--status done` **before** they write the handoff and stop, not after.
+- Agents write the handoff first, then set `--status done` before the final report and stopping. *(Never show done without a handoff on disk.)*
 - When the session pauses, the Planner sets itself to `idle` with a `--next` that says exactly where to resume.
 
 ## 2. Agent reports
@@ -31,13 +31,13 @@ Each of these reached the Tester or Reviewer at least once. Catching them in the
 | False promises in the UI | A hint said data was private when it wasn't | UI text about privacy or mocks must match what the code really does |
 | Accessibility after errors | Focus was lost after a server error | After any error, move focus to the error message |
 | Unsafe text input | Control characters and lone surrogates were accepted | Validate text fields with the shared helpers |
-| Missing MOCK label | | Every mocked check status shows a MOCK badge |
-| Pages with private data | | Guard on the server, not only in the client |
+| Missing MOCK label | (preventive) | Every mocked check status shows a MOCK badge |
+| Pages with private data | (preventive) | Guard on the server, not only in the client |
 
 ## 4. Git and GitHub
 
 - **Before merging:** `gh pr update-branch <n>`, wait for `ci` to go green, then merge. *(Branch protection refuses PRs that are behind `main`.)*
-- **No loose files in the main folder.** The agent that writes a handoff commits it on the task branch. *(Uncommitted handoffs clashed with branch switches.)*
+- **No loose files in the main folder.** Builders commit their handoff on the task branch; the Planner commits Tester and Reviewer handoffs (D-7). Never leave handoffs uncommitted in the main folder across branch switches. *(Uncommitted handoffs clashed with branch switches.)*
 - Switching branches with local changes: use `git stash`, never copy + `rm`. *(A tracked handoff file was deleted by accident.)*
 - When the main folder is busy on another branch, the agent works in a git worktree. `team-status` is still run from the main project folder.
 - Never push to `main`, never force-push. Never loosen branch protection to go faster.
