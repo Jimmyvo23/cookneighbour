@@ -1,7 +1,7 @@
 # CookNeighbour — Plan and Task Board
 
 Owner: Planner. Approver: Jimmy. Source of truth for requirements: `CLAUDE.md`.
-Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved and finished 2026-10-07. WO-2 (Phase 2b) approved 2026-10-07. Every later phase still needs its own Work Order.
+Status: **Approved by Jimmy 2026-10-07.** WO-1 (Phase 2a) approved and finished 2026-10-07. WO-2 (Phase 2b) approved and finished 2026-10-07. Every later phase still needs its own Work Order.
 
 ---
 
@@ -121,7 +121,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-028 | Auth backend: sign-up as customer/chef, phone normalize + hash, MOCK SMS verify, address normalize + hash, chef starts `pending`, seeded admin | backend | T-025 | done |
 | T-029 | Auth UI: sign-up, log-in, role choice, phone verify (MOCK badge), home address | frontend | T-026, T-028 | done |
 | T-056 | Env variable rename (`…PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`), T-021 review fixes, CI hardening (#50) | backend | — | done |
-| T-057 | Connect auth UI to real routes (mock off by default, route guards, e2e against real routes) | frontend | T-028, T-029 | in progress |
+| T-057 | Connect auth UI to real routes (mock off by default, route guards, e2e against real routes) | frontend | T-028, T-029 | done |
 | T-030 | Seed data: GTA postal prefixes, cuisines, ~10 chefs (incl. Vietnamese in Mississauga; some pending/rejected), dishes, demo customers, admin | backend | T-025 | done |
 
 ### Phase 3 — Chef side (WO-3)
@@ -262,4 +262,11 @@ Notes for each finished task are added here (CLAUDE.md §8).
 ### T-029 — Auth UI (done 2026-10-07, PR #60)
 - /signup (role choice), /login, /verify-phone (MOCK SMS badge), /address, log out in AccountBar. One fetch helper (JSON content type always, contract error shape, 429 retry). "MOCK API" badge whenever the mock adapter is on. axe: zero violations; keyboard-only flow; 375px OK.
 - Review caught a false privacy hint and lost focus after client navigation (fixed, regression test). Integration with real routes is T-057.
+
+### T-057 — Auth UI on real routes (done 2026-10-07, PR #64)
+- MOCK adapter off by default (only `NEXT_PUBLIC_API_MOCK=1`), dynamically imported. Client-side route guards and onboarding order (phone → address). Real-route Playwright e2e in CI against local Supabase (sign-up, MOCK verify, address, logout/login, 409/401/422 errors, guards); mock-mode e2e kept separately. Per-test client IP in e2e so retries can't trip the in-memory sign-up limit.
+- Follow-ups: server-side guards before any page showing private data (bookings, chat, admin) — put in those Work Orders; `clientIp()` trusts the first X-Forwarded-For entry (WO-7); decide whether unfinished onboarding blocks booking (booking API must require a verified phone server-side, WO-4); `signedIn:false` path tested in mock only while email confirmation is off.
+
+### WO-2 summary (finished 2026-10-07)
+Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supabase has all 4 migrations; demo data not yet loaded (needs `SEED_ADMIN_PASSWORD`). Open issue: #46 (dev-only audit findings, no upstream fix yet).
 
