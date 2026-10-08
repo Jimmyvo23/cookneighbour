@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+vi.mock("next/server", () => ({ connection: vi.fn() }));
 vi.mock("@/lib/server/caller", () => ({ requireCaller: vi.fn() }));
 
 import { chefPageRedirect } from "@/lib/server/page-guard";

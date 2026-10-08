@@ -5,6 +5,7 @@
 // skipped and only the client layer applies. That mode never holds real data.
 import "server-only";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { ApiFailure } from "@/lib/api/errors";
 import { isMockEnabled } from "@/lib/api/client";
 import { requireCaller } from "@/lib/server/caller";
@@ -18,6 +19,8 @@ export function chefPageRedirect(
 }
 
 export async function requireChefPage(): Promise<void> {
+  // Request-time only: never run (or read env) while prerendering the page shell at build time.
+  await connection();
   if (isMockEnabled()) return; // MOCK mode: no server session exists
   let target: string | null;
   try {
