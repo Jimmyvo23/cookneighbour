@@ -173,18 +173,17 @@ test("submit twice and edit after submit keep the application consistent", async
 test("display name rejects control characters (lessons-learned: unsafe text)", async ({
   page,
 }) => {
-  // Currently fails: the name field only checks length (ChefApplicationView NameSection) and
-  // PATCH /api/me uses Fields.string, which does not call hasUnsafeText. Remove test.fail once
-  // the name is validated with the shared helper.
-  test.fail();
   await signUpChef(page, "Name Chef");
-  await page.getByLabel("Display name").fill("Mai\u0007Tran");
+  await page
+    .getByRole("textbox", { name: "Display name" })
+    .fill("Mai\u0007Tran");
   await page.getByRole("button", { name: "Save name" }).click();
-  await expect(page.getByLabel("Display name")).toBeFocused();
-  await expect(page.getByLabel("Display name")).toHaveAttribute(
-    "aria-invalid",
-    "true",
-  );
+  await expect(
+    page.getByRole("textbox", { name: "Display name" }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("textbox", { name: "Display name" }),
+  ).toHaveAttribute("aria-invalid", "true");
 });
 
 test("dark mode and 375px with the kitchen section open: axe clean, no scroll", async ({

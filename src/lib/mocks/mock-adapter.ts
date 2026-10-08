@@ -53,6 +53,7 @@ import {
   type PrivateState,
 } from "@/lib/domain/chef-application";
 import {
+  displayNameProblem,
   validateAddress,
   validateCode,
   validateLogin,
@@ -439,8 +440,8 @@ export async function mockFetch(
   if (route === "PATCH /api/me") {
     const b = body as UpdateMeRequest;
     const name = typeof b.displayName === "string" ? b.displayName.trim() : "";
-    if (!name || name.length > 80)
-      return validation({ displayName: "Enter 1 to 80 characters." });
+    const problem = displayNameProblem(name);
+    if (problem) return validation({ displayName: problem });
     save({
       ...s,
       profile: { ...s.profile, displayName: name },

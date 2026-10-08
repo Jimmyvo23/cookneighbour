@@ -159,6 +159,9 @@ test("chef fills in the whole application and submits (MOCK)", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Remove kitchen photo 1" }).click();
   await expect(page.getByText("Kitchen photo 1 removed.")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Kitchen photos/ }),
+  ).toBeFocused();
   await page.getByLabel("Choose a kitchen photo").setInputFiles(PNG);
   await page.getByRole("button", { name: "Add kitchen photo" }).click();
   await expect(

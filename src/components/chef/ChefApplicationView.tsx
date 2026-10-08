@@ -34,6 +34,7 @@ import {
   validateUploadFile,
 } from "@/lib/chef/upload";
 import type { StorageTarget } from "@/lib/domain/chef-application";
+import { displayNameProblem } from "@/lib/validation/auth";
 import { MockBadge } from "@/components/MockBadge";
 import { SubmitButton, TextField } from "@/components/forms";
 import {
@@ -229,10 +230,9 @@ function NameSection({
         onSubmit={(e) => {
           e.preventDefault();
           const trimmed = name.trim();
-          if (!trimmed || trimmed.length > 80) {
-            s.fail("Check the highlighted fields.", {
-              displayName: "Enter 1 to 80 characters.",
-            });
+          const problem = displayNameProblem(trimmed);
+          if (problem) {
+            s.fail("Check the highlighted fields.", { displayName: problem });
             return;
           }
           void s.run(async () => {
@@ -521,6 +521,10 @@ function KitchenSection({
   const [city, setCity] = useState(app.kitchenAddress?.city ?? "");
   const [postal, setPostal] = useState(app.kitchenAddress?.postalCode ?? "");
   const [ack, setAck] = useState(false);
+  const [headingTick, setHeadingTick] = useState(0);
+  useEffect(() => {
+    if (headingTick) document.getElementById("kitchen-photos-heading")?.focus();
+  }, [headingTick]);
   const e = addr.fieldErrors;
   const paths = app.documents.kitchenPhotoPaths;
   return (
@@ -582,7 +586,9 @@ function KitchenSection({
       </form>
 
       <div className="flex flex-col gap-2 border-t border-zinc-300 pt-4 dark:border-zinc-700">
-        <h3 className="font-medium">Kitchen photos ({paths.length} of 10)</h3>
+        <h3 id="kitchen-photos-heading" tabIndex={-1} className="font-medium">
+          Kitchen photos ({paths.length} of 10)
+        </h3>
         <p className={hintCls}>
           Add at least one clear photo of your kitchen. You can remove a photo,
           but you cannot replace one in place: add a new one instead.
@@ -612,6 +618,8 @@ function KitchenSection({
                         },
                       );
                       setApp(r.application);
+                      // The Remove button is gone now: keep keyboard focus in this section.
+                      setHeadingTick((t) => t + 1);
                     },
                     `Kitchen photo ${i + 1} removed.`,
                   )
