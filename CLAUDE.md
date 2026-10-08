@@ -138,6 +138,7 @@ The team rules — approval gate, Work Orders, workflow per task, handoffs, esca
 | **Jimmy (Product Owner / Approver)** | Approves or rejects each Work Order before agents start building; answers open questions; owns the requirements | Approve / reject / approve-with-changes, with an optional note | **Highest authority.** Only Jimmy can change requirements, approve paid services, or approve real data or payments. |
 
 CookNeighbour-specific rules on top of the kit:
+- **Read `docs/lessons-learned.md` before every task** and add to it when a mistake costs time.
 - **Goal of the gate:** save tokens and keep Jimmy in control. Planning is cheap; building is expensive.
 - The approval gate also covers **any other token-heavy work**, not only the items listed in the Team section, including opening pull requests. Plan summaries are per batch of work (one task or a small group), not for every tiny step. No work starts until Jimmy's decision is recorded with `team-status decide`.
 - Backend publishes the API contract (`docs/api-contract.md`) **before** Frontend starts dependent pages.
