@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Runs against the MOCK adapter (NEXT_PUBLIC_API_MOCK is on by default in dev).
+// Runs against the MOCK adapter (playwright.mock.config.ts sets NEXT_PUBLIC_API_MOCK=1).
 test("sign-up, MOCK phone verify, address", async ({ page }) => {
   await page.goto("/signup");
   await page.getByLabel("Your name").fill("Mai Tran");
@@ -53,12 +53,12 @@ test("login shows wrong-password and rate-limit messages", async ({ page }) => {
   await page.getByLabel("Email").fill("a@example.com");
   await page.getByLabel("Password").fill("wrongpass");
   await page.getByRole("button", { name: "Log in" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText(
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Email or password is incorrect.",
   );
   await page.getByLabel("Email").fill("limited@example.com");
   await page.getByRole("button", { name: "Log in" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText(
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Try again in 2 minutes",
   );
 });
@@ -80,8 +80,55 @@ test("focus lands on the form after a server error following client navigation",
   await page.getByLabel("Password").fill("wrongpass");
   await page.getByRole("button", { name: "Log in" }).click();
   const alert = page
+    .getByRole("main")
     .getByRole("alert")
     .filter({ hasText: "Email or password is incorrect." });
   await expect(alert).toBeVisible();
   await expect(alert).toBeFocused();
+});
+
+test("sign-up with email confirmation on shows check-your-email (signedIn: false)", async ({
+  page,
+}) => {
+  await page.goto("/signup");
+  await page.getByLabel("Your name").fill("Lan Pham");
+  await page.getByLabel("Email").fill("confirm@example.com");
+  await page.getByLabel("Password").fill("longenough1");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Check your email" }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    "We sent you a link to confirm your email",
+  );
+  await expect(page).toHaveURL(/\/signup$/);
+  // No session was created: the account bar still offers Log in.
+  await expect(
+    page.getByRole("link", { name: "Log in" }).first(),
+  ).toBeVisible();
+  await expect(page.getByText(/Signed in as/)).toHaveCount(0);
+});
+
+test("route guards", async ({ page }) => {
+  await page.goto("/address");
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/verify-phone");
+  await expect(page).toHaveURL(/\/login$/);
+
+  // Log in with an unverified phone: sent to /verify-phone.
+  await page.getByLabel("Email").fill("a@example.com");
+  await page.getByLabel("Password").fill("longenough1");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page).toHaveURL(/\/verify-phone$/);
+  await page.getByLabel("Mobile phone number").fill("416 555 0123");
+  await page.getByRole("button", { name: "Send code" }).click();
+  await page.getByLabel("6-digit code").fill("123456");
+  await page.getByRole("button", { name: "Verify" }).click();
+  await expect(page).toHaveURL(/\/address$/);
+
+  // Signed in: /login and /signup go home.
+  await page.goto("/login");
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/signup");
+  await expect(page).toHaveURL(/\/$/);
 });

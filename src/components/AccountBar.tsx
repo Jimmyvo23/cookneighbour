@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch, isMockEnabled } from "@/lib/api/client";
+import { redirectFor } from "@/lib/auth/route-guard";
 import { MockBadge } from "@/components/MockBadge";
 import type { LogoutResponse, MeResponse } from "@/lib/api/types";
 
@@ -12,9 +13,28 @@ export function AccountBar() {
   const pathname = usePathname();
   const router = useRouter();
   // Layout persists across client navigation, so re-check the session on every route change.
+  // The same check drives the route guards (see redirectFor).
   useEffect(() => {
-    apiFetch<MeResponse>("/api/me").then(setMe, () => setMe(null));
-  }, [pathname]);
+    let current = true;
+    apiFetch<MeResponse>("/api/me").then(
+      (m) => {
+        if (!current) return;
+        setMe(m);
+        setLogoutError(null); // a later successful action clears the old logout error
+        const to = redirectFor(pathname, m);
+        if (to) router.replace(to);
+      },
+      () => {
+        if (!current) return;
+        setMe(null);
+        const to = redirectFor(pathname, null);
+        if (to) router.replace(to);
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [pathname, router]);
   async function logout() {
     setLogoutError(null);
     try {

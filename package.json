@@ -10,6 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:mock": "playwright test --config playwright.mock.config.ts",
     "format": "prettier --write .",
     "db:check": "node --env-file-if-exists=.env.local scripts/db-check.mjs",
     "db:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/seed.ts",

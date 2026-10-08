@@ -1,13 +1,9 @@
 import type { ApiError, ApiErrorCode } from "@/lib/api/types";
-import { mockFetch } from "@/lib/mocks/mock-adapter";
 
-/** MOCK switch. NEXT_PUBLIC_API_MOCK=1 forces the mock adapter, =0 forces real routes.
- *  Unset: on in development (until T-028 lands the real routes), off in production builds. */
+/** MOCK switch. The mock adapter runs only when NEXT_PUBLIC_API_MOCK is exactly "1".
+ *  Unset, blank or anything else means the real routes (also in development). */
 export function isMockEnabled(): boolean {
-  const flag = process.env.NEXT_PUBLIC_API_MOCK;
-  if (flag === "1") return true;
-  if (flag === "0") return false;
-  return process.env.NODE_ENV !== "production";
+  return process.env.NEXT_PUBLIC_API_MOCK === "1";
 }
 
 export class ApiClientError extends Error {
@@ -63,9 +59,13 @@ export async function apiFetch<T>(
   const useMock = opts.mock ?? isMockEnabled();
   let res: Response;
   try {
-    res = useMock
-      ? await mockFetch(path, init)
-      : await (opts.fetchImpl ?? fetch)(path, init);
+    if (useMock) {
+      // Loaded only in the mock branch, so the adapter is not part of a normal run.
+      const { mockFetch } = await import("@/lib/mocks/mock-adapter");
+      res = await mockFetch(path, init);
+    } else {
+      res = await (opts.fetchImpl ?? fetch)(path, init);
+    }
   } catch {
     throw new ApiClientError(
       0,

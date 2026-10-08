@@ -69,8 +69,19 @@ jobs:
           npm run db:seed -- --local --verify
 
       - run: npx playwright install --with-deps chromium
-      - name: Playwright smoke test
-        run: npm run test:e2e
+      # T-057: e2e against the REAL routes. The app is started by Playwright with the local
+      # Supabase URL and keys from `supabase status` (public local defaults, never repo secrets),
+      # a throwaway HASH_PEPPER set in playwright.config.ts, and NEXT_PUBLIC_API_MOCK blank.
+      - name: Playwright e2e (real routes) and smoke test
+        run: |
+          set -a
+          eval "$(supabase status -o env)"
+          set +a
+          npm run test:e2e
+
+      # MOCK-mode UI tests (NEXT_PUBLIC_API_MOCK=1, no Supabase involved).
+      - name: Playwright e2e (mock mode)
+        run: npm run test:e2e:mock
 
       - name: Upload Playwright report
         if: failure()
@@ -80,5 +91,6 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            test-results-mock/
           if-no-files-found: ignore
           retention-days: 7

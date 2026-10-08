@@ -23,6 +23,7 @@ next-env.d.ts
 
 # Test output
 /test-results/
+/test-results-mock/
 /playwright-report/
 /blob-report/
 /playwright/.cache/

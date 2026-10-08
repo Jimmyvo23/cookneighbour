@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import { ApiClientError, apiFetch, formatRetry } from "@/lib/api/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  ApiClientError,
+  apiFetch,
+  formatRetry,
+  isMockEnabled,
+} from "@/lib/api/client";
 
 function res(status: number, body: unknown, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(body), { status, headers });
@@ -131,5 +136,23 @@ describe("formatRetry", () => {
     expect(formatRetry(30)).toBe("30 seconds");
     expect(formatRetry(90)).toBe("2 minutes");
     expect(formatRetry(60)).toBe("1 minute");
+  });
+});
+
+describe("isMockEnabled", () => {
+  const original = process.env.NEXT_PUBLIC_API_MOCK;
+  afterEach(() => {
+    if (original === undefined) delete process.env.NEXT_PUBLIC_API_MOCK;
+    else process.env.NEXT_PUBLIC_API_MOCK = original;
+  });
+  it("is off unless the flag is exactly 1", () => {
+    delete process.env.NEXT_PUBLIC_API_MOCK;
+    expect(isMockEnabled()).toBe(false);
+    for (const v of ["", "0", "true", "yes"]) {
+      process.env.NEXT_PUBLIC_API_MOCK = v;
+      expect(isMockEnabled()).toBe(false);
+    }
+    process.env.NEXT_PUBLIC_API_MOCK = "1";
+    expect(isMockEnabled()).toBe(true);
   });
 });
