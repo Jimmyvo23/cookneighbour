@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api/client";
-import { nextOnboardingStep } from "@/lib/auth/route-guard";
+import { landingPath } from "@/lib/auth/route-guard";
 import type {
   AddressRequest,
   AddressResponse,
@@ -161,7 +161,7 @@ export function LoginForm() {
       let next = "/";
       try {
         const me = await apiFetch<MeResponse>("/api/me");
-        next = nextOnboardingStep(me) ?? "/";
+        next = landingPath(me);
       } catch {
         // keep "/"
       }
@@ -289,10 +289,23 @@ export function AddressForm() {
   const [line, setLine] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const f = useApiForm<AddressRequest, AddressResponse>({
+  const f = useApiForm<AddressRequest, AddressResponse & { next: string }>({
     validate: validateAddress,
-    send: (body) => apiFetch("/api/me/address", { method: "PUT", body }),
-    onSuccess: () => router.push("/"),
+    send: async (body) => {
+      const r = await apiFetch<AddressResponse>("/api/me/address", {
+        method: "PUT",
+        body,
+      });
+      // Chefs continue to their application; if the read fails, go home.
+      let next = "/";
+      try {
+        next = landingPath(await apiFetch<MeResponse>("/api/me"));
+      } catch {
+        // keep "/"
+      }
+      return { ...r, next };
+    },
+    onSuccess: (r) => router.push(r.next),
   });
   return (
     <Page title="Your home address">

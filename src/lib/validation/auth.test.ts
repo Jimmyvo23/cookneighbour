@@ -4,6 +4,7 @@ import {
   validateCode,
   validateLogin,
   validatePhone,
+  displayNameProblem,
   validateSignUp,
 } from "@/lib/validation/auth";
 
@@ -77,5 +78,28 @@ describe("validateAddress", () => {
   it("rejects empty fields and bad postal code", () => {
     const e = validateAddress({ line: "", city: "", postalCode: "12345" });
     expect(Object.keys(e).sort()).toEqual(["city", "line", "postalCode"]);
+  });
+});
+
+describe("displayNameProblem (client-side, F1)", () => {
+  it("accepts a normal name", () =>
+    expect(displayNameProblem(" Mai Tran ")).toBeNull());
+  it("refuses blank and over-long names", () => {
+    expect(displayNameProblem("  ")).toBe("Enter your name.");
+    expect(displayNameProblem("a".repeat(81))).toMatch(/80/);
+  });
+  it("refuses control characters and lone surrogates", () => {
+    expect(displayNameProblem("Mai\u0007Tran")).toMatch(/plain text/);
+    expect(displayNameProblem("Mai\u0000")).toMatch(/plain text/);
+    expect(displayNameProblem("Mai\ud800")).toMatch(/plain text/);
+  });
+  it("sign-up uses the same rule", () => {
+    const e = validateSignUp({
+      email: "a@b.co",
+      password: "longenough1",
+      role: "chef",
+      displayName: "x\u0007",
+    });
+    expect(e.displayName).toMatch(/plain text/);
   });
 });

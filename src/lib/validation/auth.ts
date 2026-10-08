@@ -8,10 +8,24 @@ import type {
   SignUpRequest,
 } from "@/lib/api/types";
 
+import { hasUnsafeText } from "@/lib/domain/chef-application";
+
 export type FieldErrors = Record<string, string>;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const POSTAL = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+
+/** Display name rule shared by sign-up and the chef page: 1 to 80 characters, plain text only
+ *  (control characters and lone surrogates are refused, same helper the chef routes use).
+ *  Returns a message or null. Client-side only; the server check is tracked in T-059. */
+export function displayNameProblem(raw: unknown): string | null {
+  const name = typeof raw === "string" ? raw.trim() : "";
+  if (!name) return "Enter your name.";
+  if (name.length > 80) return "Use 80 characters or fewer.";
+  if (hasUnsafeText(name))
+    return "Use plain text. Control characters are not allowed.";
+  return null;
+}
 
 export function validateSignUp(
   v: Partial<Record<keyof SignUpRequest, unknown>>,
@@ -19,14 +33,13 @@ export function validateSignUp(
   const e: FieldErrors = {};
   const email = typeof v.email === "string" ? v.email.trim() : "";
   const password = typeof v.password === "string" ? v.password : "";
-  const name = typeof v.displayName === "string" ? v.displayName.trim() : "";
   if (!EMAIL.test(email)) e.email = "Enter a valid email address.";
   if (password.length < 8) e.password = "Use at least 8 characters.";
   else if (password.length > 72) e.password = "Use 72 characters or fewer.";
   if (v.role !== "customer" && v.role !== "chef")
     e.role = "Choose customer or chef.";
-  if (!name) e.displayName = "Enter your name.";
-  else if (name.length > 80) e.displayName = "Use 80 characters or fewer.";
+  const nameProblem = displayNameProblem(v.displayName);
+  if (nameProblem) e.displayName = nameProblem;
   return e;
 }
 

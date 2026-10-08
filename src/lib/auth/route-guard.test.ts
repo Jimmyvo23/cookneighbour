@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { MeResponse } from "@/lib/api/types";
-import { nextOnboardingStep, redirectFor } from "@/lib/auth/route-guard";
+import {
+  landingPath,
+  nextOnboardingStep,
+  redirectFor,
+} from "@/lib/auth/route-guard";
 
 function me(phoneVerified: boolean, hasAddress: boolean): MeResponse {
   return {
@@ -60,5 +64,42 @@ describe("redirectFor", () => {
   });
   it("sends an unverified phone from /address back to /verify-phone", () => {
     expect(redirectFor("/address", me(false, false))).toBe("/verify-phone");
+  });
+});
+
+function asRole(
+  m: MeResponse,
+  role: "customer" | "chef" | "admin",
+): MeResponse {
+  return { ...m, profile: { ...m.profile, role } };
+}
+
+describe("chef pages (client-side second layer; the server guard is the real one)", () => {
+  it("sends signed-out visitors of /chef/* to /login", () => {
+    expect(redirectFor("/chef/apply", null)).toBe("/login");
+  });
+  it("sends customers and admins away from /chef/*", () => {
+    expect(redirectFor("/chef/apply", me(true, true))).toBe("/");
+    expect(redirectFor("/chef/apply", asRole(me(true, true), "admin"))).toBe(
+      "/",
+    );
+  });
+  it("lets a chef in", () => {
+    expect(
+      redirectFor("/chef/apply", asRole(me(true, true), "chef")),
+    ).toBeNull();
+  });
+  it("does not treat a similar path as a chef page", () => {
+    expect(redirectFor("/chefs", me(true, true))).toBeNull();
+  });
+});
+
+describe("landingPath", () => {
+  it("finishes onboarding first", () => {
+    expect(landingPath(asRole(me(false, false), "chef"))).toBe("/verify-phone");
+  });
+  it("sends a chef to the application, others home", () => {
+    expect(landingPath(asRole(me(true, true), "chef"))).toBe("/chef/apply");
+    expect(landingPath(me(true, true))).toBe("/");
   });
 });
