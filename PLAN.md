@@ -129,11 +129,12 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 |---|---|---|---|---|
 | T-031 | Chef onboarding API: profile, document uploads, MOCK ID / food-handler / police / kitchen checks, allergen and hygiene acks, location options | backend | T-028 | done |
 | T-032 | Dishes and availability API | backend | T-025 | todo |
-| T-033 | Chef onboarding and profile UI | frontend | T-031 | todo |
+| T-033 | Chef onboarding and profile UI | frontend | T-031 | done |
 | T-034 | Dish menu and availability calendar UI | frontend | T-032 | todo |
 | T-035 | Admin chef-queue API: approve / reject with reason, kitchen review, police status | backend | T-031 | todo |
 | T-036 | Admin chef-queue UI | frontend | T-035 | todo |
-| T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | in_review |
+| T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | done |
+| T-059 | Reject unsafe text in display name and address (server; T-033 tester F1) | backend | T-028 | done |
 
 ### Phase 4 — Customer side (WO-4, may split into two)
 | ID | Task | Owner | Depends on | State |
@@ -159,6 +160,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 ### Phase 6 — Hardening (WO-6, deploy has its own WO-7)
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
+| T-060 | Refuse bidi and zero-width characters in public text (issue #73); client/server agreement test | backend | T-059 | todo |
 | T-050 | Playwright end-to-end demo path (§12 steps 1–5) | tester | Phase 5 | todo |
 | T-051 | §10 edge-case test sweep and bug list | tester | Phase 5 | todo |
 | T-052 | Accessibility pass (axe checks in Playwright) and fixes | frontend | Phase 5 | todo |
@@ -182,6 +184,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-11 | 2026-10-07 | A verified phone number belongs to one account only (unique index on verified `phone_hash`, 409 `PHONE_IN_USE`) | Planner (Jimmy delegated) |
 | D-12 | 2026-10-07 | Routes are the only writers of `profiles`, `chefs`, `chef_private` (client UPDATE revoked); rejected chefs may edit and resubmit; admin approves only from `pending`; admin verify must name the reviewed files | Planner (Jimmy delegated), from T-026 review |
 | D-13 | 2026-10-07 | WO-3 to WO-6 pre-approved; Planner writes each Work Order and starts without pausing. Quality over speed: full Builder → Tester → Reviewer on every task, no loosening of branch protection. WO-7 deploy and hosted seeding still need Jimmy | Jimmy |
+| D-14 | 2026-10-08 | The allergen-awareness and kitchen-hygiene acknowledgement texts drafted in T-033 are confirmed as the prototype wording; remove the "draft" labels in T-034 (was Q-15) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -274,6 +277,9 @@ Notes for each finished task are added here (CLAUDE.md §8).
 ### WO-2 summary (finished 2026-10-07)
 Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supabase has all 4 migrations; demo data not yet loaded (needs `SEED_ADMIN_PASSWORD`). Open issue: #46 (dev-only audit findings, no upstream fix yet).
 
+### T-058 — Lessons-learned file (done 2026-10-08, PR #69)
+- `docs/lessons-learned.md` plus a CLAUDE.md §8 line telling every agent to read it. Reviewer round 1 fixed handoff ownership (builders commit theirs; Planner commits Tester/Reviewer handoffs, D-7) and the handoff-then-done order.
+
 ### T-031 — Chef onboarding API (done 2026-10-08, PR #67; migration applied to hosted 2026-10-08)
 - Routes: GET/PATCH `/api/chef/application`, POST/DELETE `/api/chef/application/documents`, POST `/api/chef/application/submit`. Identity from `getUser()`, role from `profiles` (JWT `user_metadata.role` ignored, tested). Service-role client only after the role check; GET repairs missing chef rows (display name copied from `profiles`, never from the email).
 - Every client storage path goes through `checkStoragePath` (own folder, no `..`/`/`/backslash/control chars, lower-case `<prefix>-<uuid>.<ext>`); new paths also get an object-exists probe (skipped for paths already registered, which is the cause of R1). N1 reset in routes: registering a new ID or food-handler file moves its check (including `failed`) back to `pending`; a kitchen-address change, or adding or removing a kitchen photo, resets the kitchen check and turns chef's home off. All check statuses commented MOCK; submit returns `mock: true`.
@@ -287,3 +293,18 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
   - R4 (info): `20261007221003_storage_buckets.sql:5` comment is stale; already applied, do not edit.
   - R5 carry-forwards: T-033 — MOCK badge on every check status; uploads use fresh lower-case uuid names with `upsert: false`. T-035 — admin verdict writes stay conditional on the reviewed paths and bump `chef_private.updated_at`. T-054 README known limits — orphan uploads the chef never registered can no longer be deleted by the chef.
 
+### T-033 — Chef onboarding and profile UI (done 2026-10-08, PR #70)
+- `/chef/apply` with a server-side chef guard (`src/lib/server/page-guard.ts`: `getUser()` + `profiles.role`, fails closed; meta-refresh redirect with HTTP 200 because of Suspense, no private HTML sent). Sections: status, display name, profile and service area, profile photo, ID and Food Handler uploads, kitchen (address, photos, hygiene ack), allergen ack, submit with the API's `missing` list. MOCK badge on every check.
+- Uploads go to Storage as `<uid>/<prefix>-<uuid>.<ext>` (fresh lower-case uuid, `upsert: false`), then are registered via the API. Focus moves to the error after every error path. Mock adapter reuses the server's pure rules. New dev dependency `@axe-core/playwright` (MPL-2.0).
+- Tests: unit 236, mock Playwright 19, real-route Playwright 11 (CI). Tester round 1 FAIL (F1 display name accepted control characters → client fix here, server fix T-059; F3 focus after photo removal), round 2 PASS. Reviewer APPROVE.
+- Follow-ups:
+  - T-034: server guard on every `/chef/*` page (a `src/app/chef/layout.tsx`); reword "sends its check back to pending" (only true once reviewed); remove "dish editor not available yet" (`src/lib/chef/form.ts:91-92`); remove the "draft" labels on the acknowledgements (D-14).
+  - T-035: approve recomputes completeness in the same conditional write (T-031 R2); verdict writes bump `updated_at`; consider a `submittedAt` field (the "submitted" label is inferred today).
+  - T-036 / booking (WO-4): tell chefs the kitchen address is shared with the customer once a chef's-home booking is accepted; verify unlinked (removed) kitchen photos are not visible to customers via `kitchen_photos_select_customer`.
+  - T-054 README known limits: orphan uploads and removed kitchen photos stay stored; meta-refresh guard.
+
+### T-059 — Unsafe text in display name and address (done 2026-10-08, PR #72)
+- New `Fields.text` (`src/lib/api/validate.ts`); `hasUnsafeText` moved to `src/lib/domain/text-safety.ts` (re-exported from `chef-application.ts`). Sign-up and `PATCH /api/me` (`displayName`) and `PUT /api/me/address` (`line`, `city`) return 422 for control characters and lone surrogates, before any write. Contract §§3–4 updated. Address fields folded in by Planner decision (same bug class).
+- Tests: unit 191, API 213 (CI). Tester PASS, Reviewer APPROVE.
+- Not changed on purpose: email validation (Supabase Auth validates; login email is not stored). Bare `tsc --noEmit` needs `next typegen` first; use `npm run typecheck`.
+- Follow-up: T-060 (#73) bidi / zero-width / C1 characters in public text, keep ZWJ for emoji, client/server agreement test.

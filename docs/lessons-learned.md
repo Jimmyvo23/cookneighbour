@@ -20,7 +20,7 @@ The office only shows what agents report. Nothing updates on its own.
 
 ## 3. Bugs reviews keep finding. Builders check these before handing off
 
-Each of these reached the Tester or Reviewer at least once. Catching them in the builder's own check saves a full fix round.
+Each of these reached the Tester or Reviewer at least once, except the rows marked "(preventive)". Validate free text on the server too, not only in the form (T-033/T-059). Catching them in the builder's own check saves a full fix round.
 
 | Bug class | Example we had | Check |
 |---|---|---|
