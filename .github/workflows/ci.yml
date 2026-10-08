@@ -49,6 +49,14 @@ jobs:
           set +a
           npm run test:rls
 
+      # T-028: API route tests call the Route Handlers directly against the same local stack.
+      - name: API route tests
+        run: |
+          set -a
+          eval "$(supabase status -o env)"
+          set +a
+          npm run test:api
+
       # T-030: seed the throwaway local stack, then check the result. Runs after the RLS tests so
       # the seed accounts cannot collide with their fixtures. The admin password is a local-only
       # throwaway for this runner (not a secret, never used outside this job).

@@ -91,7 +91,7 @@ Phone verification is simulated: no SMS is sent. The flow is real (submit, then 
 - **Who:** signed in (customer or chef), own record.
 - **Request:** `PhoneSubmitRequest` `{ phone }`. **Response 200:** `PhoneSubmitResponse` `{ phoneMasked, mock: true, mockHint }`.
 - **Errors:** 422 `phone` malformed or not Canadian (`+1` + 10 digits after normalization), 409 `PHONE_IN_USE` (see section 8), 429.
-- **Does (service, `profile_private` has no client writes):** normalize to E.164 (PLAN.md A-3, `src/lib/domain/phone.ts`); compute `phone_hash` = SHA-256 with `HASH_PEPPER`; store `phone_e164`, `phone_hash`, set `phone_verified = false`. Resubmitting a different number resets verification.
+- **Does (service, `profile_private` has no client writes):** normalize to E.164 (PLAN.md A-3, `src/lib/domain/phone.ts`); compute `phone_hash` = HMAC-SHA256 keyed with `HASH_PEPPER` over the E.164 number (`src/lib/domain/hash.ts`, shared with the seed script); store `phone_e164`, `phone_hash`, set `phone_verified = false`. Resubmitting a different number resets verification; resubmitting the same number leaves its verified state alone (T-028 implementation note). Any signed-in role may call the phone and address routes (T-028: no role restriction was specified).
 - **Tables:** `profile_private`.
 - **MUST check:** identity from session; hash computed server-side only; nothing about the code is stored (MOCK accepts any code); do not reveal who owns a number that is in use beyond `PHONE_IN_USE`.
 
@@ -105,7 +105,7 @@ Phone verification is simulated: no SMS is sent. The flow is real (submit, then 
 ### PUT /api/me/address
 - **Who:** signed in (customers need it for the free-trial check; chefs may also store one). **Request:** `AddressRequest` `{ line, city, postalCode }`. **Response 200:** `AddressResponse`.
 - **Errors:** 422 (`line` 1 to 120 chars, `city` 1 to 80, `postalCode` malformed or `fields.postalCode = "Not a GTA postal code."` when its first 3 characters are not in `postal_prefixes`; A-1), 401.
-- **Does (service):** normalize the postal code (uppercase, no space); look up the prefix in `postal_prefixes`; normalize the address and compute `address_hash` (A-2, peppered SHA-256); store `address_line`, `city`, `postal_code`, `postal_prefix`, `address_hash`.
+- **Does (service):** normalize the postal code (uppercase, no space); look up the prefix in `postal_prefixes`; normalize the address and compute `address_hash` (A-2 normalization in `src/lib/domain/address.ts`, HMAC-SHA256 with `HASH_PEPPER`); store `address_line`, `city`, `postal_code`, `postal_prefix`, `address_hash`.
 - **Tables:** `postal_prefixes` (read), `profile_private`.
 - **MUST check:** the address is written only to the caller's row. The route does not decide free-trial eligibility (WO-4 compares `address_hash` at booking time). The hash is not returned. The address is shown only to its owner here; the other party sees it only after acceptance through `get_booking_contact`.
 
@@ -210,6 +210,8 @@ CLAUDE.md section 10 lists "duplicate or malformed phone numbers". The free tria
 - With MOCK SMS anyone can "verify" any number, so a malicious user can squat someone else's number in the demo. Accepted for a prototype; real SMS removes this.
 
 ## 9. Rate-limit expectations (MOCK verify and sign-up)
+
+**Implemented in T-028 as an in-memory fixed-window placeholder** (`src/lib/api/rate-limit.ts`): counters are per server process, reset on restart and are not shared between serverless instances, so this is best effort only and not a real abuse defence. Validation failures count toward the limit.
 
 **ASSUMPTION** (values are placeholders until Q-11 is decided in WO-4; prototype uses an in-memory or Postgres-backed counter, and in-memory limits on serverless are best effort only):
 - `POST /api/me/phone`: 5 per hour per account and 10 per hour per IP.

@@ -155,9 +155,8 @@ describe("database-level guarantees", () => {
       (t) => `anon ${t} select`,
     ),
     ...allTables.map((t) => `authenticated ${t} select`),
-    ...["chef_private", "chefs", "profiles", "reports"].map(
-      (t) => `authenticated ${t} update`,
-    ),
+    // T-028: chef_private, chefs and profiles are written by routes only (no client update).
+    "authenticated reports update",
     ...["availability", "dishes"].flatMap((t) =>
       ["delete", "insert", "update"].map((p) => `authenticated ${t} ${p}`),
     ),
