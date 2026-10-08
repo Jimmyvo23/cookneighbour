@@ -100,9 +100,10 @@ export function checkStoragePath(
       message: "That file is not in your folder.",
     };
   const rule = STORAGE_RULES[target];
+  // Lower case only (no `i` flag): the app generates these names (crypto.randomUUID() and a
+  // lower-case extension), so a differently cased name is never legitimate (T-031 tester F6).
   const name = new RegExp(
     `^${rule.prefix}-${UUID}\\.(${rule.exts.join("|")})$`,
-    "i",
   );
   if (!name.test(raw.slice(prefix.length)))
     return invalid(
@@ -344,7 +345,24 @@ export const UPDATE_KEYS = [
   "acknowledgeKitchenHygiene",
 ] as const;
 
+/**
+ * Text that Postgres or the API cannot store safely. NUL (and the other control characters) are
+ * refused; a lone UTF-16 surrogate is not valid text either and the database rejects it. Checked
+ * before anything is written, so these are 422, never a 500 from the database (T-031 tester F1).
+ */
 const CONTROL = /[\u0000-\u001f\u007f]/;
+/** A bio may be several lines, so line feed, carriage return and tab are allowed in it. */
+const CONTROL_EXCEPT_WHITESPACE =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+const LONE_SURROGATE =
+  /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+export function hasUnsafeText(text: string, allowWhitespace = false): boolean {
+  return (
+    (allowWhitespace ? CONTROL_EXCEPT_WHITESPACE : CONTROL).test(text) ||
+    LONE_SURROGATE.test(text)
+  );
+}
 
 function parseTextList(v: unknown): string[] | null {
   if (!Array.isArray(v) || v.length < LIST_MIN || v.length > LIST_MAX)
@@ -354,7 +372,7 @@ function parseTextList(v: unknown): string[] | null {
   for (const e of v) {
     if (typeof e !== "string") return null;
     const t = e.trim();
-    if (t.length < 1 || t.length > LIST_ENTRY_MAX || CONTROL.test(t))
+    if (t.length < 1 || t.length > LIST_ENTRY_MAX || hasUnsafeText(t))
       return null;
     // Case-insensitive de-duplication keeps the first spelling.
     if (!seen.has(t.toLowerCase())) {
@@ -382,11 +400,11 @@ function parseKitchenAddress(
     }
   const line = typeof o.line === "string" ? o.line.trim() : "";
   const city = typeof o.city === "string" ? o.city.trim() : "";
-  if (line.length < 1 || line.length > 120 || CONTROL.test(line)) {
+  if (line.length < 1 || line.length > 120 || hasUnsafeText(line)) {
     errors["kitchenAddress.line"] = "Enter 1 to 120 characters.";
     bad = true;
   }
-  if (city.length < 1 || city.length > 80 || CONTROL.test(city)) {
+  if (city.length < 1 || city.length > 80 || hasUnsafeText(city)) {
     errors["kitchenAddress.city"] = "Enter 1 to 80 characters.";
     bad = true;
   }
@@ -414,6 +432,8 @@ export function parseUpdateBody(body: Record<string, unknown>): {
     if (v === null) value.bio = null;
     else if (typeof v !== "string" || v.trim().length > BIO_MAX)
       errors.bio = `Enter up to ${BIO_MAX} characters.`;
+    else if (hasUnsafeText(v, true))
+      errors.bio = "Use plain text. Control characters are not allowed.";
     else value.bio = v.trim() === "" ? null : v.trim();
   }
 

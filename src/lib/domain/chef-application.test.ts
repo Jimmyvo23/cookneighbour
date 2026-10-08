@@ -57,6 +57,31 @@ describe("checkStoragePath (contract section 2, rule 7)", () => {
     });
   });
 
+  it("requires lower case: names the app does not generate are refused (tester F6)", () => {
+    for (const file of [
+      `ID-${U1}.png`,
+      `Id-${U1}.png`,
+      `id-${U1.toUpperCase()}.png`,
+      `id-${U1}.PNG`,
+      `id-${U1}.Png`,
+    ])
+      expect(ok("id_document", file), file).toMatchObject({
+        ok: false,
+        kind: "invalid",
+      });
+    expect(ok("food_handler", `FOOD-HANDLER-${U1}.pdf`)).toMatchObject({
+      ok: false,
+    });
+    expect(ok("kitchen_photo", `kitchen-${U1}.JPG`)).toMatchObject({
+      ok: false,
+    });
+    expect(ok("profile_photo", `photo-${U1.toUpperCase()}.webp`)).toMatchObject(
+      { ok: false },
+    );
+    // the same name in lower case is fine
+    expect(ok("id_document", `id-${U1}.png`)).toMatchObject({ ok: true });
+  });
+
   it("rejects a name that belongs to another kind", () => {
     expect(ok("id_document", `kitchen-${U1}.png`)).toMatchObject({
       ok: false,
@@ -502,6 +527,47 @@ describe("parseUpdateBody", () => {
 
   it("an empty body is valid and changes nothing", () => {
     expect(parse({})).toEqual({ value: {}, errors: {} });
+  });
+
+  it("bio rejects NUL and other control characters but keeps line breaks and tabs (tester F1)", () => {
+    for (const bad of [
+      "a\u0000b",
+      "\u0000",
+      "x\u0001y",
+      "x\u0008y",
+      "x\u000by",
+      "x\u000cy",
+      "x\u001fy",
+      "x\u007fy",
+    ])
+      expect(parse({ bio: bad }).errors.bio, JSON.stringify(bad)).toBeTruthy();
+    expect(parse({ bio: "line one\nline two\r\n\tindented" }).errors).toEqual(
+      {},
+    );
+    expect(parse({ bio: "line one\nline two" }).value.bio).toBe(
+      "line one\nline two",
+    );
+  });
+
+  it("text fields reject lone surrogates, accept real emoji and accents", () => {
+    const lone = ["a\ud800", "\udc00b", "x\udbffy", "\ude00\ud83d"];
+    for (const bad of lone) {
+      expect(parse({ bio: bad }).errors.bio, JSON.stringify(bad)).toBeTruthy();
+      expect(parse({ cuisines: [bad] }).errors.cuisines).toBeTruthy();
+      expect(parse({ languages: [bad] }).errors.languages).toBeTruthy();
+      expect(
+        parse({
+          kitchenAddress: { line: bad, city: "X", postalCode: "L5B1A1" },
+        }).errors["kitchenAddress.line"],
+      ).toBeTruthy();
+      expect(
+        parse({
+          kitchenAddress: { line: "1 A St", city: bad, postalCode: "L5B1A1" },
+        }).errors["kitchenAddress.city"],
+      ).toBeTruthy();
+    }
+    expect(parse({ bio: "Café \u{1F35C} pho" }).errors).toEqual({});
+    expect(parse({ cuisines: ["Phở \u{1F35C}"] }).errors).toEqual({});
   });
 
   it("bio: null and blank clear it, 2001 characters is too long, 2000 is fine", () => {
