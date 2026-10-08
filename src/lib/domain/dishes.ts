@@ -3,7 +3,9 @@
 import { hasUnsafeText } from "./text-safety.ts";
 
 // ---------------------------------------------------------------------------
-// Limits (contract 5A and 5B; bounds decided by Jimmy as D-16, some also enforced by a database check)
+// Limits (contract 5A and 5B). Decided by Jimmy: cook time, cost, servings, shelf life and its
+// default, and the active-dish cap (D-16); the availability horizon (D-15). The other bounds
+// (cuisine, allergens, dates per list) are ASSUMPTIONS. Some are also database checks.
 // ---------------------------------------------------------------------------
 export const NAME_MAX = 120; // database check
 export const DESCRIPTION_MAX = 1000; // database check
@@ -16,7 +18,7 @@ export const SERVINGS_MAX = 50;
 export const ALLERGENS_MAX = 14;
 export const ALLERGEN_ENTRY_MAX = 40;
 export const SHELF_LIFE_MAX_DAYS = 7; // database check
-export const DEFAULT_SHELF_LIFE_DAYS = 2; // A-7
+export const DEFAULT_SHELF_LIFE_DAYS = 2; // A-7, kept by D-16
 /** Mirrored by the database trigger dishes_active_cap (migration T-032). */
 export const MAX_ACTIVE_DISHES = 50;
 

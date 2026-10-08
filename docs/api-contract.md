@@ -172,7 +172,7 @@ All routes: 401 without a session; role must be `chef` (else 403, for customers 
 
 ## 5A. Dishes (own) **(T-032)**
 
-All routes: 401 without a session; role `chef` (else 403, decided from `profiles.role`); acts only on dishes whose `chef_id` is the caller. Order of checks: session (401), role (403), content type (400); then, for `PATCH`, the dish must exist and belong to the caller (404, even when the body is also invalid); a `photoPath` in another chef's folder is 403 before any other body error; then body fields (422); then state (409). `Cache-Control: no-store`. They use the same gate as section 5 (`requireChef`), including the idempotent row repair. A chef of **any** status (`pending`, `approved`, `rejected`) manages dishes, because a sample dish with a photo is part of the application (`missing.sampleDish` in section 5 becomes satisfiable by `POST /api/chef/dishes` with a `photoPath`). Customers and anonymous visitors see only **active** dishes of **approved** chefs (RLS `dishes_select_public`); the customer-facing read route comes with the public chef detail in WO-4.
+All routes: 401 without a session; role `chef` (else 403, decided from `profiles.role`); acts only on dishes whose `chef_id` is the caller. Order of checks: session (401), role (403), content type (400); then, for `PATCH`, the dish must exist and belong to the caller (404, even when the body is also invalid); then unknown keys (422, reported on their own); then a `photoPath` in another chef's folder (403); then field rules (422, all at once) and, for a new `photoPath`, the uploaded-object check (422); then state (409). `Cache-Control: no-store`. They use the same gate as section 5 (`requireChef`), including the idempotent row repair. A chef of **any** status (`pending`, `approved`, `rejected`) manages dishes, because a sample dish with a photo is part of the application (`missing.sampleDish` in section 5 becomes satisfiable by `POST /api/chef/dishes` with a `photoPath`). Customers and anonymous visitors see only **active** dishes of **approved** chefs (RLS `dishes_select_public`); the customer-facing read route comes with the public chef detail in WO-4.
 
 `Dish` (response):
 
@@ -191,11 +191,11 @@ Field rules (bounds confirmed as **Decision D-16 (Jimmy, 2026-10-08)**; they liv
 | `ingredientCostCents` | optional, default 0; integer 0 to 50000 |
 | `servings` | optional, default 1; integer 1 to 50 |
 | `allergens` | optional, default `[]`; array of up to 14 strings, each trimmed 1 to 40 characters without control characters; stored **lower case**, de-duplicated, order kept (so the WO-4 intake-form conflict check can compare them). Free text; the UI offers a picker with the Canadian priority allergens |
-| `shelfLifeDays` | optional, default 2 (A-7); integer 0 to 7 (database check). The "eat by" date is visit date plus this value |
+| `shelfLifeDays` | optional, default 2 (A-7, kept by D-16); integer 0 to 7 (database check). The "eat by" date is visit date plus this value |
 | `photoPath` | optional or `null`. Otherwise the storage path rule (section 2, rule 7) for bucket `dish-photos`, name `dish-<uuid>.<ext>` (jpg, jpeg, png, webp), in the caller's own folder. A foreign folder is 403 (stops at once, no storage call); a malformed name or an object that was never uploaded is 422 `fields.photoPath`. Sending the photo already stored skips the storage check. The old object stays in Storage |
 | `isActive` | PATCH only; boolean |
 
-Unknown keys are 422 `fields.<key> = "Unknown field."` (this includes `id`, `chefId`, `currency`, `createdAt`). All field errors are reported at once; nothing is saved on any error.
+Unknown keys are 422 `fields.<key> = "Unknown field."` (this includes `id`, `chefId`, `currency`, `createdAt`). Unknown keys are reported on their own, before any other body check; after that, all field errors are reported at once. Nothing is saved on any error.
 
 ### GET /api/chef/dishes
 - **Response 200:** `ChefDishListResponse` `{ items: Dish[] }`: all of the caller's dishes, active and inactive, newest first (`created_at` desc, then `id`). No pagination: a chef has at most 50 active dishes and inactive ones are few.
