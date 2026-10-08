@@ -67,6 +67,11 @@ export function AccountBar() {
       {me === undefined ? null : me ? (
         <>
           <span>Signed in as {me.profile.displayName}</span>
+          {me.profile.role === "chef" && (
+            <Link className={cls} href="/chef/apply">
+              Chef application
+            </Link>
+          )}
           <button type="button" onClick={logout} className={cls}>
             Log out
           </button>

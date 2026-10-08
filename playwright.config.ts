@@ -13,7 +13,9 @@ const hasStack = Boolean(env.API_URL && anon && service);
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: hasStack ? [] : ["**/auth-real.spec.ts"],
+  testIgnore: hasStack
+    ? []
+    : ["**/auth-real.spec.ts", "**/chef-application-real.spec.ts"],
   forbidOnly: !!env.CI,
   retries: env.CI ? 1 : 0,
   reporter: env.CI ? [["list"], ["html", { open: "never" }]] : "list",
