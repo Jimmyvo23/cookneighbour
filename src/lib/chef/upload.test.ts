@@ -129,3 +129,45 @@ describe("uploadChefFile", () => {
     expect(upload).not.toHaveBeenCalled();
   });
 });
+
+describe("dish photos (T-034)", () => {
+  it("builds a fresh lower-case dish-photos path the server accepts", () => {
+    const upper = "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA";
+    const { bucket, path } = newObjectPath(
+      "dish_photo",
+      USER,
+      "image/webp",
+      upper,
+    );
+    expect(bucket).toBe("dish-photos");
+    expect(path).toBe(`${USER}/dish-${upper.toLowerCase()}.webp`);
+    expect(checkStoragePath("dish_photo", USER, path).ok).toBe(true);
+  });
+  it("uses a new name each time and never overwrites", async () => {
+    const calls: { path: string; upsert: boolean }[] = [];
+    const uploader: ChefUploader = {
+      upload: vi.fn(async (_b, path, _f, o) => {
+        calls.push({ path, upsert: o.upsert });
+        return { error: null };
+      }),
+    };
+    const file = new File([new Uint8Array(10)], "pho.png", {
+      type: "image/png",
+    });
+    const a = await uploadChefFile("dish_photo", USER, file, uploader);
+    const b = await uploadChefFile("dish_photo", USER, file, uploader);
+    expect(a.path).not.toBe(b.path);
+    expect(calls.every((c) => c.upsert === false)).toBe(true);
+  });
+  it("refuses PDFs and files over 5 MB", () => {
+    expect(
+      validateUploadFile("dish_photo", { type: "application/pdf", size: 5 }),
+    ).toMatch(/JPEG, PNG or WebP/);
+    expect(
+      validateUploadFile("dish_photo", {
+        type: "image/png",
+        size: 5 * 1024 * 1024 + 1,
+      }),
+    ).toMatch(/5 MB/);
+  });
+});
