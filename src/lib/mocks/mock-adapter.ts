@@ -3,6 +3,7 @@
 // Responses follow docs/api-contract.md. Switched by NEXT_PUBLIC_API_MOCK (see client.ts).
 // Magic inputs for demos and tests:
 //   email taken@example.com        -> 409 EMAIL_IN_USE (sign-up)
+//   email confirm@example.com      -> sign-up returns signedIn:false (no session; check-your-email)
 //   email limited@example.com      -> 429 RATE_LIMITED, retry 90 s (sign-up, login)
 //   password "wrongpass"           -> 401 INVALID_CREDENTIALS (login)
 //   phone ending 0000              -> 409 PHONE_IN_USE
@@ -165,10 +166,11 @@ export async function mockFetch(
       currency: "CAD",
       language: "en",
     };
-    save({ ...EMPTY, profile });
+    const needsConfirm = b.email.toLowerCase() === "confirm@example.com";
+    if (!needsConfirm) save({ ...EMPTY, profile });
     return json(201, {
       user: profile,
-      signedIn: true,
+      signedIn: !needsConfirm,
     } satisfies SignUpResponse);
   }
 

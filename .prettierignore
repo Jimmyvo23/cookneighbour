@@ -3,6 +3,7 @@ node_modules
 package-lock.json
 next-env.d.ts
 test-results
+test-results-mock
 playwright-report
 .team
 .claude

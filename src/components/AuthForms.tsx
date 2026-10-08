@@ -3,11 +3,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api/client";
+import { nextOnboardingStep } from "@/lib/auth/route-guard";
 import type {
   AddressRequest,
   AddressResponse,
   LoginRequest,
   LoginResponse,
+  MeResponse,
   PhoneSubmitRequest,
   PhoneSubmitResponse,
   PhoneVerifyRequest,
@@ -147,10 +149,25 @@ export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const f = useApiForm<LoginRequest, LoginResponse>({
+  const f = useApiForm<LoginRequest, LoginResponse & { next: string }>({
     validate: validateLogin,
-    send: (body) => apiFetch("/api/auth/login", { method: "POST", body }),
-    onSuccess: () => router.push("/"),
+    send: async (body) => {
+      const r = await apiFetch<LoginResponse>("/api/auth/login", {
+        method: "POST",
+        body,
+      });
+      // Logged in. Work out the next onboarding step from GET /api/me; if that read fails,
+      // go home (the account bar re-checks the session anyway).
+      let next = "/";
+      try {
+        const me = await apiFetch<MeResponse>("/api/me");
+        next = nextOnboardingStep(me) ?? "/";
+      } catch {
+        // keep "/"
+      }
+      return { ...r, next };
+    },
+    onSuccess: (r) => router.push(r.next),
   });
   return (
     <Page title="Log in">
