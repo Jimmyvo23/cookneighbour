@@ -130,7 +130,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-031 | Chef onboarding API: profile, document uploads, MOCK ID / food-handler / police / kitchen checks, allergen and hygiene acks, location options | backend | T-028 | done |
 | T-032 | Dishes and availability API | backend | T-025 | done |
 | T-033 | Chef onboarding and profile UI | frontend | T-031 | done |
-| T-034 | Dish menu and availability calendar UI | frontend | T-032 | todo |
+| T-034 | Dish menu and availability calendar UI | frontend | T-032 | done |
 | T-035 | Admin chef-queue API: approve / reject with reason, kitchen review, police status | backend | T-031 | todo |
 | T-036 | Admin chef-queue UI | frontend | T-035 | todo |
 | T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | done |
@@ -301,10 +301,10 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Uploads go to Storage as `<uid>/<prefix>-<uuid>.<ext>` (fresh lower-case uuid, `upsert: false`), then are registered via the API. Focus moves to the error after every error path. Mock adapter reuses the server's pure rules. New dev dependency `@axe-core/playwright` (MPL-2.0).
 - Tests: unit 236, mock Playwright 19, real-route Playwright 11 (CI). Tester round 1 FAIL (F1 display name accepted control characters → client fix here, server fix T-059; F3 focus after photo removal), round 2 PASS. Reviewer APPROVE.
 - Follow-ups:
-  - T-034: server guard on every `/chef/*` page (a `src/app/chef/layout.tsx`); reword "sends its check back to pending" (only true once reviewed); remove "dish editor not available yet" (`src/lib/chef/form.ts:91-92`); remove the word "draft" on the acknowledgements (D-14) but keep the "not legal advice" note and the MOCK "nobody checks this" note (CLAUDE.md §11, Q-3); reword "You can remove a photo" (`ChefApplicationView.tsx:593`) to say removal takes it off the application and the file stays stored (superseded wording: do not promise "privately"; see T-032 follow-ups).
+  - T-034: server guard on every `/chef/*` page (a `src/app/chef/layout.tsx`); reword "sends its check back to pending" (only true once reviewed); remove "dish editor not available yet" (`src/lib/chef/form.ts:91-92`); remove the word "draft" on the acknowledgements (D-14) but keep the "not legal advice" note and the MOCK "nobody checks this" note (CLAUDE.md §11, Q-3); reword "You can remove a photo" (`ChefApplicationView.tsx:593`) to say removal takes it off the application and tries to delete the file (corrected in T-034; a failed delete leaves an orphan).
   - T-035: approve recomputes completeness in the same conditional write (T-031 R2); verdict writes bump `updated_at`; consider a `submittedAt` field (the "submitted" label is inferred today).
   - T-036 / booking (WO-4): tell chefs the kitchen address is shared with the customer once a chef's-home booking is accepted; verify unlinked (removed) kitchen photos are not visible to customers via `kitchen_photos_select_customer`.
-  - T-054 README known limits: orphan uploads and removed kitchen photos stay stored; meta-refresh guard.
+  - T-054 README known limits: orphan uploads; a removed kitchen photo stays stored only if its delete fails; meta-refresh guard.
 
 ### T-059 — Unsafe text in display name and address (done 2026-10-08, PR #72)
 - New `Fields.text` (`src/lib/api/validate.ts`); `hasUnsafeText` moved to `src/lib/domain/text-safety.ts` (re-exported from `chef-application.ts`). Sign-up and `PATCH /api/me` (`displayName`) and `PUT /api/me/address` (`line`, `city`) return 422 for control characters and lone surrogates, before any write. Contract §§3–4 updated. Address fields folded in by Planner decision (same bug class).
@@ -322,5 +322,24 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
   - INFO: `src/lib/domain/dishes.ts:6` said "ASSUMPTIONS"; comment fixed in #76 (names which bounds are D-15, D-16 or still assumptions). Migration line 16 says the same; already applied, do not edit.
   - Accepted gaps: PUT availability is two statements, not one transaction (resend fixes it); replaced dish photos stay in Storage; a chef can delete their own photo between check and save; clearing a booked date does not change the booking.
 - Follow-ups:
-  - T-034: mock adapter dish and availability routes; dish photos with a fresh lower-case uuid; expect 404 before 422, 403 foreign path, 409 at the cap; use the server's `today` and `lastBookableDay`; missing-photo fallback; labelled fields and focus to errors. The T-033 "removed photo" wording must say the file stays stored, without promising "privately".
+  - T-034: mock adapter dish and availability routes; dish photos with a fresh lower-case uuid; expect 404 before 422, 403 foreign path, 409 at the cap; use the server's `today` and `lastBookableDay`; missing-photo fallback; labelled fields and focus to errors. Removed-photo wording must match the code (corrected in T-034: the route tries to delete the file; it stays stored only if that delete fails).
   - WO-4: booking requires an available date and a double-booking check; decide what clearing a booked date does; customer read routes for dishes and availability; compare intake allergies with the stored lower-case allergens.
+
+### T-034 — Dish menu and availability calendar UI (done 2026-10-08, PR #77)
+- `src/app/chef/layout.tsx`: one server-side chef guard for every `/chef/*` page (fails closed; the per-page guard in `apply/page.tsx` was removed). `ChefNav` links Application, Dishes and Availability.
+- `/chef/dishes` (`DishesView.tsx`, `src/lib/chef/dishes.ts`): create, edit, deactivate, reactivate (no delete). Dollars in the form, cents to the API, reusing `parseDishBody`. Allergen picker plus "Other allergens". Photos to `dish-photos` as `<uid>/dish-<uuid>.<ext>` (`upsert: false`); after a failed save the upload is reused on retry and dropped only when the server rejects the photo (`uploadRejected`). Missing-photo fallback. 409 cap message takes focus.
+- `/chef/availability` (`AvailabilityView.tsx`, `src/lib/chef/calendar.ts`): ARIA grid, one tab stop, arrows/Home/End/PageUp/PageDown, Space/Enter; `aria-pressed` plus a check mark. Window from the server's `today`/`lastBookableDay` (D-15); PUT sends only `{add, remove}`.
+- Mock adapter has the dish and availability routes in the real check order; "with dish" seeds a real mock dish with a photo. T-033 carry-overs done ("draft" removed per D-14 with the legal and MOCK notes kept; dish-editor link; "back to pending review" wording).
+- Brief correction: the Planner's brief said a removed kitchen photo "stays stored". The code tries to delete it (`src/lib/server/chef-application.ts:529`); the builder wrote true wording instead ("also tries to delete the file; if that fails, the file may stay stored").
+- Tests: unit 388, RLS 115, API 261, Playwright real 17 + mock 39 (CI). Tester round 1 PASS with LOW findings; Planner sent LOW 1 (photo re-uploaded on every retry) and LOW 2 (aria-disabled had no visible style) back before review; round 2 PASS. Reviewer APPROVE.
+- Reviewer findings:
+  - LOW `src/app/chef/layout.tsx:5-9`: comment says /chef pages need no guard of their own; only true while they load data in the browser. A layout does not re-run on in-app navigation, so a page that reads private data on the server needs its own guard. Fix the comment in T-036.
+  - LOW `DishesView.tsx:540-542`: replacing a dish photo does not say the old photo stays public at its old link. Record in T-054 README known limits.
+  - INFO: "Discard changes" can be pressed during a save (harmless). No raw-HTML /chef test for a signed-in admin yet.
+- Backlog: `allergenList` (`src/lib/domain/dishes.ts` ~60) counts duplicates before merging them, so 13 ticked plus a retyped one is refused (backend, low). Bidi/C1 characters → T-060.
+- Follow-ups:
+  - T-035: admin decision writes conditional on the reviewed files; recompute completeness on approve (T-031 R2); add a seeded admin to the real-route suite so the /chef raw-HTML admin test can be written.
+  - T-036: server guard on `/admin/*` (page by page where data is read on the server); MOCK badge on every check status; fix the layout comment.
+  - WO-4: search shows only active dishes and ticked dates inside the D-15 window.
+  - T-054 README: dish photos, including replaced ones, are public by link; guard answers 200 with a streamed redirect.
+
