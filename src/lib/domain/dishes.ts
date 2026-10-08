@@ -3,7 +3,7 @@
 import { hasUnsafeText } from "./text-safety.ts";
 
 // ---------------------------------------------------------------------------
-// Limits (contract 5A and 5B; the bounds are ASSUMPTIONS except where a database check exists)
+// Limits (contract 5A and 5B; bounds decided by Jimmy as D-16, some also enforced by a database check)
 // ---------------------------------------------------------------------------
 export const NAME_MAX = 120; // database check
 export const DESCRIPTION_MAX = 1000; // database check

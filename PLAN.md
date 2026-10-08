@@ -318,8 +318,8 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Dish photo paths go through `checkStoragePath` (403 for another chef's folder). PATCH is one conditional statement. Pending/rejected chefs' dishes and dates stay hidden; approved chefs show active dishes only.
 - Tests: unit 285, RLS 115, API 261, Playwright 11 + 19 (CI run 37822068827). Tester round 1 FAIL (year 0000 passed `isRealDate`, Postgres would answer 500) → fixed; round 2 PASS. Reviewer APPROVE.
 - Reviewer findings:
-  - LOW: `docs/api-contract.md:175` says 422 before 404/409; the code checks ownership first (404, 403 foreign path) then 422. Code is right; fix the sentence at the next contract touch (T-034).
-  - INFO: `src/lib/domain/dishes.ts:6` still says "ASSUMPTIONS" (now D-16); fix in T-034. Migration line 16 says the same; already applied, do not edit.
+  - LOW: `docs/api-contract.md:175` says 422 before 404/409; the code checks ownership first (404, 403 foreign path) then 422. Code is right; fixed in the Planner notes PR (#76).
+  - INFO: `src/lib/domain/dishes.ts:6` said "ASSUMPTIONS"; comment fixed in #76 (D-16). Migration line 16 says the same; already applied, do not edit.
   - Accepted gaps: PUT availability is two statements, not one transaction (resend fixes it); replaced dish photos stay in Storage; a chef can delete their own photo between check and save; clearing a booked date does not change the booking.
 - Follow-ups:
   - T-034: mock adapter dish and availability routes; dish photos with a fresh lower-case uuid; expect 404 before 422, 403 foreign path, 409 at the cap; use the server's `today` and `lastBookableDay`; missing-photo fallback; labelled fields and focus to errors. The T-033 "removed photo" wording must say the file stays stored, without promising "privately".
