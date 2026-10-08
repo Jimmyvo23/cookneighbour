@@ -79,6 +79,26 @@ describe("CSRF content-type rule on every state-changing route", () => {
 });
 
 describe("POST /api/auth/signup", () => {
+  it("rejects unsafe display names (422) and accepts accented ones", async () => {
+    const b = new Browser();
+    for (const displayName of ["Mai\u0000", "Ma\ti", "Mai\ud83d"]) {
+      const res = await b.call(signup, {
+        body: {
+          email: newEmail("customer"),
+          password: PASSWORD,
+          role: "customer",
+          displayName,
+        },
+      });
+      expect(res.status, JSON.stringify(displayName)).toBe(422);
+      expect(res.body.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(res.body.error.fields)).toEqual(["displayName"]);
+    }
+    const ok = await signedUp("customer", "Nguyễn Thị Mai");
+    const me = await ok.b.call(getMe, { method: "GET" });
+    expect(me.body.profile.displayName).toBe("Nguyễn Thị Mai");
+  });
+
   it("validates fields (422) and rejects unknown keys and the admin role", async () => {
     const b = new Browser();
     const res = await b.call(signup, {
@@ -324,6 +344,36 @@ describe("GET and PATCH /api/me", () => {
     expect(prof.data).toEqual({ display_name: "Chef New", role: "chef" });
   });
 
+  it("PATCH rejects control characters and lone surrogates (422 on displayName), accepts accented names", async () => {
+    const { b, id } = await signedUp("customer", "Keep Me");
+    for (const displayName of [
+      "Mai\u0000",
+      "Ma\ni",
+      "Mai\ud83d",
+      "\udc00Mai",
+    ]) {
+      const r = await b.call(patchMe, {
+        method: "PATCH",
+        body: { displayName },
+      });
+      expect(r.status, JSON.stringify(displayName)).toBe(422);
+      expect(r.body.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(r.body.error.fields)).toEqual(["displayName"]);
+    }
+    const kept = await svc
+      .from("profiles")
+      .select("display_name")
+      .eq("id", id)
+      .single();
+    expect(kept.data?.display_name).toBe("Keep Me");
+    const ok = await b.call(patchMe, {
+      method: "PATCH",
+      body: { displayName: "Nguyễn Thị Mai" },
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.body.displayName).toBe("Nguyễn Thị Mai");
+  });
+
   it("PATCH rejects unknown keys (role, id, country) and bad names with 422 and changes nothing", async () => {
     const { b, id } = await signedUp("customer", "Keep Me");
     for (const body of [
@@ -510,6 +560,36 @@ describe("PUT /api/me/address", () => {
     ).toBe(422);
   });
 
+  it("rejects control characters and lone surrogates in line and city (422), stores nothing, accepts accents", async () => {
+    const { b, id } = await signedUp();
+    for (const [key, value] of [
+      ["line", "100 Fictional\u0000 St"],
+      ["line", "100 Fictional\nSt"],
+      ["line", "100 Fictional\ud83d St"],
+      ["city", "Mississauga\u0007"],
+      ["city", "\udc00Mississauga"],
+    ]) {
+      const r = await b.call(address, {
+        method: "PUT",
+        body: { ...good, [key]: value },
+      });
+      expect(r.status, `${key} ${JSON.stringify(value)}`).toBe(422);
+      expect(r.body.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(r.body.error.fields)).toEqual([key]);
+    }
+    const none = await svc
+      .from("profile_private")
+      .select("address_line, address_hash")
+      .eq("profile_id", id)
+      .single();
+    expect(none.data).toEqual({ address_line: null, address_hash: null });
+    const ok = await b.call(address, {
+      method: "PUT",
+      body: { ...good, line: "12 Rue Léopold-Sédar", city: "Mississauga" },
+    });
+    expect(ok.status, ok.text).toBe(200);
+  });
+
   it("stores the normalized address and hash for the caller only; hash is never returned", async () => {
     const { b, id } = await signedUp();
     const other = await signedUp();
@@ -548,5 +628,68 @@ describe("PUT /api/me/address", () => {
       postalPrefix: "L5B",
     });
     expect(me.text).not.toMatch(/hash/i);
+  });
+});
+
+describe("unsafe text: tester additions (T-059)", () => {
+  const good = {
+    line: "100 Fictional Street",
+    city: "Mississauga",
+    postalCode: "l5b 1a1",
+  };
+
+  it("sign-up with a DEL character is 422 and creates no profile", async () => {
+    const res = await new Browser().call(signup, {
+      body: {
+        email: newEmail("customer"),
+        password: PASSWORD,
+        role: "customer",
+        displayName: "Ma\u007fi T-059 del",
+      },
+    });
+    expect(res.status).toBe(422);
+    expect(Object.keys(res.body.error.fields)).toEqual(["displayName"]);
+    const rows = await svc
+      .from("profiles")
+      .select("id")
+      .eq("display_name", "Ma\u007fi T-059 del");
+    expect(rows.data).toEqual([]);
+  });
+
+  it("a rejected PATCH leaves a chef's public copy unchanged; emoji pairs, apostrophes and hyphens pass", async () => {
+    const { b, id } = await signedUp("chef", "Chef Keep");
+    const bad = await b.call(patchMe, {
+      method: "PATCH",
+      body: { displayName: "Chef\u0000Bad" },
+    });
+    expect(bad.status).toBe(422);
+    const copy = await svc
+      .from("chefs")
+      .select("display_name")
+      .eq("profile_id", id)
+      .single();
+    expect(copy.data?.display_name).toBe("Chef Keep");
+    const name = "Siobhán O'Brien-Smith 👩‍🍳";
+    const ok = await b.call(patchMe, {
+      method: "PATCH",
+      body: { displayName: name },
+    });
+    expect(ok.status, ok.text).toBe(200);
+    expect(ok.body.displayName).toBe(name);
+  });
+
+  it("address line and city accept apostrophes, hyphens, accents and emoji pairs; DEL is refused", async () => {
+    const { b } = await signedUp();
+    const bad = await b.call(address, {
+      method: "PUT",
+      body: { ...good, line: "1 Main\u007f St" },
+    });
+    expect(bad.status).toBe(422);
+    expect(Object.keys(bad.body.error.fields)).toEqual(["line"]);
+    const ok = await b.call(address, {
+      method: "PUT",
+      body: { ...good, line: "5 O'Connor-Lane 🏠", city: "Île-Perrot" },
+    });
+    expect(ok.status, ok.text).toBe(200);
   });
 });

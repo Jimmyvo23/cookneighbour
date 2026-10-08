@@ -21,7 +21,7 @@ export function PATCH(request: Request) {
     if (body.displayName === undefined)
       return json(await loadProfile(admin, caller.userId));
     const f = new Fields();
-    const displayName = f.string(body, "displayName", 1, 80);
+    const displayName = f.text(body, "displayName", 1, 80);
     f.done();
     if (!displayName) throw validationFailed({ displayName: "Required." });
 

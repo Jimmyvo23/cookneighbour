@@ -57,7 +57,7 @@ Row-level security protects the browser path, but route handlers that use the **
 - **Who:** anyone (anonymous). If already signed in: 409 `INVALID_STATE`.
 - **Request:** `SignUpRequest` `{ email, password, role: "customer"|"chef", displayName }`
 - **Response 201:** `SignUpResponse` `{ user: MeProfile, signedIn }`
-- **Errors:** 422 (`email` invalid, `password` under 8 or over 72 characters, `role` not customer/chef, `displayName` empty or over 80), 409 `EMAIL_IN_USE`, 429.
+- **Errors:** 422 (`email` invalid, `password` under 8 or over 72 characters, `role` not customer/chef, `displayName` empty, over 80, or containing control characters or lone surrogates), 409 `EMAIL_IN_USE`, 429.
 - **Does:** `supabase.auth.signUp({ email, password, options: { data: { role, display_name } } })`. The only metadata keys sent are `role` and `display_name`. Trigger `handle_new_user` creates `profiles` and an empty `profile_private`. Metadata `role` other than `chef` becomes `customer`; `admin` is impossible. A missing display name becomes "New user" (never derived from the email).
   - **Chef (service):** also insert `chefs` (`status = 'pending'`, `display_name`, defaults) and `chef_private` (all statuses `not_started`). There is no client insert policy on these tables, so this must be the service role. Do it right after sign-up succeeds; if it fails, return 500 and leave the auth user (the next chef application request (any `/api/chef/application` route, T-031) creates the missing rows idempotently with `on conflict do nothing`).
 - **Tables:** `auth.users`, `profiles`, `profile_private`, `chefs`, `chef_private`.
@@ -81,7 +81,7 @@ Row-level security protects the browser path, but route handlers that use the **
 ### PATCH /api/me
 - **Who:** signed in, own profile. **Request:** `UpdateMeRequest` `{ displayName? }`. **Response:** `MeProfile`.
 - **MUST:** only `display_name` is written (`role`, `country`, etc. ignored/rejected as unknown keys with 422). `profiles.display_name` is the single source of truth. For a chef, the same route also writes the denormalized copy `chefs.display_name` (needed for the public listing) in the same request (service). `PATCH /api/chef/application` does not accept a display name.
-- **Errors:** 401, 422. **Tables:** `profiles` (+ `chefs` for chefs). Sign-up writes both with the same value.
+- **Errors:** 401, 422 (`displayName` empty, over 80, or containing control characters or lone surrogates: `fields.displayName = "Remove control or invalid characters."`, same rule as the chef application text fields). **Tables:** `profiles` (+ `chefs` for chefs). Sign-up writes both with the same value.
 
 ## 4. Phone (MOCK SMS) and home address
 
@@ -104,7 +104,7 @@ Phone verification is simulated: no SMS is sent. The flow is real (submit, then 
 
 ### PUT /api/me/address
 - **Who:** signed in (customers need it for the free-trial check; chefs may also store one). **Request:** `AddressRequest` `{ line, city, postalCode }`. **Response 200:** `AddressResponse`.
-- **Errors:** 422 (`line` 1 to 120 chars, `city` 1 to 80, `postalCode` malformed or `fields.postalCode = "Not a GTA postal code."` when its first 3 characters are not in `postal_prefixes`; A-1), 401.
+- **Errors:** 422 (`line` 1 to 120 chars, `city` 1 to 80, and neither may contain control characters or lone surrogates: `fields.<key> = "Remove control or invalid characters."`, same rule as `displayName`; `postalCode` malformed or `fields.postalCode = "Not a GTA postal code."` when its first 3 characters are not in `postal_prefixes`; A-1), 401.
 - **Does (service):** normalize the postal code (uppercase, no space); look up the prefix in `postal_prefixes`; normalize the address and compute `address_hash` (A-2 normalization in `src/lib/domain/address.ts`, HMAC-SHA256 with `HASH_PEPPER`); store `address_line`, `city`, `postal_code`, `postal_prefix`, `address_hash`.
 - **Tables:** `postal_prefixes` (read), `profile_private`.
 - **MUST check:** the address is written only to the caller's row. The route does not decide free-trial eligibility (WO-4 compares `address_hash` at booking time). The hash is not returned. The address is shown only to its owner here; the other party sees it only after acceptance through `get_booking_contact`.
