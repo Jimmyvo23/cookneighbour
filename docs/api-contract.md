@@ -104,7 +104,7 @@ Phone verification is simulated: no SMS is sent. The flow is real (submit, then 
 
 ### PUT /api/me/address
 - **Who:** signed in (customers need it for the free-trial check; chefs may also store one). **Request:** `AddressRequest` `{ line, city, postalCode }`. **Response 200:** `AddressResponse`.
-- **Errors:** 422 (`line` 1 to 120 chars, `city` 1 to 80, `postalCode` malformed or `fields.postalCode = "Not a GTA postal code."` when its first 3 characters are not in `postal_prefixes`; A-1), 401.
+- **Errors:** 422 (`line` 1 to 120 chars, `city` 1 to 80, and neither may contain control characters or lone surrogates: `fields.<key> = "Remove control or invalid characters."`, same rule as `displayName`; `postalCode` malformed or `fields.postalCode = "Not a GTA postal code."` when its first 3 characters are not in `postal_prefixes`; A-1), 401.
 - **Does (service):** normalize the postal code (uppercase, no space); look up the prefix in `postal_prefixes`; normalize the address and compute `address_hash` (A-2 normalization in `src/lib/domain/address.ts`, HMAC-SHA256 with `HASH_PEPPER`); store `address_line`, `city`, `postal_code`, `postal_prefix`, `address_hash`.
 - **Tables:** `postal_prefixes` (read), `profile_private`.
 - **MUST check:** the address is written only to the caller's row. The route does not decide free-trial eligibility (WO-4 compares `address_hash` at booking time). The hash is not returned. The address is shown only to its owner here; the other party sees it only after acceptance through `get_booking_contact`.

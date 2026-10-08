@@ -21,3 +21,10 @@ Other free text not covered (listed, not fixed):
 
 ## What the next agent needs
 `Fields.string` is unchanged on purpose; use `Fields.text` for any stored free text.
+
+## Round 2 (Planner decision: fold in the address finding)
+- `PUT /api/me/address`: `line` and `city` now use `Fields.text`. Control characters and lone surrogates give 422 with `fields.line` / `fields.city` = "Remove control or invalid characters." Postal-code handling is unchanged. Contract updated (section 4).
+- Tests in `tests/api/auth.test.ts` (`PUT /api/me/address`): each of line/city with NUL, newline, lone high/low surrogate gives 422 with only that field; `profile_private` address columns stay null; "12 Rue Léopold-Sédar" is accepted. API suite runs in CI only.
+- Email validation untouched (as instructed).
+- `tsc --noEmit` `LayoutProps` error: reproduces on a fresh clone of main when run bare (before `next typegen`/`next build`). It is not a CI problem: `npm run typecheck` is `next typegen && tsc --noEmit`, which passes, and CI uses that. Only a bare `npx tsc --noEmit` fails. Question for the Planner only; not fixed.
+- Local: lint, `npm run typecheck`, prettier, `npm test` (174 pass), build all clean.

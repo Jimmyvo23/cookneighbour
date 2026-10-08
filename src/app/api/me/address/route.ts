@@ -14,8 +14,8 @@ export function PUT(request: Request) {
     const body = await readJsonObject(request);
     rejectUnknownKeys(body, ["line", "city", "postalCode"]);
     const f = new Fields();
-    const line = f.string(body, "line", 1, 120);
-    const city = f.string(body, "city", 1, 80);
+    const line = f.text(body, "line", 1, 120);
+    const city = f.text(body, "city", 1, 80);
     const raw = typeof body.postalCode === "string" ? body.postalCode : "";
     const postal = normalizePostalCode(raw);
     if (!postal)

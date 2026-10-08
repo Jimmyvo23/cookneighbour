@@ -560,6 +560,36 @@ describe("PUT /api/me/address", () => {
     ).toBe(422);
   });
 
+  it("rejects control characters and lone surrogates in line and city (422), stores nothing, accepts accents", async () => {
+    const { b, id } = await signedUp();
+    for (const [key, value] of [
+      ["line", "100 Fictional\u0000 St"],
+      ["line", "100 Fictional\nSt"],
+      ["line", "100 Fictional\ud83d St"],
+      ["city", "Mississauga\u0007"],
+      ["city", "\udc00Mississauga"],
+    ]) {
+      const r = await b.call(address, {
+        method: "PUT",
+        body: { ...good, [key]: value },
+      });
+      expect(r.status, `${key} ${JSON.stringify(value)}`).toBe(422);
+      expect(r.body.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(r.body.error.fields)).toEqual([key]);
+    }
+    const none = await svc
+      .from("profile_private")
+      .select("address_line, address_hash")
+      .eq("profile_id", id)
+      .single();
+    expect(none.data).toEqual({ address_line: null, address_hash: null });
+    const ok = await b.call(address, {
+      method: "PUT",
+      body: { ...good, line: "12 Rue Léopold-Sédar", city: "Mississauga" },
+    });
+    expect(ok.status, ok.text).toBe(200);
+  });
+
   it("stores the normalized address and hash for the caller only; hash is never returned", async () => {
     const { b, id } = await signedUp();
     const other = await signedUp();
