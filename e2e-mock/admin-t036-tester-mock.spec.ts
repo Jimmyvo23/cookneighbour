@@ -263,3 +263,87 @@ test("a customer never sees the admin link", async ({ page }) => {
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 });
+
+// ---------------------------------------------------------------------------
+// Round 2
+// ---------------------------------------------------------------------------
+test("the link retry runs every 30 s while failing, never stacks, and stops once it works", async ({
+  page,
+}) => {
+  // Every mock API call reads the stored state once; count those reads as a proxy for API calls.
+  await page.addInitScript((key) => {
+    const w = window as unknown as { __reads: number };
+    w.__reads = 0;
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (k: string) {
+      if (k === key && this === window.sessionStorage) w.__reads++;
+      return orig.call(this, k);
+    };
+  }, MOCK_KEY);
+  const reads = () =>
+    page.evaluate(() => (window as unknown as { __reads: number }).__reads);
+  await page.clock.install();
+  await loginAdmin(page);
+  await openChef(page, "Linh Nguyen");
+  await editMockState(page, `s.saved = s.adminQueue; s.adminQueue = [];`);
+  await page.clock.fastForward("04:10"); // first automatic refresh fails
+  await expect(tid(page, "links-stale")).toBeVisible();
+  const afterFirst = await reads();
+  // Four more minutes of failure: one try per 30 s window, never more.
+  for (let i = 0; i < 48; i++) await page.clock.runFor(5000);
+  const failing = (await reads()) - afterFirst;
+  expect(failing).toBeGreaterThanOrEqual(6);
+  expect(failing).toBeLessThanOrEqual(9);
+  await expect(tid(page, "links-stale")).toBeVisible();
+  // Recovery: the next retry works and the notice goes.
+  await editMockState(page, `s.adminQueue = s.saved;`);
+  await page.clock.fastForward("00:31");
+  await expect(tid(page, "links-stale")).toHaveCount(0);
+  // Settled: for 3 minutes (less than the normal 240 s renewal) no further call is made.
+  const settled = await reads();
+  for (let i = 0; i < 36; i++) await page.clock.runFor(5000);
+  expect((await reads()) - settled).toBe(0);
+  // Then the normal renewal happens exactly once in the next window.
+  await page.clock.runFor(70_000);
+  expect((await reads()) - settled).toBeGreaterThanOrEqual(1);
+  expect((await reads()) - settled).toBeLessThanOrEqual(2);
+});
+
+test("every filter combination is still what the list shows after a visit to a chef", async ({
+  page,
+}) => {
+  await loginAdmin(page);
+  const items = tid(page, "queue-item");
+  const status = () => page.getByLabel("Status").filter({ visible: true });
+  const pendingOnly = () =>
+    page.getByLabel(/Checks pending/).filter({ visible: true });
+  const combos: [string, boolean][] = [
+    ["pending", false],
+    ["pending", true],
+    ["approved", false],
+    ["rejected", false],
+    ["rejected", true],
+    ["all", false],
+    ["all", true],
+  ];
+  for (const [s, checks] of combos) {
+    await status().selectOption(s);
+    if (checks) await pendingOnly().check();
+    else await pendingOnly().uncheck();
+    await expect(items.first()).toBeVisible();
+    const before = await items.locator("a[data-chef-link]").allTextContents();
+    await items.first().locator("a[data-chef-link]").click();
+    await expect(tid(page, "chef-status")).toBeVisible();
+    await page
+      .getByRole("link", { name: "Back to the chef applications" })
+      .click();
+    await expect(status()).toHaveValue(s);
+    if (checks) await expect(pendingOnly()).toBeChecked();
+    else await expect(pendingOnly()).not.toBeChecked();
+    await expect(items.first()).toBeVisible();
+    await expect(async () => {
+      const after = await items.locator("a[data-chef-link]").allTextContents();
+      expect(after).toEqual(before);
+    }).toPass();
+  }
+});
