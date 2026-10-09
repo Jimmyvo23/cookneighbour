@@ -35,3 +35,17 @@ From: tester  To: planner
 ## What the next agent needs (Reviewer)
 - Look at findings 1 and 2 (small fixes) and decide whether 3 needs rewording. Everything else is verified.
 - Test files are named `*.tester.test.*` / `admin-t036-tester-mock.spec.ts` so they can be found.
+
+## Round 2 (head defdfa0, tests only added on top of frontend 4c6d25f)
+
+### Verdict: PASS
+CI run **37872633725** is green on defdfa0 (headSha checked): unit 512, RLS 118, API 315, Playwright real 23, Playwright mock 67. (The run on 4c6d25f was cancelled by my push; the run on code head 088fc45, 37871521814, was also green.) Local: lint, typecheck, `npm test` 512, mock Playwright 67 all pass.
+
+### Fix verification
+1. Round 1 finding 1 (failed auto-refresh): FIXED. Notice `links-stale` shows "may have expired". New test `the link retry runs every 30 s while failing, never stacks, and stops once it works`: counts mock API reads; during 4 minutes of failure there are 6 to 9 calls (about one per 30 s, no stacking); after the server recovers the notice goes within one retry; for the next 3 minutes there are zero calls; the normal renewal then runs once. Code check (`ChefReviewView.tsx` effect): each failure sets `linksStale` and bumps `retryTick`, which re-runs the effect and its cleanup clears the previous timer and focus listener, so timers cannot stack; success sets a new `fetchedAt` and `linksStale=false`, so the normal delay returns.
+2. Round 1 finding 2 (long unbroken name): FIXED. Frontend test plus my earlier 1500-character bio and 500-character reason test at 375 px pass (no horizontal scroll, axe clean).
+3. Round 1 finding 3 (search promise): FIXED. Approve text now says "The chef's status is now Approved"; the reject hint says the status changes to Rejected.
+4. Frontend's extra bug (queue effect used first-render filters): FIXED via `filtersRef`. New test `every filter combination is still what the list shows after a visit to a chef` goes through status pending/approved/rejected/all with and without Checks pending (7 combinations that have at least one chef), opens the first chef, comes back, and asserts the dropdown, the checkbox and the exact list are unchanged. The two combinations with no results (approved plus checks pending, and the empty ones) cannot be opened from the list and were not exercised in the browser.
+
+### New finding
+7. **Low** `ChefReviewView.tsx` (the `auto` function in the refresh effect): `reload()` also returns false when a newer request replaced it (`mine !== seq.current`), for example when the admin clicks "Reload application" or finishes a decision while an automatic refresh is in flight. The automatic call then sets `linksStale=true` even though the newer call succeeded, so the "may have expired" notice can appear on fresh links until the next 30 s retry clears it. Rare, self-healing, no data risk. Fix: only set stale when the failure was a real error, not a superseded request.
