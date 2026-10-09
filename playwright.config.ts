@@ -20,6 +20,7 @@ export default defineConfig({
         "**/chef-application-real.spec.ts",
         "**/chef-dishes-real.spec.ts",
         "**/admin-real.spec.ts",
+        "**/admin-queue-real.spec.ts",
       ],
   forbidOnly: !!env.CI,
   retries: env.CI ? 1 : 0,
