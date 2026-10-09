@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALLERGENS_RAW_MAX,
   AVAILABILITY_HORIZON_DAYS,
   addDays,
   isRealDate,
