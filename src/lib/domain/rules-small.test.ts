@@ -5,26 +5,26 @@ import {
   cancellationTiming,
   freeTrialEffect,
   torontoStartOfDay,
-  type BookingStatus,
+  type FreeTrialEvent,
 } from "./cancellation";
 import { FREE_CANCELLATION_HOURS } from "./config";
 
-describe("checkReceipt (tolerance is an ASSUMPTION: max(10%, $5))", () => {
+describe("checkReceipt (tolerance is ASSUMPTION A-15: max(15%, $5))", () => {
   it("matches an equal receipt and one within tolerance", () => {
     expect(checkReceipt(8000, 8000).mismatch).toBe(false);
-    expect(checkReceipt(8000, 8800).mismatch).toBe(false); // exactly 10%
-    expect(checkReceipt(8000, 7200).mismatch).toBe(false);
+    expect(checkReceipt(8000, 9200).mismatch).toBe(false); // exactly 15%
+    expect(checkReceipt(8000, 6800).mismatch).toBe(false);
   });
   it("flags more than the tolerance, either direction, and reports the difference", () => {
-    const hi = checkReceipt(8000, 8801);
+    const hi = checkReceipt(8000, 9201);
     expect(hi).toEqual({
       mismatch: true,
-      differenceCents: 801,
-      toleranceCents: 800,
+      differenceCents: 1201,
+      toleranceCents: 1200,
     });
-    const lo = checkReceipt(8000, 7199);
+    const lo = checkReceipt(8000, 6799);
     expect(lo.mismatch).toBe(true);
-    expect(lo.differenceCents).toBe(-801);
+    expect(lo.differenceCents).toBe(-1201);
   });
   it("small estimates use the $5 floor", () => {
     expect(checkReceipt(1000, 1500).mismatch).toBe(false);
@@ -148,7 +148,7 @@ describe("cancellationTiming (A-6, 48 hours: ASSUMPTION)", () => {
 
 describe("freeTrialEffect (CLAUDE.md 6.6)", () => {
   it("consumes on completed and customer no-show only", () => {
-    const expected: Record<BookingStatus, string> = {
+    const expected: Record<FreeTrialEvent, string> = {
       requested: "hold",
       accepted: "hold",
       declined: "release",
@@ -156,8 +156,9 @@ describe("freeTrialEffect (CLAUDE.md 6.6)", () => {
       completed: "consume",
       no_show_customer: "consume",
       no_show_chef: "release",
+      expired: "release", // A-16: a request that expires
     };
     for (const [s, e] of Object.entries(expected))
-      expect(freeTrialEffect(s as BookingStatus)).toBe(e);
+      expect(freeTrialEffect(s as FreeTrialEvent)).toBe(e);
   });
 });

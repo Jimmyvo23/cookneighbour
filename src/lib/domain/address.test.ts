@@ -44,6 +44,24 @@ describe("postal codes", () => {
     expect(normalizePostalCode("L5B1A")).toBeNull();
     expect(normalizePostalCode("")).toBeNull();
   });
+  it("applies the Canada Post letter rules", () => {
+    for (const bad of [
+      "D5B1A1",
+      "L5F1A1",
+      "L5B1I1",
+      "O5B1A1",
+      "L5Q1A1",
+      "U5B1A1",
+      "W5B1A1",
+      "Z5B1A1",
+      "L5B1U1",
+    ])
+      expect(normalizePostalCode(bad)).toBeNull();
+    // W and Z are fine after the first letter
+    expect(normalizePostalCode("L5W1A1")).toBe("L5W1A1");
+    expect(normalizePostalCode("M5Z1A1")).toBe("M5Z1A1");
+    expect(normalizePostalCode("L5B1Z9")).toBe("L5B1Z9");
+  });
   it("prefix is the first three characters", () => {
     expect(postalPrefix("L5B1A1")).toBe("L5B");
   });

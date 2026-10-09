@@ -78,13 +78,16 @@ export type BookingStatus =
   | "no_show_customer"
   | "no_show_chef";
 
+/** A-16: a `requested` booking that expires (Q-11) is not a stored status yet; it releases the claim. */
+export type FreeTrialEvent = BookingStatus | "expired";
+
 /**
- * CLAUDE.md 6.6: a completed or customer-no-show booking consumes the free trial. A cancelled,
+ * A-16 (pending Jimmy) and CLAUDE.md 6.6: a completed or customer-no-show booking consumes the free trial. A cancelled,
  * declined or chef-no-show booking never used it, so its claim is released. `requested` and
  * `accepted` keep the claim held (T-038 owns the state machine).
  */
 export function freeTrialEffect(
-  status: BookingStatus,
+  status: FreeTrialEvent,
 ): "hold" | "consume" | "release" {
   switch (status) {
     case "completed":
@@ -93,6 +96,7 @@ export function freeTrialEffect(
     case "declined":
     case "cancelled":
     case "no_show_chef":
+    case "expired":
       return "release";
     default:
       return "hold";

@@ -5,11 +5,11 @@
 // per visit day and the booking figures are the exact sum of the day figures, so the lines on the
 // estimate always add up to the total.
 //
-// ASSUMPTIONS (to confirm with Jimmy, with the fee placeholders A-8 / Q-5):
+// ASSUMPTIONS (A-13 travel fee, A-14 platform fee, with the fee placeholders A-8 / Q-5; pending Jimmy):
 //   - labour per day = cook minutes x hourly rate / 60;
-//   - the travel fee is one-way distance x rate, charged for each visit day (the chef travels
+//   - A-13: the travel fee is one-way straight-line distance (A-1 prefix centres) x rate, charged for each visit day (the chef travels
 //     every day) and only for customer's-home bookings;
-//   - the platform fee is a percentage of the labour the customer is charged for, is SHOWN only
+//   - A-14: the platform fee is a percentage of the labour the customer is charged for, is SHOWN only
 //     (not collected, MOCK) and is NOT added to the total;
 //   - the free trial waives labour only (and so the fee on it); ingredients and travel are paid.
 import {

@@ -3,7 +3,7 @@
 // close to the estimated ingredients the receipt is flagged and the customer must confirm it
 // (receipts.mismatch_flag / customer_confirmed_at). Pure and in integer cents.
 //
-// ASSUMPTION (config.ts): flagged when the difference, in either direction, is MORE than the
+// ASSUMPTION A-15 (config.ts): flagged when the difference, in either direction, is MORE than the
 // larger of RECEIPT_TOLERANCE_PERCENT of the estimate and RECEIPT_TOLERANCE_MIN_CENTS.
 import {
   RECEIPT_TOLERANCE_MIN_CENTS,

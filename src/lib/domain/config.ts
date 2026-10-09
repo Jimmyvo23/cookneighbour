@@ -15,10 +15,10 @@ export const MAX_BOOKING_DAYS = 3;
 /** CLAUDE.md 6.5: soft safety limit per visit, 6 hours. Configurable constant (requirement). */
 export const VISIT_SOFT_LIMIT_MINUTES = 6 * 60;
 
-/** ASSUMPTION A-8 / Q-5: platform fee percentage, shown in the estimate, NOT collected (MOCK). */
+/** ASSUMPTION A-8 / Q-5 and A-14: platform fee percentage of LABOUR only, shown, NOT collected (MOCK). */
 export const PLATFORM_FEE_PERCENT = 10;
 
-/** ASSUMPTION A-8 / Q-5: travel fee, cents per km, one way, charged for each visit day. */
+/** ASSUMPTION A-8 / Q-5 and A-13: travel fee, cents per km, one way, each visit day, customer's home only. */
 export const TRAVEL_RATE_CENTS_PER_KM = 60;
 
 /** ASSUMPTION A-8 / Q-5: default chef travel radius in km (the database default as well). */
@@ -31,12 +31,11 @@ export const FREE_CANCELLATION_HOURS = 48;
 export const MAX_DISH_QUANTITY = 10;
 
 /**
- * ASSUMPTION (no source in PLAN.md; to confirm with Jimmy): a receipt is flagged when it differs
- * from the estimated ingredients by more than the larger of RECEIPT_TOLERANCE_PERCENT of the
- * estimate and RECEIPT_TOLERANCE_MIN_CENTS. The floor keeps a small estimate from flagging a
- * normal few-dollar difference.
+ * ASSUMPTION A-15 (pending Jimmy): a receipt is flagged when it differs from the estimated
+ * ingredients by more than the larger of RECEIPT_TOLERANCE_PERCENT of the estimate and
+ * RECEIPT_TOLERANCE_MIN_CENTS. The floor keeps a small estimate from flagging a normal difference.
  */
-export const RECEIPT_TOLERANCE_PERCENT = 10;
+export const RECEIPT_TOLERANCE_PERCENT = 15;
 export const RECEIPT_TOLERANCE_MIN_CENTS = 500;
 
 /** Currency and country stored with every estimate (CLAUDE.md 3). */
