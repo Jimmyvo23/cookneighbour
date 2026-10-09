@@ -72,6 +72,11 @@ export function AccountBar() {
               Chef application
             </Link>
           )}
+          {me.profile.role === "admin" && (
+            <Link className={cls} href="/admin/chefs">
+              Chef applications
+            </Link>
+          )}
           <button type="button" onClick={logout} className={cls}>
             Log out
           </button>

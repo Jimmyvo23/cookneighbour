@@ -94,7 +94,31 @@ describe("chef pages (client-side second layer; the server guard is the real one
   });
 });
 
+describe("admin pages (client-side second layer; the server guard is the real one)", () => {
+  it("sends signed-out visitors of /admin/* to /login", () => {
+    expect(redirectFor("/admin", null)).toBe("/login");
+    expect(redirectFor("/admin/chefs", null)).toBe("/login");
+  });
+  it("sends customers and chefs away from /admin/*", () => {
+    expect(redirectFor("/admin/chefs", me(true, true))).toBe("/");
+    expect(
+      redirectFor("/admin/chefs/abc", asRole(me(true, true), "chef")),
+    ).toBe("/");
+  });
+  it("lets an admin in without a phone or address", () => {
+    expect(
+      redirectFor("/admin/chefs", asRole(me(false, false), "admin")),
+    ).toBeNull();
+  });
+  it("does not treat a similar path as an admin page", () => {
+    expect(redirectFor("/administrators", me(true, true))).toBeNull();
+  });
+});
+
 describe("landingPath", () => {
+  it("sends an admin to the chef queue, with no onboarding", () => {
+    expect(landingPath(asRole(me(false, false), "admin"))).toBe("/admin/chefs");
+  });
   it("finishes onboarding first", () => {
     expect(landingPath(asRole(me(false, false), "chef"))).toBe("/verify-phone");
   });

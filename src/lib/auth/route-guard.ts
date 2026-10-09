@@ -10,9 +10,11 @@ export function nextOnboardingStep(
   return null;
 }
 
-/** Where a signed-in user goes after log-in or finishing sign-up: the next onboarding step, else
- *  the chef application for chefs, else home. */
+/** Where a signed-in user goes after log-in or finishing sign-up: the admin queue for admins (they
+ *  do not book or cook, so no phone or address step), else the next onboarding step, else the
+ *  chef application for chefs, else home. */
 export function landingPath(me: MeResponse): string {
+  if (me.profile.role === "admin") return "/admin/chefs";
   return (
     nextOnboardingStep(me) ?? (me.profile.role === "chef" ? "/chef/apply" : "/")
   );
@@ -23,11 +25,20 @@ function isChefPage(pathname: string): boolean {
   return pathname === "/chef" || pathname.startsWith("/chef/");
 }
 
+/** Admin pages live under /admin/. The server guard is authoritative; this is the client layer. */
+function isAdminPage(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 /** Where to send the visitor from `pathname`, or null to stay. `me` is null when signed out. */
 export function redirectFor(
   pathname: string,
   me: MeResponse | null,
 ): string | null {
+  if (isAdminPage(pathname)) {
+    if (!me) return "/login";
+    return me.profile.role === "admin" ? null : "/";
+  }
   if (isChefPage(pathname)) {
     if (!me) return "/login";
     return me.profile.role === "chef" ? null : "/";
