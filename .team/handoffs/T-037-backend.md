@@ -34,7 +34,7 @@ From: backend  To: tester
 ## How to verify
 - `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` (all pass locally).
 - Unit tests: 595 total (512 on main). `npx vitest run src/lib/domain` for just the rules. Money property test: 500 seeded random bookings (integers, non-negative, parts sum to total, chef's home has no travel, free trial has no labour).
-- CI: see PR #84 `ci` run (final run id in the Planner report).
+- CI: PR #84 run 37878399122 green (earlier run failed only because test phone helpers could generate N11 numbers; fixed).
 - Local order: the allergen test was written first and shown failing against the old code. For the rest, tests and code were written together; the Tester should treat boundary mutations as welcome (try changing `>` to `>=` in `bookingValidation.ts` and `cancellation.ts`).
 
 ## Known gaps or risks
