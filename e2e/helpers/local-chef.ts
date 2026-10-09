@@ -16,8 +16,11 @@ const PDF = Buffer.from("%PDF-1.4\n%%EOF\n");
 
 let phoneCounter = 0;
 function phone() {
-  const rnd = (lo: number, hi: number) =>
-    lo + Math.floor(Math.random() * (hi - lo + 1));
+  // Never an N11 code (211, 911 and so on): phone validation refuses those (T-037).
+  const rnd = (lo: number, hi: number): number => {
+    const n = lo + Math.floor(Math.random() * (hi - lo + 1));
+    return n % 100 === 11 ? rnd(lo, hi) : n;
+  };
   const line = (Date.now() + phoneCounter++ * 7919) % 10000;
   return `${rnd(200, 999)}${rnd(200, 999)}${String(line).padStart(4, "0")}`;
 }
