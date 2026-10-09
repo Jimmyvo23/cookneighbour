@@ -14,20 +14,40 @@ import { requireCaller } from "@/lib/server/caller";
 export function chefPageRedirect(
   caller: { role: string } | null,
 ): string | null {
-  if (!caller) return "/login";
-  return caller.role === "chef" ? null : "/";
+  return roleRedirect(caller, "chef");
 }
 
-export async function requireChefPage(): Promise<void> {
+/** Same for admin pages (T-036): only an admin stays; a visitor goes to /login, anyone else home. */
+export function adminPageRedirect(
+  caller: { role: string } | null,
+): string | null {
+  return roleRedirect(caller, "admin");
+}
+
+function roleRedirect(
+  caller: { role: string } | null,
+  role: "chef" | "admin",
+): string | null {
+  if (!caller) return "/login";
+  return caller.role === role ? null : "/";
+}
+
+export const requireChefPage = () => requirePage(chefPageRedirect);
+export const requireAdminPage = () => requirePage(adminPageRedirect);
+
+async function requirePage(
+  redirectFor: (caller: { role: string } | null) => string | null,
+): Promise<void> {
   // Request-time only: never run (or read env) while prerendering the page shell at build time.
   await connection();
   if (isMockEnabled()) return; // MOCK mode: no server session exists
   let target: string | null;
   try {
-    target = chefPageRedirect(await requireCaller());
+    target = redirectFor(await requireCaller());
   } catch (err) {
+    // Fail closed: only "no session" means "visitor"; any other error is thrown, never a free pass.
     if (err instanceof ApiFailure && err.code === "UNAUTHENTICATED")
-      target = chefPageRedirect(null);
+      target = redirectFor(null);
     else throw err;
   }
   if (target) redirect(target);

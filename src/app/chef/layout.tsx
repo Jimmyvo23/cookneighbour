@@ -3,10 +3,12 @@ import { Suspense } from "react";
 import { ChefNav } from "@/components/chef/ChefNav";
 import { requireChefPage } from "@/lib/server/page-guard";
 
-// Every page under /chef shows private data, so the chef-only guard lives here, on the server, and
-// runs before any child is rendered or sent (fail closed: a visitor, customer or admin is
-// redirected, and an unexpected error is thrown rather than showing the page). Pages under /chef
-// therefore need no guard of their own.
+// The chef-only guard runs here, on the server, before any child is rendered or sent (fail closed:
+// a visitor, customer or admin is redirected, and an unexpected error is thrown rather than
+// showing the page). Limits: a layout does not run again on in-app navigation, so this only
+// protects pages that load their private data in the browser through guarded API routes, as every
+// page under /chef does today. A page that reads private data on the server must call
+// requireChefPage() itself.
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
