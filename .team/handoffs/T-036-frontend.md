@@ -35,3 +35,10 @@ IDs come from the loaded list or the URL and are re-checked by the server (404 f
 ## What the next agent needs (Tester)
 - Try: keyboard only through the review page (selects, both kitchen buttons, reject), a screen reader on the check selects and the file section, 375 px and dark mode, a very long reason or bio, markup in a display name, two admin tabs deciding the same chef (second gets 409 INVALID_STATE with the reload button), leaving the review page open for over 5 minutes (links renew; use the browser clock in mock mode), a chef with no kitchen address but `chef_home` offered (kitchen approve gives the `missing` list), `status=all` with Load more while chefs are added, and opening /admin as customer, chef and signed out (HTML must carry no admin content).
 - Seeded mock names above are used by `e2e-mock/admin-mock.spec.ts`.
+
+## Round 2 (tester LOW/INFO findings)
+- **Link refresh retry:** if the automatic refresh fails, `ChefReviewView` shows a notice (`data-testid="links-stale"`, "may have expired", the manual reload button is still there) and tries again every 30 s until it works. Test: `e2e-mock/admin-mock.spec.ts` "a failed automatic link refresh..." (fails the refresh by emptying the mock queue, then restores it).
+- **Long text:** `[overflow-wrap:anywhere]` on both admin `<main>`s (covers headings, names, bio, reason, file names) and `minmax(0,1fr)` on the detail grid. Test: a 120-character name, bio and reason at 375 px, no horizontal scroll, axe clean, on the queue and the review.
+- **No search promises:** approve notice now says "The chef's status is now Approved" and the reject hint says an approved chef's status changes to Rejected at once.
+- **Extra bug found and fixed:** the queue's reload-on-show effect used the filters from its first render, so coming back from a chef could reset the list to Pending. It now reads the current filters from a ref.
+- Local: lint, typecheck, npm test (512), mock Playwright (65) pass. CI run 37871521814 green on head 088fc45.
