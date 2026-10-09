@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findAllergyConflicts, splitAllergies } from "./allergy";
+import { ALLERGEN_CHOICES } from "../chef/dishes";
 
 const pho = { id: "d1", name: "Pho", allergens: ["soy", "fish"] };
 const satay = { id: "d2", name: "Satay", allergens: ["peanuts", "tree nuts"] };
@@ -55,5 +56,44 @@ describe("splitAllergies", () => {
       "d",
       "e",
     ]);
+  });
+});
+
+describe("customer words inside a longer dish allergen (review round 2)", () => {
+  const nuts = { id: "d9", name: "Cake", allergens: ["tree nuts"] };
+  it.each([
+    "nuts",
+    "nut",
+    "nut allergy",
+    "I am allergic to nuts",
+    "tree",
+    "Tree-nut",
+    "peanut and nut",
+  ])("intake %j conflicts with tree nuts", (intake) => {
+    expect(findAllergyConflicts(intake, [nuts])).toHaveLength(1);
+  });
+  it("every word of every multi-word ALLERGEN_CHOICES value, alone, is a conflict", () => {
+    const multi = ALLERGEN_CHOICES.filter((c) => c.value.includes(" "));
+    expect(multi.length).toBeGreaterThan(0);
+    for (const c of multi)
+      for (const w of c.value.split(" "))
+        expect(
+          findAllergyConflicts(w, [
+            { id: "x", name: "X", allergens: [c.value] },
+          ]),
+          `${w} vs ${c.value}`,
+        ).toHaveLength(1);
+  });
+  it("filler words alone are not a conflict", () => {
+    for (const t of [
+      "allergy",
+      "no allergies",
+      "severe",
+      "gluten-free is not it",
+    ])
+      expect(findAllergyConflicts(t, [nuts])).toEqual([]);
+  });
+  it("still no match for a word that only contains the letters", () => {
+    expect(findAllergyConflicts("nutmeg", [nuts])).toEqual([]);
   });
 });
