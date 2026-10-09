@@ -190,7 +190,7 @@ Field rules (cook time, cost, servings and shelf life confirmed as **Decision D-
 | `cookMinutes` | required on create; integer 5 to 360 (360 = the 6 hour soft visit limit of CLAUDE.md 6.5, so no single dish is unbookable) |
 | `ingredientCostCents` | optional, default 0; integer 0 to 50000 |
 | `servings` | optional, default 1; integer 1 to 50 |
-| `allergens` | optional, default `[]`; array of up to 14 strings, each trimmed 1 to 40 characters without control characters; stored **lower case**, de-duplicated, order kept (so the WO-4 intake-form conflict check can compare them). Free text; the UI offers a picker with the Canadian priority allergens |
+| `allergens` | optional, default `[]`; array of up to 14 **distinct** allergens (counted after duplicates are merged, so a ticked one typed again is fine; at most 50 raw entries are read), each trimmed 1 to 40 characters without control characters; stored **lower case**, de-duplicated, order kept (so the WO-4 intake-form conflict check can compare them). Free text; the UI offers a picker with the Canadian priority allergens |
 | `shelfLifeDays` | optional, default 2 (A-7, kept by D-16); integer 0 to 7 (database check). The "eat by" date is visit date plus this value |
 | `photoPath` | optional or `null`. Otherwise the storage path rule (section 2, rule 7) for bucket `dish-photos`, name `dish-<uuid>.<ext>` (jpg, jpeg, png, webp), in the caller's own folder. A foreign folder is 403 (stops at once, no storage call); a malformed name or an object that was never uploaded is 422 `fields.photoPath`. Sending the photo already stored skips the storage check. The old object stays in Storage |
 | `isActive` | PATCH only; boolean |
