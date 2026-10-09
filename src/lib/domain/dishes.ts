@@ -17,6 +17,8 @@ export const COST_MAX_CENTS = 50000;
 export const SERVINGS_MAX = 50;
 export const ALLERGENS_MAX = 14;
 export const ALLERGEN_ENTRY_MAX = 40;
+/** Entries accepted before merging duplicates (a ticked list plus retyped ones); abuse bound. */
+export const ALLERGENS_RAW_MAX = 50;
 export const SHELF_LIFE_MAX_DAYS = 7; // database check
 export const DEFAULT_SHELF_LIFE_DAYS = 2; // A-7, kept by D-16
 /** Mirrored by the database trigger dishes_active_cap (migration T-032). */
@@ -64,14 +66,15 @@ function line(v: unknown, min: number, max: number): string | undefined {
 }
 
 function allergenList(v: unknown): string[] | undefined {
-  if (!Array.isArray(v) || v.length > ALLERGENS_MAX) return undefined;
+  if (!Array.isArray(v) || v.length > ALLERGENS_RAW_MAX) return undefined;
   const seen = new Set<string>();
   for (const e of v) {
     const t = line(e, 1, ALLERGEN_ENTRY_MAX);
     if (t === undefined) return undefined;
     seen.add(t.toLowerCase());
   }
-  return [...seen];
+  // The limit counts distinct allergens, after merging duplicates.
+  return seen.size > ALLERGENS_MAX ? undefined : [...seen];
 }
 
 /**
