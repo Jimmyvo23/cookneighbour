@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-08 (after WO-1, WO-2, T-031, T-033, T-059 and T-036).
+Last updated: 2026-10-08 (after WO-1, WO-2, WO-3 and the D-17 status rule).
 
 ## 1. Office status (Planner and every agent)
 
@@ -12,8 +12,8 @@ The office only shows what agents report. Nothing updates on its own.
 - **After every handoff, merge or interruption**, the Planner sets each agent that is not running to `idle` or `done`. *(Agents stopped by the usage limit kept showing "working".)*
 - Agents write the handoff first, then set `--status done` before the final report and stopping. *(Never show done without a handoff on disk.)*
 - When the session pauses, the Planner sets itself to `idle` with a `--next` that says exactly where to resume.
-- **Before starting any agent** (including a resumed one for a new round), the Planner records that agent's status itself: `team-status status --agent <id> --status working --task <T-xxx> --progress 0`. *(The office showed Frontend "working" with no task at 0% and Tester "done" with no task.)* — Jimmy's rule.
-- Every agent prompt tells the agent to report `--task <T-xxx> --progress <n>` on every status call, at each milestone: 25, 50, 75, and 100 with `--status done`.
+- **Before starting any agent** (including a resumed one for a new round), the Planner records that agent's status itself: `team-status status --agent <id> --status working --task <T-xxx> --progress 0`. Jimmy's rule (D-17). *(The office showed Frontend "working" with no task at 0% and Tester "done" with no task.)*
+- Every agent prompt tells the agent to report `--task <T-xxx> --progress <n>` on every status call, at each milestone: 25, 50, 75, and 100 with `--status done`. *(Without it the office cannot show real progress.)*
 
 ## 2. Agent reports
 
