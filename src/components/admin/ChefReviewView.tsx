@@ -29,6 +29,8 @@ import {
   KitchenSection,
 } from "@/components/admin/ReviewSections";
 
+const RETRY_MS = 30_000;
+
 type View =
   | { kind: "loading" }
   | { kind: "error"; message: string }
@@ -39,6 +41,9 @@ export function ChefReviewView({ id }: { id: string }) {
   const [flash, setFlash] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // True when the automatic refresh of the file links failed: they may have expired.
+  const [linksStale, setLinksStale] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const signature = useRef<string | null>(null);
   const seq = useRef(0);
   const cancelRequests = useCallback(() => {
@@ -68,6 +73,7 @@ export function ChefReviewView({ id }: { id: string }) {
           );
         signature.current = sig;
         setView({ kind: "ready", detail, fetchedAt: Date.now() });
+        setLinksStale(false);
         return true;
       } catch (err) {
         if (mine !== seq.current) return false;
@@ -94,20 +100,25 @@ export function ChefReviewView({ id }: { id: string }) {
   const docs = view.kind === "ready" ? view.detail.documents : null;
   useEffect(() => {
     if (fetchedAt === null || docs === null) return;
-    const timer = setTimeout(
-      () => void reload({ warnOnChange: true }),
-      refreshDelayMs(docs),
-    );
+    // After a failed automatic refresh, try again in 30 seconds (retryTick re-arms this effect).
+    const delay = retryTick > 0 && linksStale ? RETRY_MS : refreshDelayMs(docs);
+    const auto = () =>
+      void reload({ warnOnChange: true }).then((ok) => {
+        if (!ok) {
+          setLinksStale(true);
+          setRetryTick((t) => t + 1);
+        }
+      });
+    const timer = setTimeout(auto, delay);
     const onFocus = () => {
-      if (linksNeedRefresh(fetchedAt, Date.now()))
-        void reload({ warnOnChange: true });
+      if (linksNeedRefresh(fetchedAt, Date.now())) auto();
     };
     window.addEventListener("focus", onFocus);
     return () => {
       clearTimeout(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, [fetchedAt, docs, reload]);
+  }, [fetchedAt, docs, reload, retryTick, linksStale]);
 
   async function manualReload() {
     setRefreshing(true);
@@ -130,7 +141,7 @@ export function ChefReviewView({ id }: { id: string }) {
   }, [reload]);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8 [overflow-wrap:anywhere]">
       <p>
         <Link
           href="/admin/chefs"
@@ -156,7 +167,7 @@ export function ChefReviewView({ id }: { id: string }) {
       {view.kind === "ready" && (
         <>
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-lg">
+            <p className="min-w-0 text-lg">
               <span className="font-semibold">
                 {view.detail.application.displayName}
               </span>
@@ -179,6 +190,16 @@ export function ChefReviewView({ id }: { id: string }) {
           <p role="status" className="text-sm font-medium">
             {flash}
           </p>
+          {linksStale && (
+            <p
+              data-testid="links-stale"
+              className="rounded-md border border-amber-700 bg-amber-50 p-3 text-sm text-amber-950"
+            >
+              The file links could not be renewed and may have expired. This
+              page will try again in a moment; you can also use &quot;Reload
+              application and file links&quot;.
+            </p>
+          )}
           {warning && (
             <p
               role="alert"

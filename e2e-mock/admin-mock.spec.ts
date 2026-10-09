@@ -137,7 +137,7 @@ test("review: files are shown from links, checks are saved, then the chef is app
   await page.getByRole("button", { name: "Approve chef" }).click();
   await expect(tid(page, "chef-status")).toHaveText("Approved");
   await expect(
-    page.getByText(/Approved\. The chef can now appear in search/),
+    page.getByText(/Approved\. The chef's status is now Approved/),
   ).toBeVisible();
   await expect(tid(page, "decision-state")).toHaveText(
     "This chef is approved.",
@@ -436,4 +436,53 @@ test("dark mode: the queue and a review are axe clean", async ({ browser }) => {
   ).toBeVisible();
   await expectNoAxeViolations(page);
   await context.close();
+});
+
+test("a failed automatic link refresh shows a notice and retries after 30 seconds", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await loginAdmin(page);
+  await openChef(page, "Linh Nguyen");
+  await expect(tid(page, "links-stale")).toHaveCount(0);
+  // Make the server fail the refresh: the chef disappears from the mock queue.
+  await editMockState(page, `s.saved = s.adminQueue; s.adminQueue = [];`);
+  await page.clock.fastForward("04:10");
+  await expect(tid(page, "links-stale")).toBeVisible();
+  await expect(tid(page, "links-stale")).toContainText("may have expired");
+  // The page still shows the application; the manual button is there.
+  await expect(
+    page.getByRole("button", { name: "Reload application and file links" }),
+  ).toBeVisible();
+  // The server recovers; the retry (30 seconds) clears the notice.
+  await editMockState(page, `s.adminQueue = s.saved;`);
+  await page.clock.fastForward("00:35");
+  await expect(tid(page, "links-stale")).toHaveCount(0);
+});
+
+test("an unbroken 120-character display name does not widen the page at 375px", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await loginAdmin(page);
+  const long = "W".repeat(120);
+  await editMockState(
+    page,
+    `const c = s.adminQueue.find((c) => c.id.endsWith("901"));
+     c.app.displayName = "${long}"; c.app.bio = "${long}"; c.app.rejectReason = "${long}";`,
+  );
+  const overflow = () =>
+    page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+  await page.reload();
+  await expect(tid(page, "queue-count")).toBeVisible();
+  await expect(page.getByText(long).first()).toBeVisible();
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  await page.getByRole("link", { name: `${long} (open application)` }).click();
+  await expect(tid(page, "chef-status")).toBeVisible();
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  await expectNoAxeViolations(page);
 });

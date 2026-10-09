@@ -161,7 +161,7 @@ export function ApplicationSection({ detail }: { detail: AdminChefDetail }) {
   ];
   return (
     <Section title="Application">
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[14rem_1fr]">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[14rem_minmax(0,1fr)]">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">
             <dt className="font-medium">{k}</dt>
@@ -588,7 +588,7 @@ export function DecisionSection({
       });
       if (!(await onChanged())) throw new RefreshFailed();
       focusResult();
-    }, "Approved. The chef can now appear in search. MOCK: nothing was really verified.");
+    }, "Approved. The chef's status is now Approved. MOCK: nothing was really verified.");
   }
 
   function doReject(e: React.FormEvent) {
@@ -656,7 +656,7 @@ export function DecisionSection({
             name="reject-reason"
             hint={`${REASON_MIN} to ${REASON_MAX} characters, plain text. ${
               app.status === "approved"
-                ? "Rejecting an approved chef removes them from search at once. "
+                ? "Rejecting an approved chef changes their status to Rejected at once. "
                 : ""
             }(${reason.trim().length} of ${REASON_MAX} used)`}
             value={reason}

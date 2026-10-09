@@ -41,6 +41,8 @@ export function ChefQueueView() {
   const focusFrom = useRef<number | null>(null);
   // Only the newest request may change the screen (a slow answer for old filters is ignored).
   const seq = useRef(0);
+  // The effect below re-runs when the page is shown again; it must use the filters as they are now.
+  const filtersRef = useRef(filters);
 
   function cancelRequests() {
     seq.current++;
@@ -64,12 +66,12 @@ export function ChefQueueView() {
   // chef (pages stay mounted while hidden), so a decision is reflected without a manual reload.
   // Items already on screen stay until the fresh first page arrives.
   useEffect(() => {
-    load(filters);
+    load(filtersRef.current);
     return cancelRequests;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- filters change through changeFilters
   }, []);
 
   function changeFilters(next: ListFilters) {
+    filtersRef.current = next;
     setFilters(next);
     setMoreError(null);
     setView({ kind: "loading" });
@@ -120,7 +122,7 @@ export function ChefQueueView() {
   const count = view.kind === "ready" ? view.items.length : 0;
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8 [overflow-wrap:anywhere]">
       <h1 className="text-2xl font-semibold tracking-tight">
         Chef applications
       </h1>
