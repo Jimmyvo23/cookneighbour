@@ -54,6 +54,14 @@ Everything in CLAUDE.md §3, §6, §10, §11 and §12. Highlights the plan is bu
 - A-10 **Payments:** pure mock "payment step" with a MOCK badge; no Stripe integration in V1 unless Jimmy asks (see Q-9).
 - A-11 **Seed accounts** (admin, demo customer, demo chefs) use known demo passwords, documented in the README. Seed data only; no real personal data.
 - A-12 Money stored in cents (integer) with `currency = 'CAD'`.
+- A-13 **Travel fee** (customer's home only): charged per visit day; distance = straight-line (haversine) from the chef's service-prefix centre to the customer's address-prefix centre (A-1); fee = distance × A-8 rate, one way, whole cents per day. *(WO-4a, from the PR #83 review.)*
+- A-14 **Platform fee** = A-8 percentage of **labour only**; never on ingredients (no grocery markup, §6.4) or travel. A free-trial booking has $0 labour, so $0 platform fee.
+- A-15 **Receipt mismatch** is flagged when the receipt differs from estimated ingredients by more than the larger of 15% or $5.00 (configurable).
+- A-16 **Free-trial claim** (extends §6.6): released when the chef declines, the request expires, the chef does not show up, or the booking is cancelled before the visit; consumed when the booking is completed or the customer does not show up.
+- A-17 **Dietary filter:** chefs and dishes carry allergens only, so "dietary needs" in search means allergen exclusion: a chef matches when at least one active dish is free of every selected allergen. Diets such as vegetarian or halal are not supported in V1 (see Q-18).
+- A-18 **Search area:** a city search uses the average of that city's prefix centres. For customer's-home results, chefs whose service radius does not reach the search point are left out, unless they offer chef's home (`approved` AND `chef_home_enabled`), in which case they are shown marked "chef's home only".
+- A-19 **Bookable dates on the public chef page** are the chef's ticked dates inside the D-15 window. Already-booked dates are removed once bookings exist (WO-4b, T-042).
+- A-20 **Incomplete approved chefs** (interim for Q-13): search leaves out an approved chef with no bio, no photo or no active dish.
 
 ### Recommendations (Planner's, accepted with this plan unless Jimmy objects)
 - Rec-1 Business rules as pure functions in `src/lib/domain/`, written test-first with Vitest. They hold the risk (pricing, free trial, limits) and are cheap to test.
@@ -210,6 +218,7 @@ New from planning:
 - Q-15 ~~Confirm or replace the draft allergen-awareness and kitchen-hygiene acknowledgement wording from T-033.~~ Resolved by D-14 (2026-10-08).
 - Q-16 Admin MOCK-check rules (T-035 builder defaults, contract §12 open points 12–13, and T-035 Reviewer findings 1–2; in place until decided): (a) an admin may set a MOCK check back to `not_started` or `pending`, and setting an approved chef's check to `failed` does not change the chef's status; (b) kitchen review is allowed for a chef of any status, so chef's home can be enabled while pending or rejected; (c) the "checks pending" filter ignores the police check; (d) rejecting a chef leaves `chef_home_enabled` on, so a re-approved chef gets chef's home back if the kitchen did not change. Planner suggests: (a) keep, but an approved chef with a `failed` check should be flagged; (b) allow only for pending or approved chefs; (c) keep; (d) turn chef's home off on reject. Search and booking must require `approved` AND `chef_home_enabled` either way (WO-4).
 - Q-17 What happens to a booking when the chef clears that date, or when an approved chef is rejected? Planner suggests: a chef cannot clear a date with an active booking (409); rejecting a chef cancels their future `requested` bookings and flags `accepted` ones for the admin. Needed before WO-4b.
+- Q-18 Should search support diets beyond allergens (vegetarian, halal, kosher)? That needs new dish data. Until decided, A-17 applies.
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
 
