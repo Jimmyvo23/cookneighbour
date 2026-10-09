@@ -159,7 +159,8 @@ describe("A-13 / A-14 pricing oracle", () => {
       (seed = (seed * 1103515245 + 12345) % 2147483648),
       seed % n
     );
-    const half = (n: bigint, d: bigint) => (2n * n + d) / (2n * d);
+    const half = (n: bigint, d: bigint) =>
+      (BigInt(2) * n + d) / (BigInt(2) * d);
     for (let i = 0; i < 400; i++) {
       const rate = 1 + rnd(50000),
         metres = rnd(60000),
@@ -178,21 +179,21 @@ describe("A-13 / A-14 pricing oracle", () => {
         distanceMetres: metres,
         days,
       });
-      let lab = 0n,
-        ing = 0n,
-        trv = 0n,
-        fee = 0n;
+      let lab = BigInt(0),
+        ing = BigInt(0),
+        trv = BigInt(0),
+        fee = BigInt(0);
       for (const d of days) {
         const min = BigInt(
           d.dishes.reduce((s, x) => s + x.cookMinutes * x.quantity, 0),
         );
-        const l = free ? 0n : half(min * BigInt(rate), 60n);
+        const l = free ? BigInt(0) : half(min * BigInt(rate), BigInt(60));
         lab += l;
-        fee += half(l * 1000n, 10000n);
+        fee += half(l * BigInt(1000), BigInt(10000));
         ing += BigInt(
           d.dishes.reduce((s, x) => s + x.ingredientCostCents * x.quantity, 0),
         );
-        if (home) trv += half(BigInt(metres) * 60n, 1000n);
+        if (home) trv += half(BigInt(metres) * BigInt(60), BigInt(1000));
       }
       expect([
         e.labourCents,
@@ -376,8 +377,8 @@ describe("phone and postal tightening", () => {
       expect(normalizePhone(c.phone)).toBe(c.phone);
       expect(normalizePostalCode(c.postalCode)).not.toBeNull();
     }
-    for (const c of chefs as any[]) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const c of chefs as unknown as Record<string, any>[]) {
       if (c.phone) expect(normalizePhone(c.phone)).toBe(c.phone);
       for (const pc of [
         c.postalCode,
