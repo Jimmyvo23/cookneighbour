@@ -12,6 +12,8 @@
 //     photo (so the application can be finished without visiting the dish editor first)
 //   chef display name containing "rejected" / "approved" -> that chef starts in that status
 //   log-in email starting "chef" (no sign-up first) -> a demo chef
+//   log-in email starting "admin" (no sign-up first) -> a demo admin with a made-up chef queue
+//     (MOCK; see mock-admin.ts). Real admins cannot be created from the app.
 // Dishes and availability (T-034) follow contract 5A and 5B and reuse src/lib/domain/dishes.ts.
 //   MOCK dish photos are never stored; a photo path is accepted when its name is well formed.
 // Chef application rules reuse the real pure functions in src/lib/domain/chef-application.ts.
@@ -69,6 +71,11 @@ import {
   torontoToday,
 } from "@/lib/domain/dishes";
 import {
+  adminRoutes,
+  seedAdminQueue,
+  type MockQueueChef,
+} from "@/lib/mocks/mock-admin";
+import {
   displayNameProblem,
   validateAddress,
   validateCode,
@@ -89,6 +96,8 @@ interface MockState {
   dishes: Dish[];
   /** MOCK available dates (YYYY-MM-DD), ascending. */
   availability: string[];
+  /** MOCK admin queue of made-up chef applications (admin accounts only). */
+  adminQueue: MockQueueChef[];
 }
 
 const KEY = "cookneighbour-mock-api-state";
@@ -100,6 +109,7 @@ const EMPTY: MockState = {
   chef: null,
   dishes: [],
   availability: [],
+  adminQueue: [],
 };
 let memory: MockState = { ...EMPTY };
 
@@ -408,10 +418,15 @@ export async function mockFetch(
         "Email or password is incorrect.",
       );
     const demoChef = !s.profile && /^chef/i.test(b.email.trim());
+    const demoAdmin = !s.profile && /^admin/i.test(b.email.trim());
     const profile: MeProfile = s.profile ?? {
       id: "mock-user-1",
-      role: demoChef ? "chef" : "customer",
-      displayName: demoChef ? "Demo chef" : "Demo customer",
+      role: demoAdmin ? "admin" : demoChef ? "chef" : "customer",
+      displayName: demoAdmin
+        ? "Demo admin"
+        : demoChef
+          ? "Demo chef"
+          : "Demo customer",
       country: "CA",
       currency: "CAD",
       language: "en",
@@ -420,6 +435,7 @@ export async function mockFetch(
       ...s,
       profile,
       chef: s.chef ?? (demoChef ? newChef(profile.displayName) : null),
+      adminQueue: demoAdmin ? seedAdminQueue() : s.adminQueue,
     });
     return json(200, { user: profile } satisfies LoginResponse);
   }
@@ -492,6 +508,14 @@ export async function mockFetch(
       chef: s.chef ? { ...s.chef, displayName: name } : null,
     });
     return json(200, { ...s.profile, displayName: name });
+  }
+
+  if (path.startsWith("/api/admin/")) {
+    if (s.profile.role !== "admin")
+      return fail(403, "FORBIDDEN", "Only admins can do this.");
+    const r = adminRoutes(method, path, body, s.adminQueue);
+    if (r.queue) save({ ...s, adminQueue: r.queue });
+    return r.response;
   }
 
   if (path.startsWith("/api/chef/application"))
