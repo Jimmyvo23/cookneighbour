@@ -55,7 +55,11 @@ export function uniquePhone(): string {
     const exchange = String(200 + Math.floor(Math.random() * 800));
     const line = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
     const phone = `+1${area}${exchange}${line}`;
-    if (exchange !== "555" && !usedPhones.has(phone)) {
+    if (
+      exchange !== "555" &&
+      !exchange.endsWith("11") &&
+      !usedPhones.has(phone)
+    ) {
       usedPhones.add(phone);
       return phone;
     }
