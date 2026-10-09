@@ -60,7 +60,9 @@ export function newEmail(tag: string): string {
 /** A valid-looking, random Canadian number (area code 647, exchange 2xx). */
 export function newPhone(): string {
   const n = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
-  return `+16472${n.slice(0, 2)}${n.slice(2)}`.slice(0, 12);
+  // Exchange is 2 + first two digits; never an N11 code such as 211 (phone validation refuses it).
+  const two = n.slice(0, 2) === "11" ? "22" : n.slice(0, 2);
+  return `+16472${two}${n.slice(2)}`.slice(0, 12);
 }
 
 export const PASSWORD = "Test-only-pw-1234!";
