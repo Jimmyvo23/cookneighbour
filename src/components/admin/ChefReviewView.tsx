@@ -190,12 +190,14 @@ export function ChefReviewView({ id }: { id: string }) {
           <ApplicationSection detail={view.detail} />
           <DocumentsSection detail={view.detail} />
           <ChecksSection
+            key={`checks:${view.detail.application.documents.idDocumentPath}|${view.detail.application.documents.foodHandlerPath}`}
             detail={view.detail}
             chefId={id}
             onReload={manualReload}
             onChanged={afterChange}
           />
           <KitchenSection
+            key={`kitchen:${filesSignature(view.detail.application)}`}
             detail={view.detail}
             chefId={id}
             onReload={manualReload}

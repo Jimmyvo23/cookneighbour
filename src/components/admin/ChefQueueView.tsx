@@ -232,7 +232,10 @@ function CheckItem({
 function QueueItem({ item }: { item: AdminChefListItem }) {
   const homeOffered = item.locationOptions.includes("chef_home");
   return (
-    <li className="flex flex-col gap-2 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700">
+    <li
+      data-testid="queue-item"
+      className="flex flex-col gap-2 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700"
+    >
       <h2 className="text-lg font-semibold">
         <Link
           data-chef-link

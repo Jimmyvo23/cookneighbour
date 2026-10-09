@@ -84,7 +84,7 @@ describe("MOCK admin: list", () => {
       await call("GET", "/api/admin/chefs?status=all&checks=pending")
     ).data as AdminChefListResponse;
     expect(waiting.items.map((i) => i.id).sort()).toEqual(
-      [IVY, LINH, ROSA].sort(),
+      [IVY, LINH, ROSA, VERA].sort(),
     );
   });
   it("rejects a bad query with 422 and a bad cursor", async () => {

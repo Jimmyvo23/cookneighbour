@@ -216,13 +216,13 @@ export function seedAdminQueue(): MockQueueChef[] {
       },
       { phoneVerified: false, sampleDishCount: 0 },
     ),
-    // Complete, both checks already Verified, but the ID file has vanished from storage.
+    // Complete, but the ID file has vanished from storage (its check is still pending).
     chef(
       903,
       t(5),
       completeApp(903, "Vanished Vera", {
         checks: {
-          id: "verified",
+          id: "pending",
           foodHandler: "verified",
           kitchen: "not_started",
           police: "not_started",
