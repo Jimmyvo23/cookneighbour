@@ -12,8 +12,8 @@ The office only shows what agents report. Nothing updates on its own.
 - **After every handoff, merge or interruption**, the Planner sets each agent that is not running to `idle` or `done`. *(Agents stopped by the usage limit kept showing "working".)*
 - Agents write the handoff first, then set `--status done` before the final report and stopping. *(Never show done without a handoff on disk.)*
 - When the session pauses, the Planner sets itself to `idle` with a `--next` that says exactly where to resume.
-- **Before starting any agent** (including a resumed one for a new round), the Planner records that agent's status itself: `team-status status --agent <id> --status working --task <T-xxx> --progress 0`. *(The office showed Frontend "working" with no task at 0% and Tester "done" with no task.)* — Jimmy's rule.
-- Every agent prompt tells the agent to report `--task <T-xxx> --progress <n>` on every status call, at each milestone: 25, 50, 75, and 100 with `--status done`.
+- **Before starting any agent** (including a resumed one for a new round), the Planner records that agent's status itself: `team-status status --agent <id> --status working --task <T-xxx> --progress 0`. Jimmy's rule (D-17). *(The office showed Frontend "working" with no task at 0% and Tester "done" with no task.)*
+- Every agent prompt tells the agent to report `--task <T-xxx> --progress <n>` on every status call, at each milestone: 25, 50, 75, and 100 with `--status done`. *(Without it the office cannot show real progress.)*
 
 ## 2. Agent reports
 

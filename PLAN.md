@@ -136,7 +136,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | done |
 | T-059 | Reject unsafe text in display name and address (server; T-033 tester F1) | backend | T-028 | done |
 
-### Phase 4 — Customer side (WO-4, may split into two)
+### Phase 4 — Customer side (WO-4a: T-037 to T-041; WO-4b: T-042 to T-045)
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
 | T-037 | Domain rules (TDD): estimate, 6-hour limit, booking validation (1–3 days, past date, double booking, service area, chef-home offered), allergy conflict, receipt check, cancellation timing | backend | T-020 | todo |
@@ -187,6 +187,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-14 | 2026-10-08 | The allergen-awareness and kitchen-hygiene acknowledgement texts drafted in T-033 are confirmed as the prototype wording; remove the "draft" labels in T-034 (was Q-15) | Jimmy |
 | D-15 | 2026-10-08 | Availability is opt-in: a chef marks bookable dates; the window is today to today + 180 days, Toronto time (server sends `today` and `lastBookableDay`) | Jimmy |
 | D-16 | 2026-10-08 | Dish bounds kept: cook time 5–360 min, ingredient cost 0–50000 cents, servings 1–50, shelf life 0–7 days (default 2), at most 50 active dishes per chef | Jimmy |
+| D-17 | 2026-10-08 | Before starting any agent, the Planner records its status with `--task` and `--progress 0`; every agent prompt asks for `--task` and `--progress` at 25, 50, 75 and 100 (`docs/lessons-learned.md` §1) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -208,6 +209,7 @@ New from planning:
 - Q-14 Should replaced ID and food-handler files be deleted from Storage? (Deleting data needs Jimmy's OK; today they stay as orphans.)
 - Q-15 ~~Confirm or replace the draft allergen-awareness and kitchen-hygiene acknowledgement wording from T-033.~~ Resolved by D-14 (2026-10-08).
 - Q-16 Admin MOCK-check rules (T-035 builder defaults, contract §12 open points 12–13, and T-035 Reviewer findings 1–2; in place until decided): (a) an admin may set a MOCK check back to `not_started` or `pending`, and setting an approved chef's check to `failed` does not change the chef's status; (b) kitchen review is allowed for a chef of any status, so chef's home can be enabled while pending or rejected; (c) the "checks pending" filter ignores the police check; (d) rejecting a chef leaves `chef_home_enabled` on, so a re-approved chef gets chef's home back if the kitchen did not change. Planner suggests: (a) keep, but an approved chef with a `failed` check should be flagged; (b) allow only for pending or approved chefs; (c) keep; (d) turn chef's home off on reject. Search and booking must require `approved` AND `chef_home_enabled` either way (WO-4).
+- Q-17 What happens to a booking when the chef clears that date, or when an approved chef is rejected? Planner suggests: a chef cannot clear a date with an active booking (409); rejecting a chef cancels their future `requested` bookings and flags `accepted` ones for the admin. Needed before WO-4b.
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
 
