@@ -9,9 +9,10 @@
 //   - ANY non-filler word of the entry equals ANY word of the allergen ("nuts", "nut allergy" or
 //     "my son: nuts" match "tree nuts").
 // Words are compared lower-case, without punctuation, ignoring a trailing "s". A false conflict is
-// acceptable; a missed one is not. It does NOT understand synonyms or cross-reactivity (for
-// example "shellfish" vs "shrimp", "dairy" vs "milk"): known gap, the chef reads the intake form
-// too (Q-3 liability is an open legal risk).
+// acceptable; a missed one is not. Synonyms and spellings of the picker allergens are matched
+// through the fixed SYNONYM_GROUPS below (D-24, for example "shellfish" vs "shrimp", "dairy" vs
+// "milk", "gluten" vs "wheat"). Anything outside that list is not understood: the chef reads the
+// intake form too (Q-3 liability is an open legal risk).
 
 export interface DishAllergens {
   id: string;
@@ -33,6 +34,54 @@ const words = (s: string): string[] =>
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean)
     .map((w) => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w));
+
+/**
+ * D-24: words that count as the same allergen (after lower-casing and the trailing-"s" rule in
+ * words()). A word may be in more than one group ("shellfish" covers crustaceans and molluscs).
+ * Deliberately generous: a false warning is acceptable, a missed allergy is not. Fixed list, not
+ * a medical reference (cross-reactivity such as peanut vs tree nut is warned on purpose).
+ */
+export const SYNONYM_GROUPS: readonly (readonly string[])[] = [
+  ["gluten", "wheat"],
+  ["dairy", "lactose", "milk"],
+  ["shellfish", "shrimp", "prawn", "crab", "lobster", "crustacean"],
+  [
+    "shellfish",
+    "mollusk",
+    "mollusc",
+    "clam",
+    "squid",
+    "oyster",
+    "mussel",
+    "scallop",
+  ],
+  [
+    "nut",
+    "peanut",
+    "groundnut",
+    "almond",
+    "cashew",
+    "walnut",
+    "pecan",
+    "pistachio",
+    "hazelnut",
+  ],
+  ["soy", "soya"],
+  ["sulfite", "sulphite"],
+];
+
+const GROUPS_OF = new Map<string, number[]>();
+SYNONYM_GROUPS.forEach((g, i) =>
+  g.forEach((w) => GROUPS_OF.set(w, [...(GROUPS_OF.get(w) ?? []), i])),
+);
+
+/** Same word, or two words of one synonym group. */
+function sameWord(a: string, b: string): boolean {
+  if (a === b) return true;
+  const ga = GROUPS_OF.get(a);
+  const gb = GROUPS_OF.get(b);
+  return !!ga && !!gb && ga.some((g) => gb.includes(g));
+}
 
 /**
  * Words that carry no allergen ("nut allergy", "allergic to nuts", "severe", "gluten-free"). They
@@ -86,7 +135,7 @@ export function splitAllergies(intake: string | readonly string[]): string[] {
 function containsSequence(hay: string[], needle: string[]): boolean {
   if (needle.length === 0 || needle.length > hay.length) return false;
   for (let i = 0; i + needle.length <= hay.length; i++)
-    if (needle.every((w, j) => hay[i + j] === w)) return true;
+    if (needle.every((w, j) => sameWord(hay[i + j], w))) return true;
   return false;
 }
 
@@ -109,7 +158,7 @@ export function findAllergyConflicts(
         entries.some(
           (e) =>
             containsSequence(e, aw) ||
-            e.some((w) => !FILLER.has(w) && aw.includes(w)),
+            e.some((w) => !FILLER.has(w) && aw.some((x) => sameWord(w, x))),
         )
       )
         hits.add(a);

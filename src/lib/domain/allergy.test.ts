@@ -20,7 +20,12 @@ describe("findAllergyConflicts", () => {
   });
   it("matches singular and plural, and a phrase inside a sentence", () => {
     expect(findAllergyConflicts("severe peanut allergy", [satay])).toEqual([
-      { dishId: "d2", dishName: "Satay", allergens: ["peanuts"] },
+      // D-24: peanut and nut are one synonym group, so the tree-nuts entry warns too.
+      {
+        dishId: "d2",
+        dishName: "Satay",
+        allergens: ["peanuts", "tree nuts"],
+      },
     ]);
     expect(findAllergyConflicts("tree nut", [satay])[0].allergens).toEqual([
       "tree nuts",
@@ -116,5 +121,88 @@ describe("any intake word inside the allergen (review round 3)", () => {
       ),
     );
     for (const f of FILLER) expect(allergenWords.has(f), f).toBe(false);
+  });
+});
+
+// D-24 (T-061): a small fixed synonym and spelling map for the picker allergens. Over-warning is
+// accepted; a missed allergy is not.
+describe("synonyms and spellings (D-24)", () => {
+  const dish = (allergen: string) => [
+    { id: "x", name: "X", allergens: [allergen] },
+  ];
+  const pairs: [string, string][] = [
+    ["gluten", "wheat"],
+    ["dairy", "milk"],
+    ["lactose", "milk"],
+    ["dairy", "lactose"],
+    ["shellfish", "crustaceans"],
+    ["shrimp", "crustaceans"],
+    ["prawns", "crustaceans"],
+    ["crab", "crustaceans"],
+    ["shellfish", "molluscs"],
+    ["clams", "molluscs"],
+    ["squid", "molluscs"],
+    ["nuts", "peanuts"],
+    ["peanuts", "tree nuts"],
+    ["almonds", "tree nuts"],
+    ["soya", "soy"],
+    ["mollusks", "molluscs"],
+    ["mollusc", "molluscs"],
+    ["sulfites", "sulphites"],
+    ["sulfite", "sulphites"],
+  ];
+  it.each(pairs)(
+    "intake %j conflicts with a dish allergen %j, both ways",
+    (a, b) => {
+      expect(findAllergyConflicts(a, dish(b)), `${a} -> ${b}`).toHaveLength(1);
+      expect(findAllergyConflicts(b, dish(a)), `${b} -> ${a}`).toHaveLength(1);
+    },
+  );
+  it("works inside a sentence and with plural spellings", () => {
+    expect(
+      findAllergyConflicts("severe lactose intolerance", dish("milk")),
+    ).toHaveLength(1);
+    expect(findAllergyConflicts("allergic to soya", dish("soy"))).toHaveLength(
+      1,
+    );
+    expect(findAllergyConflicts("wheat allergy", dish("gluten"))).toHaveLength(
+      1,
+    );
+  });
+  it("reports the dish's own allergen text, not the customer's word", () => {
+    expect(findAllergyConflicts("dairy", dish("milk"))[0].allergens).toEqual([
+      "milk",
+    ]);
+  });
+  it("every picker allergen is matched by its own spelling variants", () => {
+    const variants: Record<string, string[]> = {
+      milk: ["dairy", "lactose"],
+      soy: ["soya"],
+      wheat: ["gluten"],
+      gluten: ["wheat"],
+      crustaceans: ["shellfish", "shrimp"],
+      molluscs: ["mollusks", "shellfish"],
+      sulphites: ["sulfites"],
+      peanuts: ["nuts"],
+      "tree nuts": ["peanuts", "nuts"],
+    };
+    for (const [value, list] of Object.entries(variants)) {
+      expect(
+        ALLERGEN_CHOICES.some((c) => c.value === value),
+        value,
+      ).toBe(true);
+      for (const v of list)
+        expect(
+          findAllergyConflicts(v, dish(value)),
+          `${v} vs ${value}`,
+        ).toHaveLength(1);
+    }
+  });
+  it("does not make unrelated allergens match", () => {
+    expect(findAllergyConflicts("fish", dish("shellfish"))).toEqual([]);
+    expect(findAllergyConflicts("eggs", dish("milk"))).toEqual([]);
+    expect(findAllergyConflicts("sesame", dish("soy"))).toEqual([]);
+    expect(findAllergyConflicts("mustard", dish("wheat"))).toEqual([]);
+    expect(findAllergyConflicts("nutmeg", dish("peanuts"))).toEqual([]);
   });
 });
