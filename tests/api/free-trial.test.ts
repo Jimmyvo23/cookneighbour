@@ -370,10 +370,9 @@ describe("races", () => {
 
   it("parallel holds by two accounts at the same address: exactly one wins", async () => {
     const line = `7 Race${rand(3)} Road`;
-    const [a, b] = await Promise.all([
-      trialCustomer({ line }),
-      trialCustomer({ line }),
-    ]);
+    // Sequential: the test harness keeps one "current" cookie jar, so sign-ups cannot overlap.
+    const a = await trialCustomer({ line });
+    const b = await trialCustomer({ line });
     const [ba, bb] = await Promise.all([newBooking(a), newBooking(b)]);
     const res = await Promise.allSettled([
       holdFreeTrial(a.id, ba),

@@ -45,7 +45,7 @@ export interface FreeTrialDeps {
 }
 
 export const FREE_TRIAL_USED_MESSAGE =
-  "The free first booking is not available for this account.";
+  "The free first booking is not available.";
 
 const BLOCK_BY_INDEX: Record<string, FreeTrialBlockReason> = {
   free_trial_one_per_customer: "customer",
