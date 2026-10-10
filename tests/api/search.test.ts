@@ -729,3 +729,172 @@ describe("validation (422) and paging", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// T-039 Tester round: edge cases found while reviewing the handoff.
+// ---------------------------------------------------------------------------
+describe("T-039 tester: hidden detail pages answer identically", () => {
+  it("non-uuid, unknown, pending, rejected, no-bio and no-dish give the same status, body and headers", async () => {
+    const pending = await pub({ status: "pending" });
+    const rejected = await pub({ status: "rejected" });
+    const noBio = await pub({ bio: null });
+    const unknown = await detail(anon(), randomUUID());
+    const sig = (r: Reply) =>
+      JSON.stringify([
+        r.status,
+        r.text,
+        [...r.headers.entries()]
+          .filter(([k]) => k !== "date" && k !== "content-length")
+          .sort(),
+      ]);
+    for (const id of [
+      "not-a-uuid",
+      pending.id,
+      rejected.id,
+      noBio.id,
+      randomUUID(),
+    ])
+      expect(sig(await detail(anon(), id)), id).toBe(sig(unknown));
+    expect(unknown.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("a chef who offers only an unenabled chef's home is hidden from search but the detail page answers with no options (documented, see handoff)", async () => {
+    const c = await pub({ options: ["chef_home"], homeEnabled: false });
+    for (const extra of ["", "postalCode=L5B", "locationType=chef_home"])
+      expect(ids(await search(anon(), q(extra))), extra).not.toContain(c.id);
+    const d = await detail(anon(), c.id);
+    expect(d.status).toBe(200);
+    expect(d.body.locationOptions).toEqual([]);
+  });
+});
+
+describe("T-039 tester: parameters and window edges", () => {
+  it("accepts today and the last bookable day, rejects the day after", async () => {
+    const t = today();
+    const last = addDays(t, 180);
+    const chef = await pub();
+    await putDays(chef, { add: [last] });
+    expect((await search(anon(), q(`date=${t}`))).status).toBe(200);
+    const edge = await search(anon(), q(`date=${last}`));
+    expect(edge.status, edge.text).toBe(200);
+    expect(ids(edge)).toEqual([chef.id]);
+    expect((await search(anon(), q(`date=${addDays(t, 181)}`))).status).toBe(
+      422,
+    );
+  });
+
+  it("limit accepts leading zeros and applies it; odd numbers are 422", async () => {
+    await pub();
+    await pub();
+    await pub();
+    const r = await search(anon(), q("limit=002"));
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.items).toHaveLength(2);
+    expect(r.body.nextCursor).toBeTruthy();
+    for (const l of ["0", "51", "%2B5", "5e1", "0x5", "5.0", "-1"])
+      expect((await search(anon(), q(`limit=${l}`))).status, l).toBe(422);
+    expect((await search(anon(), q("limit=5&limit=6"))).status).toBe(422);
+  });
+
+  it("letters that never appear in Canadian postal codes are 422", async () => {
+    for (const code of ["L5B1D1", "L5B1Q1", "L5B1U1", "L5BOA1", "D5B", "L5B1"])
+      expect((await search(anon(), `postalCode=${code}`)).status, code).toBe(
+        422,
+      );
+    const both = await search(anon(), "postalCode=L5B&city=Toronto");
+    expect(both.status).toBe(422);
+    expect(Object.keys(both.body.error.fields)).toEqual(["city"]);
+  });
+
+  it("a city with accents, a control character or odd case does not crash", async () => {
+    await pub();
+    expect((await search(anon(), q("city=Montr%C3%A9al"))).status).toBe(422);
+    expect((await search(anon(), q("city=Toronto%00"))).status).toBe(422);
+    expect((await search(anon(), q("city=%20MISSISSAUGA%20"))).status).toBe(
+      200,
+    );
+  });
+
+  it("avoidAllergens made only of commas and spaces is no filter", async () => {
+    const c = await pub({ dishes: [{ allergens: ["soy"] }] });
+    const r = await search(anon(), q("avoidAllergens=%2C%20%2C"));
+    expect(r.status, r.text).toBe(200);
+    expect(ids(r)).toEqual([c.id]);
+  });
+});
+
+describe("T-039 tester: radius boundary and cursor tampering", () => {
+  it("a radius just under the distance excludes, just over includes", async () => {
+    const wide = await pub({ prefix: "M5V", radius: 100, name: "Wide" });
+    const probe = await search(anon(), q("postalCode=L5B"));
+    const km = probe.body.items[0].distanceKm as number;
+    expect(km).toBeGreaterThan(1);
+    await setChef(wide.id, { service_radius_km: Math.ceil(km) + 1 });
+    expect(ids(await search(anon(), q("postalCode=L5B")))).toEqual([wide.id]);
+    await setChef(wide.id, {
+      service_radius_km: Math.max(1, Math.floor(km) - 1),
+    });
+    expect(ids(await search(anon(), q("postalCode=L5B")))).toEqual([]);
+  });
+
+  it("tampered cursors are 422; a forged well-formed cursor never reveals a hidden chef", async () => {
+    const ok = await pub({ name: "Visible" });
+    const hidden = await pub({ status: "pending", name: "Hidden" });
+    const b64 = (s: string) => Buffer.from(s).toString("base64url");
+    for (const c of [
+      b64("{}"),
+      b64("null"),
+      b64('{"m":"x","r":1,"n":"a","i":"b"}'),
+      b64('{"m":1,"r":1,"n":"a","i":"b","x":1}'),
+      b64("{not json"),
+      "A".repeat(601),
+      "a=b",
+      "%2E%2E%2F",
+    ]) {
+      const r = await search(anon(), q(`cursor=${c}`));
+      expect(r.status, c.slice(0, 20)).toBe(422);
+      expect(r.body.error.fields.cursor).toBeTruthy();
+    }
+    const forged = b64(JSON.stringify({ m: null, r: 99, n: "", i: "" }));
+    const r = await search(anon(), q(`cursor=${forged}`));
+    expect(r.status, r.text).toBe(200);
+    expect(ids(r)).toContain(ok.id);
+    expect(ids(r)).not.toContain(hidden.id);
+    // a cursor made for another query is accepted but only moves the start
+    const other = await search(anon(), q("limit=1"));
+    expect(other.status).toBe(200);
+  });
+
+  it("full ties (same prefix, rating, name) page by id without repeats", async () => {
+    const made: Chef[] = [];
+    for (let i = 0; i < 4; i++)
+      made.push(await pub({ name: "Twin", rating: 4 }));
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    for (let i = 0; i < 6; i++) {
+      const r: Reply = await search(
+        anon(),
+        q(`postalCode=L5B&limit=1${cursor ? `&cursor=${cursor}` : ""}`),
+      );
+      expect(r.status, r.text).toBe(200);
+      seen.push(...ids(r));
+      cursor = r.body.nextCursor;
+      if (!cursor) break;
+    }
+    expect(seen).toEqual(made.map((c) => c.id).sort());
+  });
+});
+
+describe("T-039 tester: postal-prefixes is the same for everyone", () => {
+  it("a signed-in caller gets the same body, the cache header and no cookie", async () => {
+    const customer = await newCustomer();
+    const a = await anon().call(prefixRoute, { method: "GET" });
+    const c = await customer.b.call(prefixRoute, { method: "GET" });
+    expect(c.status).toBe(200);
+    expect(c.text).toBe(a.text);
+    expect(c.headers.get("cache-control")).toBe(
+      "public, max-age=3600, stale-while-revalidate=86400",
+    );
+    expect(c.headers.get("set-cookie")).toBeNull();
+  });
+});
