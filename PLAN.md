@@ -62,6 +62,11 @@ Everything in CLAUDE.md §3, §6, §10, §11 and §12. Highlights the plan is bu
 - A-18 **Search area:** a city search uses the average of that city's prefix centres. For customer's-home results, chefs whose service radius does not reach the search point are left out, unless they offer chef's home (`approved` AND `chef_home_enabled`), in which case they are shown marked "chef's home only".
 - A-19 **Bookable dates on the public chef page** are the chef's ticked dates inside the D-15 window. Already-booked dates are removed once bookings exist (WO-4b, T-042).
 - A-20 **Incomplete approved chefs** (interim for Q-13): search leaves out an approved chef with no bio, no photo or no active dish.
+- A-21 **Dish quantity:** at most 10 of one dish per visit day (`MAX_DISH_QUANTITY`); cook time and ingredient cost scale linearly with quantity. *(T-037 builder placeholder.)*
+- A-22 **Cancellation timing detail:** day 1 starts at 00:00 Toronto time; the 48-hour cutoff (A-6) is inclusive; a chef cancellation uses the same timing.
+- A-23 **Rounding:** labour, travel and platform fee are each rounded half up to whole cents once per visit day; the total is the sum of the rounded lines.
+- A-24 **Allergy matching:** a dish allergen conflicts with the intake when the intake contains its words in order, or when any intake word (ignoring filler such as "allergy", "severe") equals any allergen word; lower case, punctuation stripped, trailing "s" ignored. Over-warning is accepted; a conflict is a warning the customer acknowledges. No synonyms (Q-20). Raw allergen entries capped at 50 before de-duplication.
+- A-25 **Search without a location** returns approved chefs ordered by rating, then name; no distance. An absent `locationType` behaves like customer's home (A-18).
 
 ### Recommendations (Planner's, accepted with this plan unless Jimmy objects)
 - Rec-1 Business rules as pure functions in `src/lib/domain/`, written test-first with Vitest. They hold the risk (pricing, free trial, limits) and are cheap to test.
@@ -147,9 +152,9 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 ### Phase 4 — Customer side (WO-4a: T-037 to T-041; WO-4b: T-042 to T-045)
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
-| T-037 | Domain rules (TDD): estimate, 6-hour limit, booking validation (1–3 days, past date, double booking, service area, chef-home offered), allergy conflict, receipt check, cancellation timing | backend | T-020 | todo |
+| T-037 | Domain rules (TDD): estimate, 6-hour limit, booking validation (1–3 days, past date, double booking, service area, chef-home offered), allergy conflict, receipt check, cancellation timing | backend | T-020 | done |
 | T-038 | Free-trial rules: eligibility by phone and address hash, hold / consume / release | backend | T-028, T-037 | todo |
-| T-039 | Search API: approved chefs only, filters, distance sort | backend | T-030, T-037 | todo |
+| T-039 | Search API: approved chefs only, filters, distance sort | backend | T-030, T-037 | done |
 | T-040 | Search and results UI with map | frontend | T-039 | todo |
 | T-041 | Chef detail page | frontend | T-039 | todo |
 | T-042 | Booking API: create, estimate, accept / decline, cancel, no-show, eat-by, notifications | backend | T-037, T-038 | todo |
@@ -213,12 +218,15 @@ New from planning:
 - Q-10 Real eat-by window must be confirmed against Ontario public-health guidance before any real launch.
 - Q-11 How long may a `requested` booking hold a chef's date before it expires, and should customers be rate-limited on requests?
 - Q-12 Should contact details re-lock some days after a visit is completed?
-- Q-13 May an approved chef clear their bio or photo and stay listed in search? (Planner suggests blocking it: an approved profile must stay complete.)
+- Q-13 May an approved chef clear their bio or photo and stay listed in search? (Planner suggests blocking it: an approved profile must stay complete.) Interim: A-20 hides them from search and the public page.
 - Q-14 Should replaced ID and food-handler files be deleted from Storage? (Deleting data needs Jimmy's OK; today they stay as orphans.)
 - Q-15 ~~Confirm or replace the draft allergen-awareness and kitchen-hygiene acknowledgement wording from T-033.~~ Resolved by D-14 (2026-10-08).
 - Q-16 Admin MOCK-check rules (T-035 builder defaults, contract §12 open points 12–13, and T-035 Reviewer findings 1–2; in place until decided): (a) an admin may set a MOCK check back to `not_started` or `pending`, and setting an approved chef's check to `failed` does not change the chef's status; (b) kitchen review is allowed for a chef of any status, so chef's home can be enabled while pending or rejected; (c) the "checks pending" filter ignores the police check; (d) rejecting a chef leaves `chef_home_enabled` on, so a re-approved chef gets chef's home back if the kitchen did not change. Planner suggests: (a) keep, but an approved chef with a `failed` check should be flagged; (b) allow only for pending or approved chefs; (c) keep; (d) turn chef's home off on reject. Search and booking must require `approved` AND `chef_home_enabled` either way (WO-4).
 - Q-17 What happens to a booking when the chef clears that date, or when an approved chef is rejected? Planner suggests: a chef cannot clear a date with an active booking (409); rejecting a chef cancels their future `requested` bookings and flags `accepted` ones for the admin. Needed before WO-4b.
 - Q-18 Should search support diets beyond allergens (vegetarian, halal, kosher)? That needs new dish data. Until decided, A-17 applies.
+- Q-19 The intake form is mandatory (§6.4), but today the allergy and dietary fields may be submitted blank. Must the customer type something explicit such as "none"? Needed before T-043.
+- Q-20 Should allergy matching know synonyms and spellings for the 13 picker allergens (gluten vs wheat is the riskiest; also dairy/lactose vs milk, shellfish/shrimp vs crustaceans, nuts vs peanuts, soya, mollusks, sulfites)? Planner suggests a small fixed synonym map. Needed before T-043.
+- Q-21 A chef who offers only cooking at their own home, before an admin enables it, is hidden from search, but their public page opens with no booking option. Keep, or return the same 404 as other hidden chefs?
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
 
@@ -384,4 +392,20 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
   - WO-5: extend `AdminNav` to bookings, reports and free-trial blocks.
   - T-054 README: mock admin login works only in mock mode; hosted demo admin needs Jimmy's `SEED_ADMIN_PASSWORD`.
 - Process: Jimmy's status rule added to `docs/lessons-learned.md` §1 (Planner records an agent's task and 0% before starting it; agents report progress at 25/50/75/100).
+
+### T-037 — Domain rules (done 2026-10-09, PR #84)
+- Pure functions in `src/lib/domain/` (no I/O), summarised in `docs/domain-rules.md`: `config.ts` (A-6, A-8, A-13 to A-17, A-21 constants, marked ASSUMPTION), `money.ts` and `pricing.ts` (estimate in integer cents: labour, ingredients, travel per day for customer's home, platform fee on labour only and not added to the total; A-23 rounding), `visitLimit.ts` (6-hour warning per day), `bookingValidation.ts` and `bookingIntake.ts` (1–3 distinct days, no past date, D-15 window in Toronto time, availability, double booking, service radius, chef's home only when offered AND approved AND `chef_home_enabled`, active dishes of that chef; errors as codes), `allergy.ts` (A-24), `receipt.ts` (A-15), `cancellation.ts` (A-6, A-22, free-trial effect A-16), `eatBy.ts` (A-7), `distance.ts` (A-1), `dietary.ts` (A-17).
+- Also: `allergenList` counts the 14 limit after de-duplication (T-034 backlog); phone validation rejects invalid NANP codes (N11) and postal codes follow Canada Post letter rules (T-028 follow-up). Two seed postal codes changed to valid ones with the same prefixes (`L6P4D4`→`L6P4C4`, `L4K6F6`→`L4K6E6`); test phone helpers fixed (the Tester found one more that failed about 1 run in 100).
+- Tests: unit 702 (from 512), RLS 118, API 315 (CI). Only the allergen fix and the allergy rounds were strictly test-first; the Tester added 91 tests including an independent BigInt check of the money maths over 400 random bookings and DST boundaries. Tester PASS. Reviewer: three rounds — round 1 an allergy-safety gap ("nuts" did not warn for "tree nuts") and a 10%/15% doc slip; round 2 extra words still hid a conflict ("Extremely allergic to nuts"); round 3 APPROVE.
+- Findings (none blocking): existing hosted rows are not re-checked against the stricter phone and postal rules — an admin kitchen review that sends a now-invalid stored address gets 422, and a stored N11 phone makes `phoneHash` throw (only typed test data could hit this); receipt tolerance rounds half up before a strict compare (at most half a cent); blank intake strings accepted (Q-19); allergy synonyms missing (Q-20).
+- Follow-ups: T-038 — a stored phone the new rule rejects must give a clean 409/422, not 500; use `freeTrialEffect` as the single source. T-042 — pass `torontoToday()` as `ctx.today`; `chefBookedDates` must match the `is_active` index; map `CHEF_NOT_BOOKABLE` to 404 and `DOUBLE_BOOKED` to 409; build the intake allergy field from `ALLERGEN_CHOICES` plus free text; no-show and meal-pickup handling.
+- Process: status reports from worktrees were lost (team-status writes to the current folder); fixed with `CLAUDE_PROJECT_DIR`, now in `docs/lessons-learned.md` §1.
+
+### T-039 — Search API (done 2026-10-09, PR #85; no migration)
+- Contract v1.3 §7: `GET /api/chefs` (location by `postalCode` or `city` — A-18 city centre; filters `cuisine`, `language`, `avoidAllergens` A-17, `minRateCents`/`maxRateCents`, `date` inside the D-15 window, `locationType`; distance sort A-1, then rating, name, id; keyset cursor; out-of-radius chefs left out unless chef's home is bookable, then `chefHomeOnly: true`), `GET /api/chefs/:id` (active dishes, `bookableDates` A-19, `today`, `lastBookableDay`), `GET /api/reference/postal-prefixes` (public, cacheable, cookie-free client).
+- Approved only with an explicit `.eq('status','approved')`; A-20 hides incomplete chefs in search and detail; one identical 404 for non-uuid, unknown, pending, rejected and hidden chefs. Named columns, no private fields, anon-capable client only, `no-store` except the reference route. Without a location, order is rating then name (A-25). Reads at most 1000 approved chefs and filters in code (prototype scale).
+- Backlog done: `await connection()` in `GET /api/admin/chefs` removes the build-log prerender error (T-036).
+- Tests: unit 756, RLS 118, API 347, Playwright real 23 + mock 67 (CI run 38019520989). Pending and rejected chefs hidden for seven kinds of viewer; header-identical 404s; radius boundary through the DB; cursor tampering; tie paging. Tester PASS, Reviewer APPROVE.
+- Findings (none blocking): Q-21 (a chef with only an unenabled chef's home is hidden in search but its page opens with no booking option; Reviewer recommends the same 404); the contract says a chef's postal prefix is never shown, but the service-area centre can be inferred from `distanceKm` over a few searches (area only, never an address; soften the wording at the next contract edit); `locationType=customer_home` still returns `chefHomeOnly` chefs, so T-040 must label them.
+- Follow-ups: T-040 — postal-prefixes for the city picker and map pins (area centres only); chef's-home-only label; list is the main view and works without the map; 422 errors next to inputs with focus; mock adapter routes per §7 with cursor paging. T-041 — one "Chef not found" state; handle `locationOptions: []` unless Q-21 changes it; date picker from `today`/`lastBookableDay`; allergens on each dish. T-042 — remove booked dates from the `date` filter and `bookableDates`; re-check approved, `chef_home_enabled` and radius at booking; hidden chef → same 404.
 
