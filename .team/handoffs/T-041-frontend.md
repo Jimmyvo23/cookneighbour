@@ -29,3 +29,9 @@ From: frontend  To: tester
 - T-042 (booking): enable the Book button when `locationOptions.length > 0`; remove booked days from `bookableDates` and the page text; decide Q-21 (same 404 vs. current state; remove the "not bookable" state if the API changes). The mock adapter needs the same change.
 - Allergen display is words plus a warning sign in a bordered box (not colour only); "No allergens listed by the chef" never says "free".
 - Photos: `NEXT_PUBLIC_API_MOCK=1` never builds a storage URL; the mock specs abort and count `**/storage/v1/object/public/**` requests (expected 0).
+
+## Round 2 (after Tester round 1)
+- Fix 1: new `isSafeStoragePath` (`src/lib/chef/dishes.ts`) rejects empty, `.` and `..` segments, a leading slash, backslashes and control characters. `profilePhotoUrl` and `dishPhotoUrl` return null for such a path, so the page shows the photo fallback. Tester's `it.fails` is now `it` (asserts no image uses the path and the fallback shows). Unit test added in `detail.test.ts`.
+- Fix 2: `isChefDetail` (`src/lib/search/detail.ts`) checks the 200 answer's shape; a bad shape shows the retry state. Added `src/app/chefs/[id]/error.tsx` as a last-resort boundary. Tester's second `it.fails` is now `it`.
+- Skipped the optional "Clear search" control (not small enough to add without a design decision; left for later).
+- Checks: lint, typecheck, build clean; vitest 967 pass; mock Playwright 120 pass.

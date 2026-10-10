@@ -79,3 +79,22 @@ describe("windowText", () => {
     );
   });
 });
+
+describe("isSafeStoragePath", () => {
+  it("accepts owner-folder paths and rejects dot, empty, backslash and control segments", async () => {
+    const { isSafeStoragePath } = await import("@/lib/chef/dishes");
+    expect(isSafeStoragePath("abc/photo-1.png")).toBe(true);
+    for (const bad of [
+      "../x.png",
+      "a/../x",
+      "./x",
+      "a//b",
+      "/a",
+      "a\\b",
+      "a\u0000b",
+      "a\nb",
+      "",
+    ])
+      expect(isSafeStoragePath(bad)).toBe(false);
+  });
+});

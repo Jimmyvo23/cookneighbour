@@ -16,6 +16,7 @@ import { MockBadge } from "@/components/MockBadge";
 import {
   allergenText,
   groupDatesByMonth,
+  isChefDetail,
   isBookable,
   locationLabels,
   shortDayLabel,
@@ -203,7 +204,11 @@ export function ChefDetailView({ id }: { id: string }) {
       const chef = await apiFetch<PublicChefDetail>(
         `/api/chefs/${encodeURIComponent(id)}`,
       );
-      if (mine === seq.current) setState({ kind: "ready", chef });
+      if (mine !== seq.current) return;
+      // A broken answer is the same as a failed load: the retry state, never a crash.
+      setState(
+        isChefDetail(chef) ? { kind: "ready", chef } : { kind: "error" },
+      );
     } catch (err) {
       if (mine !== seq.current) return;
       // One state for every 404 (unknown, not a uuid, pending, rejected, hidden): nothing tells them apart.

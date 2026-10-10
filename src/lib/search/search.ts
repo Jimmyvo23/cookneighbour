@@ -7,6 +7,7 @@ import type {
   PublicChefSearchItem,
   PublicChefSearchQuery,
 } from "@/lib/api/types";
+import { isSafeStoragePath } from "@/lib/chef/dishes";
 import { dollarsToCents } from "@/lib/chef/form";
 import {
   addDays,
@@ -228,7 +229,7 @@ export function profilePhotoUrl(
   path: string | null,
   supabaseUrl?: string,
 ): string | null {
-  if (!path || !supabaseUrl) return null;
+  if (!path || !supabaseUrl || !isSafeStoragePath(path)) return null;
   const encoded = path.split("/").map(encodeURIComponent).join("/");
   return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/profile-photos/${encoded}`;
 }

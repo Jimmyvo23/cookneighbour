@@ -224,24 +224,23 @@ describe("ChefDetailView (tester)", () => {
 
   // FINDING (LOW, defence in depth): ".." is not encoded by encodeURIComponent, so the browser
   // resolves it and the URL leaves the bucket folder. The server keeps paths inside the owner's
-  // folder, so only a tampered API answer reaches this. it.fails records the bug; when the builder
-  // fixes it (reject dot segments in profilePhotoUrl/dishPhotoUrl), remove ".fails".
-  it.fails(
-    "a '..' in a photo path stays inside the public bucket",
-    async () => {
-      vi.stubEnv("NEXT_PUBLIC_API_MOCK", "");
-      vi.stubEnv(
-        "NEXT_PUBLIC_SUPABASE_URL",
-        "https://example-project.supabase.co",
-      );
-      fetchMock.mockImplementation(
-        reply(200, chef({ photoPath: "../../x.png" })),
-      );
-      await mount();
-      const src = host.querySelector("img")!.src;
-      expect(src).toContain("/storage/v1/object/public/profile-photos/");
-    },
-  );
+  // folder, so only a tampered API answer reaches this. Fixed in round 2: dot segments give no URL.
+  it("a '..' in a photo path stays inside the public bucket", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_MOCK", "");
+    vi.stubEnv(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "https://example-project.supabase.co",
+    );
+    fetchMock.mockImplementation(
+      reply(200, chef({ photoPath: "../../x.png" })),
+    );
+    await mount();
+    const srcs = [...host.querySelectorAll("img")].map((i) => i.src);
+    expect(srcs.some((u) => u.includes("x.png"))).toBe(false);
+    expect(
+      host.querySelector('[data-testid="chef-photo-fallback"]'),
+    ).not.toBeNull();
+  });
 
   it("allergens are words: 'Contains:' list, or 'No allergens listed by the chef' (never 'free')", async () => {
     fetchMock.mockImplementation(reply(200, chef()));
@@ -475,18 +474,15 @@ describe("ChefDetailView (tester)", () => {
   });
 
   // FINDING (INFO): a 200 answer that breaks the contract shape (no arrays) throws during render
-  // instead of showing the retry state. Only a broken server can send it. it.fails records it.
-  it.fails(
-    "a 200 answer missing arrays shows the retry state instead of crashing",
-    async () => {
-      fetchMock.mockImplementation(reply(200, { id: ID, displayName: "X" }));
-      const err = vi.spyOn(console, "error").mockImplementation(() => {});
-      try {
-        await mount();
-      } finally {
-        err.mockRestore();
-      }
-      expect(host.querySelector('[data-testid="load-error"]')).not.toBeNull();
-    },
-  );
+  // instead of showing the retry state. Only a broken server can send it. Fixed in round 2.
+  it("a 200 answer missing arrays shows the retry state instead of crashing", async () => {
+    fetchMock.mockImplementation(reply(200, { id: ID, displayName: "X" }));
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await mount();
+    } finally {
+      err.mockRestore();
+    }
+    expect(host.querySelector('[data-testid="load-error"]')).not.toBeNull();
+  });
 });

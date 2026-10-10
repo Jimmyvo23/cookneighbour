@@ -1,6 +1,6 @@
 // Pure helpers for the public chef page (T-041). The server stays the authority (contract section
 // 7); these only format what GET /api/chefs/:id returned. No network, no DOM, no browser clock.
-import type { LocationType } from "@/lib/api/types";
+import type { LocationType, PublicChefDetail } from "@/lib/api/types";
 import { isRealDate } from "@/lib/domain/dishes";
 
 const noon = (day: string) => new Date(`${day}T12:00:00Z`);
@@ -71,4 +71,44 @@ export const isBookable = (options: readonly LocationType[]): boolean =>
 
 export function windowText(today: string, last: string): string {
   return `Dates from ${shortDayLabel(today)} to ${shortDayLabel(last, true)}.`;
+}
+
+const isStrings = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === "string");
+
+/** Quick shape check of a 200 answer, so a broken server shows the retry state, not a crash. */
+export function isChefDetail(v: unknown): v is PublicChefDetail {
+  if (typeof v !== "object" || v === null) return false;
+  const c = v as Record<string, unknown>;
+  if (
+    typeof c.displayName !== "string" ||
+    typeof c.bio !== "string" ||
+    typeof c.photoPath !== "string" ||
+    typeof c.currency !== "string" ||
+    typeof c.ratingAvg !== "number" ||
+    typeof c.reviewCount !== "number" ||
+    typeof c.serviceRadiusKm !== "number" ||
+    typeof c.today !== "string" ||
+    typeof c.lastBookableDay !== "string" ||
+    !isStrings(c.cuisines) ||
+    !isStrings(c.languages) ||
+    !isStrings(c.locationOptions) ||
+    !isStrings(c.bookableDates) ||
+    !Array.isArray(c.dishes)
+  )
+    return false;
+  return c.dishes.every((d) => {
+    if (typeof d !== "object" || d === null) return false;
+    const x = d as Record<string, unknown>;
+    return (
+      typeof x.id === "string" &&
+      typeof x.name === "string" &&
+      typeof x.cuisine === "string" &&
+      typeof x.cookMinutes === "number" &&
+      typeof x.ingredientCostCents === "number" &&
+      typeof x.servings === "number" &&
+      typeof x.shelfLifeDays === "number" &&
+      isStrings(x.allergens)
+    );
+  });
 }
