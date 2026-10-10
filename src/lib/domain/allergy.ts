@@ -4,10 +4,14 @@
 // and trimmed (dishes.ts), the intake is free text, so both sides are normalized here.
 //
 // Matching is deliberately on the cautious side, because a missed allergy is worse than an extra
-// warning: an intake entry matches an allergen when the allergen's words appear in it in order
-// (so "severe peanut allergy" matches "peanuts"), ignoring a trailing "s" on each word. It does
-// also match the other way (see findAllergyConflicts). It does NOT understand synonyms or cross-reactivity (for example "shellfish" vs "shrimp"): known gap,
-// the chef reads the intake form too (Q-3 liability is an open legal risk).
+// warning. A dish allergen is a conflict when, in any intake entry, either:
+//   - all of the allergen's words appear in order ("severe peanut allergy" matches "peanuts"), or
+//   - ANY non-filler word of the entry equals ANY word of the allergen ("nuts", "nut allergy" or
+//     "my son: nuts" match "tree nuts").
+// Words are compared lower-case, without punctuation, ignoring a trailing "s". A false conflict is
+// acceptable; a missed one is not. It does NOT understand synonyms or cross-reactivity (for
+// example "shellfish" vs "shrimp", "dairy" vs "milk"): known gap, the chef reads the intake form
+// too (Q-3 liability is an open legal risk).
 
 export interface DishAllergens {
   id: string;
@@ -34,7 +38,7 @@ const words = (s: string): string[] =>
  * Words that carry no allergen ("nut allergy", "allergic to nuts", "severe", "gluten-free"). They
  * are dropped before the customer's words are looked for inside a longer dish allergen.
  */
-const FILLER = new Set([
+export const FILLER = new Set([
   "allergy",
   "allergic",
   "allergie",
@@ -67,7 +71,10 @@ const FILLER = new Set([
   "bad",
 ]);
 
-/** Splits free text or a list into separate entries (comma, semicolon, slash, line break). */
+/**
+ * Splits free text or a list into separate entries: comma, semicolon, slash, ampersand, the word
+ * "and", and line breaks.
+ */
 export function splitAllergies(intake: string | readonly string[]): string[] {
   const parts = typeof intake === "string" ? [intake] : [...intake];
   return parts
@@ -96,16 +103,13 @@ export function findAllergyConflicts(
       const a = raw.trim().toLowerCase();
       const aw = words(a);
       // Both ways, cautiously: the allergen's words are in the intake ("severe peanut allergy"
-      // vs "peanuts"), or the customer's own content words are inside the allergen ("nuts" or
-      // "nut allergy" vs "tree nuts"). A false conflict is better than a missed one.
+      // vs "peanuts"), or any content word of the customer's is a word of the allergen ("nuts" or
+      // "really bad nut allergy" vs "tree nuts"). A false conflict is better than a missed one.
       if (
         entries.some(
           (e) =>
             containsSequence(e, aw) ||
-            containsSequence(
-              aw,
-              e.filter((w) => !FILLER.has(w)),
-            ),
+            e.some((w) => !FILLER.has(w) && aw.includes(w)),
         )
       )
         hits.add(a);

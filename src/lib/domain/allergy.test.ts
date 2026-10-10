@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findAllergyConflicts, splitAllergies } from "./allergy";
+import { FILLER, findAllergyConflicts, splitAllergies } from "./allergy";
 import { ALLERGEN_CHOICES } from "../chef/dishes";
 
 const pho = { id: "d1", name: "Pho", allergens: ["soy", "fish"] };
@@ -95,5 +95,26 @@ describe("customer words inside a longer dish allergen (review round 2)", () => 
   });
   it("still no match for a word that only contains the letters", () => {
     expect(findAllergyConflicts("nutmeg", [nuts])).toEqual([]);
+  });
+});
+
+describe("any intake word inside the allergen (review round 3)", () => {
+  const nuts = { id: "d9", name: "Cake", allergens: ["tree nuts"] };
+  it.each([
+    "Extremely allergic to nuts",
+    "really bad nut allergy",
+    "nuts (anaphylaxis)",
+    "nuts - carries epipen",
+    "my son: nuts",
+  ])("intake %j conflicts with tree nuts", (intake) => {
+    expect(findAllergyConflicts(intake, [nuts])).toHaveLength(1);
+  });
+  it("no filler word is a word of an ALLERGEN_CHOICES value (singular or plural)", () => {
+    const allergenWords = new Set(
+      ALLERGEN_CHOICES.flatMap((c) =>
+        c.value.split(" ").flatMap((w) => [w, w.replace(/s$/, "")]),
+      ),
+    );
+    for (const f of FILLER) expect(allergenWords.has(f), f).toBe(false);
   });
 });
