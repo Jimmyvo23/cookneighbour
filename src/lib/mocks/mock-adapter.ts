@@ -16,6 +16,7 @@
 //     (MOCK; see mock-admin.ts). Real admins cannot be created from the app.
 // Dishes and availability (T-034) follow contract 5A and 5B and reuse src/lib/domain/dishes.ts.
 //   MOCK dish photos are never stored; a photo path is accepted when its name is well formed.
+// Public search routes (T-040) live in mock-search.ts (seeded approved chefs, real pure rules).
 // Chef application rules reuse the real pure functions in src/lib/domain/chef-application.ts.
 // MOCK: files are never stored (see mockUploader); a path is accepted if its name is well formed.
 import type {
@@ -75,6 +76,7 @@ import {
   seedAdminQueue,
   type MockQueueChef,
 } from "@/lib/mocks/mock-admin";
+import { searchRoutes } from "@/lib/mocks/mock-search";
 import {
   displayNameProblem,
   validateAddress,
@@ -369,6 +371,10 @@ export async function mockFetch(
       return fail(400, "BAD_REQUEST", "Malformed JSON.");
     }
   }
+  // Public search routes (T-040): no session needed, so they come before every other route.
+  const searched = searchRoutes(method, path);
+  if (searched) return searched;
+
   const s = load();
   const route = `${method} ${path}`;
 

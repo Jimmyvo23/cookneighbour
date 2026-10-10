@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { pageTitle } from "@/lib/app-info";
 
 export default function Home() {
@@ -9,6 +10,12 @@ export default function Home() {
       <p className="max-w-md text-base text-zinc-600 dark:text-zinc-400">
         Placeholder home page. Features arrive in later tasks.
       </p>
+      <Link
+        href="/search"
+        className="inline-flex min-h-11 items-center rounded-md bg-emerald-800 px-5 font-semibold text-white hover:bg-emerald-900"
+      >
+        Find a home cook
+      </Link>
     </main>
   );
 }

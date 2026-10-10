@@ -1,0 +1,52 @@
+/* Pins and attribution for the search map (T-040). Leaflet's own stylesheet is imported next to this. */
+.cn-pin {
+  background: transparent;
+  border: 0;
+}
+.cn-pin span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  border: 3px solid #ffffff;
+  background: #065f46;
+  color: #ffffff;
+  font:
+    700 14px/1 Arial,
+    Helvetica,
+    sans-serif;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 50%);
+}
+.cn-pin.cn-pin-active span {
+  background: #1e1b4b;
+  border-color: #fde047;
+  transform: scale(1.15);
+}
+.cn-pin:focus-visible span,
+.leaflet-container:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+.cn-origin {
+  background: transparent;
+  border: 0;
+}
+.cn-origin span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #b45309;
+  border: 3px solid #ffffff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 50%);
+}
+/* Leaflet's default link blue is too light on its translucent white attribution bar. */
+.leaflet-container .leaflet-control-attribution,
+.leaflet-container .leaflet-control-attribution a {
+  color: #0b4f6c;
+}
+.leaflet-container .leaflet-control-attribution {
+  background: rgb(255 255 255 / 92%);
+}
