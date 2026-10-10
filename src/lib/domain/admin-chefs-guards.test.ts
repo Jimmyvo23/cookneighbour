@@ -131,7 +131,9 @@ describe("admin gate and logging (source guards)", () => {
   });
   it("every route calls requireAdmin first, before any other await", () => {
     for (const f of routes) {
-      const src = readFileSync(f, "utf8");
+      // `await connection();` (keeps the route out of the build-time prerender, T-039) reads no
+      // data, so it may come first; the next await must be the admin gate.
+      const src = readFileSync(f, "utf8").replace("await connection();", "");
       const first = src.indexOf("await ");
       expect(src.slice(first, first + 40), f).toContain("requireAdmin()");
       expect(src, f).not.toMatch(
