@@ -27,3 +27,7 @@ Findings 1 to 11 from round 1 are verified as fixed.
 4. INFO The T-043 plan now tells the customer that a booking made less than 48 h before day 1 is already in the late window.
 5. LOW The T-042 plan was over 100 words. It is split into T-042 (create, answer, expire) and T-063 (cancel, no-show, missed pickup, N3, chef-reject cascade).
 6. LOW The T-045 plan now includes the chef-facing kitchen-address notice.
+
+## Round 3 (head 334ad6c): APPROVE
+
+CI passed (run 38087575471). The Planner fixed three non-blocking leftovers before merging: the T-043 D-27 wording, the T-045 D-29 decline and re-propose, and the Tester row now covers D-19, D-27, D-28 and D-29.
