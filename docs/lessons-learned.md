@@ -36,7 +36,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Unsafe text input | Control characters and lone surrogates were accepted | Validate text fields with the shared helpers |
 | Missing MOCK label | (preventive) | Every mocked check status shows a MOCK badge |
 | Pages with private data | (preventive) | Guard on the server, not only in the client |
-| Mock mode reaching hosted services | Mock pages built photo URLs from `NEXT_PUBLIC_SUPABASE_URL` and asked hosted storage for made-up files (T-040) | In mock mode build no storage URLs; every mock Playwright spec that renders photos blocks `**/storage/v1/object/public/**` |
+| Mock mode reaching hosted services | Mock pages built photo URLs from `NEXT_PUBLIC_SUPABASE_URL` and asked hosted storage for made-up files (T-040) | In mock mode build no storage URLs; every mock Playwright spec that renders photos blocks `**/storage/v1/object/public/**` (older specs are backfilled in T-062) |
 | Paths from an API used in URLs | A photo path with `..` could leave the bucket folder in the browser (T-041) | Use the shared `isSafeStoragePath` (`src/lib/chef/dishes.ts`): it rejects dot and empty segments, a leading slash, backslashes and control characters |
 | Map markers without a name | (found by the builder, T-040) Leaflet `divIcon` pins had no accessible name and Enter did nothing | Set `aria-label` and a key handler on custom markers |
 
