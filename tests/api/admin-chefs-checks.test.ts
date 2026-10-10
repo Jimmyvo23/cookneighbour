@@ -21,6 +21,7 @@ import {
   kitchenOf,
   newAdmin,
   notificationsOf,
+  rejectOf,
   submittedChef,
 } from "./admin-helpers";
 
@@ -667,6 +668,70 @@ describe("POST /api/admin/chefs/:id/kitchen-review (MOCK)", () => {
       },
       admin,
     );
+    expect(r.status, r.text).toBe(200);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(true);
+  });
+
+  // T-061 Tester round (D-21b, D-21d)
+  it("reject route then kitchen review: 409 for approve and reject, stale input too, and nothing is written", async () => {
+    const admin = await newAdmin();
+    const { chef, photos, address } = await kitchenChef();
+    // Approve the kitchen first (allowed while pending), then reject the application.
+    expect(
+      (
+        await review(
+          chef.id,
+          {
+            decision: "approve",
+            reviewedPhotoPaths: photos,
+            reviewedAddress: address,
+          },
+          admin,
+        )
+      ).status,
+    ).toBe(200);
+    const rej = await admin.b.call(rejectOf(chef.id), {
+      body: { reason: "Documents unclear." },
+    });
+    expect(rej.status, rej.text).toBe(200);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(false);
+    const before = await privRow(chef.id);
+    const notesBefore = await notificationsOf(chef.id);
+    for (const body of [
+      {
+        decision: "approve",
+        reviewedPhotoPaths: photos,
+        reviewedAddress: address,
+      },
+      {
+        decision: "reject",
+        note: "x",
+        reviewedPhotoPaths: photos,
+        reviewedAddress: address,
+      },
+      // stale input must not change the answer: the status check comes first
+      { decision: "approve", reviewedPhotoPaths: [], reviewedAddress: null },
+    ]) {
+      const r = await review(chef.id, body, admin);
+      expect(r.status, JSON.stringify(body)).toBe(409);
+      expect(r.body.error.code).toBe("INVALID_STATE");
+    }
+    expect((await privRow(chef.id)).kitchen_status).toBe(before.kitchen_status);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(false);
+    expect(await notificationsOf(chef.id)).toEqual(notesBefore);
+  });
+  it("a pending chef's kitchen can be rejected, and re-approving the kitchen later turns chef's home back on", async () => {
+    const admin = await newAdmin();
+    const { chef, photos, address } = await kitchenChef();
+    const body = { reviewedPhotoPaths: photos, reviewedAddress: address };
+    let r = await review(
+      chef.id,
+      { decision: "reject", note: "Dirty", ...body },
+      admin,
+    );
+    expect(r.status, r.text).toBe(200);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(false);
+    r = await review(chef.id, { decision: "approve", ...body }, admin);
     expect(r.status, r.text).toBe(200);
     expect((await chefRow(chef.id)).chef_home_enabled).toBe(true);
   });

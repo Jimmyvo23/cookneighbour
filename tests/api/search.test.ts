@@ -16,6 +16,7 @@ import {
   svc,
   type Chef,
 } from "./chef-helpers";
+import { rejectOf } from "./admin-helpers";
 import { addDays, createDish, patchDish, putDays, today } from "./dish-helpers";
 
 // A new tag per test, so chefs made by an earlier test never show up in a later one.
@@ -903,5 +904,91 @@ describe("T-039 tester: postal-prefixes is the same for everyone", () => {
       "public, max-age=3600, stale-while-revalidate=86400",
     );
     expect(c.headers.get("set-cookie")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T-061 Tester round: D-21(d) and D-25 end to end through the public routes.
+// ---------------------------------------------------------------------------
+describe("T-061 tester: reject switches chef's home off, public pages follow (D-21d, D-25)", () => {
+  const sig = (r: Reply) =>
+    JSON.stringify([
+      r.status,
+      r.text,
+      [...r.headers.entries()]
+        .filter(([k]) => k !== "date" && k !== "content-length")
+        .sort(),
+    ]);
+
+  it("both options: reject then re-approve leaves chef's home off in search and on the page", async () => {
+    const c = await pub({
+      options: ["customer_home", "chef_home"],
+      homeEnabled: true,
+    });
+    // Control: before the reject the chef is bookable at home.
+    expect(
+      ids(await search(anon(), q("postalCode=L5B&locationType=chef_home"))),
+    ).toContain(c.id);
+    expect((await detail(anon(), c.id)).body.locationOptions).toEqual([
+      "customer_home",
+      "chef_home",
+    ]);
+
+    const admin = await newAdmin();
+    const rej = await admin.b.call(rejectOf(c.id), {
+      body: { reason: "Please send clearer documents." },
+    });
+    expect(rej.status, rej.text).toBe(200);
+    // Rejected: hidden everywhere, same 404 as an unknown id.
+    const unknown = await detail(anon(), randomUUID());
+    expect(sig(await detail(anon(), c.id))).toBe(sig(unknown));
+    expect(ids(await search(anon(), q("postalCode=L5B")))).not.toContain(c.id);
+
+    // Re-approve (the status flips back, as after a resubmit and approve): chef's home stays off.
+    await setChef(c.id, { status: "approved" });
+    expect(
+      ids(await search(anon(), q("postalCode=L5B&locationType=chef_home"))),
+    ).not.toContain(c.id);
+    const back = await search(anon(), q("postalCode=L5B"));
+    expect(ids(back)).toContain(c.id); // allowed: still found for their home visits
+    expect(
+      (back.body.items as { id: string; locationOptions: string[] }[]).find(
+        (i) => i.id === c.id,
+      )!.locationOptions,
+    ).toEqual(["customer_home"]);
+    const page = await detail(anon(), c.id);
+    expect(page.status).toBe(200);
+    expect(page.body.locationOptions).toEqual(["customer_home"]);
+  });
+
+  it("chef's-home-only chef: after reject and re-approve the page is the same 404 as an unknown id", async () => {
+    const c = await pub({ options: ["chef_home"], homeEnabled: true });
+    expect((await detail(anon(), c.id)).status).toBe(200);
+    const admin = await newAdmin();
+    expect(
+      (
+        await admin.b.call(rejectOf(c.id), {
+          body: { reason: "Please send clearer documents." },
+        })
+      ).status,
+    ).toBe(200);
+    await setChef(c.id, { status: "approved" });
+    const unknown = await detail(anon(), randomUUID());
+    const hidden = await detail(anon(), c.id);
+    expect(hidden.status).toBe(404);
+    expect(sig(hidden)).toBe(sig(unknown));
+    expect(ids(await search(anon(), q()))).not.toContain(c.id);
+  });
+
+  it("D-25: a chef with an empty location list is the same 404, byte for byte, headers included", async () => {
+    const c = await pub({ options: [] });
+    const unknown = await detail(anon(), randomUUID());
+    const hidden = await detail(anon(), c.id);
+    expect(hidden.status).toBe(404);
+    expect(sig(hidden)).toBe(sig(unknown));
+    expect(hidden.headers.get("cache-control")).toBe("no-store");
+    // Control: giving them an option opens the page.
+    await setChef(c.id, { location_options: ["customer_home"] });
+    expect((await detail(anon(), c.id)).status).toBe(200);
   });
 });
