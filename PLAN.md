@@ -218,7 +218,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-29 | 2026-10-10 | Missed pickup (chef's-home bookings, CLAUDE.md §10): the customer can propose a new pickup time no later than the earliest eat-by date of that day's meals (a 0-day dish means same-day pickup only), and the chef accepts or declines it; after a decline the customer may propose again until that deadline. If the meals are not picked up by then, the chef marks "pickup missed": the whole booking becomes a customer no-show (consumes the free trial) and days not yet cooked are cancelled | Jimmy |
 | D-30 | 2026-10-10 | Keep the extra allergy synonym words added in T-061 (prawn, crab, lobster, clam, squid, oyster, mussel, scallop; groundnut, almond, cashew, walnut, pecan, pistachio, hazelnut); peanut and tree nuts warn on each other | Jimmy |
 | D-31 | 2026-10-10 | The search `avoidAllergens` filter uses the same synonym map as booking warnings (built in T-042) | Jimmy |
-| D-32 | 2026-10-10 | Add Health Canada's gluten sources and spellings to the gluten group (barley, rye, oat, triticale, spelt, kamut, celiac, coeliac) and bare macadamia, brazil, soybean (built in T-042; T-061 review finding 1) | Jimmy |
+| D-32 | 2026-10-10 | Add Health Canada's gluten sources (barley, rye, oat, triticale, spelt, kamut) and the condition words celiac and coeliac to the gluten group, plus bare macadamia, brazil, soybean (built in T-042; T-061 review findings 1 and 2) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -450,7 +450,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Follow-ups for WO-4b: T-042 — enable Book when the chef has at least one place to cook; remove booked days from `bookableDates`, the `date` filter and the page text; re-check approved, `chef_home_enabled` and radius at booking; settle Q-20 and Q-21 first. T-043 — reuse the dish cost and allergen display; keep the "estimate" wording.
 - Process: three lessons added to `docs/lessons-learned.md` (mock mode must not reach hosted services; check API paths before building URLs; name custom map markers) plus the macOS `sed -i ''` note.
 
-### T-061 — Rule changes from D-21, D-24, D-25 (done 2026-10-10, PR #93)
+### T-061 — Rule changes from D-21, D-24, D-25 (done 2026-10-10, PR #93; migration applied to hosted 2026-10-10)
 - D-21: admin list items carry `failedChecks` and `flagged` (approved chef with any failed MOCK check, police included; status unchanged); kitchen review of a `rejected` chef is a 409 `INVALID_STATE` with no write, checked on the locked row; rejecting a chef turns `chef_home_enabled` off in the same update (re-approve leaves it off). New migration `20261010150000_admin_rules_d21.sql` (create or replace of the two T-035 functions, service_role only, SECURITY INVOKER) with a drift guard test. **Pushed to hosted 2026-10-10.**
 - D-24/D-30: `SYNONYM_GROUPS` in `src/lib/domain/allergy.ts`, both directions, no under-warning regression. D-25: a chef with no bookable location option gets the same 404 as an unknown id. Contract v1.3.1 (v1.4 stays for T-042).
 - Tests: unit 1264 (3 known-gap expected fails), API and RLS in CI (run 38093455855). CI failed once on an outdated exact-key test (builder fixed); the Tester's first pushes failed on two test-setup mistakes (fixed). Tester PASS, Reviewer APPROVE.
