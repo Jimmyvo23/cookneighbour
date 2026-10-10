@@ -27,7 +27,11 @@ import {
   firstErrorField,
   formErrorsFromApi,
   mergePage,
+  parseSavedForm,
   queryString,
+  resultsOrderLabel,
+  SAVED_SEARCH_KEY,
+  serializeForm,
   searchPoint,
   validateSearchForm,
   type FieldErrors,
@@ -221,18 +225,26 @@ export function SearchView() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const local = validateSearchForm(values, {
-      today: today ?? torontoToday(),
-      prefixes,
-    });
-    setFormError(null);
-    setErrors({});
-    setMoreError(null);
-    if (Object.keys(local).length) {
-      showErrors(local);
-      return;
+    await runSearch(values);
+  }
+
+  /** Runs a search. `restoring` is a repeat of the last search when the page is opened again
+   *  (back from a chef page): the server checks it, and nothing steals focus. */
+  async function runSearch(v: SearchFormValues, restoring = false) {
+    if (!restoring) {
+      const local = validateSearchForm(v, {
+        today: today ?? torontoToday(),
+        prefixes,
+      });
+      setFormError(null);
+      setErrors({});
+      setMoreError(null);
+      if (Object.keys(local).length) {
+        showErrors(local);
+        return;
+      }
     }
-    const query = buildQuery(values);
+    const query = buildQuery(v);
     const mine = ++seq.current;
     setResults({ kind: "loading" });
     setActiveCity(null);
@@ -247,11 +259,25 @@ export function SearchView() {
         items: r.items,
         nextCursor: r.nextCursor,
       });
-      setFocus({ kind: "heading" });
+      try {
+        sessionStorage.setItem(SAVED_SEARCH_KEY, serializeForm(v));
+      } catch {
+        // Storage can be blocked: the search still works, it is just not remembered.
+      }
+      if (!restoring) setFocus({ kind: "heading" });
     } catch (err) {
       if (mine !== seq.current) return;
       setResults({ kind: "idle" });
-      if (err instanceof ApiClientError && err.status === 422) {
+      if (restoring) {
+        try {
+          sessionStorage.removeItem(SAVED_SEARCH_KEY);
+        } catch {
+          // ignore
+        }
+        setFormError(
+          "Your last search could not be repeated. Press Find chefs to try again.",
+        );
+      } else if (err instanceof ApiClientError && err.status === 422) {
         showErrors(err.fields);
       } else {
         setFormError(describeSearchError(err));
@@ -259,6 +285,20 @@ export function SearchView() {
       }
     }
   }
+
+  // Back from a chef page: fill the form with the last search and run it again.
+  useEffect(() => {
+    let saved: ReturnType<typeof parseSavedForm> = null;
+    try {
+      saved = parseSavedForm(sessionStorage.getItem(SAVED_SEARCH_KEY));
+    } catch {
+      // Storage blocked: start with an empty form.
+    }
+    if (!saved) return;
+    setValues(saved); // eslint-disable-line react-hooks/set-state-in-effect -- restore once after mount
+    void runSearch(saved, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
+  }, []);
 
   async function loadMore() {
     if (results.kind !== "ready" || !results.nextCursor || moreBusy) return;
@@ -408,7 +448,7 @@ export function SearchView() {
             <p className="text-sm text-zinc-700 dark:text-zinc-300">
               {values.locationType === "customer_home"
                 ? 'Chefs who cannot reach you but cook at their own home are still listed, marked "Chef\'s home only".'
-                : "Only chefs whose kitchen an admin has approved are listed, wherever they are."}
+                : "Only chefs whose kitchen an admin has approved are listed, wherever they are. The kitchen review is a MOCK check in this prototype."}
             </p>
           </fieldset>
         </fieldset>
@@ -621,7 +661,7 @@ export function SearchView() {
             <div className="flex min-w-0 flex-1 flex-col gap-4">
               <ol
                 ref={listRef}
-                aria-label="Chefs, nearest first"
+                aria-label={resultsOrderLabel(ready.query)}
                 className="flex flex-col gap-3"
               >
                 {ready.items.map((item) => (

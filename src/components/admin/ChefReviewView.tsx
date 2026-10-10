@@ -141,7 +141,8 @@ export function ChefReviewView({ id }: { id: string }) {
     else if (result === "failed") setFlash("Could not reload. Try again.");
   }
 
-  /** After a decision: load the new state, then clear the old warning. True when it loaded. */
+  /** After a decision: load the new state, then clear the old warning. False only when the
+   *  reload failed; true when it loaded or was superseded by a newer reload. */
   const afterChange = useCallback(async (): Promise<boolean> => {
     const result = await reload();
     if (result === "ok") setWarning(null);
