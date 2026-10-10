@@ -42,6 +42,7 @@ class FakeDb {
     const filters: ((r: Row) => boolean)[] = [];
     let op: "select" | "insert" | "update" = "select";
     let payload: Row = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const b: any = {
       select: () => b,
       insert: (p: Row) => ((op = "insert"), (payload = p), b),
@@ -55,6 +56,7 @@ class FakeDb {
       },
       maybeSingle: () => run(true),
       single: () => run(true),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       then: (res: any, rej: any) => run(false).then(res, rej),
     };
     const run = async (single: boolean) => {

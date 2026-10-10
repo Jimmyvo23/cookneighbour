@@ -24,7 +24,7 @@ Items marked **ASSUMPTION** or **PROPOSED** are not requirements; they need a no
 | 401 | `INVALID_CREDENTIALS` | Login failed (same message for unknown email and wrong password) |
 | 403 | `FORBIDDEN` | Signed in but wrong role (or not allowed) |
 | 404 | `NOT_FOUND` | Missing row, or a row the caller must not know exists |
-| 409 | `EMAIL_IN_USE`, `PHONE_IN_USE`, `PHONE_NOT_SUBMITTED`, `PHONE_NOT_VERIFIED`, `INVALID_STATE`, `APPLICATION_INCOMPLETE` | State conflicts. `APPLICATION_INCOMPLETE` always carries `error.missing` (list of item names, same vocabulary as `ChefApplication.missing`). `INVALID_STATE` also covers a stale admin review (stored file or kitchen data changed since the admin viewed it), an 11th kitchen photo, and a chef application write that lost 12 races (T-031) |
+| 409 | `EMAIL_IN_USE`, `PHONE_IN_USE`, `PHONE_NOT_SUBMITTED`, `PHONE_NOT_VERIFIED`, `ADDRESS_NOT_SET`, `FREE_TRIAL_USED`, `INVALID_STATE`, `APPLICATION_INCOMPLETE` | State conflicts. `FREE_TRIAL_USED` and `ADDRESS_NOT_SET` come from the free-trial server functions (T-038, section 11A); `FREE_TRIAL_USED` is deliberately generic. `APPLICATION_INCOMPLETE` always carries `error.missing` (list of item names, same vocabulary as `ChefApplication.missing`). `INVALID_STATE` also covers a stale admin review (stored file or kitchen data changed since the admin viewed it), an 11th kitchen photo, and a chef application write that lost 12 races (T-031) |
 | 422 | `VALIDATION_FAILED` | Field errors in `fields` (keyed by request field names) |
 | 429 | `RATE_LIMITED` | `retryAfterSeconds` plus `Retry-After` header |
 | 500 | `INTERNAL` | Generic message only; details go to server logs, never the body |
@@ -342,6 +342,20 @@ CLAUDE.md section 10 lists "duplicate or malformed phone numbers". The free tria
 | GET, POST /api/chef/dishes; PATCH /api/chef/dishes/:id | chef | service after checks (storage `exists`) | service (routes are the only writers, T-032) |
 | GET, PUT /api/chef/availability | chef | service after checks | service |
 | GET /api/chefs, /api/chefs/:id, /api/reference/postal-prefixes | anyone | anon-capable user-scoped | none |
+
+## 11A. Free trial: notes for the booking routes (T-038, for T-042)
+
+No route exists yet. T-042 calls the server functions in `src/lib/server/free-trial.ts` after `requireCaller()`; the customer id is always the session user, never a body field. Behaviour is in `docs/domain-rules.md`.
+
+| Call | When | Errors it can throw (all clean, none are 500) |
+|---|---|---|
+| `checkFreeTrialEligibility(customerId)` -> `{ eligible }` | Estimate screen. Advisory only; it reserves nothing | 409 `PHONE_NOT_SUBMITTED` (no phone, or a stored phone the current rules refuse: ask the customer to enter it again), 409 `PHONE_NOT_VERIFIED`, 409 `ADDRESS_NOT_SET` (missing or no longer valid), 403 `FORBIDDEN` (not a customer), 404 |
+| `holdFreeTrial(customerId, bookingId)` -> `{ claimId, bookingId, state: "held" }` | Right after the `requested` booking row is created | The above, plus 409 `FREE_TRIAL_USED`, 404 (not the caller's booking), 409 `INVALID_STATE` (booking not `requested`) |
+| `applyFreeTrialEvent(bookingId, event)` -> `{ changed, state }` | On every booking status change (A-16), and when a request expires | 409 `INVALID_STATE` (the claim was already decided the other way), 404 |
+
+- `FREE_TRIAL_USED` never says which rule blocked (own history, or a phone or address another account used). Show one message. The real reason is written to `free_trial_blocks` for the admin list.
+- If `holdFreeTrial` throws `FREE_TRIAL_USED`, T-042 must not leave a booking that claims `is_free_trial = true`: either book at full price after asking the customer, or remove the just-created `requested` booking (service role). Setting `bookings.is_free_trial` is T-042's job; the hold does not touch the booking.
+- Retrying a hold for the same booking is safe.
 
 ## 11. Not in v1 (planned)
 
