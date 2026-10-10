@@ -31,6 +31,10 @@ export type ApiErrorCode =
   | "ADDRESS_NOT_SET" // 409 no usable home address saved (free trial, T-038)
   | "FREE_TRIAL_USED" // 409 free first booking not available (generic on purpose, T-038)
   | "APPLICATION_INCOMPLETE" // 409 approve/submit with missing items
+  | "DOUBLE_BOOKED" // 409 the chef already has an active booking on a requested date (T-042)
+  | "TOO_MANY_OPEN_REQUESTS" // 409 D-28: three requests are already waiting for an answer (T-042)
+  | "REQUEST_EXPIRED" // 409 answering a request past its expiry (T-042, D-19)
+  | "DATE_BOOKED" // 409 the chef clears a date that has an open booking (T-042, D-22)
   | "VALIDATION_FAILED" // 422 see fields
   | "INVALID_CREDENTIALS" // 401 login only
   | "RATE_LIMITED" // 429
@@ -47,6 +51,10 @@ export interface ApiError {
     missing?: string[];
     /** RATE_LIMITED: seconds until the caller may retry (also sent as Retry-After). */
     retryAfterSeconds?: number;
+    /** Booking requests (T-042): every domain problem found, with stable codes (section 7A). */
+    issues?: BookingIssue[];
+    /** DATE_BOOKED (T-042): the dates (YYYY-MM-DD) that have an open booking. */
+    dates?: string[];
   };
 }
 
@@ -467,10 +475,15 @@ export interface PublicChefDetail {
   locationOptions: LocationType[];
   /** Active dishes, oldest first. At least one (a chef without one is not public, A-20). */
   dishes: PublicDish[];
-  /** Ticked dates inside the window, ascending (A-19). Booked dates are removed in WO-4b. */
+  /** Ticked dates from tomorrow on, ascending, without dates the chef is already booked on (A-19, D-27, T-042). */
   bookableDates: string[];
   /** The server's window (Toronto, D-15). */
   today: string;
+  /**
+   * Tomorrow (D-27: no same-day bookings); `bookableDates` never contains an earlier day. The real
+   * route always sends it; it is optional in the type only until the mock adapter adds it (T-062).
+   */
+  firstBookableDay?: string;
   lastBookableDay: string;
 }
 
@@ -482,4 +495,209 @@ export interface PostalPrefix {
 }
 export interface PostalPrefixListResponse {
   items: PostalPrefix[];
+}
+
+// ---------------------------------------------------------------------------
+// Bookings (contract v1.4, section 7A, T-042)
+// ---------------------------------------------------------------------------
+export type BookingStatus =
+  | "requested"
+  | "accepted"
+  | "declined"
+  | "cancelled"
+  | "completed"
+  | "no_show_customer"
+  | "no_show_chef"
+  | "expired";
+export type GroceryOption = "customer_buys" | "chef_shops";
+
+export type BookingIssueCode =
+  | "DAYS_COUNT"
+  | "DATE_INVALID"
+  | "DATE_DUPLICATE"
+  | "DATE_IN_PAST"
+  | "DATE_TOO_SOON"
+  | "DATE_BEYOND_WINDOW"
+  | "CHEF_NOT_BOOKABLE"
+  | "LOCATION_NOT_OFFERED"
+  | "CHEF_HOME_NOT_ENABLED"
+  | "CHEF_UNAVAILABLE"
+  | "DOUBLE_BOOKED"
+  | "POSTAL_NOT_GTA"
+  | "CHEF_NO_SERVICE_AREA"
+  | "OUTSIDE_SERVICE_AREA"
+  | "NO_DISHES"
+  | "DISH_NOT_FOUND"
+  | "DISH_INACTIVE"
+  | "DISH_DUPLICATE"
+  | "QUANTITY_INVALID"
+  | "VISIT_TOO_LONG"
+  | "INTAKE_MISSING"
+  | "ALLERGY_NOT_ACKNOWLEDGED";
+
+export interface BookingIssue {
+  code: BookingIssueCode;
+  message: string;
+  /** Zero-based index of the day (in the order sent) when the issue belongs to one day. */
+  dayIndex?: number;
+  dishId?: string;
+}
+
+export interface BookingIntakeRequest {
+  /** true = "I have no allergies" (explicit answer, D-23). Then allergens and allergyNotes must be empty. */
+  noAllergies?: boolean;
+  /** Values of the allergen picker (ALLERGEN_CHOICES), lower case. */
+  allergens?: string[];
+  /** Free text, up to 300 characters. */
+  allergyNotes?: string;
+  /** true = "no dietary needs". Then dietaryNotes must be empty. */
+  noDietaryNeeds?: boolean;
+  /** Free text, up to 500 characters. */
+  dietaryNotes?: string;
+}
+
+export interface BookingRequestBody {
+  chefId: string;
+  locationType: LocationType;
+  /** customer_home only: the cooking address (a GTA postal code). Not allowed for chef_home. */
+  address?: { line: string; city: string; postalCode: string };
+  days: { date: string; dishes: { dishId: string; quantity?: number }[] }[];
+  groceryOption: GroceryOption;
+  /** Mandatory for create; may be left out of an estimate. */
+  intake?: BookingIntakeRequest;
+  allergyConflictAcknowledged?: boolean;
+  /** Ask for the free first booking (default false). */
+  useFreeTrial?: boolean;
+}
+
+export interface BookingDayEstimate {
+  date: string;
+  cookMinutes: number;
+  labourCents: number;
+  ingredientsCents: number;
+  travelCents: number;
+  platformFeeCents: number;
+}
+
+export interface BookingEstimate {
+  cookMinutes: number;
+  labourCents: number;
+  /** Labour before the free trial waiver (equals labourCents without the trial). */
+  labourBeforeWaiverCents: number;
+  freeTrialWaivedCents: number;
+  ingredientsCents: number;
+  travelCents: number;
+  /** Shown, never collected (MOCK). Not part of totalCents. */
+  platformFeeCents: number;
+  platformFeePercent: number;
+  platformFeeCollected: false;
+  totalCents: number;
+  currency: string;
+  travelRateCentsPerKm: number;
+  distanceKm: number | null;
+  exceedsSoftLimit: boolean;
+  days: BookingDayEstimate[];
+}
+
+export interface AllergyConflictView {
+  dishId: string;
+  dishName: string;
+  allergens: string[];
+}
+
+export type FreeTrialBlocker =
+  | "PHONE_NOT_SUBMITTED"
+  | "PHONE_NOT_VERIFIED"
+  | "ADDRESS_NOT_SET"
+  | "USED";
+
+export interface BookingEstimateResponse {
+  ok: boolean;
+  issues: BookingIssue[];
+  estimate: BookingEstimate | null;
+  allergyConflicts: AllergyConflictView[];
+  freeTrial: { eligible: boolean; blocker: FreeTrialBlocker | null };
+  today: string;
+  firstBookableDay: string;
+  /** When a request made now would expire if the chef does not answer (D-19, D-27). */
+  wouldExpireAt: string | null;
+}
+
+export interface BookingDishView {
+  dishId: string | null;
+  name: string;
+  quantity: number;
+  cookMinutes: number;
+  ingredientCostCents: number;
+  servings: number;
+  allergens: string[];
+  /** Visit date plus the dish's shelf-life days (A-7). */
+  eatByDate: string;
+}
+
+export interface BookingDayView {
+  dayNumber: number;
+  date: string;
+  cookMinutes: number;
+  dishes: BookingDishView[];
+}
+
+export interface BookingPerson {
+  id: string;
+  displayName: string;
+}
+
+export interface BookingDetail {
+  id: string;
+  status: BookingStatus;
+  /** Who is looking: decides what is hidden before acceptance. */
+  viewerRole: "customer" | "chef";
+  locationType: LocationType;
+  groceryOption: GroceryOption;
+  isFreeTrial: boolean;
+  createdAt: string;
+  expiresAt: string | null;
+  respondedAt: string | null;
+  declineReason: string | null;
+  chef: BookingPerson & { photoPath: string | null };
+  customer: BookingPerson;
+  days: BookingDayView[];
+  estimate: Omit<
+    BookingEstimate,
+    "labourBeforeWaiverCents" | "freeTrialWaivedCents" | "exceedsSoftLimit"
+  >;
+  intake: {
+    allergies: string;
+    dietaryNotes: string;
+    allergyConflictAcknowledged: boolean;
+  };
+  allergyConflicts: AllergyConflictView[];
+  /** null until accepted, except the customer's own cooking address (customer_home, customer view). */
+  cookingPlace: { line: string; city: string; postalCode: string } | null;
+  /** The other party's phone, null until accepted. */
+  contact: { displayName: string; phone: string | null } | null;
+  /** MOCK: nothing is ever charged. */
+  payment: { mock: true; collected: false };
+}
+
+export interface BookingSummary {
+  id: string;
+  status: BookingStatus;
+  locationType: LocationType;
+  groceryOption: GroceryOption;
+  isFreeTrial: boolean;
+  createdAt: string;
+  expiresAt: string | null;
+  firstDay: string;
+  dates: string[];
+  totalCents: number;
+  currency: string;
+  /** The chef for a customer, the customer for a chef. */
+  counterparty: BookingPerson;
+}
+export type BookingListResponse = Page<BookingSummary>;
+
+export type BookingListStatus = BookingStatus | "open" | "all";
+export interface DeclineBookingRequest {
+  reason?: string;
 }
