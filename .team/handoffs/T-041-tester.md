@@ -27,3 +27,11 @@
 
 ## Not covered
 - Local run of the real-route and RLS/API suites (no local Supabase); relied on CI run 38065886581 on the current head f9f30d4.
+
+## Round 2 (head 469ab02, CI run 38068007447 green)
+**Verdict:** PASS. Builder head was 0436991; I added tests only on top (469ab02).
+
+- Finding 1 (dot segments) fixed: `isSafeStoragePath` rejects empty, ".", "..", leading slash, backslash, control characters; both URL builders return null and the page shows the fallback. The builder's rewritten test still tests the right thing (no img src containing the file, chef photo fallback shown). New `src/lib/chef/storage-path.tester.test.ts` probes 16 rejected and 10 accepted paths. Percent-encoded (`%2e%2e`, `%2F`, `%252e`), double-encoded and unicode dot look-alikes (fullwidth, one-dot leader) pass the check but are encoded to literal text, so the URL stays inside the bucket with no query or hash.
+- Finding 2 (shape crash) fixed: `isChefDetail` plus `error.tsx`. 15 new shape-break tests (null arrays, number in languages, null dish, null allergens, wrong dish types, null bio or photoPath, missing today, answer is array, null or string) all show the retry state.
+- NEW INFO 7 `src/lib/search/detail.ts:80-114`: `isChefDetail` does not check dish `photoPath`/`description` types or `serviceCity`. A wrong type there (number photoPath, object description or serviceCity) still throws in render; in the real app the new `error.tsx` catches it, so it is no longer a blank screen. Recorded as 3 `it.fails` ("KNOWN GAP"). Not blocking: only a broken server sends it. Also `hourlyRateCents` as a string does not crash.
+- Counts: lint, typecheck, build clean; vitest 48 files, 1012 passed + 3 expected-fail; mock Playwright 120 passed; CI (lint, typecheck, vitest, RLS, API, real-route, mock Playwright) green on 469ab02.
