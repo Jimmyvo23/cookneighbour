@@ -149,7 +149,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | done |
 | T-059 | Reject unsafe text in display name and address (server; T-033 tester F1) | backend | T-028 | done |
 
-### Phase 4 — Customer side (WO-4a: T-037 to T-041; WO-4b: T-042 to T-045)
+### Phase 4 — Customer side (WO-4a: T-037 to T-041; WO-4b: T-061, T-042 to T-045, T-062)
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
 | T-037 | Domain rules (TDD): estimate, 6-hour limit, booking validation (1–3 days, past date, double booking, service area, chef-home offered), allergy conflict, receipt check, cancellation timing | backend | T-020 | done |
@@ -161,6 +161,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-043 | Booking flow UI: days and dishes, location, intake form, allergy acknowledgement, grocery option, estimate, 6-hour warning, free-trial label, MOCK payment step | frontend | T-042 | todo |
 | T-044 | Grocery option A shopping list and option B receipt upload with mismatch flag (API) | backend | T-042 | todo |
 | T-045 | Grocery screens and chef booking dashboard (requests with intake, accept / decline, eat-by) | frontend | T-044 | todo |
+| T-061 | Rule changes from D-21, D-24, D-25 (admin MOCK checks, allergy synonyms, unbookable chef 404) | backend | T-035, T-037, T-039 | todo |
+| T-062 | UI updates from D-21, D-22, D-25 (admin flag, booked-date 409, chef page 404) | frontend | T-061 | todo |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -201,6 +203,15 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-15 | 2026-10-08 | Availability is opt-in: a chef marks bookable dates; the window is today to today + 180 days, Toronto time (server sends `today` and `lastBookableDay`) | Jimmy |
 | D-16 | 2026-10-08 | Dish bounds kept: cook time 5–360 min, ingredient cost 0–50000 cents, servings 1–50, shelf life 0–7 days (default 2), at most 50 active dishes per chef | Jimmy |
 | D-17 | 2026-10-08 | Before starting any agent, the Planner records its status with `--task` and `--progress 0`; every agent prompt asks for `--task` and `--progress` at 25, 50, 75 and 100 (`docs/lessons-learned.md` §1) | Jimmy |
+| D-18 | 2026-10-10 | Payment step is a pure MOCK screen with a MOCK badge; nothing is charged and there is no Stripe (A-10 confirmed; was Q-9) | Jimmy |
+| D-19 | 2026-10-10 | A `requested` booking expires 72 hours after it is made if the chef has not answered, and never later than the start of day 1; expiry frees the date and releases the free trial (A-16) (was Q-11) | Jimmy |
+| D-20 | 2026-10-10 | Cancellation is free until 48 hours before day 1; later is recorded as "late"; nothing is charged either way (A-6 and A-22 confirmed; was Q-8) | Jimmy |
+| D-21 | 2026-10-10 | Admin MOCK checks (was Q-16): (a) an admin may reset a check, but an approved chef with a `failed` check is flagged in the admin queue; (b) kitchen review only for `pending` or `approved` chefs; (c) "checks pending" keeps ignoring the police check; (d) rejecting a chef turns `chef_home_enabled` off | Jimmy |
+| D-22 | 2026-10-10 | A chef cannot clear a date that has an active booking (409); rejecting a chef cancels their future `requested` bookings and flags their `accepted` bookings for the admin (was Q-17) | Jimmy |
+| D-23 | 2026-10-10 | The intake form needs an explicit answer for allergies and dietary needs (for example "none"); blank is refused (was Q-19) | Jimmy |
+| D-24 | 2026-10-10 | Allergy matching uses a small fixed synonym and spelling map for the picker allergens (for example gluten and wheat, dairy and lactose and milk, shellfish and shrimp and crustaceans, nuts and peanuts, soya and soy, mollusks and molluscs, sulfites and sulphites), extending A-24 (was Q-20) | Jimmy |
+| D-25 | 2026-10-10 | The public page of a chef with no bookable location option returns the same "not found" as other hidden chefs (was Q-21) | Jimmy |
+| D-26 | 2026-10-10 | Cancelling a booking after at least one day was cooked consumes the free trial; cancelling before any day was cooked releases it (extends A-16; was Q-22) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -213,21 +224,21 @@ From CLAUDE.md §13:
 - Q-7 Alternative names (GrandmaPlate, TableMates, Nana's Table).
 
 New from planning:
-- Q-8 Cancellation timing rules (placeholder in A-6), and what happens on a late cancellation.
-- Q-9 Stripe test-mode checkout, or a pure mock payment step (A-10)? A pure mock is cheaper to build.
+- Q-8 ~~Cancellation timing rules (placeholder in A-6), and what happens on a late cancellation.~~ Resolved by D-20 (2026-10-10).
+- Q-9 ~~Stripe test-mode checkout, or a pure mock payment step (A-10)? A pure mock is cheaper to build.~~ Resolved by D-18 (2026-10-10).
 - Q-10 Real eat-by window must be confirmed against Ontario public-health guidance before any real launch.
-- Q-11 How long may a `requested` booking hold a chef's date before it expires, and should customers be rate-limited on requests?
+- Q-11 ~~How long may a `requested` booking hold a chef's date before it expires, and should customers be rate-limited on requests?~~ Resolved by D-19 (2026-10-10).
 - Q-12 Should contact details re-lock some days after a visit is completed?
 - Q-13 May an approved chef clear their bio or photo and stay listed in search? (Planner suggests blocking it: an approved profile must stay complete.) Interim: A-20 hides them from search and the public page.
 - Q-14 Should replaced ID and food-handler files be deleted from Storage? (Deleting data needs Jimmy's OK; today they stay as orphans.)
 - Q-15 ~~Confirm or replace the draft allergen-awareness and kitchen-hygiene acknowledgement wording from T-033.~~ Resolved by D-14 (2026-10-08).
-- Q-16 Admin MOCK-check rules (T-035 builder defaults, contract §12 open points 12–13, and T-035 Reviewer findings 1–2; in place until decided): (a) an admin may set a MOCK check back to `not_started` or `pending`, and setting an approved chef's check to `failed` does not change the chef's status; (b) kitchen review is allowed for a chef of any status, so chef's home can be enabled while pending or rejected; (c) the "checks pending" filter ignores the police check; (d) rejecting a chef leaves `chef_home_enabled` on, so a re-approved chef gets chef's home back if the kitchen did not change. Planner suggests: (a) keep, but an approved chef with a `failed` check should be flagged; (b) allow only for pending or approved chefs; (c) keep; (d) turn chef's home off on reject. Search and booking must require `approved` AND `chef_home_enabled` either way (WO-4).
-- Q-17 What happens to a booking when the chef clears that date, or when an approved chef is rejected? Planner suggests: a chef cannot clear a date with an active booking (409); rejecting a chef cancels their future `requested` bookings and flags `accepted` ones for the admin. Needed before WO-4b.
+- Q-16 ~~Admin MOCK-check rules (T-035 builder defaults, contract §12 open points 12–13, and T-035 Reviewer findings 1–2; in place until decided): (a) an admin may set a MOCK check back to `not_started` or `pending`, and setting an approved chef's check to `failed` does not change the chef's status; (b) kitchen review is allowed for a chef of any status, so chef's home can be enabled while pending or rejected; (c) the "checks pending" filter ignores the police check; (d) rejecting a chef leaves `chef_home_enabled` on, so a re-approved chef gets chef's home back if the kitchen did not change. Planner suggests: (a) keep, but an approved chef with a `failed` check should be flagged; (b) allow only for pending or approved chefs; (c) keep; (d) turn chef's home off on reject. Search and booking must require `approved` AND `chef_home_enabled` either way (WO-4).~~ Resolved by D-21 (2026-10-10).
+- Q-17 ~~What happens to a booking when the chef clears that date, or when an approved chef is rejected? Planner suggests: a chef cannot clear a date with an active booking (409); rejecting a chef cancels their future `requested` bookings and flags `accepted` ones for the admin. Needed before WO-4b.~~ Resolved by D-22 (2026-10-10).
 - Q-18 Should search support diets beyond allergens (vegetarian, halal, kosher)? That needs new dish data. Until decided, A-17 applies.
-- Q-19 The intake form is mandatory (§6.4), but today the allergy and dietary fields may be submitted blank. Must the customer type something explicit such as "none"? Needed before T-042.
-- Q-20 Should allergy matching know synonyms and spellings for the 13 picker allergens (gluten vs wheat is the riskiest; also dairy/lactose vs milk, shellfish/shrimp vs crustaceans, nuts vs peanuts, soya, mollusks, sulfites)? Planner suggests a small fixed synonym map. Needed before T-042.
-- Q-21 A chef who offers only cooking at their own home, before an admin enables it, is hidden from search, but their public page opens with no booking option. Keep, or return the same 404 as other hidden chefs?
-- Q-22 A-16 and §6.6 cover only a cancellation before the visit (released). They do not say what happens when a multi-day booking is cancelled after at least one day was cooked. The code (`freeTrialEffect`, `src/lib/domain/cancellation.ts:97`) currently releases the trial on any cancellation. Should that case release or consume the trial? Needed before T-042.
+- Q-19 ~~The intake form is mandatory (§6.4), but today the allergy and dietary fields may be submitted blank. Must the customer type something explicit such as "none"? Needed before T-042.~~ Resolved by D-23 (2026-10-10).
+- Q-20 ~~Should allergy matching know synonyms and spellings for the 13 picker allergens (gluten vs wheat is the riskiest; also dairy/lactose vs milk, shellfish/shrimp vs crustaceans, nuts vs peanuts, soya, mollusks, sulfites)? Planner suggests a small fixed synonym map. Needed before T-042.~~ Resolved by D-24 (2026-10-10).
+- Q-21 ~~A chef who offers only cooking at their own home, before an admin enables it, is hidden from search, but their public page opens with no booking option. Keep, or return the same 404 as other hidden chefs?~~ Resolved by D-25 (2026-10-10).
+- Q-22 ~~A-16 and §6.6 cover only a cancellation before the visit (released). They do not say what happens when a multi-day booking is cancelled after at least one day was cooked. The code (`freeTrialEffect`, `src/lib/domain/cancellation.ts:97`) currently releases the trial on any cancellation. Should that case release or consume the trial? Needed before T-042.~~ Resolved by D-26 (2026-10-10).
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
 
