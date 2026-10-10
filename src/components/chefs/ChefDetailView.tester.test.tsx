@@ -485,4 +485,91 @@ describe("ChefDetailView (tester)", () => {
     }
     expect(host.querySelector('[data-testid="load-error"]')).not.toBeNull();
   });
+
+  describe("round 2: other shape breaks give the retry state, not a crash", () => {
+    const bad: [string, (c: PublicChefDetail) => unknown][] = [
+      ["dishes null", (c) => ({ ...c, dishes: null })],
+      ["cuisines null", (c) => ({ ...c, cuisines: null })],
+      ["languages with a number", (c) => ({ ...c, languages: [1] })],
+      ["bookableDates null", (c) => ({ ...c, bookableDates: null })],
+      [
+        "locationOptions string",
+        (c) => ({ ...c, locationOptions: "chef_home" }),
+      ],
+      ["a null dish", (c) => ({ ...c, dishes: [null] })],
+      [
+        "dish allergens null",
+        (c) => ({ ...c, dishes: [{ ...c.dishes[0], allergens: null }] }),
+      ],
+      [
+        "dish name number",
+        (c) => ({ ...c, dishes: [{ ...c.dishes[0], name: 5 }] }),
+      ],
+      [
+        "dish cookMinutes string",
+        (c) => ({ ...c, dishes: [{ ...c.dishes[0], cookMinutes: "9" }] }),
+      ],
+      ["bio null", (c) => ({ ...c, bio: null })],
+      ["photoPath null", (c) => ({ ...c, photoPath: null })],
+      ["today missing", (c) => ({ ...c, today: undefined })],
+      ["answer is an array", () => []],
+      ["answer is null", () => null],
+      ["answer is a string", () => "ok"],
+    ];
+    it.each(bad)("%s", async (_n, make) => {
+      fetchMock.mockImplementation(reply(200, make(chef())));
+      const err = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        await mount();
+      } finally {
+        err.mockRestore();
+      }
+      expect(host.querySelector('[data-testid="load-error"]')).not.toBeNull();
+    });
+
+    // Fields the shape check does not look at. A wrong type in dish photoPath, dish description or
+    // serviceCity still throws in render (only error.tsx catches it in the real app). INFO.
+    const run = async (make: (c: PublicChefDetail) => unknown) => {
+      vi.stubEnv("NEXT_PUBLIC_API_MOCK", "");
+      vi.stubEnv(
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "https://example-project.supabase.co",
+      );
+      fetchMock.mockImplementation(reply(200, make(chef())));
+      const err = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        await mount();
+      } finally {
+        err.mockRestore();
+      }
+      const ok = host.querySelector("h1")?.textContent === "Mai Tran (MOCK)";
+      const retry = host.querySelector('[data-testid="load-error"]') !== null;
+      expect(ok || retry).toBe(true);
+    };
+    it("hourlyRateCents a string does not crash the page", async () => {
+      await run((c) => ({ ...c, hourlyRateCents: "28" }));
+    });
+    it.fails.each([
+      [
+        "dish photoPath a number",
+        (c: PublicChefDetail) => ({
+          ...c,
+          dishes: [{ ...c.dishes[0], photoPath: 5 }],
+        }),
+      ],
+      [
+        "dish description an object",
+        (c: PublicChefDetail) => ({
+          ...c,
+          dishes: [{ ...c.dishes[0], description: { a: 1 } }],
+        }),
+      ],
+      [
+        "serviceCity an object",
+        (c: PublicChefDetail) => ({ ...c, serviceCity: { a: 1 } }),
+      ],
+    ])("KNOWN GAP: %s does not crash the page", async (_n, make) => {
+      await run(make);
+    });
+  });
 });
