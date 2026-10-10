@@ -12,7 +12,7 @@ From: backend  To: tester
   - `src/lib/server/search.ts`: reads (server-only), user-scoped client.
   - `src/app/api/chefs/route.ts`, `src/app/api/chefs/[id]/route.ts`, `src/app/api/reference/postal-prefixes/route.ts`.
   - `src/app/api/admin/chefs/route.ts`: `await connection()` first (T-036 backlog); the source-guard test `admin-chefs-guards.test.ts` now allows it before the admin gate.
-  - `tests/api/search.test.ts` (new, 22 tests), `tests/api/setup.ts` (no-op `connection()` mock).
+  - `tests/api/search.test.ts` (new, 21 tests), `tests/api/setup.ts` (no-op `connection()` mock).
 - **No migration.** Existing RLS already lets anon read approved chefs, active dishes and availability of approved chefs, and `postal_prefixes`. Nothing to `db push`.
 
 ## Contract v1.3 summary
@@ -22,8 +22,8 @@ From: backend  To: tester
 - `GET /api/reference/postal-prefixes`: `{items:[{prefix,city,lat,lng}]}`, `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`, cookie-free client. Search and detail are `no-store`.
 
 ## How to verify
-- `npm run lint`, `npm run typecheck`, `npm test` (735 unit tests, 37 files), `npm run build` (no cookies() prerender error any more; the three new routes and the admin list are dynamic).
-- DB suites need Docker (not available on the builder's machine), so they ran in CI only: `npm run test:rls`, `npm run test:api` (15 files green in run 38016490743). `tests/api/search.test.ts` covers: every filter, distance order for postal code, prefix and city, rating fallback, radius and chef's-home-only (both enabled and not enabled), chef_home options visibility, chefs without a service area, A-20 (five cases, identical 404 bodies), pending and rejected never returned to seven viewers (visitor, customer, pending chef, rejected chef, approved chef, booking counterparty, admin), exact key sets and no private strings, dishes and dates (past, beyond window and unavailable rows excluded), 404 variants, all 422 cases, unknown-parameter tolerance, paging with a chef joining mid-way.
+- `npm run lint`, `npm run typecheck`, `npm test` (735 unit tests in 37 files, 33 of them new), `npm run build` (no cookies() prerender error any more; the three new routes and the admin list are dynamic).
+- DB suites need Docker (not available on the builder's machine), so they ran in CI only: `npm run test:rls`, `npm run test:api` (RLS 118 tests, API 336 tests in 15 files, green in run 38016490743 on 294b6c5). `tests/api/search.test.ts` covers: every filter, distance order for postal code, prefix and city, rating fallback, radius and chef's-home-only (both enabled and not enabled), chef_home options visibility, chefs without a service area, A-20 (five cases, identical 404 bodies), pending and rejected never returned to seven viewers (visitor, customer, pending chef, rejected chef, approved chef, booking counterparty, admin), exact key sets and no private strings, dishes and dates (past, beyond window and unavailable rows excluded), 404 variants, all 422 cases, unknown-parameter tolerance, paging with a chef joining mid-way.
 
 ## Known gaps or risks
 - The search reads up to 1000 approved chefs and filters and sorts in code (prototype scale); noted in the contract. A real launch needs SQL-side filtering and paging.
