@@ -391,8 +391,10 @@ describe("A-20: incomplete approved chefs are not public", () => {
 describe("pending and rejected chefs never appear (CLAUDE.md section 10)", () => {
   it("for visitors, customers, the chef themselves, a booking counterparty and an admin", async () => {
     const approved = await pub();
-    const pending = await pub({ status: "pending" });
-    const rejected = await pub({ status: "rejected" });
+    // A booking can only be made with an approved chef, so these two are approved first, get their
+    // bookings, and are then moved back (pending) and rejected, like a chef an admin pulled.
+    const pending = await pub();
+    const rejected = await pub();
     const customer = await newCustomer();
     const counterparty = await newCustomer();
     await makeBooking(svc, {
@@ -405,6 +407,8 @@ describe("pending and rejected chefs never appear (CLAUDE.md section 10)", () =>
       chef: { id: rejected.id, email: rejected.email },
       dates: [addDays(today(), 11)],
     });
+    await setChef(pending.id, { status: "pending" });
+    await setChef(rejected.id, { status: "rejected" });
     const admin = await newAdmin();
     const unknown = (await detail(anon(), randomUUID())).text;
 
