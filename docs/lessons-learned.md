@@ -14,6 +14,7 @@ The office only shows what agents report. Nothing updates on its own.
 - When the session pauses, the Planner sets itself to `idle` with a `--next` that says exactly where to resume.
 - **Before starting any agent** (including a resumed one for a new round), the Planner records that agent's status itself: `team-status status --agent <id> --status working --task <T-xxx> --progress 0`. Jimmy's rule (D-17). *(The office showed Frontend "working" with no task at 0% and Tester "done" with no task.)*
 - Every agent prompt tells the agent to report `--task <T-xxx> --progress <n>` on every status call, at each milestone: 25, 50, 75, and 100 with `--status done`. *(Without it the office cannot show real progress.)*
+- **Run `team-status` with the project root set** when working in a worktree: `CLAUDE_PROJECT_DIR="<main folder>" node .team/bin/team-status.mjs ...`. Without it the report goes to the worktree's own `.team/events.jsonl` and the office never shows it. *(The T-037 builder's and a reviewer's progress reports were lost this way.)*
 
 ## 2. Agent reports
 
