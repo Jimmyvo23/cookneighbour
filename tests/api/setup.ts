@@ -26,3 +26,10 @@ vi.mock("next/headers", () => ({
     };
   },
 }));
+
+// connection() (used by the public and admin GET routes to stay out of the build-time prerender)
+// throws outside a Next request, so it is a no-op here.
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  connection: async () => {},
+}));

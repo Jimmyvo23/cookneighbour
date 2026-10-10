@@ -1,6 +1,6 @@
 # CookNeighbour API contract v1
 
-Status: v1.2 (T-035), covers WO-2 (sign-up, phone, address) and WO-3 (chef application, dishes, availability, admin chef queue, public chef basics). v1.1 adds sections 5A (dishes) and 5B (availability) and moves dishes and availability to routes only; changes are marked **(T-032)**. v1.2 (T-035) replaces section 6 with the exact behaviour of the six admin chef-queue routes (order of checks, filters, errors, atomic decisions); changes are marked **(T-035)**. Later work orders extend it (search with distance, bookings, pricing, free trial, chat, reviews, reports). Implementations: T-028 (auth), T-031 (chef application, implemented and clarified; changes are marked **(T-031)**), T-035 (admin). Shared types: `src/lib/api/types.ts` (types only). If code and this page disagree, fix one of them in the same PR.
+Status: v1.3 (T-039), covers WO-2 (sign-up, phone, address) and WO-3 (chef application, dishes, availability, admin chef queue, public chef basics). v1.1 adds sections 5A (dishes) and 5B (availability) and moves dishes and availability to routes only; changes are marked **(T-032)**. v1.2 (T-035) replaces section 6 with the exact behaviour of the six admin chef-queue routes (order of checks, filters, errors, atomic decisions); changes are marked **(T-035)**. v1.3 (T-039) replaces section 7 with the real search (filters, distance sort, chef detail with dishes and bookable dates, postal-prefix list); changes are marked **(T-039)**. Later work orders extend it (bookings, pricing, free trial, chat, reviews, reports). Implementations: T-028 (auth), T-031 (chef application, implemented and clarified; changes are marked **(T-031)**), T-035 (admin). Shared types: `src/lib/api/types.ts` (types only). If code and this page disagree, fix one of them in the same PR.
 
 Everything involving SMS, ID, food-handler, kitchen and police checks is **MOCK**. Responses and UI must say so. In practice: `POST /api/chef/application/submit` carries `mock: true`; the other chef responses return `checks` as plain statuses with no flag in the JSON, so **the UI must label every check status MOCK** (T-033, T-036). The code that writes a check status is commented MOCK.
 
@@ -267,20 +267,39 @@ All six routes: `Cache-Control: no-store`. **Order of checks (every route):** se
 
 Notifications are rows in `notifications` (`type`, `title`, `body`, no booking); the read API comes in WO-5. Admin lists of bookings, reports and free-trial blocks come in WO-4/WO-5.
 
-## 7. Public chef listing (read only, no auth needed)
+## 7. Public search and chef detail (read only, no auth needed) **(T-039, v1.3)**
 
-User-scoped (anon-capable) client only; RLS returns approved chefs. No service role.
+Three routes, open to everyone, signed in or not. They use the user-scoped (anon-capable) client only; **no service role**. Row-level security already limits `chefs` to approved rows, active dishes and availability of approved chefs, and `postal_prefixes` to everyone. RLS alone is not enough, because a signed-in chef also passes the "own row" and "booking counterparty" policies and an admin passes the admin policies. So **every query adds its own filters**: `.eq('status','approved')` on chefs, `.eq('is_active', true)` on dishes, `.eq('available', true)` plus the date window on availability. A chef viewing their own pending row, a customer with a booking with a pending chef and an admin all get exactly what a visitor gets. No migration was needed. Responses are `Cache-Control: no-store` (they depend on today's date), except the reference route. **No private data ever:** no address, phone, email, kitchen address or photos, documents, check statuses, reject reason, hashes, postal prefix of the chef.
+
+**Rules (all PLAN assumptions; Jimmy may change any):**
+- **A-1 distance:** straight line (haversine) between the centre of the search point and the centre of the chef's service postal-area; shown in km with one decimal (`distanceKm`), sorted on whole metres. It is approximate (area centres), never an address.
+- **A-18 search point:** `postalCode` (full code or its first 3 characters, GTA only) uses that area's centre; `city` uses the plain average of the centres of that city's areas. With neither, there is no distance (`distanceKm` is `null`).
+- **A-20 hidden profiles (interim for Q-13):** an approved chef with no bio (blank counts as none), no photo or no active dish is left out of search and gets the 404 below.
+- **Visible location options:** `customer_home` when the chef offers it; `chef_home` only when the chef offers it **and** `chef_home_enabled` (admin approved the kitchen, MOCK check). A chef with `chef_home` selected but not enabled is shown as customer's-home only.
+- **Reach (A-18):** a chef is reachable at the customer's home when they offer it and the distance is within `serviceRadiusKm` (without a search point, reach is not checked). A chef who is not reachable but can be booked at their own home is still listed and marked `chefHomeOnly: true`. A chef who is neither reachable nor bookable at their home is left out. `chefHomeOnly` is also `true` for a chef who offers only chef's home.
 
 ### GET /api/chefs
-- **Query:** `PublicChefListQuery` `cuisine`, `language`, `prefix` (3-char GTA prefix), `limit`, `cursor`. **Response:** `PublicChefListResponse`. Sorted by `rating_avg` desc then name (**no distance sort yet**; distance and the full search are WO-4).
-- **MUST** add `.eq('status','approved')` to the query. RLS alone is not enough here: a signed-in chef also passes the "own row" and "booking counterparty" policies, so without the filter a chef's own pending row, or a shared-booking chef, could appear in the public list. Includes `chefHomeEnabled` and `locationOptions` so the UI can show the choice. Contains no kitchen address, documents, statuses, phone or email.
-- **Errors:** 422 (bad `prefix`, `limit`). **Tables:** `chefs`, `postal_prefixes` (city).
+- **Query:** `PublicChefSearchQuery`. All optional. Empty values are ignored. A parameter sent twice is 422. Unknown parameters are ignored.
+  - `postalCode`: `L5B1A1`, `L5B 1A1` or `L5B` (any case). 422 `fields.postalCode` = "Not a GTA postal code." when malformed or the first 3 characters are not in `postal_prefixes` (A-1). `city`: a city name from the reference route (case-insensitive); unknown is 422 `fields.city`. Both together is 422 `fields.city`.
+  - `cuisine`, `language`: 1 to 40 characters, no control characters; exact match on one entry of the chef's `cuisines` / `languages`, ignoring case and surrounding spaces.
+  - `avoidAllergens` (A-17, diets such as vegetarian or halal are not supported, Q-18): comma-separated, at most 14 entries of 1 to 40 characters; the chef matches when **at least one active dish** has none of them (lower case, trimmed). This is a convenience filter, not an allergy guarantee: the booking intake still checks.
+  - `minRateCents`, `maxRateCents`: integers 0 to 100000 (`min` greater than `max` is 422 `fields.maxRateCents`); the chef's `hourlyRateCents` must be inside (a chef without a rate is left out when either bound is given).
+  - `date`: `YYYY-MM-DD`, a real date from today to today + 180 days (Toronto, D-15) else 422 `fields.date`; the chef ticked that date (A-19). Booked dates are subtracted in WO-4b.
+  - `locationType`: `customer_home` or `chef_home` else 422. `customer_home`: chefs reachable at the customer's home, plus chefs out of reach who can be booked at their home (marked `chefHomeOnly`, A-18). `chef_home`: only chefs bookable at their own home (no radius check). Absent: same as `customer_home`.
+  - `limit` integer 1 to 50, default 20; `cursor` opaque (a bad cursor is 422 `fields.cursor`).
+  - All field errors are reported at once (422 `VALIDATION_FAILED`).
+- **Response 200:** `PublicChefSearchResponse` `{ items: PublicChefSearchItem[], nextCursor }`. Item keys, exactly: `id, displayName, photoPath, cuisines, languages, hourlyRateCents, currency, ratingAvg, reviewCount, serviceCity, serviceRadiusKm, distanceKm, locationOptions, chefHomeOnly`.
+- **Sort:** with a search point: `distanceKm` ascending (chefs without a centre last), then `ratingAvg` descending, `displayName`, `id`. Without one: `ratingAvg` descending, `displayName`, `id`. This replaces the v1.2 rating sort. The cursor is a keyset (sort key plus id), so pages have no repeats or gaps while chefs change.
+- **Scale note:** the route reads all approved chefs (up to the database row cap of 1000) and filters and sorts in code; fine for the prototype.
+- **MUST:** `.eq('status','approved')`; A-20; no private columns are selected at all (explicit column list). **Errors:** 422 only (plus 500).
 
 ### GET /api/chefs/:id
-- **Response:** `PublicChef`. 404 for unknown, pending or rejected (same response, so existence is not leaked). **Tables:** `chefs`. Dishes and availability of a chef: the customer-facing read routes come with WO-4 (search and chef detail); until then RLS already limits reads to active dishes and availability of **approved** chefs (T-032 tests).
+- **Response 200:** `PublicChefDetail`: `id, displayName, bio, photoPath, cuisines, languages, hourlyRateCents, currency, ratingAvg, reviewCount, serviceCity, serviceRadiusKm, locationOptions, dishes, bookableDates, today, lastBookableDay`. `dishes` are the **active** dishes (`PublicDish`: `id, name, photoPath, description, cuisine, cookMinutes, ingredientCostCents, servings, allergens, shelfLifeDays`), oldest first. `bookableDates` are the chef's ticked dates from `today` to `lastBookableDay` (A-19, D-15), ascending; booked dates are subtracted in WO-4b (T-042).
+- **404 `NOT_FOUND`** with one identical body for: an id that is not a uuid, an unknown id, a `pending` chef, a `rejected` chef, and an approved chef hidden by A-20. Nothing tells them apart, not even for the chef themselves or a booking counterparty.
+- A chef who offers `chef_home` before the kitchen is approved shows only `customer_home`. A chef who offers only `chef_home` and is not yet enabled has `locationOptions: []` (not bookable; they do not show in search, but the detail page still answers). **Errors:** 404, 500.
 
 ### GET /api/reference/postal-prefixes
-- **Response:** `PostalPrefixListResponse`. Public reference data for the city picker and client-side hints; cacheable. **Tables:** `postal_prefixes`.
+- **Response 200:** `PostalPrefixListResponse` `{ items: [{ prefix, city, lat, lng }] }`, ordered by prefix. Public reference data for the city picker; the same for everyone, so it uses a cookie-free client and is cacheable: `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`. The centres are approximate (A-1). **Tables:** `postal_prefixes`.
 
 ## 8. Rule: phone uniqueness across accounts (for T-028)
 
@@ -326,7 +345,7 @@ CLAUDE.md section 10 lists "duplicate or malformed phone numbers". The free tria
 
 ## 11. Not in v1 (planned)
 
-Search with distance, bookings, estimate, free trial, receipts (WO-4), messaging, reviews, reports, notifications read API (WO-5), customer-facing dish and availability reads (WO-4), admin booking/report/free-trial lists. Dishes and availability CRUD is section 5A and 5B (T-032).
+Bookings, estimate, free trial, receipts (WO-4b), messaging, reviews, reports, notifications read API (WO-5), admin booking/report/free-trial lists. Dishes and availability CRUD is section 5A and 5B (T-032).
 
 Recorded for later work orders:
 - N3 (WO-4): changing the kitchen address while a `chef_home` booking is `accepted` must be blocked or must notify the customer and re-confirm.

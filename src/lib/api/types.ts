@@ -384,35 +384,89 @@ export interface KitchenReviewRequest {
 }
 
 // ---------------------------------------------------------------------------
-// Public chef listing (read-only basics; search and distance come in WO-4)
+// Public search and chef detail (contract v1.3, section 7). No auth needed.
 // ---------------------------------------------------------------------------
-export interface PublicChef {
-  id: string;
-  displayName: string;
-  bio: string | null;
-  /** Object name in the public profile-photos bucket. */
-  photoPath: string | null;
-  cuisines: string[];
-  languages: string[];
-  hourlyRateCents: number | null;
-  servicePostalPrefix: string | null;
-  serviceCity: string | null;
-  serviceRadiusKm: number;
-  locationOptions: LocationType[];
-  chefHomeEnabled: boolean;
-  ratingAvg: number;
-  reviewCount: number;
-  currency: string;
-}
-export interface PublicChefListQuery {
+/** Query of GET /api/chefs. Everything is optional; send at most one of postalCode and city. */
+export interface PublicChefSearchQuery {
+  /** Full GTA postal code ("L5B 1A1") or its first three characters ("L5B"). */
+  postalCode?: string;
+  /** A GTA city from GET /api/reference/postal-prefixes ("Mississauga"). */
+  city?: string;
   cuisine?: string;
   language?: string;
-  /** First three characters of a GTA postal code, e.g. "L5B". */
-  prefix?: string;
+  /** Comma-separated allergens to avoid (A-17): chef needs one active dish free of all of them. */
+  avoidAllergens?: string;
+  /** Hourly rate bounds, integer cents. */
+  minRateCents?: number;
+  maxRateCents?: number;
+  /** YYYY-MM-DD: the chef ticked this date inside the booking window (D-15). */
+  date?: string;
+  locationType?: LocationType;
+  /** 1 to 50, default 20. */
   limit?: number;
   cursor?: string;
 }
-export type PublicChefListResponse = Page<PublicChef>;
+
+/** One search result. Nothing private: no address, phone, email, documents, kitchen photos or statuses. */
+export interface PublicChefSearchItem {
+  id: string;
+  displayName: string;
+  /** Object name in the public profile-photos bucket. */
+  photoPath: string;
+  cuisines: string[];
+  languages: string[];
+  hourlyRateCents: number | null;
+  currency: string;
+  ratingAvg: number;
+  reviewCount: number;
+  serviceCity: string | null;
+  serviceRadiusKm: number;
+  /** Straight line between postal-area centres (A-1), 0.1 km steps; null without a search point. */
+  distanceKm: number | null;
+  /** Options a customer can really book: chef_home only when the kitchen was approved. */
+  locationOptions: LocationType[];
+  /** True when the chef can only be booked at their own home (A-18): the label for results out of reach. */
+  chefHomeOnly: boolean;
+}
+export type PublicChefSearchResponse = Page<PublicChefSearchItem>;
+
+/** An active dish as customers see it (no createdAt, isActive or currency noise). */
+export interface PublicDish {
+  id: string;
+  name: string;
+  photoPath: string | null;
+  description: string | null;
+  cuisine: string;
+  cookMinutes: number;
+  ingredientCostCents: number;
+  servings: number;
+  allergens: string[];
+  shelfLifeDays: number;
+}
+
+/** GET /api/chefs/:id. */
+export interface PublicChefDetail {
+  id: string;
+  displayName: string;
+  bio: string;
+  photoPath: string;
+  cuisines: string[];
+  languages: string[];
+  hourlyRateCents: number | null;
+  currency: string;
+  ratingAvg: number;
+  reviewCount: number;
+  serviceCity: string | null;
+  serviceRadiusKm: number;
+  locationOptions: LocationType[];
+  /** Active dishes, oldest first. At least one (a chef without one is not public, A-20). */
+  dishes: PublicDish[];
+  /** Ticked dates inside the window, ascending (A-19). Booked dates are removed in WO-4b. */
+  bookableDates: string[];
+  /** The server's window (Toronto, D-15). */
+  today: string;
+  lastBookableDay: string;
+}
 
 export interface PostalPrefix {
   prefix: string;
