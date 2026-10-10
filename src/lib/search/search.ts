@@ -233,6 +233,65 @@ export function profilePhotoUrl(
   return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/profile-photos/${encoded}`;
 }
 
+/** Label of the results list: A-25, without a location the order is rating, not distance. */
+export function resultsOrderLabel(
+  q: Pick<PublicChefSearchQuery, "postalCode" | "city">,
+): string {
+  return q.postalCode || q.city
+    ? "Chefs, nearest first"
+    : "Chefs, best rated first";
+}
+
+// ---------------------------------------------------------------------------
+// Remembering the last search for this tab, so "back" from the chef page keeps the filters.
+// Only the form values (no personal data beyond what the customer typed into a public search).
+// ---------------------------------------------------------------------------
+export const SAVED_SEARCH_KEY = "cookneighbour.search";
+
+export const serializeForm = (v: SearchFormValues): string =>
+  JSON.stringify({ v: 1, form: v });
+
+/** Reads what serializeForm wrote. Anything unexpected gives null (then the form starts empty). */
+export function parseSavedForm(raw: string | null): SearchFormValues | null {
+  if (!raw) return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof data !== "object" || data === null) return null;
+  const { v, form } = data as { v?: unknown; form?: unknown };
+  if (v !== 1 || typeof form !== "object" || form === null) return null;
+  const f = form as Record<string, unknown>;
+  const base = emptySearchForm();
+  const out = { ...base };
+  for (const k of [
+    "postalCode",
+    "city",
+    "cuisine",
+    "language",
+    "minRate",
+    "maxRate",
+    "date",
+  ] as const) {
+    if (typeof f[k] !== "string" || (f[k] as string).length > 200) return null;
+    out[k] = f[k] as string;
+  }
+  if (f.locationType !== "customer_home" && f.locationType !== "chef_home")
+    return null;
+  out.locationType = f.locationType;
+  const a = f.avoidAllergens;
+  if (
+    !Array.isArray(a) ||
+    a.length > AVOID_MAX ||
+    a.some((x) => typeof x !== "string" || x.length > TEXT_MAX)
+  )
+    return null;
+  out.avoidAllergens = a as string[];
+  return out;
+}
+
 /** Where a result's detail page lives (T-041). The id is a uuid from the API; still encoded. */
 export const chefPath = (id: string) => `/chefs/${encodeURIComponent(id)}`;
 

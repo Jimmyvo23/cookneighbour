@@ -318,3 +318,65 @@ describe("map pins (area centres only)", () => {
     expect(searchPoint({ postalCode: "V6B" }, PREFIXES)).toBeNull();
   });
 });
+
+describe("saved search (back from the chef page keeps the filters)", () => {
+  it("round-trips the form", async () => {
+    const { parseSavedForm, serializeForm } = await import("./search");
+    const v = form({
+      city: "Mississauga",
+      cuisine: "Vietnamese",
+      avoidAllergens: ["soy"],
+      locationType: "chef_home",
+    });
+    expect(parseSavedForm(serializeForm(v))).toEqual(v);
+  });
+  it("ignores nothing, bad JSON, wrong types, unknown location types and huge lists", async () => {
+    const { parseSavedForm } = await import("./search");
+    expect(parseSavedForm(null)).toBeNull();
+    expect(parseSavedForm("{nope")).toBeNull();
+    expect(parseSavedForm("[]")).toBeNull();
+    expect(
+      parseSavedForm(JSON.stringify({ v: 1, form: { city: 3 } })),
+    ).toBeNull();
+    expect(
+      parseSavedForm(
+        JSON.stringify({
+          v: 1,
+          form: { ...emptySearchForm(), locationType: "x" },
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      parseSavedForm(
+        JSON.stringify({
+          v: 1,
+          form: { ...emptySearchForm(), avoidAllergens: Array(40).fill("a") },
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      parseSavedForm(JSON.stringify({ v: 2, form: emptySearchForm() })),
+    ).toBeNull();
+  });
+  it("keeps only the known fields", async () => {
+    const { parseSavedForm } = await import("./search");
+    const out = parseSavedForm(
+      JSON.stringify({
+        v: 1,
+        form: { ...emptySearchForm(), evil: "<script>" },
+      }),
+    );
+    expect(out).toEqual(emptySearchForm());
+  });
+});
+
+describe("resultsOrderLabel (A-25)", () => {
+  it("says nearest first only when there is a location", async () => {
+    const { resultsOrderLabel } = await import("./search");
+    expect(resultsOrderLabel({ postalCode: "L5B" })).toBe(
+      "Chefs, nearest first",
+    );
+    expect(resultsOrderLabel({ city: "Toronto" })).toBe("Chefs, nearest first");
+    expect(resultsOrderLabel({})).toBe("Chefs, best rated first");
+  });
+});
