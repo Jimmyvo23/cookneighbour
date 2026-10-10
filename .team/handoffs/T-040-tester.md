@@ -41,3 +41,13 @@ No bugs sent back to the builder as blocking. Findings 1 and 2 are small fixes t
 - Reviewer: look at findings 1 to 3. The pin rule is "per city, area-centre average", decided by the builder because section 7 hides the chef's postal area; Planner decision recorded in the frontend handoff.
 - T-041 builder: the placeholder `src/app/chefs/[id]/page.tsx` is replaced there; mock detail route throws on malformed escapes until finding 2 is fixed.
 - Lessons-learned candidates: (a) mock-mode tests must block `**/storage/v1/object/public/**` when a developer `.env.local` is present; (b) on macOS `sed -i` needs `''`.
+
+## Round 2 (head e3a444e, CI run 38060124925 success)
+
+Verdict: PASS. Findings 1 and 2 are fixed. No tests added this round (no new app behaviour needing them); no new commit from me.
+
+- Finding 1 fixed: `ResultCard.tsx:17-21` and `DishesView.tsx` `DishPhoto` pass no storage URL when `isMockEnabled()`; the initial-letter fallback shows. Read the diff; both are the only components that build a storage URL from `NEXT_PUBLIC_SUPABASE_URL` (grep of `src`). Admin document images use signed URLs from the (mock) API, and uploads use `mockUploader` in MOCK mode.
+- Finding 2 fixed: `mock-search.ts` catches the malformed escape and returns the same 404; my former `it.fails` is now `it` and passes.
+- Hosted-URL guard (not committed): a temporary Playwright config mapped `*.supabase.co` in Chromium to a local TCP listener that counts connections (checked first: a deliberate fetch to a fake `*.supabase.co` host logged 2 connections). The full mock suite, 98 tests, ran with the storage-blocking `page.route` lines temporarily disabled in both search specs: **0 connections** to any `*.supabase.co` host, covering chef application, dishes, admin documents and search. The temporary config and edits were removed; the tree is clean. Server-side requests from the dev server are out of this check's scope.
+- Local: lint clean, prettier clean, typecheck clean, `npm test` 924 passed (45 files, no expected fail), mock Playwright 98 passed. CI run 38060124925 on headSha e3a444e: success.
+- Suggestion for the Planner, not a defect: a permanent guard needs a shared Playwright fixture or config change (app-side test infrastructure); I did not add one.
