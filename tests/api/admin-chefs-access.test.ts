@@ -360,6 +360,8 @@ describe("GET /api/admin/chefs", () => {
         kitchen: "pending",
         police: "pending",
       },
+      failedChecks: [],
+      flagged: false,
       chefHomeEnabled: false,
       locationOptions: ["customer_home", "chef_home"],
     });

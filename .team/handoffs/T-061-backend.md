@@ -21,7 +21,7 @@ From: backend  To: tester
 - API tests need local Supabase (`npm run test:api`). **I could not run them: this machine has no Docker.** They are written but unrun; the Tester must run them locally with the new migration applied (`supabase db reset` or equivalent), and read any failure as possibly mine.
 
 ## Known gaps or risks
-- API tests for D-21 and D-25 are unrun (see above). Expect to fix small test setup mistakes.
+- API tests were first unrun locally; CI ran them and found one exact-key list test (fixed, now includes failedChecks and flagged). D-30: extra synonym words kept. D-31: search avoidAllergens map goes to T-042.
 - Allergy map: over-warns on purpose. Peanut and nut are one group, so "peanut" now also warns on a dish with "tree nuts" and the other way round; "shellfish" matches both crustaceans and molluscs. Existing unit expectations were updated for this. I added a few extra words to the groups beyond the D-24 list (prawn, crab, lobster, clam, squid, oyster, mussel, scallop, almond, cashew, walnut, pecan, pistachio, hazelnut, groundnut). Remove them if Jimmy wants only the listed pairs.
 - The `flagged` rule counts all four MOCK checks including police (D-21a says "any MOCK check"). "Checks pending" still ignores police (D-21c).
 - Not changed: the search filter `avoidAllergens` is still exact-word matching and does not use the synonym map (separate code, outside T-061). Worth a Planner decision.
