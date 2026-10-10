@@ -178,9 +178,9 @@ describe("allergens", () => {
       create({ otherAllergens: "x".repeat(41) }).errors.allergens,
     ).toBeTruthy();
   });
-  // Observation (tester finding F4): the 14-entry limit counts duplicates before they are merged,
-  // so 13 ticked + "Milk" typed again (14 unique) is refused even though only 13 are distinct.
-  it("counts duplicates against the limit (documents current behaviour)", () => {
+  // Tester finding F4, fixed in T-037: the 14-entry limit counts allergens after duplicates are
+  // merged, so 13 ticked + "celery" + "Milk" typed again (14 distinct) is accepted.
+  it("counts allergens after merging duplicates", () => {
     const all13 = [
       "milk",
       "eggs",
@@ -200,9 +200,12 @@ describe("allergens", () => {
       create({ allergens: all13, otherAllergens: "celery" }).errors,
     ).toEqual({});
     expect(
-      create({ allergens: all13, otherAllergens: "celery, Milk" }).errors
+      create({ allergens: all13, otherAllergens: "celery, Milk" }).errors,
+    ).toEqual({});
+    expect(
+      create({ allergens: all13, otherAllergens: "celery, lupin" }).errors
         .allergens,
-    ).toBeTruthy();
+    ).toBeTruthy(); // 15 distinct
   });
 });
 

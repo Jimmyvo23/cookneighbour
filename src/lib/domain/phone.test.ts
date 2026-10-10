@@ -25,6 +25,10 @@ describe("normalizePhone", () => {
     "416-555-0101 ext 5",
     "416555010x",
     "1-1-416-555-0101",
+    "911-555-0101", // N11 area code
+    "416-411-0101", // N11 exchange
+    "211 311 0101",
+    "100-555-0101",
   ])("rejects %j", (input) => {
     expect(normalizePhone(input)).toBeNull();
   });

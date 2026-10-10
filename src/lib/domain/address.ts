@@ -45,10 +45,17 @@ export function normalizeAddressLine(line: string): string {
     .join(" ");
 }
 
-/** Uppercase, no spaces or dashes. Returns null unless it matches the Canadian shape A1A1A1. */
+/**
+ * Canada Post letter rules: D, F, I, O, Q and U are never used, and W and Z are never the first
+ * letter (they may appear in the other two letter positions).
+ */
+const POSTAL_RE =
+  /^[ABCEGHJKLMNPRSTVXY][0-9][ABCEGHJKLMNPRSTVWXYZ][0-9][ABCEGHJKLMNPRSTVWXYZ][0-9]$/;
+
+/** Uppercase, no spaces or dashes. Returns null unless it is a valid Canadian postal code A1A1A1. */
 export function normalizePostalCode(input: string): string | null {
   const p = input.toUpperCase().replace(/[\s-]/g, "");
-  return /^[A-Z][0-9][A-Z][0-9][A-Z][0-9]$/.test(p) ? p : null;
+  return POSTAL_RE.test(p) ? p : null;
 }
 
 export function postalPrefix(postalCode: string): string {

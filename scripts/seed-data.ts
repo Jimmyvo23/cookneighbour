@@ -301,7 +301,7 @@ export const chefs: SeedChef[] = [
     kitchen: {
       line: "30 Placeholder Road",
       city: "Brampton",
-      postalCode: "L6P4D4",
+      postalCode: "L6P4C4",
     },
     unavailableWeekdays: [],
     dishes: [
@@ -509,7 +509,7 @@ export const chefs: SeedChef[] = [
     kitchen: {
       line: "50 Invented Boulevard",
       city: "Vaughan",
-      postalCode: "L4K6F6",
+      postalCode: "L4K6E6",
     },
     unavailableWeekdays: [5],
     dishes: [

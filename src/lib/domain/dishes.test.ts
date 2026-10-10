@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALLERGENS_RAW_MAX,
   AVAILABILITY_HORIZON_DAYS,
   addDays,
   isRealDate,
@@ -122,6 +123,29 @@ describe("parseDishBody (create)", () => {
           `${key}=${String(v)}`,
         ).toBeTruthy();
     }
+  });
+
+  it("counts allergens after merging duplicates (T-034 backlog)", () => {
+    const fourteen = Array.from({ length: 14 }, (_, i) => `allergen ${i}`);
+    // 14 ticked plus one retyped with other case and spaces: 15 entries, 14 distinct.
+    const r = parseDishBody(
+      { ...valid, allergens: [...fourteen, "  ALLERGEN 3 "] },
+      "create",
+    );
+    expect(r.errors).toEqual({});
+    expect(r.value.allergens).toHaveLength(14);
+    // 15 distinct is still too many.
+    expect(
+      parseDishBody({ ...valid, allergens: [...fourteen, "extra"] }, "create")
+        .errors.allergens,
+    ).toBeDefined();
+    // A flood of raw entries is refused even if they merge into few.
+    expect(
+      parseDishBody(
+        { ...valid, allergens: Array(ALLERGENS_RAW_MAX + 1).fill("soy") },
+        "create",
+      ).errors.allergens,
+    ).toBeDefined();
   });
 
   it("lower-cases, trims and de-duplicates allergens; bounds the list", () => {
