@@ -40,12 +40,9 @@ describe("MOCK search routes: error and edge behaviour matches section 7", () =>
     expect(bodies[0].data.error?.code).toBe("NOT_FOUND");
   });
 
-  it.fails(
-    "a malformed percent escape in the id is a clean 404, as in the real route (T-040 finding: the mock throws URIError)",
-    async () => {
-      expect((await call("/api/chefs/%E0%A4%A")).status).toBe(404);
-    },
-  );
+  it("a malformed percent escape in the id is a clean 404, as in the real route (T-040 finding: the mock throws URIError)", async () => {
+    expect((await call("/api/chefs/%E0%A4%A")).status).toBe(404);
+  });
 
   it("other methods are 404, not a write", async () => {
     expect((await call("/api/chefs", "POST")).status).toBe(404);

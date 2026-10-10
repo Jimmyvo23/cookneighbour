@@ -5,6 +5,8 @@ import { PNG, expectNoAxeViolations } from "./helpers";
 // chefs plus fourteen fillers, all made up. Map tiles come from OpenStreetMap; the tests answer
 // them with a one-pixel picture so no run depends on the network.
 test.beforeEach(async ({ page }) => {
+  // MOCK photo paths are made up: a developer's .env.local must never make the page ask hosted storage.
+  await page.route("**/storage/v1/object/public/**", (route) => route.abort());
   await page.route("https://tile.openstreetmap.org/**", (route) =>
     route.fulfill({ contentType: "image/png", body: PNG.buffer }),
   );

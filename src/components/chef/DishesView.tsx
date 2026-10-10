@@ -4,7 +4,7 @@
 // (src/lib/domain/dishes.ts through src/lib/chef/dishes.ts); the server stays the authority.
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, isMockEnabled } from "@/lib/api/client";
 import type { ChefDishListResponse, Dish, MeResponse } from "@/lib/api/types";
 import {
   ALLERGEN_CHOICES,
@@ -235,7 +235,8 @@ export function DishPhoto({
 }) {
   const url = dishPhotoUrl(
     dish.photoPath,
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    // MOCK photo paths are made up: never ask a real storage project for them.
+    isMockEnabled() ? undefined : process.env.NEXT_PUBLIC_SUPABASE_URL,
   );
   const [failed, setFailed] = useState(false);
   if (url && !failed) {

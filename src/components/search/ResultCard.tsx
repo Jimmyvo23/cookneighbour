@@ -2,6 +2,7 @@
 // One chef in the results list (T-040). Public data only (contract section 7): never an address.
 import Link from "next/link";
 import { useState } from "react";
+import { isMockEnabled } from "@/lib/api/client";
 import type { PublicChefSearchItem } from "@/lib/api/types";
 import {
   chefPath,
@@ -13,7 +14,11 @@ import {
 } from "@/lib/search/search";
 
 function ChefPhoto({ name, path }: { name: string; path: string }) {
-  const url = profilePhotoUrl(path, process.env.NEXT_PUBLIC_SUPABASE_URL);
+  // MOCK photo paths are made up: never ask a real storage project for them.
+  const url = profilePhotoUrl(
+    path,
+    isMockEnabled() ? undefined : process.env.NEXT_PUBLIC_SUPABASE_URL,
+  );
   const [failed, setFailed] = useState(false);
   if (url && !failed) {
     return (

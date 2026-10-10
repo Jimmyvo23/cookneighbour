@@ -298,7 +298,12 @@ export function searchRoutes(method: string, path: string): Response | null {
 
   const today = torontoToday();
   if (detail) {
-    const id = decodeURIComponent(detail[1]);
+    let id: string;
+    try {
+      id = decodeURIComponent(detail[1]);
+    } catch {
+      return NOT_FOUND(); // a malformed percent escape is the same 404 as any unknown id
+    }
     const c = UUID.test(id) ? MOCK_CHEFS.find((x) => x.id === id) : undefined;
     if (!c) return NOT_FOUND();
     return json(200, detailOf(c, today));
