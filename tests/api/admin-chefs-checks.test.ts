@@ -705,7 +705,7 @@ describe("POST /api/admin/chefs/:id/kitchen-review (MOCK)", () => {
       },
       {
         decision: "reject",
-        note: "x",
+        note: "Checked the photos.",
         reviewedPhotoPaths: photos,
         reviewedAddress: address,
       },
@@ -726,7 +726,7 @@ describe("POST /api/admin/chefs/:id/kitchen-review (MOCK)", () => {
     const body = { reviewedPhotoPaths: photos, reviewedAddress: address };
     let r = await review(
       chef.id,
-      { decision: "reject", note: "Dirty", ...body },
+      { decision: "reject", note: "The kitchen is not clean.", ...body },
       admin,
     );
     expect(r.status, r.text).toBe(200);

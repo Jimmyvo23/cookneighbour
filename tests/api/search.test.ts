@@ -980,8 +980,8 @@ describe("T-061 tester: reject switches chef's home off, public pages follow (D-
     expect(ids(await search(anon(), q()))).not.toContain(c.id);
   });
 
-  it("D-25: a chef with an empty location list is the same 404, byte for byte, headers included", async () => {
-    const c = await pub({ options: [] });
+  it("D-25: a chef with only a not-yet-enabled chef's home is the same 404, byte for byte, headers included (the database refuses an empty list)", async () => {
+    const c = await pub({ options: ["chef_home"], homeEnabled: false });
     const unknown = await detail(anon(), randomUUID());
     const hidden = await detail(anon(), c.id);
     expect(hidden.status).toBe(404);
