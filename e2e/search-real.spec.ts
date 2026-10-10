@@ -404,3 +404,60 @@ test("a pending chef's URL and an unknown or malformed id all show 'Chef not fou
   await expectNoAxeViolations(page);
   await chefCtx.dispose();
 });
+
+test("a rejected chef's URL shows 'Chef not found'; an approved chef whose kitchen is not reviewed opens with 'cannot be booked yet' (T-041 tester)", async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
+  const admin = await adminContext(playwright, baseURL);
+
+  // Rejected: the same answer as an unknown chef, and the reason is never shown.
+  const rejCtx = await newContext(playwright, baseURL);
+  const rejected = await createSubmittedChef(rejCtx, `E2E Rejected ${uniq()}`);
+  const rej = await admin.post(`/api/admin/chefs/${rejected.id}/reject`, {
+    headers: json,
+    data: { reason: "TESTER-REJECT-REASON" },
+  });
+  expect(rej.status(), await rej.text()).toBe(200);
+  await page.goto(`/chefs/${rejected.id}`);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Chef not found" }),
+  ).toBeVisible();
+  const body = await page.locator("body").innerText();
+  expect(body).not.toContain("TESTER-REJECT-REASON");
+  expect(body).not.toContain(rejected.name);
+  expect(body.toLowerCase()).not.toContain("rejected");
+
+  // Approved, offers chef's home, kitchen not reviewed yet (Q-21): page opens, no cooking place
+  // and no kitchen note.
+  const chefCtx = await newContext(playwright, baseURL);
+  const name = `E2E NoKitchen ${uniq()}`;
+  const chef = await createSubmittedChef(chefCtx, name, { chefHome: true });
+  await approve(admin, chefCtx, chef.id);
+  const api = await (await page.request.get(`/api/chefs/${chef.id}`)).json();
+  await page.goto(`/chefs/${chef.id}`);
+  await expect(
+    page.getByRole("heading", { level: 1, name, exact: true }),
+  ).toBeVisible();
+  if (api.locationOptions.length === 0) {
+    await expect(page.getByTestId("not-bookable")).toContainText(
+      "This chef cannot be booked yet.",
+    );
+    await expect(page.getByTestId("mock-badge")).toHaveCount(0);
+  } else {
+    // The chef also offers the customer's home: the chef's home must not be listed.
+    await expect(page.getByTestId("location-options")).not.toContainText(
+      "chef's home",
+    );
+  }
+  // The address of the kitchen never shows.
+  expect(await page.locator("body").innerText()).not.toContain(
+    "1 Fictional Street",
+  );
+  await expectNoAxeViolations(page);
+
+  await rejCtx.dispose();
+  await chefCtx.dispose();
+  await admin.dispose();
+});
