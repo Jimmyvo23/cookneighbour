@@ -211,6 +211,14 @@ export async function getChefDetail(id: string): Promise<PublicChefDetail> {
   )
     throw notFound();
 
+  // D-25: a chef with no bookable location option (for example only chef's home, not yet enabled
+  // by an admin) is as hidden as any other unlisted chef: the same 404.
+  const locationOptions = publicLocationOptions(
+    stringArray(c.location_options) as LocationType[],
+    c.chef_home_enabled === true,
+  );
+  if (locationOptions.length === 0) throw notFound();
+
   return {
     id: c.profile_id as string,
     displayName: c.display_name as string,
@@ -225,10 +233,7 @@ export async function getChefDetail(id: string): Promise<PublicChefDetail> {
     serviceCity:
       ((prefixRes.data as Row | null)?.city as string | null) ?? null,
     serviceRadiusKm: c.service_radius_km as number,
-    locationOptions: publicLocationOptions(
-      stringArray(c.location_options) as LocationType[],
-      c.chef_home_enabled === true,
-    ),
+    locationOptions,
     dishes,
     bookableDates: ((dayRes.data as Row[] | null) ?? []).map(
       (d) => d.day as string,

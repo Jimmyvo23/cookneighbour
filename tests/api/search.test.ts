@@ -758,13 +758,20 @@ describe("T-039 tester: hidden detail pages answer identically", () => {
     expect(unknown.headers.get("cache-control")).toBe("no-store");
   });
 
-  it("a chef who offers only an unenabled chef's home is hidden from search but the detail page answers with no options (documented, see handoff)", async () => {
+  it("a chef who offers only an unenabled chef's home is hidden from search and the detail page answers the same 404 (D-25)", async () => {
     const c = await pub({ options: ["chef_home"], homeEnabled: false });
     for (const extra of ["", "postalCode=L5B", "locationType=chef_home"])
       expect(ids(await search(anon(), q(extra))), extra).not.toContain(c.id);
     const d = await detail(anon(), c.id);
-    expect(d.status).toBe(200);
-    expect(d.body.locationOptions).toEqual([]);
+    const unknown = await detail(anon(), randomUUID());
+    expect(d.status).toBe(404);
+    expect(d.body).toEqual(NOT_FOUND);
+    expect(d.text).toBe(unknown.text);
+    // Once an admin enables the chef's home the page opens (the control).
+    await setChef(c.id, { chef_home_enabled: true });
+    const open = await detail(anon(), c.id);
+    expect(open.status).toBe(200);
+    expect(open.body.locationOptions).toEqual(["chef_home"]);
   });
 });
 
