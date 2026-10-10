@@ -31,6 +31,8 @@ import {
 
 const RETRY_MS = 30_000;
 
+type ReloadResult = "ok" | "failed" | "superseded";
+
 type View =
   | { kind: "loading" }
   | { kind: "error"; message: string }
@@ -46,22 +48,25 @@ export function ChefReviewView({ id }: { id: string }) {
   const [retryTick, setRetryTick] = useState(0);
   const signature = useRef<string | null>(null);
   const seq = useRef(0);
+  const refreshingRef = useRef(false);
   const cancelRequests = useCallback(() => {
     seq.current++;
   }, []);
 
   /**
    * Fetches the application again. `warnOnChange` tells the admin when a file or the kitchen
-   * address differs from what was on screen. Resolves to true on success.
+   * address differs from what was on screen. Resolves to "ok", "failed", or "superseded" (a newer
+   * reload started, or the page closed, so this answer was dropped and says nothing about the
+   * network: callers must not show an error for it).
    */
   const reload = useCallback(
-    async (opts: { warnOnChange?: boolean } = {}): Promise<boolean> => {
+    async (opts: { warnOnChange?: boolean } = {}): Promise<ReloadResult> => {
       const mine = ++seq.current;
       try {
         const detail = await apiFetch<AdminChefDetail>(
           `/api/admin/chefs/${encodeURIComponent(id)}`,
         );
-        if (mine !== seq.current) return false;
+        if (mine !== seq.current) return "superseded";
         const sig = filesSignature(detail.application);
         if (
           opts.warnOnChange &&
@@ -74,15 +79,15 @@ export function ChefReviewView({ id }: { id: string }) {
         signature.current = sig;
         setView({ kind: "ready", detail, fetchedAt: Date.now() });
         setLinksStale(false);
-        return true;
+        return "ok";
       } catch (err) {
-        if (mine !== seq.current) return false;
+        if (mine !== seq.current) return "superseded";
         setView((v) =>
           v.kind === "ready"
             ? v // keep what is on screen; the caller says the refresh failed
             : { kind: "error", message: describeAdminError(err, "load") },
         );
-        return false;
+        return "failed";
       }
     },
     [id],
@@ -103,8 +108,8 @@ export function ChefReviewView({ id }: { id: string }) {
     // After a failed automatic refresh, try again in 30 seconds (retryTick re-arms this effect).
     const delay = retryTick > 0 && linksStale ? RETRY_MS : refreshDelayMs(docs);
     const auto = () =>
-      void reload({ warnOnChange: true }).then((ok) => {
-        if (!ok) {
+      void reload({ warnOnChange: true }).then((result) => {
+        if (result === "failed") {
           setLinksStale(true);
           setRetryTick((t) => t + 1);
         }
@@ -121,23 +126,27 @@ export function ChefReviewView({ id }: { id: string }) {
   }, [fetchedAt, docs, reload, retryTick, linksStale]);
 
   async function manualReload() {
+    // The button only says aria-disabled, so a second click still arrives: ignore it.
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
     setRefreshing(true);
     setFlash(null);
     setWarning(null);
-    const ok = await reload({ warnOnChange: true });
+    const result = await reload({ warnOnChange: true });
+    refreshingRef.current = false;
     setRefreshing(false);
-    setFlash(
-      ok
-        ? "Reloaded. File links are fresh for 5 minutes."
-        : "Could not reload. Try again.",
-    );
+    // A superseded answer was dropped for a newer reload: say nothing about it.
+    if (result === "ok")
+      setFlash("Reloaded. File links are fresh for 5 minutes.");
+    else if (result === "failed") setFlash("Could not reload. Try again.");
   }
 
   /** After a decision: load the new state, then clear the old warning. True when it loaded. */
   const afterChange = useCallback(async (): Promise<boolean> => {
-    const ok = await reload();
-    if (ok) setWarning(null);
-    return ok;
+    const result = await reload();
+    if (result === "ok") setWarning(null);
+    // Superseded: a newer reload is already loading the state, so this is not a failure.
+    return result !== "failed";
   }, [reload]);
 
   return (

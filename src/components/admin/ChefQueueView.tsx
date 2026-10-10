@@ -252,7 +252,7 @@ function QueueItem({ item }: { item: AdminChefListItem }) {
         <span className="font-medium">
           Status: {chefStatusText(item.status)}
         </span>
-        {" · "}Applied {formatWhen(item.createdAt)}
+        {" · "}Signed up {formatWhen(item.createdAt)}
       </p>
       <p className="text-sm">
         Cuisines: {item.cuisines.length ? item.cuisines.join(", ") : "none yet"}
