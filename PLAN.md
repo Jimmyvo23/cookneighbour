@@ -149,7 +149,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | done |
 | T-059 | Reject unsafe text in display name and address (server; T-033 tester F1) | backend | T-028 | done |
 
-### Phase 4 — Customer side (WO-4a: T-037 to T-041; WO-4b: T-061, T-042 to T-045, T-062)
+### Phase 4 — Customer side (WO-4a: T-037 to T-041; WO-4b: T-061, T-042 to T-045, T-062, T-063)
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
 | T-037 | Domain rules (TDD): estimate, 6-hour limit, booking validation (1–3 days, past date, double booking, service area, chef-home offered), allergy conflict, receipt check, cancellation timing | backend | T-020 | done |
@@ -157,11 +157,12 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-039 | Search API: approved chefs only, filters, distance sort | backend | T-030, T-037 | done |
 | T-040 | Search and results UI with map | frontend | T-039 | done |
 | T-041 | Chef detail page | frontend | T-039 | done |
-| T-042 | Booking API: create, estimate, accept / decline, cancel, no-show, eat-by, notifications | backend | T-037, T-038, T-061 | todo |
+| T-042 | Booking API: create, estimate, accept / decline, expiry, eat-by, notifications | backend | T-037, T-038, T-061 | todo |
 | T-043 | Booking flow UI: days and dishes, location, intake form, allergy acknowledgement, grocery option, estimate, 6-hour warning, free-trial label, MOCK payment step | frontend | T-042 | todo |
 | T-044 | Grocery option A shopping list and option B receipt upload with mismatch flag (API) | backend | T-042 | todo |
-| T-045 | Grocery screens and chef booking dashboard (requests with intake, accept / decline, eat-by) | frontend | T-044 | todo |
+| T-045 | Grocery screens and chef booking dashboard (requests with intake, accept / decline, eat-by, missed pickup) | frontend | T-044, T-063 | todo |
 | T-061 | Rule changes from D-21, D-24, D-25 (admin MOCK checks, allergy synonyms, unbookable chef 404) | backend | T-035, T-037, T-039 | todo |
+| T-063 | Booking changes API: cancel, no-show, missed pickup, kitchen-address change, chef-reject cascade (split from T-042) | backend | T-042 | todo |
 | T-062 | UI updates from D-21, D-22, D-25 (admin flag, booked-date 409, chef page 404) | frontend | T-061, T-042 | todo |
 
 ### Phase 5 — Engagement (WO-5)
@@ -212,9 +213,9 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-24 | 2026-10-10 | Allergy matching uses a small fixed synonym and spelling map for the picker allergens (for example gluten and wheat, dairy and lactose and milk, shellfish and shrimp and crustaceans, nuts and peanuts, soya and soy, mollusks and molluscs, sulfites and sulphites), extending A-24 (was Q-20) | Jimmy |
 | D-25 | 2026-10-10 | The public page of a chef with no bookable location option returns the same "not found" as other hidden chefs (was Q-21) | Jimmy |
 | D-26 | 2026-10-10 | Cancelling a booking after at least one day was cooked consumes the free trial; cancelling before any day was cooked releases it (extends A-16; was Q-22) | Jimmy |
-| D-27 | 2026-10-10 | A booking needs at least 24 hours' notice: day 1 must start at least 24 hours after the request is made (no same-day bookings), so the D-19 cap always leaves the chef a fair window (PR #92 review) | Jimmy |
+| D-27 | 2026-10-10 | No same-day bookings: the earliest day 1 is tomorrow (Toronto time). With D-19, a request for tomorrow expires at midnight if the chef has not answered. Replaces the first wording ("24 hours' notice"), which would also have blocked next-day bookings (PR #92 review round 2) | Jimmy |
 | D-28 | 2026-10-10 | A customer may have at most 3 bookings in `requested` state at once (configurable constant); a fourth request gets a clear error (second half of Q-11) | Jimmy |
-| D-29 | 2026-10-10 | Missed pickup (chef's-home bookings, CLAUDE.md §10): the customer can propose a new pickup time no later than the meals' eat-by date and the chef accepts it; if the meals are not picked up by the eat-by date, the chef marks "pickup missed", which counts as a customer no-show (consumes the free trial) | Jimmy |
+| D-29 | 2026-10-10 | Missed pickup (chef's-home bookings, CLAUDE.md §10): the customer can propose a new pickup time no later than the earliest eat-by date of that day's meals (a 0-day dish means same-day pickup only), and the chef accepts or declines it; after a decline the customer may propose again until that deadline. If the meals are not picked up by then, the chef marks "pickup missed": the whole booking becomes a customer no-show (consumes the free trial) and days not yet cooked are cancelled | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
