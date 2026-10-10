@@ -27,6 +27,8 @@ Before starting any agent, the Planner records its status with `--task` and `--p
 - Contract §11 N3 (owner T-063): kitchen-address change during an accepted chef's-home booking.
 - T-041: enable Book when the chef has at least one place to cook; reuse the dish cost and allergen display; keep the "estimate" wording.
 
+- T-061 (owner T-042): search `avoidAllergens` uses the synonym map (D-31); add the D-32 words. (Owner T-062): the mock admin adapter mirrors the rejected-chef 409 and chef's-home-off on reject.
+
 ## Left out
 Messaging, reviews, reports, admin lists (WO-5). Bidi characters (T-060). Hosted seed data (needs Jimmy). Deploy (WO-7).
 
