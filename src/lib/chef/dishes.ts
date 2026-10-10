@@ -159,12 +159,24 @@ export function activeCount(dishes: Pick<Dish, "isActive">[]): number {
   return dishes.filter((d) => d.isActive).length;
 }
 
+/**
+ * A storage object name that stays inside its bucket: no empty or dot segments (the browser
+ * resolves "..", which encodeURIComponent keeps), no backslashes, no control characters.
+ */
+export function isSafeStoragePath(path: string): boolean {
+  if (!path || path.startsWith("/")) return false;
+  if (/[\\\u0000-\u001f\u007f]/.test(path)) return false;
+  return path
+    .split("/")
+    .every((seg) => seg !== "" && seg !== "." && seg !== "..");
+}
+
 /** Public URL of a dish photo (bucket dish-photos is public). Null in mock mode or without config. */
 export function dishPhotoUrl(
   path: string | null,
   supabaseUrl?: string,
 ): string | null {
-  if (!path || !supabaseUrl) return null;
+  if (!path || !supabaseUrl || !isSafeStoragePath(path)) return null;
   const encoded = path.split("/").map(encodeURIComponent).join("/");
   return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/dish-photos/${encoded}`;
 }

@@ -73,7 +73,11 @@ function dish(
   return {
     id: `00000000-0000-4000-8000-${String(chef * 10 + n).padStart(12, "d")}`,
     name,
-    photoPath: null,
+    // A made-up name, never a real file: the page shows its "Photo not available" fallback (MOCK).
+    photoPath:
+      n === 1
+        ? `${uid(chef)}/dish-aaaaaaaa-aaaa-4aaa-8aaa-${String(n).padStart(12, "0")}.png`
+        : null,
     description: `MOCK: ${name}, cooked fresh.`,
     cuisine,
     cookMinutes,
@@ -129,6 +133,8 @@ export const MOCK_CHEFS: MockChef[] = [
     dishes: [
       dish(1, 1, "Pho bo", "Vietnamese", 180, ["soy"]),
       dish(1, 2, "Goi cuon (fresh rolls)", "Vietnamese", 60, ["shellfish"]),
+      dish(1, 3, "Bun cha", "Vietnamese", 120, ["fish", "soy", "sesame"]),
+      dish(1, 4, "Rau muong xao (stir-fried greens)", "Vietnamese", 30, []),
     ],
   }),
   chef(2, {
@@ -262,6 +268,27 @@ for (let i = 1; i <= 14; i++) {
   );
 }
 
+/**
+ * MOCK chef who is approved but cannot be booked yet: she offers only cooking at her own home and
+ * no admin has approved the kitchen (Q-21). Like the real API, search never lists her (it is not
+ * part of MOCK_CHEFS), but her page answers with `locationOptions: []`. Her id is fixed so tests
+ * and demos can open /chefs/<id> directly.
+ */
+export const MOCK_NOT_BOOKABLE_CHEF: MockChef = chef(50, {
+  displayName: "Nadia Petrova (MOCK)",
+  bio: "MOCK: Ukrainian borscht and varenyky. My kitchen has not been reviewed yet.",
+  cuisines: ["Ukrainian"],
+  languages: ["English", "Ukrainian"],
+  hourlyRateCents: 2600,
+  ratingAvg: 0,
+  reviewCount: 0,
+  servicePrefix: "L5C",
+  serviceRadiusKm: 10,
+  locationOptions: ["chef_home"],
+  chefHomeEnabled: false,
+  dishes: [dish(50, 1, "Borscht", "Ukrainian", 120, ["milk"])],
+});
+
 function json(status: number, body: unknown, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -304,7 +331,9 @@ export function searchRoutes(method: string, path: string): Response | null {
     } catch {
       return NOT_FOUND(); // a malformed percent escape is the same 404 as any unknown id
     }
-    const c = UUID.test(id) ? MOCK_CHEFS.find((x) => x.id === id) : undefined;
+    const c = UUID.test(id)
+      ? [...MOCK_CHEFS, MOCK_NOT_BOOKABLE_CHEF].find((x) => x.id === id)
+      : undefined;
     if (!c) return NOT_FOUND();
     return json(200, detailOf(c, today));
   }

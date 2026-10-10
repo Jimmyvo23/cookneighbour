@@ -5,7 +5,7 @@ import type {
   PublicChefSearchResponse,
 } from "@/lib/api/types";
 import { mockFetch } from "@/lib/mocks/mock-adapter";
-import { MOCK_CHEFS } from "@/lib/mocks/mock-search";
+import { MOCK_CHEFS, MOCK_NOT_BOOKABLE_CHEF } from "@/lib/mocks/mock-search";
 import { torontoToday } from "@/lib/domain/dishes";
 
 const H = { "Content-Type": "application/json" };
@@ -192,5 +192,25 @@ describe("MOCK search routes (contract section 7)", () => {
     const d = r.data as PostalPrefixListResponse;
     expect(r.status).toBe(200);
     expect(d.items.find((p) => p.prefix === "L5B")?.city).toBe("Mississauga");
+  });
+
+  it("T-041 demo data: a chef with several allergens and a photo path, a chef's-home chef", async () => {
+    const d = (await get(`/api/chefs/${MOCK_CHEFS[0].id}`))
+      .data as PublicChefDetail;
+    expect(d.dishes.some((x) => x.allergens.length >= 3)).toBe(true);
+    expect(d.dishes.some((x) => x.allergens.length === 0)).toBe(true);
+    expect(d.dishes.some((x) => x.photoPath)).toBe(true);
+    expect(d.locationOptions).toEqual(["customer_home", "chef_home"]);
+  });
+
+  it("T-041 demo data: the not-bookable chef is not in search but her page answers with no options", async () => {
+    const all = await list("?limit=50");
+    expect(all.data.items.map((i) => i.id)).not.toContain(
+      MOCK_NOT_BOOKABLE_CHEF.id,
+    );
+    const r = await get(`/api/chefs/${MOCK_NOT_BOOKABLE_CHEF.id}`);
+    expect(r.status).toBe(200);
+    expect((r.data as PublicChefDetail).locationOptions).toEqual([]);
+    expect(JSON.stringify(r.data)).not.toMatch(/address|phone|email/i);
   });
 });
