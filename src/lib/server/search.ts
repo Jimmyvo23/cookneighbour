@@ -107,7 +107,9 @@ export async function searchChefs(
     .eq("status", "approved")
     .eq("dishes.is_active", true);
   if (query.date) {
-    req = req.eq("availability.day", query.date).eq("availability.available", true);
+    req = req
+      .eq("availability.day", query.date)
+      .eq("availability.available", true);
   }
   const { data, error } = await req.order("profile_id").range(0, MAX_CHEFS - 1);
   if (error || !data) {
