@@ -61,10 +61,12 @@ test("a customer finds a Vietnamese chef in Mississauga (demo step 1) (MOCK)", a
   await expect(page.getByText(/nationality|ethnic/i)).toHaveCount(0);
   await expectNoAxeViolations(page);
 
-  // The result links to the chef page (a placeholder until T-041).
+  // The result links to the chef page (T-041).
   await link.click();
   await expect(page).toHaveURL(/\/chefs\/00000000-/);
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Mai Tran (MOCK)" }),
+  ).toBeVisible();
 });
 
 test("results are nearest first, and chefs out of reach but bookable at home say so (A-18) (MOCK)", async ({

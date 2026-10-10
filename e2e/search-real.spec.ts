@@ -206,6 +206,19 @@ test("a customer finds a Vietnamese chef in Mississauga; a pending chef is not l
   // The result links to the chef page path.
   await page.getByRole("link", { name }).click();
   await expect(page).toHaveURL(new RegExp(`/chefs/${chef.id}$`));
+  await expect(
+    page.getByRole("heading", { level: 1, name, exact: true }),
+  ).toBeVisible();
+
+  // Back to the search keeps the filters (demo step 2 starts from this page).
+  await page.getByRole("link", { name: "Back to the search" }).click();
+  await expect(page.getByLabel("Postal code")).toHaveValue("L5B 1A1");
+  await expect(
+    page.getByLabel("Language the chef speaks (optional)"),
+  ).toHaveValue(word);
+  await expect(page.getByTestId("results-status")).toHaveText(
+    "Showing 1 chef.",
+  );
 
   await chefCtx.dispose();
   await admin.dispose();
@@ -291,4 +304,103 @@ test("the server's field errors show next to the input and focus goes there (lis
     /Showing|No chefs/,
   );
   await expect(postal).not.toHaveAttribute("aria-invalid", "true");
+});
+
+test("a visitor opens an approved chef's page from the real route: profile, dishes, dates, no private data (T-041)", async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
+  const chefCtx = await newContext(playwright, baseURL);
+  const name = `E2E Detail ${uniq()}`;
+  const chef = await createSubmittedChef(chefCtx, name, { chefHome: true });
+  const admin = await adminContext(playwright, baseURL);
+  await approve(admin, chefCtx, chef.id);
+  await approveKitchen(admin, chefCtx, chef.id);
+  // Tick today (the server's Toronto day) so the page has one available day.
+  const win = await (await chefCtx.get("/api/chef/availability")).json();
+  const put = await chefCtx.put("/api/chef/availability", {
+    headers: json,
+    data: { add: [win.today] },
+  });
+  expect(put.status(), await put.text()).toBe(200);
+
+  // A visitor with no account (no cookies) opens the page.
+  await page.goto(`/chefs/${chef.id}`);
+  await expect(
+    page.getByRole("heading", { level: 1, name, exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("$30/hour")).toBeVisible();
+  await expect(page.getByText("Cuisines: Vietnamese")).toBeVisible();
+  await expect(page.getByText("I cook Vietnamese home food.")).toBeVisible();
+
+  // Both cooking places, the kitchen check labelled MOCK.
+  const where = page.getByRole("region", { name: "Where the chef can cook" });
+  await expect(where.getByRole("listitem")).toHaveText([
+    "At your home",
+    "At the chef's home",
+  ]);
+  await expect(where.getByTestId("mock-badge")).toContainText("MOCK");
+
+  // The seeded dish, with its really uploaded photo.
+  const dish = page.getByTestId("dish");
+  await expect(dish).toHaveCount(1);
+  await expect(dish).toContainText("Pho");
+  await expect(dish).toContainText("Cooking time: 2 h");
+  await expect(dish.getByTestId("dish-allergens")).toContainText(
+    "No allergens listed by the chef",
+  );
+  const img = dish.getByRole("img", { name: "Photo of Pho" });
+  await expect(img).toBeVisible();
+  await expect
+    .poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
+    .toBeGreaterThan(0);
+
+  // The ticked day inside the server's window.
+  await expect(page.getByTestId("bookable-date")).toHaveCount(1);
+  await expect(page.locator(`time[datetime="${win.today}"]`)).toBeVisible();
+
+  // The Book entry point is a stub.
+  await expect(page.getByTestId("book-stub")).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+
+  // Nothing private on the page: the kitchen address, the chef's email and the storage paths of
+  // the private files are not in the text.
+  const text = await page.locator("body").innerText();
+  expect(text).not.toContain("1 Fictional Street");
+  expect(text).not.toContain(chef.email);
+  expect(text).not.toContain(chef.idPath);
+  await expectNoAxeViolations(page);
+
+  await chefCtx.dispose();
+  await admin.dispose();
+});
+
+test("a pending chef's URL and an unknown or malformed id all show 'Chef not found' (T-041)", async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
+  const chefCtx = await newContext(playwright, baseURL);
+  const chef = await createSubmittedChef(chefCtx, `E2E Pending ${uniq()}`);
+
+  for (const id of [
+    chef.id, // submitted, not approved
+    crypto.randomUUID(),
+    "not-a-uuid",
+  ]) {
+    await page.goto(`/chefs/${id}`);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Chef not found" }),
+    ).toBeVisible();
+    await expect(page.getByTestId("not-found")).toContainText(
+      "We could not find this chef.",
+    );
+    await expect(page.getByTestId("dish")).toHaveCount(0);
+    expect(await page.locator("body").innerText()).not.toContain(chef.name);
+  }
+  await expectNoAxeViolations(page);
+  await chefCtx.dispose();
 });
