@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-08 (after WO-1, WO-2, WO-3 and the D-17 status rule).
+Last updated: 2026-10-10 (after WO-4a).
 
 ## 1. Office status (Planner and every agent)
 
@@ -36,6 +36,9 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Unsafe text input | Control characters and lone surrogates were accepted | Validate text fields with the shared helpers |
 | Missing MOCK label | (preventive) | Every mocked check status shows a MOCK badge |
 | Pages with private data | (preventive) | Guard on the server, not only in the client |
+| Mock mode reaching hosted services | Mock pages built photo URLs from `NEXT_PUBLIC_SUPABASE_URL` and asked hosted storage for made-up files (T-040) | In mock mode build no storage URLs; mock Playwright specs block `**/storage/v1/object/public/**` |
+| Paths from an API used in URLs | A photo path with `..` could leave the bucket folder in the browser (T-041) | Reject dot segments, empty segments, backslashes and control characters before building a URL |
+| Map markers without a name | Leaflet `divIcon` pins had no accessible name and Enter did nothing (T-040) | Set `aria-label` and a key handler on custom markers |
 
 ## 4. Git and GitHub
 
@@ -44,6 +47,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - Switching branches with local changes: use `git stash`, never copy + `rm`. *(A tracked handoff file was deleted by accident.)*
 - When the main folder is busy on another branch, the agent works in a git worktree. `team-status` is still run from the main project folder.
 - Never push to `main`, never force-push. Never loosen branch protection to go faster.
+- On macOS, `sed -i` needs an empty suffix: `sed -i '' 's/a/b/' file`. *(GNU-style `sed -i` failed during T-040.)*
 
 ## 5. Supabase and secrets
 
