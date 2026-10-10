@@ -23,13 +23,20 @@ const list = async (qs = "") =>
 
 describe("MOCK search routes (contract section 7)", () => {
   it("answers without a session", async () => {
-    const r = await list();
+    const r = await list("?limit=50");
     expect(r.status).toBe(200);
     expect(r.data.items.length).toBe(MOCK_CHEFS.length);
+    expect(r.data.nextCursor).toBeNull();
+  });
+
+  it("the default page has 20 chefs and a cursor for the rest", async () => {
+    const r = await list();
+    expect(r.data.items.length).toBe(20);
+    expect(r.data.nextCursor).toBe("m20");
   });
 
   it("without a location sorts by rating, then name, and has no distance (A-25)", async () => {
-    const { items } = (await list()).data;
+    const { items } = (await list("?limit=50")).data;
     expect(items.every((i) => i.distanceKm === null)).toBe(true);
     const ratings = items.map((i) => i.ratingAvg);
     expect(ratings).toEqual([...ratings].sort((a, b) => b - a));
@@ -135,7 +142,7 @@ describe("MOCK search routes (contract section 7)", () => {
   });
 
   it("ignores empty and unknown parameters", async () => {
-    const r = await list("?cuisine=&nationality=viet&foo=1");
+    const r = await list("?cuisine=&nationality=viet&foo=1&limit=50");
     expect(r.status).toBe(200);
     expect(r.data.items.length).toBe(MOCK_CHEFS.length);
   });

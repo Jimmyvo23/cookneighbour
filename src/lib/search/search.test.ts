@@ -134,8 +134,6 @@ describe("validateSearchForm", () => {
   });
 
   it("rejects a non-GTA or malformed postal code", () => {
-    expect(validateSearchForm(form({ postalCode: "V6B 1A1" }), ctx).postalCode)
-      .toBeTruthy;
     expect(
       validateSearchForm(form({ postalCode: "V6B 1A1" }), ctx).postalCode,
     ).toMatch(/GTA/);

@@ -241,6 +241,27 @@ export const MOCK_CHEFS: MockChef[] = [
   }),
 ];
 
+// More approved chefs so that "Load more" has a second page (the page size is 20). They cook a
+// made-up cuisine, so searches for real cuisines are not affected.
+const FILLER_CITIES = ["L5A", "L5C", "L4W", "L6T", "L4B", "M5V"] as const;
+for (let i = 1; i <= 14; i++) {
+  MOCK_CHEFS.push(
+    chef(100 + i, {
+      displayName: `Extra Cook ${String(i).padStart(2, "0")} (MOCK)`,
+      bio: "MOCK: a filler chef so that the list has more than one page.",
+      cuisines: ["Test Kitchen"],
+      languages: ["English"],
+      hourlyRateCents: 2000 + i * 50,
+      ratingAvg: 3 + (i % 5) / 5,
+      reviewCount: i,
+      servicePrefix: FILLER_CITIES[i % FILLER_CITIES.length],
+      serviceRadiusKm: 40,
+      locationOptions: ["customer_home"],
+      dishes: [dish(100 + i, 1, "Plain rice", "Test Kitchen", 30, [])],
+    }),
+  );
+}
+
 function json(status: number, body: unknown, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(body), {
     status,
