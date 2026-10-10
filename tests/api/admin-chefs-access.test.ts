@@ -195,6 +195,39 @@ describe("GET /api/admin/chefs", () => {
     expect(new Set(all).size).toBe(all.length); // no duplicates across pages
   });
 
+  // D-21(a) (T-061)
+  it("flags an approved chef with a failed MOCK check, and only that chef", async () => {
+    const admin = await newAdmin();
+    const bad = await newChef("Flag bad");
+    const fine = await newChef("Flag fine");
+    const pending = await newChef("Flag pending");
+    for (const c of [bad, fine])
+      await svc
+        .from("chefs")
+        .update({ status: "approved" })
+        .eq("profile_id", c.id);
+    await svc
+      .from("chef_private")
+      .update({ police_check_status: "failed" })
+      .in("chef_id", [bad.id, pending.id]);
+    const r = await admin.b.call(listWith("status=all&limit=50"), {
+      method: "GET",
+    });
+    expect(r.status, r.text).toBe(200);
+    const by = (id: string) =>
+      r.body.items.find((i: { id: string }) => i.id === id);
+    expect(by(bad.id)).toMatchObject({
+      flagged: true,
+      failedChecks: ["police"],
+    });
+    expect(by(fine.id)).toMatchObject({ flagged: false, failedChecks: [] });
+    // A pending chef with a failed check is not flagged (the admin is still deciding).
+    expect(by(pending.id)).toMatchObject({
+      flagged: false,
+      failedChecks: ["police"],
+    });
+  });
+
   it("paginates with an opaque cursor: no gaps, no repeats, nextCursor null at the end", async () => {
     const admin = await newAdmin();
     const made: Chef[] = [];
@@ -327,6 +360,8 @@ describe("GET /api/admin/chefs", () => {
         kitchen: "pending",
         police: "pending",
       },
+      failedChecks: [],
+      flagged: false,
       chefHomeEnabled: false,
       locationOptions: ["customer_home", "chef_home"],
     });
@@ -340,6 +375,145 @@ describe("GET /api/admin/chefs", () => {
       chef.email,
     ])
       expect(text.toLowerCase()).not.toContain(secret.toLowerCase());
+  });
+});
+
+describe("T-061 tester: flagged list items (D-21a, D-21c)", () => {
+  const by = (r: Reply, id: string) =>
+    r.body.items.find((i: { id: string }) => i.id === id);
+
+  it.each([
+    ["id", "id_check_status"],
+    ["foodHandler", "food_handler_status"],
+    ["kitchen", "kitchen_status"],
+    ["police", "police_check_status"],
+  ])(
+    "an approved chef with a failed %s check is flagged",
+    async (name, col) => {
+      const admin = await newAdmin();
+      const c = await newChef(`Flag ${name}`);
+      await svc
+        .from("chefs")
+        .update({ status: "approved" })
+        .eq("profile_id", c.id);
+      await svc
+        .from("chef_private")
+        .update({ [col]: "failed" })
+        .eq("chef_id", c.id);
+      const r = await admin.b.call(listWith("status=all&limit=50"), {
+        method: "GET",
+      });
+      expect(by(r, c.id)).toMatchObject({
+        flagged: true,
+        failedChecks: [name],
+      });
+    },
+  );
+
+  it("a rejected chef with a failed check is not flagged; other statuses stay unchanged", async () => {
+    const admin = await newAdmin();
+    const c = await newChef("Flag rejected");
+    await svc
+      .from("chefs")
+      .update({ status: "rejected" })
+      .eq("profile_id", c.id);
+    await svc
+      .from("chef_private")
+      .update({ id_check_status: "failed", police_check_status: "failed" })
+      .eq("chef_id", c.id);
+    const r = await admin.b.call(listWith("status=all&limit=50"), {
+      method: "GET",
+    });
+    expect(by(r, c.id)).toMatchObject({
+      status: "rejected",
+      flagged: false,
+      failedChecks: ["id", "police"],
+    });
+  });
+
+  it("failing a check through the route on an approved chef flags them but leaves the status approved, and resetting clears the flag", async () => {
+    const admin = await newAdmin();
+    const c = await newChef("Flag via route");
+    await svc
+      .from("chefs")
+      .update({ status: "approved" })
+      .eq("profile_id", c.id);
+    let r = await admin.b.call(checksOf(c.id), {
+      method: "PATCH",
+      body: { policeCheck: "failed" },
+    });
+    expect(r.status, r.text).toBe(200);
+    expect((await chefRow(c.id)).status).toBe("approved");
+    r = await admin.b.call(listWith("status=approved&limit=50"), {
+      method: "GET",
+    });
+    expect(by(r, c.id)).toMatchObject({ status: "approved", flagged: true });
+    // No private data leaks into the list item.
+    const keys = Object.keys(by(r, c.id)).sort();
+    expect(keys).toEqual(
+      [
+        "checks",
+        "chefHomeEnabled",
+        "createdAt",
+        "cuisines",
+        "displayName",
+        "failedChecks",
+        "flagged",
+        "id",
+        "locationOptions",
+        "status",
+      ].sort(),
+    );
+    r = await admin.b.call(checksOf(c.id), {
+      method: "PATCH",
+      body: { policeCheck: "not_started" },
+    });
+    expect(r.status, r.text).toBe(200);
+    r = await admin.b.call(listWith("status=approved&limit=50"), {
+      method: "GET",
+    });
+    expect(by(r, c.id)).toMatchObject({ flagged: false, failedChecks: [] });
+  });
+
+  it("checks=pending still ignores police: a police-only pending or failed chef is not listed, but a flagged one still shows under status=all", async () => {
+    const admin = await newAdmin();
+    const policeOnly = await newChef("Police pending only");
+    const policeFailed = await newChef("Police failed approved");
+    const idPending = await newChef("ID pending (control)");
+    const allVerified = {
+      id_check_status: "verified",
+      food_handler_status: "verified",
+      kitchen_status: "verified",
+    };
+    await svc
+      .from("chef_private")
+      .update({ ...allVerified, police_check_status: "pending" })
+      .eq("chef_id", policeOnly.id);
+    await svc
+      .from("chef_private")
+      .update({ ...allVerified, police_check_status: "failed" })
+      .eq("chef_id", policeFailed.id);
+    await svc
+      .from("chefs")
+      .update({ status: "approved" })
+      .eq("profile_id", policeFailed.id);
+    await svc
+      .from("chef_private")
+      .update({ ...allVerified, id_check_status: "pending" })
+      .eq("chef_id", idPending.id);
+    const pend = await admin.b.call(
+      listWith("status=all&checks=pending&limit=50"),
+      {
+        method: "GET",
+      },
+    );
+    expect(by(pend, policeOnly.id)).toBeUndefined();
+    expect(by(pend, policeFailed.id)).toBeUndefined();
+    expect(by(pend, idPending.id)).toBeDefined();
+    const all = await admin.b.call(listWith("status=all&limit=50"), {
+      method: "GET",
+    });
+    expect(by(all, policeFailed.id)).toMatchObject({ flagged: true });
   });
 });
 

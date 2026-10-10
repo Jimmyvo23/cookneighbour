@@ -25,6 +25,8 @@ import {
   CHECKS_KEYS,
   KITCHEN_REVIEW_KEYS,
   REJECT_KEYS,
+  failedChecks,
+  isFlagged,
   isUuid,
   parseChecksBody,
   parseKitchenReview,
@@ -343,6 +345,8 @@ function listItem(c: MockQueueChef): AdminChefListItem {
     cuisines: c.app.cuisines,
     createdAt: c.createdAt,
     checks: c.app.checks,
+    failedChecks: failedChecks(c.app.checks),
+    flagged: isFlagged(c.app.status, c.app.checks),
     chefHomeEnabled: c.app.chefHomeEnabled,
     locationOptions: c.app.locationOptions,
   };

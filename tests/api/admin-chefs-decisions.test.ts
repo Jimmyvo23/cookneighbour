@@ -506,6 +506,24 @@ describe("POST /api/admin/chefs/:id/reject", () => {
     ]);
   });
 
+  // D-21(d) (T-061)
+  it("rejecting a chef turns chef's home off, and approving again does not bring it back", async () => {
+    const admin = await newAdmin();
+    const chef = await submittedChef({ chefHome: true });
+    await svc
+      .from("chefs")
+      .update({ chef_home_enabled: true })
+      .eq("profile_id", chef.id);
+    const r = await admin.b.call(rejectOf(chef.id), {
+      body: { reason: "The kitchen photos are unclear." },
+    });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.application.chefHomeEnabled).toBe(false);
+    const row = await chefRow(chef.id);
+    expect(row.status).toBe("rejected");
+    expect(row.chef_home_enabled).toBe(false);
+  });
+
   it("an already rejected chef is 409 INVALID_STATE and nothing changes", async () => {
     const admin = await newAdmin();
     const chef = await newChef();

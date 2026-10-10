@@ -39,6 +39,31 @@ const POLICE_STATUSES: PoliceCheckStatus[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Flag for the admin list (D-21a)
+// ---------------------------------------------------------------------------
+export type CheckName = "id" | "foodHandler" | "kitchen" | "police";
+const CHECK_ORDER: CheckName[] = ["id", "foodHandler", "kitchen", "police"];
+
+/** MOCK checks that are currently `failed`, in a fixed order. */
+export function failedChecks(
+  checks: Record<CheckName, MockCheckStatus | PoliceCheckStatus>,
+): CheckName[] {
+  return CHECK_ORDER.filter((k) => checks[k] === "failed");
+}
+
+/**
+ * D-21(a): an admin may reset a MOCK check at any time and an approved chef's status does not
+ * change when a check fails, so the list flags an approved chef with any failed check (MOCK) for
+ * the admin to look at.
+ */
+export function isFlagged(
+  status: ChefStatus,
+  checks: Record<CheckName, MockCheckStatus | PoliceCheckStatus>,
+): boolean {
+  return status === "approved" && failedChecks(checks).length > 0;
+}
+
+// ---------------------------------------------------------------------------
 // GET /api/admin/chefs query
 // ---------------------------------------------------------------------------
 export interface ListCursor {
