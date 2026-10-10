@@ -195,6 +195,39 @@ describe("GET /api/admin/chefs", () => {
     expect(new Set(all).size).toBe(all.length); // no duplicates across pages
   });
 
+  // D-21(a) (T-061)
+  it("flags an approved chef with a failed MOCK check, and only that chef", async () => {
+    const admin = await newAdmin();
+    const bad = await newChef("Flag bad");
+    const fine = await newChef("Flag fine");
+    const pending = await newChef("Flag pending");
+    for (const c of [bad, fine])
+      await svc
+        .from("chefs")
+        .update({ status: "approved" })
+        .eq("profile_id", c.id);
+    await svc
+      .from("chef_private")
+      .update({ police_check_status: "failed" })
+      .in("chef_id", [bad.id, pending.id]);
+    const r = await admin.b.call(listWith("status=all&limit=50"), {
+      method: "GET",
+    });
+    expect(r.status, r.text).toBe(200);
+    const by = (id: string) =>
+      r.body.items.find((i: { id: string }) => i.id === id);
+    expect(by(bad.id)).toMatchObject({
+      flagged: true,
+      failedChecks: ["police"],
+    });
+    expect(by(fine.id)).toMatchObject({ flagged: false, failedChecks: [] });
+    // A pending chef with a failed check is not flagged (the admin is still deciding).
+    expect(by(pending.id)).toMatchObject({
+      flagged: false,
+      failedChecks: ["police"],
+    });
+  });
+
   it("paginates with an opaque cursor: no gaps, no repeats, nextCursor null at the end", async () => {
     const admin = await newAdmin();
     const made: Chef[] = [];

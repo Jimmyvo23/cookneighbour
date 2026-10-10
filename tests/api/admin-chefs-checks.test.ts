@@ -622,6 +622,55 @@ describe("POST /api/admin/chefs/:id/kitchen-review (MOCK)", () => {
     expect((await chefRow(full.id)).chef_home_enabled).toBe(false);
   });
 
+  // D-21(b) (T-061): only a pending or approved chef can have a kitchen reviewed.
+  it("a rejected chef's kitchen cannot be reviewed (409), approve or reject, and nothing changes", async () => {
+    const admin = await newAdmin();
+    const { chef, photos, address } = await kitchenChef();
+    await svc
+      .from("chefs")
+      .update({ status: "rejected" })
+      .eq("profile_id", chef.id);
+    const before = await privRow(chef.id);
+    for (const decision of ["approve", "reject"]) {
+      const r = await review(
+        chef.id,
+        {
+          decision,
+          note: "Checked the photos.",
+          reviewedPhotoPaths: photos,
+          reviewedAddress: address,
+        },
+        admin,
+      );
+      expect(r.status, `${decision}: ${r.text}`).toBe(409);
+      expect(r.body.error.code).toBe("INVALID_STATE");
+      expect(r.body.error.message).toMatch(/pending or approved/);
+    }
+    const after = await privRow(chef.id);
+    expect(after.kitchen_status).toBe(before.kitchen_status);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(false);
+    expect(await notificationsOf(chef.id)).toEqual([]);
+  });
+  it("an approved chef's kitchen can still be reviewed", async () => {
+    const admin = await newAdmin();
+    const { chef, photos, address } = await kitchenChef();
+    await svc
+      .from("chefs")
+      .update({ status: "approved" })
+      .eq("profile_id", chef.id);
+    const r = await review(
+      chef.id,
+      {
+        decision: "approve",
+        reviewedPhotoPaths: photos,
+        reviewedAddress: address,
+      },
+      admin,
+    );
+    expect(r.status, r.text).toBe(200);
+    expect((await chefRow(chef.id)).chef_home_enabled).toBe(true);
+  });
+
   it("a later kitchen change by the chef switches chef's home off again and resets the check", async () => {
     const admin = await newAdmin();
     const { chef, photos, address } = await kitchenChef();
