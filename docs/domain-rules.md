@@ -8,7 +8,7 @@ Pure functions in `src/lib/domain/`, no I/O. Constants live in `config.ts`; ever
 | `pricing.ts` | `estimateBooking`: per-day and total time, labour, ingredients, travel (customer's home only, per visit day), platform fee (shown, not collected, not added to the total), free trial waives labour only |
 | `visitLimit.ts` | 6-hour soft limit warning per day |
 | `bookingValidation.ts` | `validateBooking`: 1-3 days, dates, D-15 window, availability, double booking (A-9), location rules, service area, dishes, soft limit, intake and allergy acknowledgement; returns every error code |
-| `allergy.ts` | Intake allergies vs dish allergens (cautious match, no synonyms) |
+| `allergy.ts` | Intake allergies vs dish allergens (cautious match plus a fixed synonym and spelling map, D-24) |
 | `receipt.ts` | Flag when the receipt differs from the estimate by more than max(15%, $5), A-15 |
 | `cancellation.ts` | 48 h free cancellation from 00:00 Toronto on day 1; `freeTrialEffect(status)` hold / consume / release |
 | `freeTrial.ts` | `evaluateFreeTrial` (blocked by a held or consumed claim with the same customer, phone hash or address hash; released never blocks) and `transitionFreeTrial` (state machine; asks `freeTrialEffect` what an outcome means) |

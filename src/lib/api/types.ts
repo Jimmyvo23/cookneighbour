@@ -324,7 +324,7 @@ export interface AdminChefListItem {
   cuisines: string[];
   createdAt: string;
   checks: ChefApplication["checks"];
-  /** MOCK checks that are `failed`, in the order id, foodHandler, kitchen, police (contract v1.3). */
+  /** MOCK checks that are `failed`, in the order id, foodHandler, kitchen, police (contract v1.3.1). */
   failedChecks: ("id" | "foodHandler" | "kitchen" | "police")[];
   /** True when the chef is `approved` and `failedChecks` is not empty (D-21). */
   flagged: boolean;
