@@ -102,6 +102,8 @@ describe("mergeItems", () => {
     cuisines: [],
     createdAt: "2026-10-01T00:00:00Z",
     checks: app().checks,
+    failedChecks: [],
+    flagged: false,
     chefHomeEnabled: false,
     locationOptions: ["customer_home"],
   });

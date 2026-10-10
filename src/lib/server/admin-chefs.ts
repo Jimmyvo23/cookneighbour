@@ -25,6 +25,8 @@ import type {
 } from "@/lib/api/types";
 import {
   encodeCursor,
+  failedChecks,
+  isFlagged,
   isUuid,
   type ParsedChecks,
   type ParsedKitchenReview,
@@ -87,20 +89,24 @@ const LIST_COLUMNS =
 function mapListItem(r: Row): AdminChefListItem {
   const raw = r.chef_private;
   const p = (Array.isArray(raw) ? raw[0] : raw) as Row;
+  const checks = {
+    id: p.id_check_status as ChefApplication["checks"]["id"],
+    foodHandler:
+      p.food_handler_status as ChefApplication["checks"]["foodHandler"],
+    kitchen: p.kitchen_status as ChefApplication["checks"]["kitchen"],
+    police: p.police_check_status as ChefApplication["checks"]["police"],
+  };
+  const status = r.status as AdminChefListItem["status"];
   return {
     id: r.profile_id as string,
     displayName: r.display_name as string,
-    status: r.status as AdminChefListItem["status"],
+    status,
     cuisines: (r.cuisines as string[]) ?? [],
     createdAt: new Date(r.created_at as string).toISOString(),
     // MOCK statuses.
-    checks: {
-      id: p.id_check_status as ChefApplication["checks"]["id"],
-      foodHandler:
-        p.food_handler_status as ChefApplication["checks"]["foodHandler"],
-      kitchen: p.kitchen_status as ChefApplication["checks"]["kitchen"],
-      police: p.police_check_status as ChefApplication["checks"]["police"],
-    },
+    checks,
+    failedChecks: failedChecks(checks),
+    flagged: isFlagged(status, checks),
     chefHomeEnabled: r.chef_home_enabled as boolean,
     locationOptions: r.location_options as AdminChefListItem["locationOptions"],
   };
@@ -341,6 +347,14 @@ export async function reviewKitchen(
       throw new ApiFailure(
         "INVALID_STATE",
         "The kitchen photos or address changed after you opened them. Reload the application and review them again.",
+      );
+    case "invalid_state":
+      // D-21(b): only pending or approved chefs can have a kitchen reviewed.
+      throw new ApiFailure(
+        "INVALID_STATE",
+        r.status === "rejected"
+          ? "This application was rejected. The kitchen can only be reviewed for a pending or approved chef."
+          : "The kitchen can only be reviewed for a pending or approved chef.",
       );
     case "not_offered":
       throw new ApiFailure(

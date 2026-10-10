@@ -4,6 +4,8 @@ import {
   KITCHEN_REVIEW_KEYS,
   REJECT_KEYS,
   decodeCursor,
+  failedChecks,
+  isFlagged,
   encodeCursor,
   parseChecksBody,
   parseKitchenReview,
@@ -305,5 +307,34 @@ describe("parseKitchenReview", () => {
     expect([...KITCHEN_REVIEW_KEYS].sort()).toEqual(
       ["decision", "note", "reviewedAddress", "reviewedPhotoPaths"].sort(),
     );
+  });
+});
+
+// D-21(a) (T-061): an approved chef with any MOCK check `failed` is flagged in the admin list.
+describe("failedChecks and isFlagged (D-21)", () => {
+  const ok = {
+    id: "verified",
+    foodHandler: "verified",
+    kitchen: "not_started",
+    police: "not_started",
+  } as const;
+  it("lists the failed checks in a fixed order", () => {
+    expect(failedChecks(ok)).toEqual([]);
+    expect(failedChecks({ ...ok, police: "failed", id: "failed" })).toEqual([
+      "id",
+      "police",
+    ]);
+    expect(failedChecks({ ...ok, kitchen: "failed" })).toEqual(["kitchen"]);
+    expect(failedChecks({ ...ok, foodHandler: "failed" })).toEqual([
+      "foodHandler",
+    ]);
+  });
+  it("flags only an approved chef with a failed check", () => {
+    const bad = { ...ok, id: "failed" } as const;
+    expect(isFlagged("approved", bad)).toBe(true);
+    expect(isFlagged("pending", bad)).toBe(false);
+    expect(isFlagged("rejected", bad)).toBe(false);
+    expect(isFlagged("approved", ok)).toBe(false);
+    expect(isFlagged("approved", { ...ok, police: "failed" })).toBe(true);
   });
 });
