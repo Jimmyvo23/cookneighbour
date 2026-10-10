@@ -28,6 +28,8 @@ export type ApiErrorCode =
   | "PHONE_NOT_SUBMITTED" // 409
   | "PHONE_NOT_VERIFIED" // 409
   | "INVALID_STATE" // 409 action not allowed in the current status
+  | "ADDRESS_NOT_SET" // 409 no usable home address saved (free trial, T-038)
+  | "FREE_TRIAL_USED" // 409 free first booking not available (generic on purpose, T-038)
   | "APPLICATION_INCOMPLETE" // 409 approve/submit with missing items
   | "VALIDATION_FAILED" // 422 see fields
   | "INVALID_CREDENTIALS" // 401 login only
