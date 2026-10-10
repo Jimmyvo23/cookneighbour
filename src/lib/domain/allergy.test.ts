@@ -28,6 +28,7 @@ describe("findAllergyConflicts", () => {
       },
     ]);
     expect(findAllergyConflicts("tree nut", [satay])[0].allergens).toEqual([
+      "peanuts",
       "tree nuts",
     ]);
   });
