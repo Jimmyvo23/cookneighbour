@@ -26,6 +26,7 @@ import {
   type ParsedDish,
 } from "@/lib/domain/dishes";
 import type { ChefCaller } from "@/lib/server/chef-application";
+import { sweepExpired } from "@/lib/server/bookings";
 import { objectExists } from "@/lib/server/storage";
 
 type Row = Record<string, unknown>;
@@ -217,6 +218,27 @@ export async function setAvailability(
   if (Object.keys(req.errors).length) throw validationFailed(req.errors);
   const typed: SetAvailabilityRequest = { add: req.add, remove: req.remove };
 
+  // D-22 (T-042): a date with a requested or accepted booking cannot be cleared. Checked first, so
+  // a refusal saves nothing. The check and the delete are one database function that locks the
+  // availability rows before it looks at bookings (a booking being created holds them too).
+  // Stale (expired, not yet swept) requests are expired first so they do not block.
+  if (typed.remove && typed.remove.length > 0) {
+    await sweepExpired(chef.admin, chef.userId);
+    const r = await chef.admin.rpc("chef_remove_availability", {
+      p_chef: chef.userId,
+      p_days: typed.remove,
+    });
+    if (r.error)
+      throw new Error(`availability delete failed: ${r.error.message}`);
+    const out = r.data as { result: string; dates?: string[] };
+    if (out.result === "booked")
+      throw new ApiFailure(
+        "DATE_BOOKED",
+        "A booking is waiting or accepted on that date, so it cannot be cleared.",
+        { dates: out.dates ?? [] },
+      );
+  }
+
   // Disjoint sets and idempotent statements: a failure between the two is fixed by sending the
   // same request again.
   if (typed.add && typed.add.length > 0) {
@@ -230,15 +252,6 @@ export async function setAvailability(
     );
     if (r.error)
       throw new Error(`availability upsert failed: ${r.error.message}`);
-  }
-  if (typed.remove && typed.remove.length > 0) {
-    const r = await chef.admin
-      .from("availability")
-      .delete()
-      .eq("chef_id", chef.userId)
-      .in("day", typed.remove);
-    if (r.error)
-      throw new Error(`availability delete failed: ${r.error.message}`);
   }
   return readAvailability(chef, now);
 }

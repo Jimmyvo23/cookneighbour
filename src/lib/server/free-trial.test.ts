@@ -37,6 +37,23 @@ class FakeDb {
       return "free_trial_one_per_address";
     return null;
   }
+  /** Stand-in for the SQL function record_free_trial_block (one row per customer and reason). */
+  rpc(name: string, args: Row) {
+    if (name !== "record_free_trial_block")
+      throw new Error(`unexpected rpc ${name}`);
+    const rows = this.t.free_trial_blocks;
+    const ex = rows.find(
+      (b) => b.customer_id === args.p_customer && b.reason === args.p_reason,
+    );
+    if (ex) ex.attempts = (ex.attempts ?? 1) + 1;
+    else
+      rows.push({
+        customer_id: args.p_customer,
+        reason: args.p_reason,
+        attempts: 1,
+      });
+    return Promise.resolve({ data: null, error: null });
+  }
   from(table: string) {
     const rows = this.t[table];
     const filters: ((r: Row) => boolean)[] = [];
