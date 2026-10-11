@@ -138,7 +138,10 @@ async function run(
       });
       throw new ApiFailure(err.code, err.message, {
         ...err.extra,
-        latest: typeof out.latest === "string" ? out.latest : undefined,
+        latest:
+          typeof out.latest === "string"
+            ? new Date(out.latest).toISOString()
+            : undefined,
       });
     }
     default:

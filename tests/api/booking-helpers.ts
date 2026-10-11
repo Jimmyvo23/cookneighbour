@@ -211,7 +211,8 @@ export const decline = (
 const withDay = (id: string, dayNumber: string) => ({
   params: Promise.resolve({ id, dayNumber }),
 });
-/** Cancel; pass `body: undefined` for a request with no body at all. */
+/** Pass as the body of `cancel` for a request with no body at all. */
+export const NO_BODY = Symbol("no body");
 export const cancel = (
   b: Browser,
   id: string,
@@ -219,7 +220,7 @@ export const cancel = (
 ): Promise<Reply> =>
   b.call(
     (r) => cancelRoute(r, withId(id)),
-    body === undefined ? { noBody: true } : { body },
+    body === NO_BODY ? { noBody: true } : { body },
   );
 export const noShow = (b: Browser, id: string): Promise<Reply> =>
   b.call((r) => noShowRoute(r, withId(id)));

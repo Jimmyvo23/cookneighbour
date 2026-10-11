@@ -21,6 +21,7 @@ import {
   day,
   getBooking,
   missed,
+  NO_BODY,
   noShow,
   notesFor,
   propose,
@@ -105,7 +106,7 @@ describe("POST /api/bookings/:id/cancel", () => {
 
   it("a customer may cancel a request that is still waiting; the chef sees it", async () => {
     const { chef, cust, id } = await setup({ requestedOnly: true });
-    const r = await cancel(cust.b, id, undefined);
+    const r = await cancel(cust.b, id, NO_BODY);
     expect(r.status, r.text).toBe(200);
     expect(r.body).toMatchObject({ status: "cancelled", cancelReason: null });
     expect((await getBooking(chef.b, id)).body.status).toBe("cancelled");
@@ -159,7 +160,7 @@ describe("POST /api/bookings/:id/cancel", () => {
 
   it("refuses when every remaining visit has passed", async () => {
     const { cust, id } = await setup({ offsets: [3] });
-    await shiftDays(id, 5);
+    await shiftDays(id, 4); // yesterday: over, but not yet auto-completed
     const r = await cancel(cust.b, id);
     expect(r.status).toBe(409);
     expect(r.body.error.reason).toBe("nothing_left");
@@ -456,6 +457,7 @@ describe("missed pickup (D-29), chef's-home bookings", () => {
   it("a meal with a 0-day shelf life can only be picked up on the cooking day", async () => {
     const { chef, cust, id } = await setup({ home: true, shelf: 0 });
     await shiftDays(id, 3);
+    await setEatBy(id, 0); // a 0-day dish is eat-by the cooking day (today after the shift)
     await cooked(chef.b, id, 1);
     const r = await propose(cust.b, id, 1, { proposedAt: later_(2) });
     expect(r.status).toBe(422);
