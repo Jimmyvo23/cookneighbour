@@ -1,0 +1,290 @@
+// T-063: the database side of the booking changes (migration 20261011200000).
+// - change_booking and the sweep are server-only; so are the time helpers.
+// - pickup_proposals are visible to the two parties and admin only, and nobody writes them from a browser.
+// - booking_flags (D-22) are admin only.
+// - The SQL cancellation timing equals the TypeScript rule at the boundary (A-22).
+import pg from "pg";
+import { beforeAll, describe, expect, inject, it } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { cancellationTiming } from "@/lib/domain/cancellation";
+import {
+  anonClient,
+  clientFor,
+  dayPlus,
+  expectDenied,
+  expectNoRows,
+  expectRows,
+  localEnv,
+  makeBooking,
+  makeChef,
+  makeCustomer,
+  serviceClient,
+} from "./helpers";
+
+const fx = inject("fx");
+const svc = serviceClient();
+const todayTo = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Toronto",
+}).format(new Date());
+const far = (n: number) => dayPlus(todayTo, 10 + n);
+
+const SERVER_ONLY = [
+  "change_booking",
+  "sweep_booking_changes",
+  "booking_cancellation_timing",
+  "booking_pickup_end",
+  "booking_auto_complete_at",
+];
+
+describe("booking-change functions are server-only", () => {
+  let clients: [string, SupabaseClient][];
+  beforeAll(async () => {
+    clients = [
+      ["anon", anonClient()],
+      ["admin", await clientFor(fx.admin)],
+      ["customer", await clientFor(fx.c1)],
+      ["chef", await clientFor(fx.h1)],
+    ];
+  });
+
+  it("no browser role can call them, not even with their own ids", async () => {
+    const chef = await makeChef(svc, "bc-fn-chef");
+    const cust = await makeCustomer(svc, "bc-fn-cust");
+    const b = await makeBooking(svc, {
+      customer: cust,
+      chef,
+      dates: [far(1)],
+      status: "accepted",
+    });
+    const calls: [string, Record<string, unknown>][] = [
+      [
+        "change_booking",
+        {
+          p_booking: b.id,
+          p_actor: cust.id,
+          p_action: "cancel",
+          p_args: { free_hours: 48 },
+        },
+      ],
+      ["sweep_booking_changes", { p_user: null }],
+      [
+        "booking_cancellation_timing",
+        {
+          p_first_day: far(1),
+          p_at: new Date().toISOString(),
+          p_free_hours: 48,
+        },
+      ],
+      ["booking_pickup_end", { p_eat_by: far(1) }],
+      ["booking_auto_complete_at", { p_booking: b.id }],
+    ];
+    for (const [who, c] of clients)
+      for (const [fn, args] of calls) {
+        const res = await c.rpc(fn, args);
+        expectDenied(res);
+        expect(res.data, `${who} ${fn}`).toBeFalsy();
+      }
+    const row = await svc
+      .from("bookings")
+      .select("status")
+      .eq("id", b.id)
+      .single();
+    expect(row.data?.status).toBe("accepted");
+  });
+
+  it("they are SECURITY INVOKER with a fixed search_path, no PUBLIC execute, and the service role can run them", async () => {
+    const client = new pg.Client({ connectionString: localEnv().dbUrl });
+    await client.connect();
+    try {
+      const res = await client.query(
+        `select p.proname, p.prosecdef, p.proconfig,
+                has_function_privilege('public', p.oid, 'EXECUTE') as public_exec,
+                has_function_privilege('anon', p.oid, 'EXECUTE') as anon_exec,
+                has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth_exec,
+                has_function_privilege('service_role', p.oid, 'EXECUTE') as service_exec
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+          where p.proname = any ($1) order by p.proname`,
+        [[...SERVER_ONLY, "answer_booking", "admin_reject_chef"]],
+      );
+      expect(res.rows.map((r) => r.proname)).toEqual(
+        [...SERVER_ONLY, "answer_booking", "admin_reject_chef"].sort(),
+      );
+      for (const r of res.rows) {
+        expect(r.prosecdef, r.proname).toBe(false);
+        expect(r.proconfig, r.proname).toContain('search_path=""');
+        expect(r.public_exec, r.proname).toBe(false);
+        expect(r.anon_exec, r.proname).toBe(false);
+        expect(r.auth_exec, r.proname).toBe(false);
+        expect(r.service_exec, r.proname).toBe(true);
+      }
+    } finally {
+      await client.end();
+    }
+  });
+});
+
+describe("pickup_proposals and booking_flags: who can read, nobody writes from a browser", () => {
+  it("parties and admin read proposals; strangers and anon do not; browsers cannot write", async () => {
+    const chef = await makeChef(svc, "bc-pp-chef");
+    const cust = await makeCustomer(svc, "bc-pp-cust");
+    const b = await makeBooking(svc, {
+      customer: cust,
+      chef,
+      dates: [far(2)],
+      status: "accepted",
+      location: "chef_home",
+    });
+    const ins = await svc
+      .from("pickup_proposals")
+      .insert({
+        booking_id: b.id,
+        booking_day_id: b.dayIds[0],
+        proposed_by: cust.id,
+        proposed_at: new Date(Date.now() + 3600_000).toISOString(),
+      })
+      .select("id");
+    expect(ins.error).toBeNull();
+    const id = (ins.data as { id: string }[])[0].id;
+
+    const asCust = await clientFor(cust);
+    const asChef = await clientFor(chef);
+    const asAdmin = await clientFor(fx.admin);
+    const stranger = await clientFor(fx.c1);
+    const otherChef = await clientFor(fx.h1);
+    for (const c of [asCust, asChef, asAdmin])
+      expectRows(await c.from("pickup_proposals").select("id").eq("id", id), 1);
+    for (const c of [stranger, otherChef, anonClient()])
+      expectNoRows(await c.from("pickup_proposals").select("id").eq("id", id));
+
+    for (const c of [asCust, asChef, asAdmin, stranger]) {
+      expectDenied(
+        await c
+          .from("pickup_proposals")
+          .insert({
+            booking_id: b.id,
+            booking_day_id: b.dayIds[0],
+            proposed_by: cust.id,
+            proposed_at: new Date(Date.now() + 7200_000).toISOString(),
+          })
+          .select("id"),
+      );
+      expectDenied(
+        await c
+          .from("pickup_proposals")
+          .update({ status: "accepted" })
+          .eq("id", id)
+          .select("id"),
+      );
+    }
+    const row = await svc
+      .from("pickup_proposals")
+      .select("status")
+      .eq("id", id)
+      .single();
+    expect(row.data?.status).toBe("proposed");
+  });
+
+  it("at most one live proposal per day (unique index backstop)", async () => {
+    const chef = await makeChef(svc, "bc-uq-chef");
+    const cust = await makeCustomer(svc, "bc-uq-cust");
+    const b = await makeBooking(svc, {
+      customer: cust,
+      chef,
+      dates: [far(3)],
+      status: "accepted",
+      location: "chef_home",
+    });
+    const row = {
+      booking_id: b.id,
+      booking_day_id: b.dayIds[0],
+      proposed_by: cust.id,
+      proposed_at: new Date(Date.now() + 3600_000).toISOString(),
+    };
+    expect((await svc.from("pickup_proposals").insert(row)).error).toBeNull();
+    const dup = await svc.from("pickup_proposals").insert(row);
+    expect(dup.error?.code).toBe("23505");
+    // A declined or void one does not count.
+    await svc
+      .from("pickup_proposals")
+      .update({ status: "declined" })
+      .eq("booking_id", b.id);
+    expect((await svc.from("pickup_proposals").insert(row)).error).toBeNull();
+  });
+
+  it("booking_flags are admin only", async () => {
+    const chef = await makeChef(svc, "bc-fl-chef");
+    const cust = await makeCustomer(svc, "bc-fl-cust");
+    const b = await makeBooking(svc, {
+      customer: cust,
+      chef,
+      dates: [far(4)],
+      status: "accepted",
+    });
+    expect(
+      (
+        await svc
+          .from("booking_flags")
+          .insert({ booking_id: b.id, reason: "chef_rejected" })
+      ).error,
+    ).toBeNull();
+    expectRows(
+      await (
+        await clientFor(fx.admin)
+      )
+        .from("booking_flags")
+        .select("booking_id")
+        .eq("booking_id", b.id),
+      1,
+    );
+    for (const c of [
+      await clientFor(cust),
+      await clientFor(chef),
+      anonClient(),
+    ]) {
+      expectNoRows(
+        await c
+          .from("booking_flags")
+          .select("booking_id")
+          .eq("booking_id", b.id),
+      );
+      expectDenied(
+        await c
+          .from("booking_flags")
+          .insert({ booking_id: b.id, reason: "chef_rejected" })
+          .select("booking_id"),
+      );
+    }
+  });
+});
+
+describe("the SQL time rules equal the TypeScript ones", () => {
+  it("cancellation timing agrees at the 48-hour boundary, across a daylight-saving change", async () => {
+    const client = new pg.Client({ connectionString: localEnv().dbUrl });
+    await client.connect();
+    try {
+      for (const first of ["2026-10-20", "2026-11-02", "2027-03-15"]) {
+        const cutoff = cancellationTiming({
+          now: new Date(),
+          firstVisitDate: first,
+          cancelledBy: "customer",
+        }).freeUntil.getTime();
+        for (const off of [-3_600_000, -1000, 0, 1000, 3_600_000]) {
+          const at = new Date(cutoff + off);
+          const r = await client.query(
+            "select public.booking_cancellation_timing($1::date, $2::timestamptz, 48) as t",
+            [first, at.toISOString()],
+          );
+          expect(r.rows[0].t, `${first} ${off}`).toBe(
+            cancellationTiming({
+              now: at,
+              firstVisitDate: first,
+              cancelledBy: "customer",
+            }).timing,
+          );
+        }
+      }
+    } finally {
+      await client.end();
+    }
+  });
+});

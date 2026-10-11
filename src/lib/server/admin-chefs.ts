@@ -39,6 +39,7 @@ import {
   toApplication,
   type ChefState,
 } from "@/lib/server/chef-application";
+import { releaseCancelledClaims } from "@/lib/server/free-trial";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Row = Record<string, unknown>;
@@ -282,6 +283,14 @@ export async function rejectChef(
   switch (r.result) {
     case "ok":
       logDecision("rejected chef", a.userId, id);
+      // D-22: the database function already cancelled the chef's open requests (and flagged the
+      // accepted bookings) in the same transaction. Their free-trial claims follow the saved
+      // status now (release: no day was cooked); a failure is logged and repaired by the next
+      // sweep of either party, so the reject itself never fails because of it.
+      await releaseCancelledClaims(
+        a.admin,
+        (r.cancelled as string[] | undefined) ?? [],
+      );
       return actionResult(a, id);
     case "not_found":
       throw notFound();

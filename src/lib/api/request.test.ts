@@ -4,6 +4,7 @@ import { errorResponse, ApiFailure, handle } from "./errors";
 import {
   clientIp,
   readJsonObject,
+  readOptionalJsonObject,
   rejectUnknownKeys,
   requireJson,
 } from "./request";
@@ -137,4 +138,33 @@ describe("clientIp", () => {
     expect(clientIp(r)).toBe("1.2.3.4");
     expect(clientIp(new Request("http://x"))).toBe("unknown");
   });
+});
+
+describe("readOptionalJsonObject (cancel has an optional body)", () => {
+  it("an empty or blank body is {}", async () => {
+    expect(await readOptionalJsonObject(req("application/json", ""))).toEqual(
+      {},
+    );
+    expect(
+      await readOptionalJsonObject(req("application/json", "  \n")),
+    ).toEqual({});
+  });
+  it("a JSON object is returned", async () => {
+    expect(
+      await readOptionalJsonObject(req("application/json", '{"reason":"x"}')),
+    ).toEqual({ reason: "x" });
+  });
+  it("still needs the JSON content type, even with an empty body", async () => {
+    await expect(readOptionalJsonObject(req("text/plain", ""))).rejects.toThrow(
+      ApiFailure,
+    );
+  });
+  it.each(["[1]", "null", "5", '"x"', "{bad"])(
+    "rejects %s with 400",
+    async (b) => {
+      await expect(
+        readOptionalJsonObject(req("application/json", b)),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    },
+  );
 });

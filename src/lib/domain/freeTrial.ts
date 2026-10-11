@@ -8,7 +8,11 @@
 //
 // What each booking outcome does to the claim is NOT written here: it comes from
 // `freeTrialEffect` in cancellation.ts (A-16), the single source for hold / consume / release.
-import { freeTrialEffect, type FreeTrialEvent } from "./cancellation.ts";
+import {
+  freeTrialEffect,
+  type FreeTrialContext,
+  type FreeTrialEvent,
+} from "./cancellation.ts";
 
 export type FreeTrialState = "held" | "consumed" | "released";
 export type FreeTrialBlockReason = "customer" | "phone" | "address";
@@ -62,8 +66,9 @@ export type Transition =
 export function transitionFreeTrial(
   state: FreeTrialState,
   event: FreeTrialEvent,
+  ctx: FreeTrialContext = {},
 ): Transition {
-  const effect = freeTrialEffect(event);
+  const effect = freeTrialEffect(event, ctx);
   if (effect === "hold")
     return state === "held"
       ? { kind: "noop", state }

@@ -45,6 +45,11 @@ export interface FreeTrialDeps {
   db?: SupabaseClient;
   /** Defaults to HASH_PEPPER. */
   pepper?: string;
+  /**
+   * D-26, used by applyFreeTrialEvent for a cancellation: whether any day of the booking was
+   * cooked. When left out, the booking's days are read (booking_days.cooked_at).
+   */
+  anyDayCooked?: boolean;
 }
 
 export const FREE_TRIAL_USED_MESSAGE =
@@ -337,7 +342,21 @@ export async function applyFreeTrialEvent(
   if (cur.error) throw new Error(`claim lookup failed: ${cur.error.message}`);
   if (!cur.data) return { changed: false, state: null };
 
-  const t = transitionFreeTrial(cur.data.state as FreeTrialState, event);
+  // D-26: only a cancellation depends on the cooked marker; read it when the caller did not say.
+  let anyDayCooked = deps.anyDayCooked;
+  if (event === "cancelled" && anyDayCooked === undefined) {
+    const c = await db
+      .from("booking_days")
+      .select("id")
+      .eq("booking_id", bookingId)
+      .not("cooked_at", "is", null)
+      .limit(1);
+    if (c.error) throw new Error(`cooked lookup failed: ${c.error.message}`);
+    anyDayCooked = (c.data ?? []).length > 0;
+  }
+  const ctx = { anyDayCooked };
+
+  const t = transitionFreeTrial(cur.data.state as FreeTrialState, event, ctx);
   if (t.kind === "invalid") throw invalidTransition();
   if (t.kind === "noop") return { changed: false, state: t.state };
 
@@ -358,7 +377,11 @@ export async function applyFreeTrialEvent(
     .maybeSingle();
   if (now.error) throw new Error(`claim lookup failed: ${now.error.message}`);
   if (!now.data) return { changed: false, state: null };
-  const again = transitionFreeTrial(now.data.state as FreeTrialState, event);
+  const again = transitionFreeTrial(
+    now.data.state as FreeTrialState,
+    event,
+    ctx,
+  );
   if (again.kind === "noop") return { changed: false, state: again.state };
   throw invalidTransition();
 }
@@ -368,4 +391,25 @@ function invalidTransition() {
     "INVALID_STATE",
     "The free first booking was already decided differently for this booking.",
   );
+}
+
+/**
+ * D-22: after an admin rejects a chef, the database function has already cancelled the chef's open
+ * requests. Their claims follow the saved status here (no day was cooked: release). A failure is
+ * logged and repaired by the next sweep of either party, so the reject never fails because of it.
+ */
+export async function releaseCancelledClaims(
+  db: SupabaseClient,
+  bookingIds: readonly string[],
+): Promise<void> {
+  for (const id of bookingIds) {
+    try {
+      await applyFreeTrialEvent(id, "cancelled", { db, anyDayCooked: false });
+    } catch (e) {
+      console.error(
+        "free-trial: release after reject failed:",
+        e instanceof Error ? e.message : "unknown",
+      );
+    }
+  }
 }

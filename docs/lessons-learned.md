@@ -73,3 +73,4 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - Hand over handoff files instead of re-explaining in chat.
 - Batch small review fixes into one round instead of one push per fix.
 - Keep Builder → Tester → Reviewer on every task. Skipping steps has never saved time here; it only moves bugs later.
+- **Lock order across database functions (T-063).** When two functions lock a chef row and a booking row, they must take them in the same order (chef first), or an accept and an admin reject can deadlock. Write the order in the migration header.

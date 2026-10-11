@@ -22,6 +22,7 @@ class FakeDb {
     profiles: [],
     profile_private: [],
     bookings: [],
+    booking_days: [],
     free_trial_claims: [],
     free_trial_blocks: [],
   };
@@ -66,6 +67,9 @@ class FakeDb {
       update: (p: Row) => ((op = "update"), (payload = p), b),
       eq: (k: string, v: unknown) => (filters.push((r) => r[k] === v), b),
       neq: (k: string, v: unknown) => (filters.push((r) => r[k] !== v), b),
+      // .not(column, "is", null): the column has a value.
+      not: (k: string) => (filters.push((r) => r[k] != null), b),
+      limit: () => b,
       or: (expr: string) => {
         const parts = expr.split(",").map((p) => p.split(".eq."));
         filters.push((r) => parts.some(([k, v]) => r[k] === v));
@@ -326,6 +330,45 @@ describe("holdFreeTrial", () => {
         )
       )?.code,
     ).toBe("INVALID_STATE");
+  });
+});
+
+describe("applyFreeTrialEvent: cancellation and the D-26 cooked marker", () => {
+  it("a cancellation with no cooked day releases the claim (read from booking_days)", async () => {
+    const { db, id } = setup();
+    const d = { db: db.as(), pepper: PEPPER };
+    const b = booking(db, id);
+    db.t.booking_days.push({ booking_id: b, cooked_at: null });
+    await holdFreeTrial(id, b, d);
+    expect(await applyFreeTrialEvent(b, "cancelled", d)).toEqual({
+      changed: true,
+      state: "released",
+    });
+  });
+  it("a cancellation after a cooked day consumes it, from the table or from the caller", async () => {
+    for (const viaTable of [true, false]) {
+      const { db, id } = setup();
+      const b = booking(db, id);
+      const d = {
+        db: db.as(),
+        pepper: PEPPER,
+        ...(viaTable ? {} : { anyDayCooked: true }),
+      };
+      if (viaTable)
+        db.t.booking_days.push({ booking_id: b, cooked_at: "2026-10-12" });
+      await holdFreeTrial(id, b, d);
+      expect(await applyFreeTrialEvent(b, "cancelled", d)).toEqual({
+        changed: true,
+        state: "consumed",
+      });
+      // Repeating is safe; the opposite outcome is refused.
+      expect((await applyFreeTrialEvent(b, "cancelled", d)).changed).toBe(
+        false,
+      );
+      await expect(
+        applyFreeTrialEvent(b, "no_show_chef", d),
+      ).rejects.toMatchObject({ code: "INVALID_STATE" });
+    }
   });
 });
 
