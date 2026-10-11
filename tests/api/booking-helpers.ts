@@ -197,7 +197,7 @@ export const accept = (b: Browser, id: string): Promise<Reply> =>
 export const decline = (
   b: Browser,
   id: string,
-  body: unknown = {},
+  body: unknown = { reason: "Sorry, I cannot take this booking." },
 ): Promise<Reply> => b.call((r) => declineRoute(r, withId(id)), { body });
 
 export const publicDetail = (b: Browser, id: string): Promise<Reply> =>

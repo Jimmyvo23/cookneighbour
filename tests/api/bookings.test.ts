@@ -1161,13 +1161,38 @@ describe("accept and decline", () => {
     }
   });
 
-  it("decline without a reason works; accepting twice is a 409", async () => {
+  it("D-34: a decline reason is required; blank, missing and contact details are refused", async () => {
     const chef = await bookableChef();
     const c = await bookingCustomer();
     const r1 = await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 3)] }));
-    const d = await decline(chef.b, r1.id, {});
-    expect(d.status, d.text).toBe(200);
-    expect(d.body.declineReason).toBeNull();
+    for (const body of [
+      {},
+      { reason: "" },
+      { reason: "   " },
+      { reason: null },
+      { reason: 5 },
+    ]) {
+      const d = await decline(chef.b, r1.id, body);
+      expect(d.status, JSON.stringify(body)).toBe(422);
+      expect(d.body.error.code).toBe("VALIDATION_FAILED");
+      expect(d.body.error.fields.reason).toBeTruthy();
+    }
+    for (const reason of [
+      "call me 416-555-0199",
+      "mail me@example.com",
+      "see www.example.com/x",
+    ]) {
+      const d = await decline(chef.b, r1.id, { reason });
+      expect(d.status, reason).toBe(422);
+      expect(d.body.error.code).toBe("CONTACT_DETAILS_NOT_ALLOWED");
+      expect(d.body.error.fields.reason).toBeTruthy();
+    }
+    expect((await bookingRow(r1.id)).status).toBe("requested");
+    expect((await notesFor(c.id, "booking_declined")).length).toBe(0);
+    const ok = await decline(chef.b, r1.id, {
+      reason: "Fully booked on 2026-10-20.",
+    });
+    expect(ok.status, ok.text).toBe(200);
     const r2 = await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 4)] }));
     expect((await accept(chef.b, r2.id)).status).toBe(200);
     expect((await accept(chef.b, r2.id)).body.error.code).toBe("INVALID_STATE");

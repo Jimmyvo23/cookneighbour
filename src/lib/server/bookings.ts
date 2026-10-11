@@ -55,6 +55,7 @@ import {
 import { addDays, isRealDate, torontoToday } from "@/lib/domain/dishes";
 import { eatByDate } from "@/lib/domain/eatBy";
 import { estimateBooking, type Estimate } from "@/lib/domain/pricing";
+import { findContactDetails } from "@/lib/domain/contactDetails";
 import { hasUnsafeText } from "@/lib/domain/text-safety";
 import { requireCaller } from "@/lib/server/caller";
 import {
@@ -713,17 +714,28 @@ async function mapCreateError(
 // ---------------------------------------------------------------------------
 // Accept / decline
 // ---------------------------------------------------------------------------
-export function parseDeclineBody(body: Record<string, unknown>): string | null {
+export function parseDeclineBody(body: Record<string, unknown>): string {
   rejectUnknownKeys(body, ["reason"]);
   const r = body.reason;
-  if (r === undefined || r === null) return null;
-  if (typeof r !== "string")
-    throw validationFailed({ reason: "Enter 3 to 500 characters." });
+  // D-34: the reason is required. Blank or whitespace only is the same as missing.
+  if (typeof r !== "string" || r.trim() === "")
+    throw validationFailed({
+      reason: "Tell the customer why you are declining.",
+    });
   const t = r.trim();
   if (t.length < 3 || t.length > 500)
     throw validationFailed({ reason: "Enter 3 to 500 characters." });
   if (hasUnsafeText(t))
     throw validationFailed({ reason: "Remove control or invalid characters." });
+  // The reason reaches the customer's notification before any acceptance (CLAUDE.md 6.8).
+  if (findContactDetails(t))
+    throw new ApiFailure(
+      "CONTACT_DETAILS_NOT_ALLOWED",
+      "Do not put phone numbers, email addresses or links in the reason. Contact details are shared after a booking is accepted.",
+      {
+        fields: { reason: "Remove phone numbers, email addresses and links." },
+      },
+    );
   return t;
 }
 

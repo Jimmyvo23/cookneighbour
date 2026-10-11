@@ -34,6 +34,7 @@ export type ApiErrorCode =
   | "DOUBLE_BOOKED" // 409 the chef already has an active booking on a requested date (T-042)
   | "TOO_MANY_OPEN_REQUESTS" // 409 D-28: three requests are already waiting for an answer (T-042)
   | "REQUEST_EXPIRED" // 409 answering a request past its expiry (T-042, D-19)
+  | "CONTACT_DETAILS_NOT_ALLOWED" // 422 text shared before acceptance looks like a phone number, email or URL (T-042, D-34)
   | "DATE_BOOKED" // 409 the chef clears a date that has an open booking (T-042, D-22)
   | "VALIDATION_FAILED" // 422 see fields
   | "INVALID_CREDENTIALS" // 401 login only
@@ -699,5 +700,6 @@ export type BookingListResponse = Page<BookingSummary>;
 
 export type BookingListStatus = BookingStatus | "open" | "all";
 export interface DeclineBookingRequest {
-  reason?: string;
+  /** Required (D-34), 3 to 500 characters, no phone numbers, emails or URLs. */
+  reason: string;
 }
