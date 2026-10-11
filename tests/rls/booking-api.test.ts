@@ -270,9 +270,10 @@ describe("free_trial_blocks log", () => {
       .select("reason, attempts")
       .eq("customer_id", cust.id)
       .order("reason");
+    // The enum sorts customer, phone, address.
     expect(rows.data).toEqual([
-      { reason: "address", attempts: 1 },
       { reason: "phone", attempts: 3 },
+      { reason: "address", attempts: 1 },
     ]);
     // Outside the window a new row starts.
     await svc
