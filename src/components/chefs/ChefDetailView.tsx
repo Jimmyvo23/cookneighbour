@@ -138,9 +138,9 @@ function Dates({ chef }: { chef: PublicChefDetail }) {
   return (
     <>
       <p className="text-sm text-zinc-700 dark:text-zinc-300">
-        {windowText(chef.firstBookableDay ?? chef.today, chef.lastBookableDay)}{" "}
-        These are the days the chef marked as available and has not been booked
-        on. Same-day booking is not possible. Nothing here books the chef.
+        {windowText(chef.firstBookableDay, chef.lastBookableDay)} These are the
+        days the chef marked as available and has not been booked on. Same-day
+        booking is not possible. Nothing here books the chef.
       </p>
       {groups.length === 0 ? (
         <p data-testid="no-dates">

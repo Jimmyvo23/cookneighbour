@@ -280,7 +280,7 @@ export function parseSavedForm(raw: string | null): SearchFormValues | null {
     "maxRate",
     "date",
   ] as const) {
-    if (typeof f[k] !== "string" || (f[k] as string).length > TEXT_MAX)
+    if (typeof f[k] !== "string" || (f[k] as string).trim().length > TEXT_MAX)
       return null;
     out[k] = f[k] as string;
   }

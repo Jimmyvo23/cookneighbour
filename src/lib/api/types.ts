@@ -480,11 +480,8 @@ export interface PublicChefDetail {
   bookableDates: string[];
   /** The server's window (Toronto, D-15). */
   today: string;
-  /**
-   * Tomorrow (D-27: no same-day bookings); `bookableDates` never contains an earlier day. The real
-   * route always sends it; it is optional in the type only until the mock adapter adds it (T-062).
-   */
-  firstBookableDay?: string;
+  /** Tomorrow (D-27: no same-day bookings); `bookableDates` never contains an earlier day. */
+  firstBookableDay: string;
   lastBookableDay: string;
 }
 

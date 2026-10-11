@@ -180,7 +180,7 @@ describe("MOCK search routes (contract section 7)", () => {
     expect(r.status).toBe(200);
     expect(d.dishes.length).toBeGreaterThan(0);
     expect(d.firstBookableDay).toBe(addDays(d.today, 1));
-    expect(d.bookableDates[0] >= d.firstBookableDay!).toBe(true);
+    expect(d.bookableDates[0] >= d.firstBookableDay).toBe(true);
     expect(d.bookableDates.at(-1)! <= d.lastBookableDay).toBe(true);
     const a = await get("/api/chefs/not-a-uuid");
     const b = await get("/api/chefs/00000000-0000-4000-8000-000000000001");

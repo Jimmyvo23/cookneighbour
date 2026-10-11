@@ -410,7 +410,7 @@ test("a pending chef's URL and an unknown or malformed id all show 'Chef not fou
   await chefCtx.dispose();
 });
 
-test("a rejected chef's URL shows 'Chef not found'; an approved chef whose kitchen is not reviewed is hidden only if she has no other place (D-25, T-041 tester)", async ({
+test("a rejected chef's URL shows 'Chef not found'; an approved chef whose kitchen is not reviewed opens without the chef's home (T-041 tester)", async ({
   page,
   playwright,
   baseURL,
@@ -441,23 +441,17 @@ test("a rejected chef's URL shows 'Chef not found'; an approved chef whose kitch
   const chef = await createSubmittedChef(chefCtx, name, { chefHome: true });
   await approve(admin, chefCtx, chef.id);
   const res = await page.request.get(`/api/chefs/${chef.id}`);
+  expect(res.status()).toBe(200);
+  const api = await res.json();
   await page.goto(`/chefs/${chef.id}`);
-  if (res.status() === 404) {
-    // D-25: no place to cook that customers can book means the same "Chef not found" as any unknown chef.
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Chef not found" }),
-    ).toBeVisible();
-  } else {
-    const api = await res.json();
-    await expect(
-      page.getByRole("heading", { level: 1, name, exact: true }),
-    ).toBeVisible();
-    // The chef also offers the customer's home: the chef's home must not be listed.
-    expect(api.locationOptions).not.toContain("chef_home");
-    await expect(page.getByTestId("location-options")).not.toContainText(
-      "chef's home",
-    );
-  }
+  await expect(
+    page.getByRole("heading", { level: 1, name, exact: true }),
+  ).toBeVisible();
+  // The chef also offers the customer's home: the chef's home must not be listed.
+  expect(api.locationOptions).not.toContain("chef_home");
+  await expect(page.getByTestId("location-options")).not.toContainText(
+    "chef's home",
+  );
   // The address of the kitchen never shows.
   expect(await page.locator("body").innerText()).not.toContain(
     "1 Fictional Street",

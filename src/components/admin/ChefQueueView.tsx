@@ -264,7 +264,7 @@ function QueueItem({ item }: { item: AdminChefListItem }) {
           <strong>Needs a look:</strong> approved, but a check failed (
           <MockBadge>MOCK</MockBadge>{" "}
           {item.failedChecks.map(failedLabel).join(", ")}
-          ). The chef is still listed until you reject them.
+          ). The chef stays approved until you reject them.
         </p>
       )}
       <p className="text-sm">

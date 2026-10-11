@@ -204,7 +204,7 @@ function Calendar({
         ticked. You can choose any day from {dayLabel(today)} to{" "}
         {dayLabel(last)}. Press Space or Enter on a day to tick or untick it,
         use the arrow keys to move, then choose &quot;Save availability&quot;.
-        You cannot untick a day that has a booking.
+        If a day has a booking, clearing it is refused and nothing is saved.
       </p>
       <section aria-labelledby={headingId} className={cardCls}>
         <div className="flex items-center justify-between gap-2">

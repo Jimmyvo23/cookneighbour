@@ -24,3 +24,13 @@ From: frontend  To: tester
 ## What the next agent needs
 - A chef with only an unapproved chef's home is a 404 everywhere (D-25), including in mocks.
 - Mock admin accounts: login email starting "admin"; Tuan Pham is the seeded approved chef, Rosa Lee the rejected one.
+
+## Round 2
+Reviewer findings fixed:
+1. `bookedDatesMessage` no longer says "ask the customer to cancel first"; it ends "Keep it/them ticked." Test: no "cancel" in any variant.
+2. Availability hint: "If a day has a booking, clearing it is refused and nothing is saved."
+3. Queue flag: "The chef stays approved until you reject them."
+4. `firstBookableDay` is required in `PublicChefDetail`; `?? chef.today` and the `!` removed; the tester component test fixture gets the field and the window text now starts "Sun, Oct 11".
+5. `e2e/search-real.spec.ts`: 200 path asserted unconditionally, title fixed (not run locally; CI).
+Also: `parseSavedForm` compares `.trim().length` with `TEXT_MAX` (test added).
+Local: lint, tsc, prettier, build clean; vitest all pass; mock Playwright 121 pass.

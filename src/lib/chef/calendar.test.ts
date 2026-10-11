@@ -110,6 +110,11 @@ describe("bookedDatesMessage", () => {
     expect(m).toContain("Nothing was saved");
     expect(m).toContain("Tuesday, October 13, 2026");
     expect(m).toContain("Wednesday, October 14, 2026");
+    expect(m.toLowerCase()).not.toContain("cancel");
+    expect(bookedDatesMessage(["2026-10-13"]).toLowerCase()).not.toContain(
+      "cancel",
+    );
+    expect(bookedDatesMessage([]).toLowerCase()).not.toContain("cancel");
   });
   it("still works without dates", () => {
     expect(bookedDatesMessage([])).toContain("Nothing was saved");

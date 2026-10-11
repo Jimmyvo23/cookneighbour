@@ -58,6 +58,7 @@ function chef(over: Partial<PublicChefDetail> = {}): PublicChefDetail {
     ],
     bookableDates: ["2026-10-30", "2026-10-31", "2026-11-02", "2027-01-01"],
     today: "2026-10-10",
+    firstBookableDay: "2026-10-11",
     lastBookableDay: "2027-01-08",
     ...over,
   };
@@ -281,7 +282,7 @@ describe("ChefDetailView (tester)", () => {
     fetchMock.mockImplementation(reply(200, chef()));
     await mount();
     const t = host.textContent!;
-    expect(t).toContain("Dates from Sat, Oct 10 to Fri, Jan 8, 2027.");
+    expect(t).toContain("Dates from Sun, Oct 11 to Fri, Jan 8, 2027.");
     const summaries = [...host.querySelectorAll("summary")].map((s) =>
       s.textContent!.replace(/\s+/g, " "),
     );
@@ -309,7 +310,7 @@ describe("ChefDetailView (tester)", () => {
     try {
       fetchMock.mockImplementation(reply(200, chef()));
       await mount();
-      expect(host.textContent).toContain("Dates from Sat, Oct 10");
+      expect(host.textContent).toContain("Dates from Sun, Oct 11");
       expect(host.textContent).not.toContain("2031");
     } finally {
       vi.useRealTimers();
