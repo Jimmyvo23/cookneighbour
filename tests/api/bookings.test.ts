@@ -94,6 +94,9 @@ describe("POST /api/bookings: a valid request", () => {
         dayNumber: 1,
         date: day(5),
         cookMinutes: 120,
+        cookedAt: null,
+        pickupDeadlineDate: null,
+        pickups: [],
         dishes: [
           {
             dishId: chef.dishes.pho,

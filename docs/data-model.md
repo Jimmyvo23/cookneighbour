@@ -167,3 +167,11 @@ Lock order: customer advisory lock, then the `chefs` row (`FOR SHARE`), then ava
 - Admin can read messages (to review reports). Admin writes to moderation columns are allowed by policy and trigger; the server can do it too.
 - `requested` bookings hold the chef's date until answered, declined, cancelled or expired. T-042 (D-19): an unanswered request expires at `expires_at` (the earlier of 72 hours after creation and 00:00 Toronto on day 1); expiry is lazy, see "Booking API functions" below.
 - Hosted Supabase: the migrations are applied with `supabase db push` by the Planner after review, not by this task.
+
+## T-063: booking changes (migration 20261011200000)
+
+- `bookings.completed_at`, `no_show_reported_at`, `no_show_day_number`, `pickup_missed_at`; a booking cancelled by the D-22 cascade has `status = cancelled` and `cancelled_by` null.
+- `booking_days.cooked_at`: the chef's per-day "cooked" marker (D-26). Cancelling with any marker set consumes the free trial.
+- `pickup_proposals` (D-29): one row per proposed pickup time for a day of a chef's-home booking; status `proposed | accepted | declined | void`; a unique partial index allows one live (`proposed` or `accepted`) row per day. Parties and admin can read; only the server writes.
+- `booking_flags` (D-22): admin-only note (`chef_rejected`) on an accepted booking whose chef was rejected.
+- Functions (service role only, SECURITY INVOKER): `change_booking`, `sweep_booking_changes`, `booking_cancellation_timing`, `booking_pickup_end`, `booking_auto_complete_at`; `answer_booking` and `admin_reject_chef` replaced. Lock order everywhere: chef row, then booking row.

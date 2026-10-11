@@ -27,6 +27,7 @@ import {
   type PrivatePlan,
   type PrivateState,
 } from "@/lib/domain/chef-application";
+import { sweepExpired } from "@/lib/server/bookings";
 import { requireCaller, type Caller } from "@/lib/server/caller";
 import { CHEF_COLUMNS, mapChef } from "@/lib/server/me";
 import { objectExists, removeObject } from "@/lib/server/storage";
@@ -368,11 +369,45 @@ export async function checkedUpdate(
   return value;
 }
 
+/**
+ * Contract 11 N3 (decided in T-063): the customer of an accepted chef's-home booking was told where
+ * to go. While such a booking exists the kitchen address cannot be changed (409 INVALID_STATE,
+ * reason `kitchen_in_use`); the chef cancels the booking first or waits until it is completed.
+ * Bookings that are only requested are not affected (the address is not shared yet, and changing
+ * the kitchen already switches chef's home off, so accepting them is refused until an admin
+ * re-enables it). Photos and other fields can still change. Finished bookings are brought up to
+ * date first (lazy auto-completion).
+ */
+async function assertKitchenAddressFree(chef: ChefCaller): Promise<void> {
+  await sweepExpired(chef.admin, chef.userId);
+  const r = await chef.admin
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("chef_id", chef.userId)
+    .eq("location_type", "chef_home")
+    .eq("status", "accepted");
+  if (r.error) throw new Error(`kitchen booking lookup failed`);
+  if ((r.count ?? 0) > 0)
+    throw new ApiFailure(
+      "INVALID_STATE",
+      "You have an accepted booking at your home. Customers were given this kitchen address, so it cannot change until that booking is finished or cancelled.",
+      { reason: "kitchen_in_use" },
+    );
+}
+
 export async function patchApplication(
   chef: ChefCaller,
   u: ParsedUpdate,
   hooks?: MutateHooks,
 ): Promise<ChefState> {
+  if (
+    u.kitchenAddress &&
+    "kitchen_address_line" in
+      planPrivateChange(privateStateOf(chef.state.priv), {
+        kitchenAddress: u.kitchenAddress,
+      }).columns
+  )
+    await assertKitchenAddressFree(chef);
   const now = new Date().toISOString(); // server clock, never from the client
   return mutate(
     chef,

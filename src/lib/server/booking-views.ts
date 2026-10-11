@@ -33,7 +33,7 @@ export const BOOKING_STATUSES: readonly BookingStatus[] = [
 ];
 
 const BOOKING_COLUMNS =
-  "id, customer_id, chef_id, status, location_type, grocery_option, is_free_trial, hourly_rate_cents, est_cook_minutes, est_labour_cents, est_ingredients_cents, est_travel_cents, est_platform_fee_cents, est_total_cents, platform_fee_percent, travel_rate_cents_per_km, distance_km, decline_reason, responded_at, expires_at, currency, created_at";
+  "id, customer_id, chef_id, status, location_type, grocery_option, is_free_trial, hourly_rate_cents, est_cook_minutes, est_labour_cents, est_ingredients_cents, est_travel_cents, est_platform_fee_cents, est_total_cents, platform_fee_percent, travel_rate_cents_per_km, distance_km, decline_reason, responded_at, expires_at, currency, created_at, cancelled_by, cancelled_at, cancellation_timing, cancel_reason, completed_at, no_show_reported_at, no_show_day_number, pickup_missed_at";
 
 const iso = (v: unknown) => new Date(v as string).toISOString();
 const notFound = () => new ApiFailure("NOT_FOUND", "Booking not found.");
@@ -69,42 +69,61 @@ export async function loadBookingDetail(
   if (userId !== b.customer_id && userId !== b.chef_id) throw notFound();
   const viewerIsChef = userId === b.chef_id;
 
-  const [daysRes, intakeRes, peopleRes, chefRes, addrRes, contactRes] =
-    await Promise.all([
-      db
-        .from("booking_days")
-        .select("id, day_number, visit_date, total_cook_minutes")
-        .eq("booking_id", id)
-        .order("day_number"),
-      db
-        .from("intake_forms")
-        .select("allergies, dietary_notes, allergy_conflict_acknowledged")
-        .eq("booking_id", id)
-        .maybeSingle(),
-      db
-        .from("profiles")
-        .select("id, display_name")
-        .in("id", [b.customer_id as string, b.chef_id as string]),
-      db
-        .from("chefs")
-        .select("photo_path")
-        .eq("profile_id", b.chef_id as string)
-        .maybeSingle(),
-      // Customer-only table (RLS): empty for the chef, who gets the address from the contact call.
-      db
-        .from("booking_addresses")
-        .select("address_line, city, postal_code")
-        .eq("booking_id", id)
-        .maybeSingle(),
-      db.rpc("get_booking_contact", { p_booking: id }),
-    ]);
+  const [
+    daysRes,
+    intakeRes,
+    peopleRes,
+    chefRes,
+    addrRes,
+    contactRes,
+    pickupRes,
+  ] = await Promise.all([
+    db
+      .from("booking_days")
+      .select("id, day_number, visit_date, total_cook_minutes, cooked_at")
+      .eq("booking_id", id)
+      .order("day_number"),
+    db
+      .from("intake_forms")
+      .select("allergies, dietary_notes, allergy_conflict_acknowledged")
+      .eq("booking_id", id)
+      .maybeSingle(),
+    db
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", [b.customer_id as string, b.chef_id as string]),
+    db
+      .from("chefs")
+      .select("photo_path")
+      .eq("profile_id", b.chef_id as string)
+      .maybeSingle(),
+    // Customer-only table (RLS): empty for the chef, who gets the address from the contact call.
+    db
+      .from("booking_addresses")
+      .select("address_line, city, postal_code")
+      .eq("booking_id", id)
+      .maybeSingle(),
+    db.rpc("get_booking_contact", { p_booking: id }),
+    // Pickup proposals (D-29): both parties read them under RLS (chef's-home bookings only).
+    b.location_type === "chef_home"
+      ? db
+          .from("pickup_proposals")
+          .select(
+            "id, booking_day_id, proposed_at, status, created_at, responded_at",
+          )
+          .eq("booking_id", id)
+          .order("created_at")
+          .order("id")
+      : Promise.resolve({ data: [] as Row[], error: null }),
+  ]);
   if (
     daysRes.error ||
     intakeRes.error ||
     peopleRes.error ||
     chefRes.error ||
     addrRes.error ||
-    contactRes.error
+    contactRes.error ||
+    pickupRes.error
   )
     throw fail("detail parts");
 
@@ -129,13 +148,27 @@ export async function loadBookingDetail(
     ((peopleRes.data ?? []) as Row[]).find((p) => p.id === pid)
       ?.display_name as string | undefined;
 
-  const days = dayRows.map((d) => ({
-    dayNumber: d.day_number as number,
-    date: d.visit_date as string,
-    cookMinutes: d.total_cook_minutes as number,
-    dishes: dishRows
-      .filter((x) => x.booking_day_id === d.id)
-      .map((x) => ({
+  const pickupRows = (pickupRes.data ?? []) as Row[];
+  const days = dayRows.map((d) => {
+    const dayDishes = dishRows.filter((x) => x.booking_day_id === d.id);
+    const eatBys = dayDishes.map((x) => x.eat_by_date as string).sort();
+    return {
+      dayNumber: d.day_number as number,
+      date: d.visit_date as string,
+      cookMinutes: d.total_cook_minutes as number,
+      cookedAt: d.cooked_at ? iso(d.cooked_at) : null,
+      pickupDeadlineDate:
+        b.location_type === "chef_home" ? (eatBys[0] ?? null) : null,
+      pickups: pickupRows
+        .filter((p) => p.booking_day_id === d.id)
+        .map((p) => ({
+          id: p.id as string,
+          proposedAt: iso(p.proposed_at),
+          status: p.status as "proposed" | "accepted" | "declined" | "void",
+          createdAt: iso(p.created_at),
+          respondedAt: p.responded_at ? iso(p.responded_at) : null,
+        })),
+      dishes: dayDishes.map((x) => ({
         dishId: (x.dish_id as string | null) ?? null,
         name: x.dish_name as string,
         quantity: x.quantity as number,
@@ -145,7 +178,8 @@ export async function loadBookingDetail(
         allergens: (x.allergens as string[]) ?? [],
         eatByDate: x.eat_by_date as string,
       })),
-  }));
+    };
+  });
 
   const intakeRow = intakeRes.data as Row | null;
   const intake = {
@@ -228,6 +262,23 @@ export async function loadBookingDetail(
     expiresAt: b.expires_at ? iso(b.expires_at) : null,
     respondedAt: b.responded_at ? iso(b.responded_at) : null,
     declineReason: (b.decline_reason as string | null) ?? null,
+    // A cancelled booking with no cancelled_by was cancelled by the system (D-22).
+    cancelledBy:
+      b.status === "cancelled"
+        ? ((b.cancelled_by as "customer" | "chef" | null) ?? "system")
+        : null,
+    cancelledAt: b.cancelled_at ? iso(b.cancelled_at) : null,
+    cancellationTiming:
+      (b.cancellation_timing as "on_time" | "late" | null) ?? null,
+    cancelReason: (b.cancel_reason as string | null) ?? null,
+    completedAt: b.completed_at ? iso(b.completed_at) : null,
+    noShow: b.no_show_reported_at
+      ? {
+          reportedAt: iso(b.no_show_reported_at),
+          dayNumber: (b.no_show_day_number as number | null) ?? null,
+          pickupMissed: b.pickup_missed_at != null,
+        }
+      : null,
     chef: {
       id: b.chef_id as string,
       displayName: name(b.chef_id) ?? "Chef",

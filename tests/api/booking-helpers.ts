@@ -12,6 +12,13 @@ import { POST as estimateRoute } from "@/app/api/bookings/estimate/route";
 import { GET as detailRoute } from "@/app/api/bookings/[id]/route";
 import { POST as acceptRoute } from "@/app/api/bookings/[id]/accept/route";
 import { POST as declineRoute } from "@/app/api/bookings/[id]/decline/route";
+import { POST as cancelRoute } from "@/app/api/bookings/[id]/cancel/route";
+import { POST as noShowRoute } from "@/app/api/bookings/[id]/no-show/route";
+import { POST as completeRoute } from "@/app/api/bookings/[id]/complete/route";
+import { POST as cookedRoute } from "@/app/api/bookings/[id]/days/[dayNumber]/cooked/route";
+import { POST as proposeRoute } from "@/app/api/bookings/[id]/days/[dayNumber]/pickup/propose/route";
+import { POST as respondRoute } from "@/app/api/bookings/[id]/days/[dayNumber]/pickup/respond/route";
+import { POST as missedRoute } from "@/app/api/bookings/[id]/pickup/missed/route";
 import { GET as chefDetailRoute } from "@/app/api/chefs/[id]/route";
 import { GET as searchRoute } from "@/app/api/chefs/route";
 import { addDays, torontoToday } from "@/lib/domain/dishes";
@@ -199,6 +206,89 @@ export const decline = (
   id: string,
   body: unknown = { reason: "Sorry, I cannot take this booking." },
 ): Promise<Reply> => b.call((r) => declineRoute(r, withId(id)), { body });
+
+// ---- T-063: booking changes ----
+const withDay = (id: string, dayNumber: string) => ({
+  params: Promise.resolve({ id, dayNumber }),
+});
+/** Pass as the body of `cancel` for a request with no body at all. */
+export const NO_BODY = Symbol("no body");
+export const cancel = (
+  b: Browser,
+  id: string,
+  body: unknown = { reason: "My plans changed." },
+): Promise<Reply> =>
+  b.call(
+    (r) => cancelRoute(r, withId(id)),
+    body === NO_BODY ? { noBody: true } : { body },
+  );
+export const noShow = (b: Browser, id: string): Promise<Reply> =>
+  b.call((r) => noShowRoute(r, withId(id)));
+export const complete = (b: Browser, id: string): Promise<Reply> =>
+  b.call((r) => completeRoute(r, withId(id)));
+export const cooked = (
+  b: Browser,
+  id: string,
+  dayNumber: string | number,
+): Promise<Reply> =>
+  b.call((r) => cookedRoute(r, withDay(id, String(dayNumber))));
+export const propose = (
+  b: Browser,
+  id: string,
+  dayNumber: string | number,
+  body: unknown,
+): Promise<Reply> =>
+  b.call((r) => proposeRoute(r, withDay(id, String(dayNumber))), { body });
+export const respond = (
+  b: Browser,
+  id: string,
+  dayNumber: string | number,
+  body: unknown,
+): Promise<Reply> =>
+  b.call((r) => respondRoute(r, withDay(id, String(dayNumber))), { body });
+export const missed = (b: Browser, id: string): Promise<Reply> =>
+  b.call((r) => missedRoute(r, withId(id)));
+
+/**
+ * Moves every visit date of a booking `n` days into the past, as if time had passed. The test
+ * chef is new, so no other booking holds those dates. (There is no clock to move in the tests.)
+ */
+export async function shiftDays(id: string, n: number) {
+  const days = await svc
+    .from("booking_days")
+    .select("id, visit_date")
+    .eq("booking_id", id);
+  expect(days.error).toBeNull();
+  for (const d of days.data ?? []) {
+    const up = await svc
+      .from("booking_days")
+      .update({ visit_date: addDays(d.visit_date as string, -n) })
+      .eq("id", d.id);
+    expect(up.error).toBeNull();
+  }
+}
+/** Sets the eat-by date of every meal of a booking (offset from today). */
+export async function setEatBy(id: string, offset: number) {
+  const days = await svc.from("booking_days").select("id").eq("booking_id", id);
+  expect(days.error).toBeNull();
+  const up = await svc
+    .from("booking_day_dishes")
+    .update({ eat_by_date: day(offset) })
+    .in(
+      "booking_day_id",
+      (days.data ?? []).map((d) => d.id as string),
+    );
+  expect(up.error).toBeNull();
+}
+export async function activeDates(id: string): Promise<string[]> {
+  const { data, error } = await svc
+    .from("booking_days")
+    .select("visit_date, is_active")
+    .eq("booking_id", id)
+    .eq("is_active", true);
+  expect(error).toBeNull();
+  return (data ?? []).map((d) => d.visit_date as string).sort();
+}
 
 export const publicDetail = (b: Browser, id: string): Promise<Reply> =>
   b.call(

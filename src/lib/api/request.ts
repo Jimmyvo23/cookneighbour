@@ -36,6 +36,35 @@ export async function readJsonObject(
   return body as Record<string, unknown>;
 }
 
+/**
+ * Like readJsonObject, but an empty body means `{}` (for actions whose body is optional, such as
+ * cancel). The content type must still be application/json; a non-empty body must be a JSON object.
+ */
+export async function readOptionalJsonObject(
+  request: Request,
+): Promise<Record<string, unknown>> {
+  requireJson(request);
+  let text: string;
+  try {
+    text = await request.text();
+  } catch {
+    throw new ApiFailure("BAD_REQUEST", "The request body could not be read.");
+  }
+  if (text.trim() === "") return {};
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    throw new ApiFailure("BAD_REQUEST", "The request body is not valid JSON.");
+  }
+  if (typeof body !== "object" || body === null || Array.isArray(body))
+    throw new ApiFailure(
+      "BAD_REQUEST",
+      "The request body must be a JSON object.",
+    );
+  return body as Record<string, unknown>;
+}
+
 /** Rejects keys outside the whitelist (never spread a body into an update). */
 export function rejectUnknownKeys(
   body: Record<string, unknown>,

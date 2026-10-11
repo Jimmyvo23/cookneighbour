@@ -15,7 +15,7 @@ export interface CancellationResult {
   cancelledBy: CancelledBy;
   /** Last moment the cancellation is still on time. */
   freeUntil: Date;
-  /** A cancellation before the visit never consumes the free trial (CLAUDE.md 6.6). */
+  /** A cancellation before the visit never consumes the free trial (CLAUDE.md 6.6); after a cooked day see freeTrialEffect (D-26). */
   consumesFreeTrial: false;
 }
 
@@ -81,20 +81,32 @@ export type BookingStatus =
 /** A-16: a `requested` booking that expires (Q-11) is not a stored status yet; it releases the claim. */
 export type FreeTrialEvent = BookingStatus | "expired";
 
+/** What the booking's days say about the free trial (D-26). */
+export interface FreeTrialContext {
+  /** True when the chef marked at least one day of the booking as cooked. */
+  anyDayCooked?: boolean;
+}
+
 /**
- * A-16 (pending Jimmy) and CLAUDE.md 6.6: a completed or customer-no-show booking consumes the free trial. A cancelled,
- * declined or chef-no-show booking never used it, so its claim is released. `requested` and
- * `accepted` keep the claim held (T-038 owns the state machine).
+ * A-16 and CLAUDE.md 6.6: a completed or customer-no-show booking consumes the free trial. A
+ * declined, expired or chef-no-show booking never used it, so its claim is released. `requested`
+ * and `accepted` keep the claim held (T-038 owns the state machine).
+ *
+ * D-26: a cancellation releases the trial only when no day was cooked yet; after at least one
+ * cooked day it consumes it. The server reads the per-day marker (booking_days.cooked_at) and
+ * passes it in `ctx`; without it a cancellation releases (the pre-visit case).
  */
 export function freeTrialEffect(
   status: FreeTrialEvent,
+  ctx: FreeTrialContext = {},
 ): "hold" | "consume" | "release" {
   switch (status) {
     case "completed":
     case "no_show_customer":
       return "consume";
-    case "declined":
     case "cancelled":
+      return ctx.anyDayCooked ? "consume" : "release";
+    case "declined":
     case "no_show_chef":
     case "expired":
       return "release";

@@ -56,6 +56,10 @@ export interface ApiError {
     issues?: BookingIssue[];
     /** DATE_BOOKED (T-042): the dates (YYYY-MM-DD) that have an open booking. */
     dates?: string[];
+    /** INVALID_STATE on a booking change (T-063): a stable reason code (section 7A). */
+    reason?: string;
+    /** VALIDATION_FAILED for a pickup time (T-063): the latest allowed instant, ISO. */
+    latest?: string;
   };
 }
 
@@ -630,11 +634,31 @@ export interface BookingDishView {
   eatByDate: string;
 }
 
+/** A customer's proposed pickup time for one day of a chef's-home booking (D-29, T-063). */
+export interface PickupProposalView {
+  id: string;
+  /** ISO timestamp of the proposed pickup. */
+  proposedAt: string;
+  /** `void` = the booking ended (cancelled, no-show, completed) before an answer. */
+  status: "proposed" | "accepted" | "declined" | "void";
+  createdAt: string;
+  respondedAt: string | null;
+}
+
 export interface BookingDayView {
   dayNumber: number;
   date: string;
   cookMinutes: number;
   dishes: BookingDishView[];
+  /** When the chef marked this day as cooked (D-26), else null. */
+  cookedAt: string | null;
+  /**
+   * Chef's-home bookings only, else null: the earliest eat-by date of this day's meals. A pickup
+   * can be arranged up to the end of this date, Toronto time (D-29).
+   */
+  pickupDeadlineDate: string | null;
+  /** Oldest first; empty for a customer's-home booking. */
+  pickups: PickupProposalView[];
 }
 
 export interface BookingPerson {
@@ -654,6 +678,20 @@ export interface BookingDetail {
   expiresAt: string | null;
   respondedAt: string | null;
   declineReason: string | null;
+  /** T-063. `system` = cancelled automatically (the chef's application was rejected, D-22). */
+  cancelledBy: "customer" | "chef" | "system" | null;
+  cancelledAt: string | null;
+  /** D-20: `late` = cancelled less than 48 hours before day 1. Nothing is charged either way. */
+  cancellationTiming: "on_time" | "late" | null;
+  cancelReason: string | null;
+  /** D-33: when the booking completed (chef marked it, or automatically). */
+  completedAt: string | null;
+  /** Set for `no_show_*`: when it was reported and for which visit; `pickupMissed` = D-29. */
+  noShow: {
+    reportedAt: string;
+    dayNumber: number | null;
+    pickupMissed: boolean;
+  } | null;
   chef: BookingPerson & { photoPath: string | null };
   customer: BookingPerson;
   days: BookingDayView[];
@@ -696,6 +734,20 @@ export interface BookingSummary {
 export type BookingListResponse = Page<BookingSummary>;
 
 export type BookingListStatus = BookingStatus | "open" | "all";
+/** POST /api/bookings/:id/cancel (T-063). */
+export interface CancelBookingRequest {
+  /** Optional, 3 to 500 characters, no phone numbers, emails or URLs. */
+  reason?: string | null;
+}
+/** POST /api/bookings/:id/days/:dayNumber/pickup/propose (T-063, D-29). */
+export interface ProposePickupRequest {
+  /** ISO 8601 with a zone, in the future and before the end of the earliest eat-by date of that day's meals. */
+  proposedAt: string;
+}
+/** POST /api/bookings/:id/days/:dayNumber/pickup/respond (T-063, D-29). */
+export interface RespondPickupRequest {
+  accept: boolean;
+}
 export interface DeclineBookingRequest {
   /** Required (D-34), 3 to 500 characters, no phone numbers, emails or URLs. */
   reason: string;

@@ -102,11 +102,16 @@ export const requireBookingParty = () =>
 // Lazy expiry (D-19)
 // ---------------------------------------------------------------------------
 /**
- * Marks the user's stale `requested` bookings `expired` (one conditional UPDATE in the database)
- * and then releases the free-trial claim of every declined / expired booking that still holds
- * one. The release is applyFreeTrialEvent, called after the status is saved. A failure of the
- * release is logged and left for the next sweep: the response of the route that called this must
- * not fail because of it.
+ * Lazy sweeps for the user's bookings, run before the routes that read or change them:
+ *  - D-19: stale `requested` bookings become `expired` (expire_stale_bookings, one conditional
+ *    UPDATE);
+ *  - D-33: `accepted` bookings whose last day ended more than 24 hours ago become `completed`
+ *    (sweep_booking_changes, one conditional UPDATE), unless a problem report is open.
+ * Then the free-trial claim of every finished booking that still holds one is brought in line
+ * with its status (applyFreeTrialEvent, after the status is saved; D-26 decides a cancellation
+ * with the cooked marker). A failure of that follow-up is logged and left for the next sweep: the
+ * response of the route that called this must not fail because of it.
+ * (WO-7: a scheduled call of both functions with a null user can replace the lazy run.)
  */
 export async function sweepExpired(
   admin: SupabaseClient,
@@ -114,14 +119,27 @@ export async function sweepExpired(
 ): Promise<void> {
   const r = await admin.rpc("expire_stale_bookings", { p_user: userId });
   if (r.error) throw new Error(`expiry sweep failed: ${r.error.message}`);
-  const release = ((r.data as Row | null)?.release ?? []) as {
-    booking_id: string;
-    status: string;
-  }[];
+  const s = await admin.rpc("sweep_booking_changes", { p_user: userId });
+  if (s.error) throw new Error(`booking sweep failed: ${s.error.message}`);
+  const release = [
+    ...(((r.data as Row | null)?.release ?? []) as {
+      booking_id: string;
+      status: string;
+    }[]),
+    ...(((s.data as Row | null)?.release ?? []) as {
+      booking_id: string;
+      status: string;
+      cooked?: boolean;
+    }[]),
+  ];
+  const done = new Set<string>();
   for (const x of release) {
+    if (done.has(x.booking_id)) continue;
+    done.add(x.booking_id);
     try {
       await applyFreeTrialEvent(x.booking_id, x.status as FreeTrialEvent, {
         db: admin,
+        anyDayCooked: "cooked" in x ? x.cooked === true : undefined,
       });
     } catch (e) {
       console.error(
@@ -803,6 +821,13 @@ export async function answerBooking(
       throw new ApiFailure(
         "INVALID_STATE",
         "Your chef account is not approved, so you cannot accept bookings.",
+      );
+    case "chef_home_not_enabled":
+      // T-042 reviewer finding 2: the kitchen was switched off after the request was made.
+      throw new ApiFailure(
+        "INVALID_STATE",
+        "Chef's home is not enabled for your kitchen right now, so you cannot accept this booking. Decline it, or ask an admin to review your kitchen.",
+        { reason: "chef_home_not_enabled" },
       );
     default:
       throw new Error("answer_booking returned an unknown result");
