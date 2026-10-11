@@ -22,3 +22,6 @@ Grants (writers service-role only, SECURITY INVOKER, `search_path = ''`); servic
 - T-062: mock adapter still lists today, no `firstBookableDay`; stale e2e-mock wording "booked days are not removed".
 - T-043: `wouldExpireAt`, under-48 h late-cancel warning, "addresses after acceptance".
 - README: contact-details filter is best effort; D-35 no extra rate limit.
+
+## Round 3 (confirmation, head 7c5a399)
+**Verdict:** APPROVE. Findings 1 and 5 fixed: both public helpers join approved chefs and clamp to tomorrow (Toronto) .. today + 180 (matches `AVAILABILITY_HORIZON_DAYS`); booking rules unaffected; RLS and API tests cover today, past, beyond 180, rejected and pending chefs; decline comment matches D-34; only five files changed. CI run 38103215218 green. Cosmetic notes only: the new API test's `publicSearch` checks status only, uses a dynamic import, and its title mentions an out-of-window case covered by the RLS test.
