@@ -230,8 +230,8 @@ describe("notifications carry no personal data", () => {
     const chef = await bookableChef({ name: "Chef Zelda Quill" });
     const c = await bookingCustomer();
     const intake = {
-      allergies: "peanut SECRETALLERGY",
-      dietaryNeeds: "halal SECRETDIET",
+      allergyNotes: "peanut SECRETALLERGY",
+      dietaryNotes: "halal SECRETDIET",
     };
     const reason = "Sorry SECRETREASON";
     const acc = await bookOk(
