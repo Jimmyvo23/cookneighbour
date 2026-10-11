@@ -161,7 +161,7 @@ describe("privacy of the refusal", () => {
     expect(await logged(bPh.id)).toEqual(["phone"]);
   });
 
-  it("free_trial_blocks has only id, customer_id, reason, created_at: no phone, address or hash", async () => {
+  it("free_trial_blocks has only id, customer_id, reason, the attempt count and times: no phone, address or hash", async () => {
     const a = await trialCustomer();
     await holdFreeTrial(a.id, await newBooking(a));
     await fail(holdFreeTrial(a.id, await newBooking(a)));
@@ -170,10 +170,13 @@ describe("privacy of the refusal", () => {
       .select("*")
       .eq("customer_id", a.id);
     expect(data).toHaveLength(1);
+    // T-042 added the attempt counter and its time.
     expect(Object.keys(data![0]).sort()).toEqual([
+      "attempts",
       "created_at",
       "customer_id",
       "id",
+      "last_attempt_at",
       "reason",
     ]);
     expect(JSON.stringify(data)).not.toContain(a.phone.slice(-7));
@@ -306,16 +309,16 @@ describe("more races and abuse", () => {
     expect(r.error).not.toBeNull(); // DB check allows +1 and ten digits only
   });
 
-  it("block log grows on every blocked attempt (no de-duplication): documents the behaviour", async () => {
+  it("block log counts repeated blocked attempts in one row per reason (T-042 grouping; was one row each)", async () => {
     const c = await trialCustomer();
     await holdFreeTrial(c.id, await newBooking(c));
     for (let i = 0; i < 3; i++)
       await fail(holdFreeTrial(c.id, await newBooking(c)));
     const { data } = await svc
       .from("free_trial_blocks")
-      .select("id")
+      .select("reason, attempts")
       .eq("customer_id", c.id);
-    expect(data).toHaveLength(3);
+    expect(data).toEqual([{ reason: "customer", attempts: 3 }]);
   });
 
   it("the advisory check never writes a block row", async () => {

@@ -44,7 +44,7 @@ export interface ChefOpts {
   homeEnabled?: boolean;
   radius?: number;
   rate?: number;
-  /** Cuisine of the chef; a unique tag lets a search find only the chefs of one test. */
+  /** Cuisine of the chef (default: a random unique tag); a shared tag lets a search find several chefs. */
   cuisine?: string;
   prefix?: string;
   status?: "pending" | "approved" | "rejected";
@@ -70,7 +70,9 @@ export async function bookableChef(o: ChefOpts = {}): Promise<TestChef> {
     status: o.status ?? "approved",
     bio: o.bio === undefined ? "A friendly home cook." : o.bio,
     photo_path: `${chef.id}/photo-${randomUUID()}.png`,
-    cuisines: [o.cuisine ?? "Vietnamese"],
+    // A unique cuisine per chef keeps these many chefs out of other tests' searches
+    // (search.test.ts filters on "vietnamese" and lists only the first page).
+    cuisines: [o.cuisine ?? `Bk${rand(4)}`],
     languages: ["English"],
     hourly_rate_cents: o.rate ?? 3000,
     service_postal_prefix: o.prefix ?? "L5B",
@@ -78,6 +80,12 @@ export async function bookableChef(o: ChefOpts = {}): Promise<TestChef> {
     location_options: o.options ?? ["customer_home"],
     chef_home_enabled: o.homeEnabled ?? false,
   });
+  // The chef's phone number is shown to the customer once a booking is accepted.
+  const ph = await svc
+    .from("profile_private")
+    .update({ phone_e164: uniquePhone() })
+    .eq("profile_id", chef.id);
+  expect(ph.error).toBeNull();
   const dishes: Record<string, string> = {};
   for (const d of o.dishes ?? [{ key: "pho" }]) {
     const made = await createDish(chef, {
