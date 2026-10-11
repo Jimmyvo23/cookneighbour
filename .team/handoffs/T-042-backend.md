@@ -41,3 +41,9 @@ From: backend  To: tester
 - T-043: tell the customer when day 1 is less than 48 hours away (late-cancellation window, D-20) and that kitchen addresses appear only after acceptance.
 - T-062: mock adapter follow-ups above; admin mock 409s.
 - Tester: test helpers `tests/api/booking-helpers.ts` (`bookableChef`, `bookingCustomer`, `book`, `accept`, `decline`, `makeStale`). API tests share one database: use unique cuisine tags.
+
+## Round 2 (after the Tester PASS)
+- **D-34:** the decline reason is required. Missing, null, blank or whitespace only gives 422 `VALIDATION_FAILED` with `fields.reason`; 3 to 500 characters. `DeclineBookingRequest.reason` is now required in `types.ts`. Contract section 7A updated. Tests: `tests/api/bookings.test.ts` (new D-34 test replaces "decline without a reason works"); the test helper `decline()` now sends a default reason, so the Tester file is unchanged.
+- **Privacy guard:** `src/lib/domain/contactDetails.ts` `findContactDetails(text)` returns `phone`, `email`, `url` or null (unit tests in `contactDetails.test.ts`). The decline route answers 422 `CONTACT_DETAILS_NOT_ALLOWED` with `fields.reason`, nothing saved. New error code in `errors.ts` and `types.ts`. Documented in the contract as best effort (README known limit: spelled-out digits, obfuscated emails and street addresses get through).
+- **Open question for Jimmy:** street addresses in free text are not detected (not tried, as instructed).
+- **T-063 carry-ins:** D-33 (chef marks "visit done"; the booking completes 24 hours after the last day unless a no-show or problem was reported; answers open point 14) and D-35 (no extra create rate limit; D-28 is enough; closes the "no rate limit" gap above). T-063 and WO-5 should call `findContactDetails` on cancel reasons and chat messages sent before acceptance. Nothing of D-33 or D-35 is built here.

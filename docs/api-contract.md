@@ -25,6 +25,7 @@ Items marked **ASSUMPTION** or **PROPOSED** are not requirements; they need a no
 | 403 | `FORBIDDEN` | Signed in but wrong role (or not allowed) |
 | 404 | `NOT_FOUND` | Missing row, or a row the caller must not know exists |
 | 409 | `EMAIL_IN_USE`, `PHONE_IN_USE`, `PHONE_NOT_SUBMITTED`, `PHONE_NOT_VERIFIED`, `ADDRESS_NOT_SET`, `FREE_TRIAL_USED`, `INVALID_STATE`, `APPLICATION_INCOMPLETE`, **(T-042)** `DOUBLE_BOOKED`, `TOO_MANY_OPEN_REQUESTS`, `REQUEST_EXPIRED`, `DATE_BOOKED` | State conflicts. `FREE_TRIAL_USED` and `ADDRESS_NOT_SET` come from the free-trial server functions (T-038, section 11A); `FREE_TRIAL_USED` is deliberately generic. `APPLICATION_INCOMPLETE` always carries `error.missing` (list of item names, same vocabulary as `ChefApplication.missing`). **(T-042)** `DOUBLE_BOOKED` (the chef already has an active booking on a requested date, carries `error.issues`), `TOO_MANY_OPEN_REQUESTS` (D-28), `REQUEST_EXPIRED` (answering a request past its expiry) and `DATE_BOOKED` (the chef clears a date with an open booking, carries `error.dates`) are described in section 7A and 5B. `INVALID_STATE` also covers a stale admin review (stored file or kitchen data changed since the admin viewed it), an 11th kitchen photo, and a chef application write that lost 12 races (T-031) |
+| 422 | `CONTACT_DETAILS_NOT_ALLOWED` | **(T-042, D-34)** Text that the other party reads before acceptance looks like a phone number, email or URL; `fields` names the field (section 7A, decline) |
 | 422 | `VALIDATION_FAILED` | Field errors in `fields` (keyed by request field names; nested keys use dots, for example `intake.allergies`). **(T-042)** A booking request also carries `error.issues` (domain issue codes, section 7A) |
 | 429 | `RATE_LIMITED` | `retryAfterSeconds` plus `Retry-After` header |
 | 500 | `INTERNAL` | Generic message only; details go to server logs, never the body |
@@ -392,9 +393,10 @@ Routes of this section are implemented in T-042 unless marked **(T-063, PROPOSED
 - **Errors:** 404; 409 `INVALID_STATE` (already answered, cancelled, or the chef is not approved); 409 `REQUEST_EXPIRED` (past `expiresAt`: the booking is marked `expired` by this very call, dates freed, claim released); 401, 403, 400.
 
 ### POST /api/bookings/:id/decline
-- **Who:** the booking's chef. **Request:** `{ reason?: string }` (3 to 500 safe characters when given). **Response 200:** `BookingDetail` with `status: "declined"`, `declineReason`.
+- **Who:** the booking's chef. **Request:** `{ reason: string }`. **The reason is required (D-34):** missing, `null`, blank or whitespace only is 422 `VALIDATION_FAILED` with `fields.reason`; 3 to 500 characters after trimming, shared text rules (no control characters or lone surrogates). **Response 200:** `BookingDetail` with `status: "declined"`, `declineReason`.
 - **Does:** same checks as accept; the dates are freed (the `is_active` flag of the days turns off), the customer gets a `booking_declined` notification, and the free-trial claim is **released** (`applyFreeTrialEvent(…, "declined")`, called by the route after the change is saved).
-- **Errors:** as accept, plus 422.
+- **No contact details in the reason (best effort).** The reason reaches the customer's notification and view before any acceptance, and CLAUDE.md 6.8 says phone numbers and addresses are shared only after acceptance. A reason that looks like a phone number (7 or more digits, with spaces, dashes, dots, brackets or a leading +; ISO dates such as 2026-10-20 are not counted), an email address or a URL is refused with **422 `CONTACT_DETAILS_NOT_ALLOWED`** (`fields.reason`), and nothing is saved. The check is the shared helper `findContactDetails` (`src/lib/domain/contactDetails.ts`), reusable for T-063 and WO-5 messaging. It is a **best-effort filter, not a guarantee**: it cannot catch spelled-out digits, obfuscated emails or street addresses (street addresses are deliberately not detected; open question for Jimmy). README known limit.
+- **Errors:** as accept, plus 422 (`VALIDATION_FAILED` for a missing or invalid reason, `CONTACT_DETAILS_NOT_ALLOWED`).
 
 ### Expiry (D-19, D-27) and lazy sweeping
 - `expiresAt` = the earlier of **creation + 72 hours** and **00:00 Toronto on day 1** (so a request for tomorrow expires at midnight if unanswered). It is stored on the booking when it is created.
@@ -408,13 +410,14 @@ Routes of this section are implemented in T-042 unless marked **(T-063, PROPOSED
 
 ### Planned routes for T-063 (PROPOSED shapes, not implemented in T-042)
 All need the same session and party checks, return `BookingDetail`, and call `applyFreeTrialEvent` after the change is saved.
+- Carry-ins decided by Jimmy: D-33 (the chef marks "visit done"; the booking completes by itself 24 hours after the last day unless a no-show or problem was reported; this answers open point 14, built in T-063) and D-35 (no extra rate limit on create; D-28 is enough). Free text a party writes before acceptance (a cancel reason, messages in WO-5) should use `findContactDetails` too.
 - `POST /api/bookings/:id/cancel` `{ reason? }` customer or chef. D-20 timing (`cancelledBy`, `cancellationTiming` `on_time | late`). D-26: whether a day was already cooked decides release or consume.
 - `POST /api/bookings/:id/days/:dayNumber/cooked` (chef): the per-day "cooked" marker D-26 needs.
 - `POST /api/bookings/:id/no-show`: a chef caller means `no_show_customer`, a customer caller means `no_show_chef`.
 - Missed pickup (D-29, chef's-home bookings): `POST /api/bookings/:id/days/:dayNumber/pickup/propose` `{ proposedAt }` (customer, not later than the earliest `eatByDate` of that day's meals), `POST .../pickup/respond` `{ accept: boolean }` (chef; after a decline the customer may propose again until the deadline), `POST /api/bookings/:id/pickup/missed` (chef: the whole booking becomes `no_show_customer`, uncooked days are cancelled).
 - Kitchen address change during an accepted `chef_home` booking (N3): `PATCH /api/chef/application` answers 409 `INVALID_STATE` while such a booking exists, or notifies and re-confirms (T-063 decides and documents).
 - Rejecting a chef cancels their `requested` bookings and flags their `accepted` ones (D-22).
-- Who sets `completed` is not defined yet (open point 14).
+- Who sets `completed`: D-33, see above (open point 14 is answered).
 
 ## 8. Rule: phone uniqueness across accounts (for T-028)
 
