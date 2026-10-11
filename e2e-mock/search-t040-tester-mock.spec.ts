@@ -1,11 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PNG, expectNoAxeViolations, loginAdmin, openChef } from "./helpers";
+import {
+  PNG,
+  expectNoAxeViolations,
+  loginAdmin,
+  openChef,
+  blockStorage,
+} from "./helpers";
 
 // Tester (T-040), MOCK mode. Edge cases on top of search-mock.spec.ts. Everything is made up.
 test.beforeEach(async ({ page }) => {
   // MOCK chefs have made-up photo paths. If a developer's .env.local holds a Supabase URL the page
   // would ask that project's public storage for them (T-040 finding F-1); keep the tests offline.
-  await page.route("**/storage/v1/object/public/**", (route) => route.abort());
+  await blockStorage(page);
   await page.route("https://tile.openstreetmap.org/**", (route) =>
     route.fulfill({ contentType: "image/png", body: PNG.buffer }),
   );
@@ -353,14 +359,14 @@ test("no page text, label or hint asks for or filters by nationality (MOCK)", as
   ]);
 });
 
-test("honest wording: allergens are a shortcut, diets are not supported, booked days are not removed (MOCK)", async ({
+test("honest wording: allergens are a shortcut, diets are not supported, booked days are removed (MOCK)", async ({
   page,
 }) => {
   await openSearch(page);
   const body = await page.locator("main").innerText();
   expect(body).toMatch(/not an allergy guarantee/);
   expect(body).toMatch(/vegetarian or\s+halal are not supported yet/);
-  expect(body).toMatch(/already booked are not removed yet/);
+  expect(body).toMatch(/not\s+already booked on it/);
   expect(body).not.toMatch(/\bsafe\b|guaranteed|allergy[- ]free|100%/i);
   // No diet check boxes are offered.
   await expect(

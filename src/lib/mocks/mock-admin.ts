@@ -545,7 +545,13 @@ function reject(
     };
   return save({
     ...chef,
-    app: { ...chef.app, status: "rejected", rejectReason: reason },
+    // D-21(d): rejecting turns cooking at the chef's home off.
+    app: {
+      ...chef.app,
+      status: "rejected",
+      rejectReason: reason,
+      chefHomeEnabled: false,
+    },
   });
 }
 
@@ -596,6 +602,15 @@ function kitchen(
   if (Object.keys(unknown).length) return { response: validation(unknown) };
   const r = parseKitchenReview(body);
   const a = chef.app;
+  // D-21(b): the kitchen of a rejected chef is not reviewed.
+  if (a.status === "rejected")
+    return {
+      response: fail(
+        409,
+        "INVALID_STATE",
+        "This application is rejected, so its kitchen cannot be reviewed.",
+      ),
+    };
   if (
     !sameSet(r.reviewedPhotoPaths, a.documents.kitchenPhotoPaths) ||
     !sameAddress(r.reviewedAddress, a.kitchenAddress)

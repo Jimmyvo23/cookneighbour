@@ -1,12 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PNG, expectNoAxeViolations } from "./helpers";
+import { PNG, expectNoAxeViolations, blockStorage } from "./helpers";
 
 // MOCK mode. The mock adapter plays the server (src/lib/mocks/mock-search.ts): eight real-looking
 // chefs plus fourteen fillers, all made up. Map tiles come from OpenStreetMap; the tests answer
 // them with a one-pixel picture so no run depends on the network.
 test.beforeEach(async ({ page }) => {
   // MOCK photo paths are made up: a developer's .env.local must never make the page ask hosted storage.
-  await page.route("**/storage/v1/object/public/**", (route) => route.abort());
+  await blockStorage(page);
   await page.route("https://tile.openstreetmap.org/**", (route) =>
     route.fulfill({ contentType: "image/png", body: PNG.buffer }),
   );

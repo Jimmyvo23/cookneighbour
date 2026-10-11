@@ -282,7 +282,7 @@ describe("MOCK search routes: error and edge behaviour matches section 7", () =>
       expect(text, word).not.toContain(word);
     expect(d.today).toBe(today);
     expect(d.lastBookableDay).toBe(addDays(today, 180));
-    expect(d.bookableDates[0] >= today).toBe(true);
+    expect(d.bookableDates[0] >= addDays(today, 1)).toBe(true);
     expect(d.bookableDates.at(-1)! <= d.lastBookableDay).toBe(true);
   });
 

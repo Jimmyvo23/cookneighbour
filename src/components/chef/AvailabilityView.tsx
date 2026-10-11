@@ -15,6 +15,7 @@ import type {
 } from "@/lib/api/types";
 import {
   addMonths,
+  bookedDatesMessage,
   dayLabel,
   dayNumber,
   diffDays,
@@ -57,6 +58,8 @@ const WEEKDAYS = [
 ];
 
 function describeAvailabilityError(err: unknown): string {
+  if (err instanceof ApiClientError && err.code === "DATE_BOOKED")
+    return bookedDatesMessage(err.dates ?? []);
   if (err instanceof ApiClientError && err.code === "VALIDATION_FAILED") {
     const first = err.fields.add ?? err.fields.remove;
     if (first)
@@ -201,7 +204,7 @@ function Calendar({
         ticked. You can choose any day from {dayLabel(today)} to{" "}
         {dayLabel(last)}. Press Space or Enter on a day to tick or untick it,
         use the arrow keys to move, then choose &quot;Save availability&quot;.
-        Unticking a day does not cancel a booking that already exists.
+        If a day has a booking, clearing it is refused and nothing is saved.
       </p>
       <section aria-labelledby={headingId} className={cardCls}>
         <div className="flex items-center justify-between gap-2">
@@ -272,7 +275,7 @@ function Calendar({
                         />
                       ) : (
                         <span
-                          className="flex min-h-11 items-center justify-center text-sm text-zinc-500 line-through"
+                          className="flex min-h-11 items-center justify-center text-sm text-zinc-600 line-through dark:text-zinc-400"
                           aria-label={`${dayLabel(day)}, outside the days you can choose`}
                           role="img"
                         >

@@ -58,6 +58,7 @@ function chef(over: Partial<PublicChefDetail> = {}): PublicChefDetail {
     ],
     bookableDates: ["2026-10-30", "2026-10-31", "2026-11-02", "2027-01-01"],
     today: "2026-10-10",
+    firstBookableDay: "2026-10-11",
     lastBookableDay: "2027-01-08",
     ...over,
   };
@@ -281,7 +282,7 @@ describe("ChefDetailView (tester)", () => {
     fetchMock.mockImplementation(reply(200, chef()));
     await mount();
     const t = host.textContent!;
-    expect(t).toContain("Dates from Sat, Oct 10 to Fri, Jan 8, 2027.");
+    expect(t).toContain("Dates from Sun, Oct 11 to Fri, Jan 8, 2027.");
     const summaries = [...host.querySelectorAll("summary")].map((s) =>
       s.textContent!.replace(/\s+/g, " "),
     );
@@ -299,7 +300,8 @@ describe("ChefDetailView (tester)", () => {
       "2026-11-02",
       "2027-01-01",
     ]);
-    expect(t).toContain("Days that are already booked are not removed yet");
+    expect(t).not.toContain("not removed yet");
+    expect(t).toContain("has not been booked on");
   });
 
   it("does not use the browser clock for the window", async () => {
@@ -308,7 +310,7 @@ describe("ChefDetailView (tester)", () => {
     try {
       fetchMock.mockImplementation(reply(200, chef()));
       await mount();
-      expect(host.textContent).toContain("Dates from Sat, Oct 10");
+      expect(host.textContent).toContain("Dates from Sun, Oct 11");
       expect(host.textContent).not.toContain("2031");
     } finally {
       vi.useRealTimers();
@@ -380,23 +382,6 @@ describe("ChefDetailView (tester)", () => {
     });
     expect(host.querySelector("h1")!.textContent).toBe("Mai Tran (MOCK)");
     expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("locationOptions [] says 'cannot be booked yet' neutrally, with no kitchen note", async () => {
-    fetchMock.mockImplementation(reply(200, chef({ locationOptions: [] })));
-    await mount();
-    const t = host.textContent!;
-    expect(t).toContain("This chef cannot be booked yet.");
-    expect(host.querySelector('[data-testid="mock-badge"]')).toBeNull();
-    expect(host.querySelector('[data-testid="location-options"]')).toBeNull();
-    for (const w of [
-      "rejected",
-      "pending",
-      "not approved",
-      "unapproved",
-      "hygiene",
-    ])
-      expect(t.toLowerCase()).not.toContain(w);
   });
 
   it("chef's home only shows the MOCK kitchen note and no address", async () => {

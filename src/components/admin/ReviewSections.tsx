@@ -524,37 +524,44 @@ export function KitchenSection({
       ) : (
         <p>No kitchen photos uploaded.</p>
       )}
-      <div className="flex flex-col gap-4">
-        <Alert id={s.alertId} message={s.error} />
-        <ReloadButton show={s.stale} onReload={onReload} />
-        <TextAreaField
-          label="Note to the chef (required to reject, optional to approve)"
-          name="kitchen-note"
-          hint={`${REASON_MIN} to ${REASON_MAX} characters. The chef reads this as plain text.`}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          error={s.fieldErrors.note}
-        />
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => decide("approve")}
-            aria-disabled={s.busy}
-            className={buttonCls}
-          >
-            Approve kitchen (MOCK)
-          </button>
-          <button
-            type="button"
-            onClick={() => decide("reject")}
-            aria-disabled={s.busy}
-            className={secondaryButtonCls}
-          >
-            Reject kitchen (MOCK)
-          </button>
+      {app.status === "rejected" ? (
+        <p className={hintCls}>
+          This application is rejected, so its kitchen cannot be reviewed. The
+          chef has to update the application and submit it again first.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <Alert id={s.alertId} message={s.error} />
+          <ReloadButton show={s.stale} onReload={onReload} />
+          <TextAreaField
+            label="Note to the chef (required to reject, optional to approve)"
+            name="kitchen-note"
+            hint={`${REASON_MIN} to ${REASON_MAX} characters. The chef reads this as plain text.`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            error={s.fieldErrors.note}
+          />
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => decide("approve")}
+              aria-disabled={s.busy}
+              className={buttonCls}
+            >
+              Approve kitchen (MOCK)
+            </button>
+            <button
+              type="button"
+              onClick={() => decide("reject")}
+              aria-disabled={s.busy}
+              className={secondaryButtonCls}
+            >
+              Reject kitchen (MOCK)
+            </button>
+          </div>
+          <Notice message={s.notice} />
         </div>
-        <Notice message={s.notice} />
-      </div>
+      )}
     </Section>
   );
 }

@@ -427,6 +427,27 @@ describe("MOCK availability (contract 5B)", () => {
     });
     expect(b.data.days).toEqual([d(2), d(3)]);
   });
+  it("409 DATE_BOOKED names the booked date and saves nothing (D-22)", async () => {
+    await signUp("chef");
+    const { today } = (await call("GET", "/api/chef/availability")).data;
+    const d = (n: number) => {
+      const x = new Date(`${today}T12:00:00Z`);
+      x.setUTCDate(x.getUTCDate() + n);
+      return x.toISOString().slice(0, 10);
+    };
+    await call("PUT", "/api/chef/availability", { add: [d(2), d(3)] });
+    const r = await call("PUT", "/api/chef/availability", {
+      remove: [d(2), d(3)],
+      add: [d(4)],
+    });
+    expect(r.status).toBe(409);
+    expect(r.data.error.code).toBe("DATE_BOOKED");
+    expect(r.data.error.dates).toEqual([d(3)]);
+    expect((await call("GET", "/api/chef/availability")).data.days).toEqual([
+      d(2),
+      d(3),
+    ]);
+  });
   it("refuses past dates, dates after the window, overlaps, empty bodies and unknown keys", async () => {
     await signUp("chef");
     const { today, lastBookableDay } = (

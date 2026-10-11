@@ -65,10 +65,6 @@ export function locationLabels(options: readonly LocationType[]): string[] {
   return options.map((o) => LOCATION_LABEL[o]);
 }
 
-/** A chef with no visible location option cannot be booked yet (Q-21 is open). */
-export const isBookable = (options: readonly LocationType[]): boolean =>
-  options.length > 0;
-
 export function windowText(today: string, last: string): string {
   return `Dates from ${shortDayLabel(today)} to ${shortDayLabel(last, true)}.`;
 }

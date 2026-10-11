@@ -61,3 +61,17 @@ export async function openChef(page: Page, name: string) {
     page.getByTestId("chef-status").filter({ visible: true }),
   ).toBeVisible();
 }
+
+/**
+ * MOCK photo paths are made up. A developer's .env.local must never make a mock page ask hosted
+ * storage for them (T-040), so every mock spec that renders photos calls this in `beforeEach`.
+ * Returns the list that collects any request that was blocked (a spec may assert it is empty).
+ */
+export async function blockStorage(page: Page): Promise<string[]> {
+  const blocked: string[] = [];
+  await page.route("**/storage/v1/object/public/**", (route) => {
+    blocked.push(route.request().url());
+    return route.abort();
+  });
+  return blocked;
+}

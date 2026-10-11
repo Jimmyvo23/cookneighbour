@@ -1,5 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { PNG, expectNoAxeViolations, signUpChef } from "./helpers";
+import {
+  PNG,
+  expectNoAxeViolations,
+  signUpChef,
+  blockStorage,
+} from "./helpers";
+
+test.beforeEach(async ({ page }) => {
+  await blockStorage(page);
+});
 
 // MOCK mode (playwright.mock.config.ts). Dish routes are served by the mock adapter.
 

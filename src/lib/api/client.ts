@@ -12,6 +12,8 @@ export class ApiClientError extends Error {
   readonly fields: Record<string, string>;
   readonly retryAfterSeconds?: number;
   readonly missing?: string[];
+  /** DATE_BOOKED: the dates (YYYY-MM-DD) that have an open booking. */
+  readonly dates?: string[];
 
   constructor(
     status: number,
@@ -21,6 +23,7 @@ export class ApiClientError extends Error {
       fields?: Record<string, string>;
       retryAfterSeconds?: number;
       missing?: string[];
+      dates?: string[];
     } = {},
   ) {
     super(message);
@@ -30,6 +33,7 @@ export class ApiClientError extends Error {
     this.fields = extra.fields ?? {};
     this.retryAfterSeconds = extra.retryAfterSeconds;
     this.missing = extra.missing;
+    this.dates = extra.dates;
   }
 }
 
@@ -100,6 +104,7 @@ export async function apiFetch<T>(
     fields: err.fields,
     retryAfterSeconds: retry,
     missing: err.missing,
+    dates: err.dates,
   });
 }
 

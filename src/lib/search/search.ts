@@ -14,6 +14,7 @@ import {
   AVAILABILITY_HORIZON_DAYS,
   isRealDate,
 } from "@/lib/domain/dishes";
+import { TEXT_MAX } from "@/lib/domain/search";
 import { centreForPostal, type LatLng } from "@/lib/domain/distance";
 
 export type FieldErrors = Record<string, string>;
@@ -46,7 +47,6 @@ export const emptySearchForm = (): SearchFormValues => ({
 
 export const PAGE_SIZE = 20;
 export const RATE_MAX_DOLLARS = 1000; // the API accepts 0 to 100000 cents
-const TEXT_MAX = 40;
 /** Same ceiling as the API, so a hand-edited URL cannot ask for an absurd list. */
 const AVOID_MAX = 14;
 
@@ -280,7 +280,8 @@ export function parseSavedForm(raw: string | null): SearchFormValues | null {
     "maxRate",
     "date",
   ] as const) {
-    if (typeof f[k] !== "string" || (f[k] as string).length > 200) return null;
+    if (typeof f[k] !== "string" || (f[k] as string).trim().length > TEXT_MAX)
+      return null;
     out[k] = f[k] as string;
   }
   if (f.locationType !== "customer_home" && f.locationType !== "chef_home")

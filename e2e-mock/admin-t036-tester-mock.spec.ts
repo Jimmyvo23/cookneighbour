@@ -1,5 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoAxeViolations, loginAdmin, openChef } from "./helpers";
+import {
+  expectNoAxeViolations,
+  loginAdmin,
+  openChef,
+  blockStorage,
+} from "./helpers";
+
+test.beforeEach(async ({ page }) => {
+  await blockStorage(page);
+});
 
 // Tester (T-036), MOCK mode. Extra edge cases on top of admin-mock.spec.ts. Nothing here verifies
 // anything for real.

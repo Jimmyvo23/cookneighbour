@@ -355,3 +355,43 @@ describe("MOCK admin: kitchen review", () => {
     expect(err(ivy).message).toMatch(/does not offer/);
   });
 });
+
+describe("MOCK admin: D-21 rules", () => {
+  it("409 for a kitchen review of a rejected chef", async () => {
+    await logInAdmin();
+    const r = await call("POST", `/api/admin/chefs/${ROSA}/kitchen-review`, {
+      decision: "reject",
+      note: "MOCK: kitchen not suitable.",
+      reviewedPhotoPaths: [],
+      reviewedAddress: null,
+    });
+    expect(r.status).toBe(409);
+    expect(err(r).code).toBe("INVALID_STATE");
+    expect(err(r).message).toMatch(/rejected/);
+  });
+  it("rejecting a chef turns chef's home off", async () => {
+    await logInAdmin();
+    const d = await detail(LINH);
+    await call("POST", `/api/admin/chefs/${LINH}/kitchen-review`, {
+      decision: "approve",
+      reviewedPhotoPaths: d.application.documents.kitchenPhotoPaths,
+      reviewedAddress: d.application.kitchenAddress,
+    });
+    expect((await detail(LINH)).application.chefHomeEnabled).toBe(true);
+    await call("POST", `/api/admin/chefs/${LINH}/reject`, {
+      reason: "MOCK: not suitable at this time.",
+    });
+    expect((await detail(LINH)).application.chefHomeEnabled).toBe(false);
+  });
+  it("flags an approved chef whose check failed", async () => {
+    await logInAdmin();
+    await call("PATCH", `/api/admin/chefs/${TUAN}/checks`, {
+      policeCheck: "failed",
+    });
+    const l = (await call("GET", "/api/admin/chefs?status=approved"))
+      .data as AdminChefListResponse;
+    const t = l.items.find((i) => i.id === TUAN)!;
+    expect(t.flagged).toBe(true);
+    expect(t.failedChecks).toEqual(["police"]);
+  });
+});

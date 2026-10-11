@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PNG, expectNoAxeViolations } from "./helpers";
+import { PNG, blockStorage, expectNoAxeViolations } from "./helpers";
 
 // T-041, MOCK mode: the public chef page against the mock adapter (src/lib/mocks/mock-search.ts).
-// Every chef is made up. Ids: Mai Tran (approved, both locations) ...1001; the chef who cannot be
-// booked yet (only an unapproved chef's home) ...1050.
+// Every chef is made up. Ids: Mai Tran (approved, both locations) ...1001; a hidden chef (only an
+// unapproved chef's home; D-25 makes her a 404 like any unknown chef) ...1050.
 const MAI = "00000000-0000-4000-8000-000000001001";
 const NADIA = "00000000-0000-4000-8000-000000001050";
 
@@ -11,10 +11,7 @@ let storageRequests: string[] = [];
 test.beforeEach(async ({ page }) => {
   storageRequests = [];
   // MOCK photo paths are made up: a developer's .env.local must never make the page ask hosted storage.
-  await page.route("**/storage/v1/object/public/**", (route) => {
-    storageRequests.push(route.request().url());
-    return route.abort();
-  });
+  storageRequests = await blockStorage(page);
   await page.route("https://tile.openstreetmap.org/**", (route) =>
     route.fulfill({ contentType: "image/png", body: PNG.buffer }),
   );
@@ -91,9 +88,8 @@ test("the chef page shows the profile, dishes with allergens, dates and a Book s
 
   // Dates: the first month is open and the days are real <time> elements.
   const dates = page.getByRole("region", { name: "Available days" });
-  await expect(dates).toContainText(
-    "Days that are already booked are not removed yet",
-  );
+  await expect(dates).toContainText("has not been booked on");
+  await expect(dates).not.toContainText("not removed yet");
   await expect(dates.getByTestId("bookable-date").first()).toBeVisible();
   expect(await dates.locator("time[datetime]").count()).toBeGreaterThan(20);
 
@@ -124,9 +120,6 @@ test("the chef page passes axe in light and dark and fits 375 px wide (MOCK)", a
     expect(await noOverflow(page)).toBeLessThanOrEqual(0);
   }
   await page.emulateMedia({ colorScheme: "light" });
-  await open(page, NADIA);
-  await expect(page.getByTestId("not-bookable")).toBeVisible();
-  await expectNoAxeViolations(page);
   await open(page, "not-a-uuid");
   await expect(page.getByTestId("not-found")).toBeVisible();
   await expectNoAxeViolations(page);
@@ -139,6 +132,7 @@ test("every unknown chef shows the same 'Chef not found' (MOCK)", async ({
   for (const id of [
     "not-a-uuid",
     "00000000-0000-4000-8000-000000000001", // unknown, as pending, rejected and hidden chefs are
+    NADIA, // approved, but her only place to cook is an unapproved kitchen (D-25)
   ]) {
     await open(page, id);
     await expect(
@@ -152,27 +146,6 @@ test("every unknown chef shows the same 'Chef not found' (MOCK)", async ({
   }
   await page.getByRole("link", { name: "Search for a home cook" }).click();
   await expect(page).toHaveURL(/\/search$/);
-});
-
-test("a chef with no location option shows 'not bookable yet' and no booking (MOCK)", async ({
-  page,
-}) => {
-  await open(page, NADIA);
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Nadia Petrova (MOCK)" }),
-  ).toBeVisible();
-  const where = page.getByRole("region", { name: "Where the chef can cook" });
-  await expect(where.getByTestId("not-bookable")).toContainText(
-    "This chef cannot be booked yet.",
-  );
-  // No chef's-home line and no kitchen note: the API returned no options.
-  await expect(where.getByTestId("mock-badge")).toHaveCount(0);
-  await expect(where.getByRole("listitem")).toHaveCount(0);
-  await expect(page.getByTestId("book-stub")).toHaveAttribute(
-    "aria-disabled",
-    "true",
-  );
-  await expect(page.getByTestId("dish")).toHaveCount(1);
 });
 
 test("keyboard: the month details open with Enter and the Book stub does nothing (MOCK)", async ({

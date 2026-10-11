@@ -269,10 +269,9 @@ for (let i = 1; i <= 14; i++) {
 }
 
 /**
- * MOCK chef who is approved but cannot be booked yet: she offers only cooking at her own home and
- * no admin has approved the kitchen (Q-21). Like the real API, search never lists her (it is not
- * part of MOCK_CHEFS), but her page answers with `locationOptions: []`. Her id is fixed so tests
- * and demos can open /chefs/<id> directly.
+ * MOCK chef who is approved but offers only cooking at her own home, and no admin has approved the
+ * kitchen. Under D-25 she is hidden like any unknown chef: search never lists her and her page
+ * answers 404 "Chef not found". Her id is fixed so tests and demos can open /chefs/<id> directly.
  */
 export const MOCK_NOT_BOOKABLE_CHEF: MockChef = chef(50, {
   displayName: "Nadia Petrova (MOCK)",
@@ -331,9 +330,7 @@ export function searchRoutes(method: string, path: string): Response | null {
     } catch {
       return NOT_FOUND(); // a malformed percent escape is the same 404 as any unknown id
     }
-    const c = UUID.test(id)
-      ? [...MOCK_CHEFS, MOCK_NOT_BOOKABLE_CHEF].find((x) => x.id === id)
-      : undefined;
+    const c = UUID.test(id) ? MOCK_CHEFS.find((x) => x.id === id) : undefined;
     if (!c) return NOT_FOUND();
     return json(200, detailOf(c, today));
   }
@@ -374,7 +371,7 @@ export function searchRoutes(method: string, path: string): Response | null {
     pool = pool.filter(
       (c) =>
         isRealDate(d) &&
-        d >= today &&
+        d > today &&
         d <= last &&
         c.weekdays.includes(weekday(d)),
     );
@@ -395,8 +392,9 @@ export function searchRoutes(method: string, path: string): Response | null {
 
 function detailOf(c: MockChef, today: string): PublicChefDetail {
   const last = addDays(today, AVAILABILITY_HORIZON_DAYS);
+  const first = addDays(today, 1); // D-27: no same-day bookings
   const bookableDates: string[] = [];
-  for (let d = today; d <= last; d = addDays(d, 1))
+  for (let d = first; d <= last; d = addDays(d, 1))
     if (c.weekdays.includes(weekday(d))) bookableDates.push(d);
   const prefix = MOCK_PREFIXES.find((x) => x.prefix === c.servicePrefix);
   const options: LocationType[] = publicLocationOptions(
@@ -420,6 +418,7 @@ function detailOf(c: MockChef, today: string): PublicChefDetail {
     dishes: c.dishes,
     bookableDates,
     today,
+    firstBookableDay: first,
     lastBookableDay: last,
   };
 }

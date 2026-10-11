@@ -17,7 +17,6 @@ import {
   allergenText,
   groupDatesByMonth,
   isChefDetail,
-  isBookable,
   locationLabels,
   shortDayLabel,
   windowText,
@@ -139,9 +138,9 @@ function Dates({ chef }: { chef: PublicChefDetail }) {
   return (
     <>
       <p className="text-sm text-zinc-700 dark:text-zinc-300">
-        {windowText(chef.today, chef.lastBookableDay)} These are the days the
-        chef marked as available. Days that are already booked are not removed
-        yet, because booking opens later. Nothing here books the chef.
+        {windowText(chef.firstBookableDay, chef.lastBookableDay)} These are the
+        days the chef marked as available and has not been booked on. Same-day
+        booking is not possible. Nothing here books the chef.
       </p>
       {groups.length === 0 ? (
         <p data-testid="no-dates">
@@ -291,7 +290,6 @@ export function ChefDetailView({ id }: { id: string }) {
 
 function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
   const options = locationLabels(chef.locationOptions);
-  const bookable = isBookable(chef.locationOptions);
   const hasChefHome = chef.locationOptions.includes("chef_home");
   return (
     <>
@@ -338,25 +336,16 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
         <h2 id="where-h" className="text-lg font-semibold">
           Where the chef can cook
         </h2>
-        {bookable ? (
-          <>
-            <ul className="list-disc pl-5" data-testid="location-options">
-              {options.map((o) => (
-                <li key={o}>{o}</li>
-              ))}
-            </ul>
-            {hasChefHome && (
-              <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                The chef&apos;s kitchen was reviewed by an admin{" "}
-                <MockBadge>MOCK check</MockBadge> Nothing was inspected for
-                real. The address is not shown here.
-              </p>
-            )}
-          </>
-        ) : (
-          <p data-testid="not-bookable">
-            This chef cannot be booked yet. They have not set up a place to cook
-            that customers can book.
+        <ul className="list-disc pl-5" data-testid="location-options">
+          {options.map((o) => (
+            <li key={o}>{o}</li>
+          ))}
+        </ul>
+        {hasChefHome && (
+          <p className="text-sm text-zinc-700 dark:text-zinc-300">
+            The chef&apos;s kitchen was reviewed by an admin{" "}
+            <MockBadge>MOCK check</MockBadge> Nothing was inspected for real.
+            The address is not shown here.
           </p>
         )}
       </section>
@@ -388,9 +377,8 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
           Book this chef
         </h2>
         <p id={hintId} className="text-sm text-zinc-700 dark:text-zinc-300">
-          {bookable
-            ? "Booking opens soon. This button does nothing yet and no booking is made."
-            : "This chef cannot be booked yet, and booking opens soon."}
+          Booking opens soon. This button does nothing yet and no booking is
+          made.
         </p>
         <p>
           <button

@@ -597,8 +597,8 @@ export function SearchView() {
             </Field>
           </div>
           <p className="text-sm text-zinc-700 dark:text-zinc-300">
-            The day filter shows chefs who marked that day as free. Days that
-            are already booked are not removed yet.
+            The day filter shows chefs who marked that day as free and are not
+            already booked on it. Same-day booking is not possible.
           </p>
         </fieldset>
 
