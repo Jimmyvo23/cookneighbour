@@ -31,3 +31,15 @@ From: tester  To: reviewer
 ## What the next agent needs
 - Reviewer: focus on the decline-reason privacy point above, the lazy expiry design, service-role reads in estimate/create (after the role check), and the contract v1.4 wording.
 - Do not commit this file from the branch: the Planner commits Tester handoffs.
+
+## Round 2 (D-34 decline reason, contact-details guard)
+Verdict: **PASS**. CI run 38101379137 on commit a250c62: success (all jobs, incl. RLS, API, Playwright).
+- Added `src/lib/domain/contactDetails-tester.test.ts` (unit) and a `D-34 a refused decline reason changes nothing` block in `tests/api/bookings-tester.test.ts`.
+- Phone forms caught: `+1 (905) 555-0123`, `905.555.0123`, `9055550123`, `555 0123`, `555-0123`, `1 905 555 0123`, digits split by spaces, `tel:+1...`, `+44 ...`. Email (incl. upper case, `a@b.co`) and URLs with and without http (`www.x.ca`, `example.com/me`, `wa.me/..`, `bit.ly/..`) caught.
+- Passes correctly: ISO dates, `$1,200.50 for 3 days`, `$100,000`, `3 days`, `6 hours`, `12 people`, `20/10/2026`, `10:30`, `1.30pm`, `Mr. Smith.Thanks`, `no.1`, `2.5kg. Thanks.Bye`, `@chef_x`, a 5-digit zip.
+- Known limits pinned in tests: `a at b dot com`, spelled-out digits and street addresses pass.
+- API: blank, null, whitespace, number or missing reason is 422 VALIDATION_FAILED with `fields.reason`; seven contact-detail reasons give 422 CONTACT_DETAILS_NOT_ALLOWED, do not echo the text, and leave status `requested`, `decline_reason` and `responded_at` null, trial claim `held`, days active, no new notification for either side, and the date still held (a rival gets DOUBLE_BOOKED). A proper decline afterwards works and releases the claim. 2 and 501 characters refused, 3 and 500 accepted. A non-owner chef gets 404 even for a phone-number reason.
+- Contract section 7A (decline) and the error table (CONTACT_DETAILS_NOT_ALLOWED, 422) match the code; `errors.ts` maps it to 422. The `decline` test helper now sends a default reason, so the earlier race tests still hold.
+- Bugs:
+  - Low (false positive): a dotted date such as `10.5.2026` (8 digits) is flagged as a phone. The chef is told to remove it; acceptable, pinned in a test. Also a bare 7-or-more-digit number (`room 1234567`) is flagged.
+  - Low (design note): street addresses are not detected, by design; the contract lists it as an open question for Jimmy.
