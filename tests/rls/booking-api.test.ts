@@ -23,7 +23,14 @@ import {
 const fx = inject("fx");
 const svc = serviceClient();
 // Far-future dates keep these chefs away from every other test's dates.
-const far = (n: number) => dayPlus(fx.baseDay, 900 + n);
+// Fresh chefs per test, so dates need not be unique across tests. The public date helpers only
+// answer inside the booking window (tomorrow to today + 180), so these are inside it.
+// Toronto's today, the same clock as the database functions.
+const todayTo = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Toronto",
+}).format(new Date());
+const far = (n: number) => dayPlus(todayTo, 10 + n);
+const outside = (n: number) => dayPlus(todayTo, n);
 const BOOKING_FUNCTIONS = [
   "create_booking",
   "answer_booking",
@@ -151,6 +158,54 @@ describe("the public date helpers return dates and chef ids only", () => {
       p_to: far(13),
     });
     expect(asCustomer.data).toEqual([far(10), far(11)]);
+  });
+
+  it("nothing outside the public window, and nothing for a pending or rejected chef", async () => {
+    const anon = anonClient();
+    const chef = await makeChef(svc, "win-chef");
+    const cust = await makeCustomer(svc, "win-a");
+    // today (not tomorrow), and a date beyond today + 180: bookable by the database, never public
+    await makeBooking(svc, {
+      customer: cust,
+      chef,
+      dates: [outside(0), outside(300), far(5)],
+    });
+    const dates = await anon.rpc("chef_booked_dates", {
+      p_chef: chef.id,
+      p_from: outside(-30),
+      p_to: outside(400),
+    });
+    expect(dates.error).toBeNull();
+    expect(dates.data).toEqual([far(5)]);
+    for (const d of [outside(0), outside(300), outside(-5)]) {
+      expect((await anon.rpc("chefs_booked_on", { p_day: d })).data, d).toEqual(
+        [],
+      );
+      const one = await anon.rpc("chef_booked_dates", {
+        p_chef: chef.id,
+        p_from: d,
+        p_to: d,
+      });
+      expect(one.data, d).toEqual([]);
+    }
+    expect((await anon.rpc("chefs_booked_on", { p_day: far(5) })).data).toEqual(
+      [chef.id],
+    );
+
+    // The same booking is invisible once the chef is rejected or pending.
+    for (const status of ["rejected", "pending"] as const) {
+      await svc.from("chefs").update({ status }).eq("profile_id", chef.id);
+      const r = await anon.rpc("chef_booked_dates", {
+        p_chef: chef.id,
+        p_from: far(0),
+        p_to: far(9),
+      });
+      expect(r.data, status).toEqual([]);
+      expect(
+        (await anon.rpc("chefs_booked_on", { p_day: far(5) })).data,
+        status,
+      ).toEqual([]);
+    }
   });
 
   it("an unanswered request past its expiry is ignored", async () => {

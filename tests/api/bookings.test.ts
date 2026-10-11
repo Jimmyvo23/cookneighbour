@@ -1525,3 +1525,23 @@ describe("search avoidAllergens uses the booking synonym map (D-31)", () => {
     expect(ids).toContain(mixed.id);
   });
 });
+
+describe("public date helpers are limited to the public window (review finding 1)", () => {
+  it("a rejected chef's booked dates and a booking outside the window are not public", async () => {
+    const chef = await bookableChef({ ticked: [3] });
+    const c = await bookingCustomer();
+    await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 3)] }));
+    const { publicSearch } = await import("./booking-helpers");
+    const anon = new Browser();
+    expect((await publicSearch(anon, `date=${day(3)}`)).status).toBe(200);
+    await setChef(chef.id, { status: "rejected" });
+    const { publicDetail } = await import("./booking-helpers");
+    expect((await publicDetail(anon, chef.id)).status).toBe(404);
+    const r = await svc.rpc("chef_booked_dates", {
+      p_chef: chef.id,
+      p_from: day(1),
+      p_to: day(30),
+    });
+    expect(r.data).toEqual([]); // no helper answers for a rejected chef
+  });
+});

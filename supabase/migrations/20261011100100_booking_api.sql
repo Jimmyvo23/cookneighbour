@@ -351,6 +351,9 @@ $$;
 -- Public, dates-only helpers (A-19). They say that a chef is taken on a day, never by whom.
 -- A `requested` booking past its expiry is ignored (lazy expiry has not run yet).
 -- ---------------------------------------------------------------------------
+-- Public, so they only answer inside the public booking window (A-19, D-15, D-27): tomorrow to
+-- today + 180 days in Toronto (AVAILABILITY_HORIZON_DAYS = 180 in src/lib/domain/dishes.ts), and
+-- only for approved chefs. A past or far-future date, or a pending or rejected chef, returns nothing.
 create or replace function public.chef_booked_dates(p_chef uuid, p_from date, p_to date) returns setof date
 language sql stable security definer
 set search_path = ''
@@ -358,9 +361,11 @@ as $$
   select distinct bd.visit_date
     from public.booking_days bd
     join public.bookings b on b.id = bd.booking_id
+    join public.chefs c on c.profile_id = bd.chef_id and c.status = 'approved'
    where bd.chef_id = p_chef
      and bd.is_active
-     and bd.visit_date between p_from and p_to
+     and bd.visit_date between greatest(p_from, (now() at time zone 'America/Toronto')::date + 1)
+                           and least(p_to, (now() at time zone 'America/Toronto')::date + 180)
      and not (b.status = 'requested'
               and coalesce(b.expires_at, b.created_at + interval '72 hours') <= now())
    order by 1;
@@ -373,7 +378,10 @@ as $$
   select distinct bd.chef_id
     from public.booking_days bd
     join public.bookings b on b.id = bd.booking_id
+    join public.chefs c on c.profile_id = bd.chef_id and c.status = 'approved'
    where bd.visit_date = p_day
+     and p_day between (now() at time zone 'America/Toronto')::date + 1
+                   and (now() at time zone 'America/Toronto')::date + 180
      and bd.is_active
      and not (b.status = 'requested'
               and coalesce(b.expires_at, b.created_at + interval '72 hours') <= now());
