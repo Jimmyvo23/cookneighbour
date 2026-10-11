@@ -178,12 +178,15 @@ describe("validateSearchForm", () => {
     ).toEqual({});
   });
 
-  it("keeps the date inside today to today + 180 days", () => {
+  it("keeps the date inside tomorrow to today + 180 days (D-27)", () => {
     expect(dateWindow("2026-10-10")).toEqual({
-      min: "2026-10-10",
+      min: "2026-10-11",
       max: "2027-04-08",
     });
-    expect(validateSearchForm(form({ date: "2026-10-10" }), ctx)).toEqual({});
+    expect(
+      validateSearchForm(form({ date: "2026-10-10" }), ctx).date,
+    ).toBeTruthy();
+    expect(validateSearchForm(form({ date: "2026-10-11" }), ctx)).toEqual({});
     expect(validateSearchForm(form({ date: "2027-04-08" }), ctx)).toEqual({});
     expect(
       validateSearchForm(form({ date: "2026-10-09" }), ctx).date,

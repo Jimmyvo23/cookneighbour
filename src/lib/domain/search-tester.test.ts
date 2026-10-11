@@ -23,8 +23,9 @@ const q = (s: string) => parseSearchQuery(new URLSearchParams(s), ctx);
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 
 describe("date window edges (D-15)", () => {
-  it("accepts today and today + 180, rejects the days either side", () => {
-    expect(q(`date=${TODAY}`).errors).toEqual({});
+  it("accepts tomorrow and today + 180, rejects today (D-27) and the days either side", () => {
+    expect(q(`date=${TODAY}`).errors.date).toBeTruthy();
+    expect(q("date=2026-10-10").errors).toEqual({});
     expect(q("date=2027-04-07").errors).toEqual({}); // 2026-10-09 + 180
     expect(q("date=2027-04-08").errors.date).toBeTruthy();
     expect(q("date=2026-10-08").errors.date).toBeTruthy();
@@ -292,7 +293,13 @@ describe("source guards for the public routes", () => {
     expect(server).toMatch(/\.eq\("available", true\)/);
   });
   it("selects only public columns and never touches private tables or storage", () => {
-    expect(server).not.toMatch(
+    // T-042: the only database functions it may call are the two read-only, dates-only helpers
+    // (chef_booked_dates, chefs_booked_on); any other .rpc( is still a failure.
+    const withoutDateHelpers = server.replace(
+      /\.rpc\(\s*"(chef_booked_dates|chefs_booked_on)"/g,
+      ".call(",
+    );
+    expect(withoutDateHelpers).not.toMatch(
       /chef_private|kitchen|police|id_check|food_handler|hash|phone|email|address|storage|\.rpc\(|\.insert\(|\.update\(|\.delete\(|\.upsert\(/i,
     );
   });

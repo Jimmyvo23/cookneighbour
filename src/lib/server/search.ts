@@ -117,25 +117,43 @@ export async function searchChefs(
     throw fail();
   }
 
-  const candidates: ChefCandidate[] = (data as unknown as Row[]).map((r) => ({
-    id: r.profile_id as string,
-    displayName: r.display_name as string,
-    bio: (r.bio as string | null) ?? null,
-    photoPath: (r.photo_path as string | null) ?? null,
-    cuisines: stringArray(r.cuisines),
-    languages: stringArray(r.languages),
-    hourlyRateCents: (r.hourly_rate_cents as number | null) ?? null,
-    currency: r.currency as string,
-    ratingAvg: Number(r.rating_avg),
-    reviewCount: r.review_count as number,
-    servicePrefix: (r.service_postal_prefix as string | null) ?? null,
-    serviceRadiusKm: r.service_radius_km as number,
-    locationOptions: stringArray(r.location_options) as LocationType[],
-    chefHomeEnabled: r.chef_home_enabled === true,
-    activeDishes: ((r.dishes as Row[] | null) ?? []).map((d) => ({
-      allergens: stringArray(d.allergens),
-    })),
-  }));
+  // A-19, T-042: a chef who is already booked on the searched date is not available that day.
+  // A database function that returns chef ids only (never who booked), open to anon.
+  let bookedOnDate = new Set<string>();
+  if (query.date) {
+    const b = await db.rpc("chefs_booked_on", { p_day: query.date });
+    if (b.error) {
+      console.error("api: search booked read failed");
+      throw fail();
+    }
+    bookedOnDate = new Set(
+      ((b.data ?? []) as unknown[]).map((x) =>
+        typeof x === "string" ? x : String(Object.values(x as Row)[0]),
+      ),
+    );
+  }
+
+  const candidates: ChefCandidate[] = (data as unknown as Row[])
+    .filter((r) => !bookedOnDate.has(r.profile_id as string))
+    .map((r) => ({
+      id: r.profile_id as string,
+      displayName: r.display_name as string,
+      bio: (r.bio as string | null) ?? null,
+      photoPath: (r.photo_path as string | null) ?? null,
+      cuisines: stringArray(r.cuisines),
+      languages: stringArray(r.languages),
+      hourlyRateCents: (r.hourly_rate_cents as number | null) ?? null,
+      currency: r.currency as string,
+      ratingAvg: Number(r.rating_avg),
+      reviewCount: r.review_count as number,
+      servicePrefix: (r.service_postal_prefix as string | null) ?? null,
+      serviceRadiusKm: r.service_radius_km as number,
+      locationOptions: stringArray(r.location_options) as LocationType[],
+      chefHomeEnabled: r.chef_home_enabled === true,
+      activeDishes: ((r.dishes as Row[] | null) ?? []).map((d) => ({
+        allergens: stringArray(d.allergens),
+      })),
+    }));
   return rankChefs(candidates, query, prefixes);
 }
 
@@ -171,8 +189,10 @@ export async function getChefDetail(id: string): Promise<PublicChefDetail> {
   const c = chef as Row;
 
   const today = torontoToday();
+  // D-27: no same-day bookings, so the first bookable day is tomorrow.
+  const first = addDays(today, 1);
   const last = addDays(today, AVAILABILITY_HORIZON_DAYS);
-  const [dishRes, dayRes, prefixRes] = await Promise.all([
+  const [dishRes, dayRes, bookedRes, prefixRes] = await Promise.all([
     db
       .from("dishes")
       .select(DISH_COLUMNS)
@@ -185,9 +205,11 @@ export async function getChefDetail(id: string): Promise<PublicChefDetail> {
       .select("day")
       .eq("chef_id", id)
       .eq("available", true)
-      .gte("day", today)
+      .gte("day", first)
       .lte("day", last)
       .order("day"),
+    // T-042 (A-19): dates the chef is already booked on; dates only, never who booked.
+    db.rpc("chef_booked_dates", { p_chef: id, p_from: first, p_to: last }),
     c.service_postal_prefix
       ? db
           .from("postal_prefixes")
@@ -196,11 +218,16 @@ export async function getChefDetail(id: string): Promise<PublicChefDetail> {
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
   ]);
-  if (dishRes.error || dayRes.error || prefixRes.error) {
+  if (dishRes.error || dayRes.error || bookedRes.error || prefixRes.error) {
     console.error("api: chef detail read failed");
     throw fail();
   }
   const dishes = ((dishRes.data as Row[] | null) ?? []).map(mapDish);
+  const booked = new Set<string>(
+    ((bookedRes.data ?? []) as unknown[]).map((x) =>
+      typeof x === "string" ? x : String(Object.values(x as Row)[0]),
+    ),
+  );
 
   if (
     !isListable({
@@ -235,10 +262,11 @@ export async function getChefDetail(id: string): Promise<PublicChefDetail> {
     serviceRadiusKm: c.service_radius_km as number,
     locationOptions,
     dishes,
-    bookableDates: ((dayRes.data as Row[] | null) ?? []).map(
-      (d) => d.day as string,
-    ),
+    bookableDates: ((dayRes.data as Row[] | null) ?? [])
+      .map((d) => d.day as string)
+      .filter((d) => !booked.has(d)),
     today,
+    firstBookableDay: first,
     lastBookableDay: last,
   };
 }

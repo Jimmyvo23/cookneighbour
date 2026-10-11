@@ -42,7 +42,21 @@ const words = (s: string): string[] =>
  * a medical reference (cross-reactivity such as peanut vs tree nut is warned on purpose).
  */
 export const SYNONYM_GROUPS: readonly (readonly string[])[] = [
-  ["gluten", "wheat"],
+  // D-32: Health Canada's gluten sources (barley, rye, oats, triticale, spelt, kamut) and the
+  // condition words (celiac, coeliac). Cautious: a customer who writes "rye" is warned about a
+  // dish listing "wheat" or "gluten".
+  [
+    "gluten",
+    "wheat",
+    "barley",
+    "rye",
+    "oat",
+    "triticale",
+    "spelt",
+    "kamut",
+    "celiac",
+    "coeliac",
+  ],
   ["dairy", "lactose", "milk"],
   ["shellfish", "shrimp", "prawn", "crab", "lobster", "crustacean"],
   [
@@ -65,8 +79,11 @@ export const SYNONYM_GROUPS: readonly (readonly string[])[] = [
     "pecan",
     "pistachio",
     "hazelnut",
+    // D-32: bare nouns without the word "nut" ("macadamia", "brazil").
+    "macadamia",
+    "brazil",
   ],
-  ["soy", "soya"],
+  ["soy", "soya", "soybean"],
   ["sulfite", "sulphite"],
 ];
 

@@ -38,6 +38,8 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Pages with private data | (preventive) | Guard on the server, not only in the client |
 | Mock mode reaching hosted services | Mock pages built photo URLs from `NEXT_PUBLIC_SUPABASE_URL` and asked hosted storage for made-up files (T-040) | In mock mode build no storage URLs; every mock Playwright spec that renders photos blocks `**/storage/v1/object/public/**` (older specs are backfilled in T-062) |
 | Paths from an API used in URLs | A photo path with `..` could leave the bucket folder in the browser (T-041) | Use the shared `isSafeStoragePath` (`src/lib/chef/dishes.ts`): it rejects dot and empty segments, a leading slash, backslashes and control characters |
+| Test data that pollutes shared searches | Many booking-test chefs with cuisine "Vietnamese" pushed `search.test.ts` chefs off the first page of `cuisine=vietnamese` (T-042) | API tests share one database: give every test chef a unique cuisine tag by default and filter on it |
+| A rule change reaching old tests | D-27 (no same-day booking) changed the search date window, which broke mock, e2e and Tester tests that assumed "today" (T-042) | Before changing a shared rule, grep the unit, API, mock and Playwright tests for the old value and update them in the same PR |
 | Map markers without a name | (found by the builder, T-040) Leaflet `divIcon` pins had no accessible name and Enter did nothing | Set `aria-label` and a key handler on custom markers |
 
 ## 4. Git and GitHub
@@ -64,6 +66,8 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - Jimmy says "stop" to pause. Don't start a new task if he says the limit is close.
 
 ## 7. What speeds things up without cutting quality
+
+- **No Docker on this Mac, so API and RLS tests run only in CI.** A builder can still check new SQL locally: `npm i @electric-sql/pglite` in a scratch folder (not the project), load the migrations after stubbing `auth`, `storage` and the three roles, and call the functions with plain SQL (T-042 did this for `create_booking` and friends). It catches syntax and logic errors before the 8 minute CI round; it cannot test races or RLS.
 
 - Builders run the section 3 checklist and the full local test suite before handing off, so the Tester's first round usually passes.
 - Hand over handoff files instead of re-explaining in chat.

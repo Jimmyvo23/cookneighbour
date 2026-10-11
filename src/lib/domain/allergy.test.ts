@@ -33,10 +33,8 @@ describe("findAllergyConflicts", () => {
     ]);
   });
   it("does not match a different word that merely contains the letters", () => {
-    expect(
-      findAllergyConflicts("soybean-free diet is not an allergy", [pho]),
-    ).toEqual([]);
     expect(findAllergyConflicts("nutmeg", [satay])).toEqual([]);
+    expect(findAllergyConflicts("soymilk-free", [pho])).toEqual([]);
   });
   it("is empty with no allergies, blank text or no dish allergens", () => {
     expect(findAllergyConflicts("", [pho])).toEqual([]);
@@ -205,5 +203,57 @@ describe("synonyms and spellings (D-24)", () => {
     expect(findAllergyConflicts("sesame", dish("soy"))).toEqual([]);
     expect(findAllergyConflicts("mustard", dish("wheat"))).toEqual([]);
     expect(findAllergyConflicts("nutmeg", dish("peanuts"))).toEqual([]);
+  });
+});
+
+// D-32 (T-042): Health Canada's gluten sources, the condition words, and bare nut/soy words.
+describe("gluten sources and bare words (D-32)", () => {
+  const dish = (allergen: string) => [
+    { id: "x", name: "X", allergens: [allergen] },
+  ];
+  const gluten = [
+    "barley",
+    "rye",
+    "oat",
+    "oats",
+    "triticale",
+    "spelt",
+    "kamut",
+    "celiac",
+    "coeliac",
+  ];
+  it.each(gluten)("%s conflicts with gluten and wheat, both ways", (w) => {
+    expect(findAllergyConflicts(w, dish("gluten")), w).toHaveLength(1);
+    expect(findAllergyConflicts(w, dish("wheat")), w).toHaveLength(1);
+    expect(findAllergyConflicts("gluten", dish(w)), w).toHaveLength(1);
+    expect(findAllergyConflicts("wheat", dish(w)), w).toHaveLength(1);
+  });
+  it("works inside a sentence", () => {
+    expect(
+      findAllergyConflicts("I have celiac disease", dish("gluten")),
+    ).toHaveLength(1);
+    expect(
+      findAllergyConflicts("my son cannot eat rye bread", dish("wheat")),
+    ).toHaveLength(1);
+  });
+  it.each(["macadamia", "macadamias", "brazil"])(
+    "%s conflicts with nuts, tree nuts and peanuts",
+    (w) => {
+      expect(findAllergyConflicts(w, dish("tree nuts")), w).toHaveLength(1);
+      expect(findAllergyConflicts("nuts", dish(w)), w).toHaveLength(1);
+      expect(findAllergyConflicts(w, dish("peanuts")), w).toHaveLength(1);
+    },
+  );
+  it("soybean and soybeans conflict with soy and soya", () => {
+    for (const w of ["soybean", "soybeans"]) {
+      expect(findAllergyConflicts(w, dish("soy"))).toHaveLength(1);
+      expect(findAllergyConflicts("soya", dish(w))).toHaveLength(1);
+    }
+  });
+  it("does not warn on unrelated grains and seeds", () => {
+    expect(findAllergyConflicts("rice", dish("gluten"))).toEqual([]);
+    expect(findAllergyConflicts("buckwheat", dish("gluten"))).toEqual([]);
+    expect(findAllergyConflicts("coconut", dish("tree nuts"))).toEqual([]);
+    expect(findAllergyConflicts("corn", dish("wheat"))).toEqual([]);
   });
 });

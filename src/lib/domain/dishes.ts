@@ -24,6 +24,22 @@ export const DEFAULT_SHELF_LIFE_DAYS = 2; // A-7, kept by D-16
 /** Mirrored by the database trigger dishes_active_cap (migration T-032). */
 export const MAX_ACTIVE_DISHES = 50;
 
+/** The priority allergens in Canada, plus gluten. Stored lower case (contract 5A). Shared by the dish form and the booking intake (T-042). */
+export const ALLERGEN_CHOICES: { value: string; label: string }[] = [
+  { value: "milk", label: "Milk" },
+  { value: "eggs", label: "Eggs" },
+  { value: "peanuts", label: "Peanuts" },
+  { value: "tree nuts", label: "Tree nuts" },
+  { value: "sesame", label: "Sesame" },
+  { value: "soy", label: "Soy" },
+  { value: "wheat", label: "Wheat" },
+  { value: "gluten", label: "Gluten (other grains)" },
+  { value: "fish", label: "Fish" },
+  { value: "crustaceans", label: "Crustaceans (shrimp, crab)" },
+  { value: "molluscs", label: "Molluscs (clams, squid)" },
+  { value: "mustard", label: "Mustard" },
+  { value: "sulphites", label: "Sulphites" },
+];
 export const AVAILABILITY_HORIZON_DAYS = 180;
 export const MAX_DATES_PER_LIST = 200;
 

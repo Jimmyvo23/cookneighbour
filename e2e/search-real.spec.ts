@@ -317,11 +317,15 @@ test("a visitor opens an approved chef's page from the real route: profile, dish
   const admin = await adminContext(playwright, baseURL);
   await approve(admin, chefCtx, chef.id);
   await approveKitchen(admin, chefCtx, chef.id);
-  // Tick today (the server's Toronto day) so the page has one available day.
+  // Tick today and tomorrow (the server's Toronto days). D-27: no same-day bookings, so only
+  // tomorrow is bookable and the page shows one available day.
   const win = await (await chefCtx.get("/api/chef/availability")).json();
+  const tomorrow = new Date(`${win.today}T12:00:00Z`);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const firstDay = tomorrow.toISOString().slice(0, 10);
   const put = await chefCtx.put("/api/chef/availability", {
     headers: json,
-    data: { add: [win.today] },
+    data: { add: [win.today, firstDay] },
   });
   expect(put.status(), await put.text()).toBe(200);
 
@@ -358,7 +362,8 @@ test("a visitor opens an approved chef's page from the real route: profile, dish
 
   // The ticked day inside the server's window.
   await expect(page.getByTestId("bookable-date")).toHaveCount(1);
-  await expect(page.locator(`time[datetime="${win.today}"]`)).toBeVisible();
+  await expect(page.locator(`time[datetime="${firstDay}"]`)).toBeVisible();
+  await expect(page.locator(`time[datetime="${win.today}"]`)).toHaveCount(0);
 
   // The Book entry point is a stub.
   await expect(page.getByTestId("book-stub")).toHaveAttribute(

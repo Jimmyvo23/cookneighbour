@@ -36,20 +36,22 @@ for (const tz of ["Asia/Tokyo", "Pacific/Honolulu", "America/Toronto"]) {
       ["2026-10-10T04:30:00Z", "2026-10-10", "2027-04-08"], // 00:30 in Toronto
       ["2026-11-02T04:30:00Z", "2026-11-01", "2027-04-30"], // 23:30 in Toronto, just after DST ends
     ] as const) {
-      test(`at ${iso} the day picker runs from ${toronto} (MOCK)`, async ({
+      test(`at ${iso} (Toronto day ${toronto}) the day picker runs from the next day (MOCK, D-27)`, async ({
         page,
       }) => {
         await page.clock.setFixedTime(new Date(iso));
         await openSearch(page);
         const date = page.getByLabel(DATE);
-        await expect(date).toHaveAttribute("min", toronto);
+        // D-27: no same-day bookings, so the first day a customer can search is tomorrow.
+        const firstDay = new Date(`${toronto}T00:00:00Z`);
+        firstDay.setUTCDate(firstDay.getUTCDate() + 1);
+        const first = firstDay.toISOString().slice(0, 10);
+        await expect(date).toHaveAttribute("min", first);
         await expect(date).toHaveAttribute("max", last);
-        await expect(
-          page.getByText(`From ${toronto} to ${last}.`),
-        ).toBeVisible();
+        await expect(page.getByText(`From ${first} to ${last}.`)).toBeVisible();
 
         // The first and last allowed days are searched without a complaint.
-        for (const d of [toronto, last]) {
+        for (const d of [first, last]) {
           await date.fill(d);
           await find(page);
           await expect(page.getByTestId("results-status")).toContainText(
@@ -58,9 +60,7 @@ for (const tz of ["Asia/Tokyo", "Pacific/Honolulu", "America/Toronto"]) {
           await expect(date).not.toHaveAttribute("aria-invalid", "true");
         }
         // One day outside either end is refused next to the field, with focus.
-        const before = new Date(`${toronto}T00:00:00Z`);
-        before.setUTCDate(before.getUTCDate() - 1);
-        await date.fill(before.toISOString().slice(0, 10));
+        await date.fill(toronto); // today is now outside the window
         await find(page);
         await expect(date).toBeFocused();
         await expect(date).toHaveAttribute("aria-invalid", "true");

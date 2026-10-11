@@ -530,6 +530,7 @@ describe("no private data", () => {
         "dishes",
         "bookableDates",
         "today",
+        "firstBookableDay",
         "lastBookableDay",
       ].sort(),
     );
@@ -577,7 +578,8 @@ describe("GET /api/chefs/:id", () => {
     });
     const t = today();
     const inside = [addDays(t, 1), addDays(t, 2), addDays(t, 180)];
-    await putDays(chef, { add: inside });
+    // Today is ticked too, but D-27 hides it: nobody can book the same day.
+    await putDays(chef, { add: [t, ...inside] });
     // rows the route would refuse, written by the service role: past, beyond the window, unavailable
     await svc.from("availability").insert([
       { chef_id: chef.id, day: addDays(t, -1) },
@@ -604,6 +606,7 @@ describe("GET /api/chefs/:id", () => {
     });
     expect(r.body.bookableDates).toEqual(inside);
     expect(r.body.today).toBe(t);
+    expect(r.body.firstBookableDay).toBe(addDays(t, 1));
     expect(r.body.lastBookableDay).toBe(addDays(t, 180));
     expect(r.body).toMatchObject({
       id: chef.id,
@@ -672,6 +675,7 @@ describe("validation (422) and paging", () => {
     await bad("maxRateCents=100001", "maxRateCents");
     await bad("minRateCents=3000&maxRateCents=2000", "maxRateCents");
     await bad(`date=${addDays(today(), -1)}`, "date");
+    await bad(`date=${today()}`, "date");
     await bad(`date=${addDays(today(), 181)}`, "date");
     await bad("date=2026-02-30", "date");
     await bad("locationType=home", "locationType");
@@ -777,12 +781,13 @@ describe("T-039 tester: hidden detail pages answer identically", () => {
 });
 
 describe("T-039 tester: parameters and window edges", () => {
-  it("accepts today and the last bookable day, rejects the day after", async () => {
+  it("accepts tomorrow and the last bookable day, rejects today (D-27) and the day after", async () => {
     const t = today();
     const last = addDays(t, 180);
     const chef = await pub();
     await putDays(chef, { add: [last] });
-    expect((await search(anon(), q(`date=${t}`))).status).toBe(200);
+    expect((await search(anon(), q(`date=${t}`))).status).toBe(422);
+    expect((await search(anon(), q(`date=${addDays(t, 1)}`))).status).toBe(200);
     const edge = await search(anon(), q(`date=${last}`));
     expect(edge.status, edge.text).toBe(200);
     expect(ids(edge)).toEqual([chef.id]);

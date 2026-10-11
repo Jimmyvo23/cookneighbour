@@ -123,7 +123,7 @@ describe("the form never accepts what the server would refuse for rate, date and
   });
   it("the window ends are inclusive on both sides, on the client and the server", () => {
     const { min, max } = dateWindow(TODAY);
-    expect(min).toBe(TODAY);
+    expect(min).toBe(addDays(TODAY, 1)); // D-27: no same-day bookings
     expect(max).toBe("2027-04-08");
     expect(validateSearchForm(form({ date: min }), ctx)).toEqual({});
     expect(validateSearchForm(form({ date: max }), ctx)).toEqual({});

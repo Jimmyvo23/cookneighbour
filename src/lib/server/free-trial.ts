@@ -1,5 +1,7 @@
-// Free-trial server functions (T-038, CLAUDE.md 6.6, PLAN R-4, A-16). No routes yet: the booking
-// routes (T-042) call these after they know who the caller is.
+// Free-trial server functions (T-038, CLAUDE.md 6.6, PLAN R-4, A-16). The booking routes (T-042)
+// call these after they know who the caller is. T-042: the claim of a NEW booking is written inside
+// the create_booking database function (same transaction as the booking), using the hashes from
+// loadTrialApplicant; holdFreeTrial remains for a stand-alone hold on an existing booking.
 //
 // Authorization: `customerId` MUST come from requireCaller() (the session), never from a request
 // body. These functions use the service role (they write tables clients cannot write), so they
@@ -32,6 +34,7 @@ import {
   type FreeTrialState,
   type TrialApplicant,
 } from "@/lib/domain/freeTrial";
+import { FREE_TRIAL_BLOCK_LOG_WINDOW_MINUTES } from "@/lib/domain/config";
 import { addressHash, phoneHash } from "@/lib/domain/hash";
 import { normalizePhone } from "@/lib/domain/phone";
 import { getHashPepper } from "@/lib/server/pepper";
@@ -53,7 +56,17 @@ const BLOCK_BY_INDEX: Record<string, FreeTrialBlockReason> = {
   free_trial_one_per_address: "address",
 };
 
-const used = () => new ApiFailure("FREE_TRIAL_USED", FREE_TRIAL_USED_MESSAGE);
+/** The rule that a unique-violation message names (the index name is in the Postgres message). */
+export function trialBlockFromMessage(
+  msg: string,
+): FreeTrialBlockReason | undefined {
+  return Object.entries(BLOCK_BY_INDEX).find(([name]) =>
+    msg.includes(name),
+  )?.[1];
+}
+
+export const trialUsed = () =>
+  new ApiFailure("FREE_TRIAL_USED", FREE_TRIAL_USED_MESSAGE);
 const notFound = (what: string) =>
   new ApiFailure("NOT_FOUND", `No ${what} with that id.`);
 
@@ -62,7 +75,7 @@ const notFound = (what: string) =>
  * 4xx (never a 500) when the customer is not a customer, has no verified phone, a stored phone
  * the current rules reject, or no usable address.
  */
-async function loadApplicant(
+export async function loadTrialApplicant(
   db: SupabaseClient,
   customerId: string,
   pepper: string,
@@ -127,7 +140,7 @@ async function loadApplicant(
   return { customerId, phoneHash: phoneHash(e164, pepper), addressHash: aHash };
 }
 
-async function liveClaims(
+export async function liveClaims(
   db: SupabaseClient,
   a: TrialApplicant,
 ): Promise<ClaimSummary[]> {
@@ -158,7 +171,11 @@ export async function checkFreeTrialEligibility(
   deps: FreeTrialDeps = {},
 ): Promise<{ eligible: boolean }> {
   const db = deps.db ?? createAdminClient();
-  const a = await loadApplicant(db, customerId, deps.pepper ?? getHashPepper());
+  const a = await loadTrialApplicant(
+    db,
+    customerId,
+    deps.pepper ?? getHashPepper(),
+  );
   return { eligible: evaluateFreeTrial(a, await liveClaims(db, a)).eligible };
 }
 
@@ -168,16 +185,49 @@ export interface HeldClaim {
   state: "held";
 }
 
-async function logBlock(
+/**
+ * Admin-only log of a refused free trial. Repeated attempts by one customer for one reason inside
+ * the window are counted in one row (SQL function record_free_trial_block), so the log cannot be
+ * flooded. Best effort: a failed log must not turn the clean 409 into a 500. Message only, no data.
+ */
+export async function recordTrialBlock(
   db: SupabaseClient,
   customerId: string,
   reason: FreeTrialBlockReason,
 ) {
-  // Best effort: a failed log must not turn the clean 409 into a 500. Message only, no data.
-  const r = await db
-    .from("free_trial_blocks")
-    .insert({ customer_id: customerId, reason });
+  const r = await db.rpc("record_free_trial_block", {
+    p_customer: customerId,
+    p_reason: reason,
+    p_window_minutes: FREE_TRIAL_BLOCK_LOG_WINDOW_MINUTES,
+  });
   if (r.error) console.error("free-trial: block log failed:", r.error.message);
+}
+
+export interface TrialPrecheck {
+  applicant: TrialApplicant;
+  eligible: boolean;
+  /** For the admin log only; never shown to the customer. */
+  reason?: FreeTrialBlockReason;
+}
+
+/**
+ * Like checkFreeTrialEligibility but also returns the applicant's hashes (for create_booking) and
+ * the blocking rule (for the admin log). Throws the same clean 4xx errors.
+ */
+export async function prepareFreeTrial(
+  customerId: string,
+  deps: FreeTrialDeps = {},
+): Promise<TrialPrecheck> {
+  const db = deps.db ?? createAdminClient();
+  const applicant = await loadTrialApplicant(
+    db,
+    customerId,
+    deps.pepper ?? getHashPepper(),
+  );
+  const e = evaluateFreeTrial(applicant, await liveClaims(db, applicant));
+  return e.eligible
+    ? { applicant, eligible: true }
+    : { applicant, eligible: false, reason: e.reason };
 }
 
 /**
@@ -192,7 +242,11 @@ export async function holdFreeTrial(
   deps: FreeTrialDeps = {},
 ): Promise<HeldClaim> {
   const db = deps.db ?? createAdminClient();
-  const a = await loadApplicant(db, customerId, deps.pepper ?? getHashPepper());
+  const a = await loadTrialApplicant(
+    db,
+    customerId,
+    deps.pepper ?? getHashPepper(),
+  );
 
   if (!isUuid(bookingId)) throw notFound("booking");
   const b = await db
@@ -243,16 +297,14 @@ export async function holdFreeTrial(
   }
 
   // One of the three rule indexes. The index name says which; if it is missing, re-evaluate.
-  let reason: FreeTrialBlockReason | undefined = Object.entries(
-    BLOCK_BY_INDEX,
-  ).find(([name]) => msg.includes(name))?.[1];
+  let reason: FreeTrialBlockReason | undefined = trialBlockFromMessage(msg);
   if (!reason) {
     const e = evaluateFreeTrial(a, await liveClaims(db, a));
     if (!e.eligible) reason = e.reason;
   }
   if (!reason) throw new Error("claim insert hit an unknown unique rule");
-  await logBlock(db, customerId, reason);
-  throw used();
+  await recordTrialBlock(db, customerId, reason);
+  throw trialUsed();
 }
 
 export interface AppliedEvent {

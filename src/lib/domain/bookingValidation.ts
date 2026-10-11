@@ -30,6 +30,7 @@ export type BookingIssueCode =
   | "DATE_INVALID"
   | "DATE_DUPLICATE"
   | "DATE_IN_PAST"
+  | "DATE_TOO_SOON"
   | "DATE_BEYOND_WINDOW"
   | "CHEF_NOT_BOOKABLE"
   | "LOCATION_NOT_OFFERED"
@@ -216,6 +217,13 @@ export function validateBooking(
       seenDates.add(date);
       if (date < ctx.today)
         add("DATE_IN_PAST", "That date has already passed.", { dayIndex });
+      // D-27: no same-day bookings; the earliest day 1 is tomorrow (Toronto).
+      else if (date === ctx.today)
+        add(
+          "DATE_TOO_SOON",
+          "Bookings start tomorrow at the earliest. Pick a later date.",
+          { dayIndex },
+        );
       else if (date > last)
         add("DATE_BEYOND_WINDOW", `Dates can be up to ${last}.`, { dayIndex });
       else if (!has(chef.availableDates, date))

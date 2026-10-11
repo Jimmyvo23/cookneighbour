@@ -191,6 +191,14 @@ describe("database-level guarantees", () => {
     "storage_folder_uuid",
   ]
     .map((f) => `authenticated ${f} execute`)
+    // T-042: two read-only helpers for the public chef page and search. They return dates or chef
+    // ids only (migration 20261011100100); everything else the booking API adds is server-only.
+    .concat(
+      ["chef_booked_dates", "chefs_booked_on"].flatMap((f) => [
+        `anon ${f} execute`,
+        `authenticated ${f} execute`,
+      ]),
+    )
     .sort();
 
   it("table privileges for anon and authenticated match the snapshot exactly", async () => {

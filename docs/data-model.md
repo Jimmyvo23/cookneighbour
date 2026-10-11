@@ -1,6 +1,6 @@
 # CookNeighbour data model and row-level security
 
-Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buckets`, `auth_backend`, `kitchen_photos_insert_only`). This page describes it in plain English for the Tester (T-027) and the Reviewer. Money is integer cents. `country`, `currency` and `language` default to `CA`, `CAD`, `en`. Everything about payments, ID, food-handler, kitchen and police checks and SMS is **MOCK**.
+Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buckets`, `auth_backend`, `kitchen_photos_insert_only`, and later `booking_expired_status` and `booking_api`, T-042). This page describes it in plain English for the Tester (T-027) and the Reviewer. Money is integer cents. `country`, `currency` and `language` default to `CA`, `CAD`, `en`. Everything about payments, ID, food-handler, kitchen and police checks and SMS is **MOCK**.
 
 ## How access works
 
@@ -20,7 +20,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | `mock_check_status` (MOCK: ID, food handler, kitchen) | not_started, pending, verified, failed |
 | `location_type` | customer_home, chef_home |
 | `grocery_option` | customer_buys, chef_shops |
-| `booking_status` | requested, accepted, declined, cancelled, completed, no_show_customer, no_show_chef |
+| `booking_status` | requested, accepted, declined, cancelled, completed, no_show_customer, no_show_chef, expired (T-042, D-19) |
 | `cancelled_by` / `cancellation_timing` | customer, chef / on_time, late |
 | `free_trial_state` | held, consumed, released |
 | `free_trial_block_reason` | customer, phone, address |
@@ -37,7 +37,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | `chef_private` | Reject reason, `police_check_status`, ID / food-handler / kitchen MOCK statuses, document and kitchen-photo paths, kitchen address, allergen and kitchen-hygiene acknowledgements. |
 | `dishes` | Name, photo, description, cuisine, `cook_minutes`, `ingredient_cost_cents`, servings, allergens, `shelf_life_days` (default 2), `is_active`. |
 | `availability` | `(chef_id, day)` primary key, `available`. |
-| `bookings` | Customer, chef, status, `location_type`, `grocery_option`, `is_free_trial`, estimate snapshot (rate, minutes, labour, ingredients, travel, platform fee, total), fee percent and per-km rate used, cancellation fields, country/currency. |
+| `bookings` | Customer, chef, status, `location_type`, `grocery_option`, `is_free_trial`, estimate snapshot (rate, minutes, labour, ingredients, travel, platform fee, total), fee percent and per-km rate used, cancellation fields, `expires_at` (T-042: when an unanswered request expires), country/currency. |
 | `booking_addresses` | The customer's cooking address for `customer_home` bookings. Separate so it is not readable by the chef through the table. |
 | `booking_days` | 1 to 3 days (`day_number` 1..3), `visit_date`, `chef_id` (copied by trigger), `is_active`. |
 | `booking_day_dishes` | Dish snapshot (name, minutes, cost, allergens, servings), quantity, `eat_by_date`. `dish_id` becomes null if the dish is deleted. |
@@ -48,11 +48,11 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | `reviews` | Rating 1..5, comment, author/subject, `author_role`, author display-name snapshot. Unique per booking and author. |
 | `reports` | Report-a-problem per booking. |
 | `free_trial_claims` | `customer_id`, `booking_id`, `phone_hash`, `address_hash`, state. |
-| `free_trial_blocks` | Log of blocked second-trial attempts for the admin list. |
+| `free_trial_blocks` | Log of blocked second-trial attempts for the admin list. T-042: `attempts` and `last_attempt_at`; repeated attempts by one customer for one reason inside an hour are counted in one row (`record_free_trial_block`). |
 
 ## Rules encoded in the database
 
-- **One visit per chef per date (A-9):** unique index on `booking_days (chef_id, visit_date) where is_active`. A trigger sets `is_active` false when a booking becomes `declined` or `cancelled`, so those never block; `requested`, `accepted`, `completed` and no-shows do (a pending request holds the date).
+- **One visit per chef per date (A-9):** unique index on `booking_days (chef_id, visit_date) where is_active`. A trigger sets `is_active` false when a booking becomes `declined`, `cancelled` or `expired` (T-042), so those never block; `requested`, `accepted`, `completed` and no-shows do (a pending request holds the date).
 - **1 to 3 days:** `day_number` check 1..3, unique per booking. **Past date** rejected by trigger (Toronto time).
 - **Booking insert rules (trigger):** chef must be `approved`; the location must be in the chef's `location_options`; `chef_home` also needs `chef_home_enabled`; the customer must have role `customer`; a chef's-home booking must have `est_travel_cents = 0`; customer cannot book themselves.
 - **Free trial:** partial unique indexes on `free_trial_claims` for `customer_id`, `phone_hash` and `address_hash` where `state <> 'released'`. Releasing a claim (booking cancelled before it happened) frees the trial; `held` and `consumed` block. Which state to set is the API's job.
@@ -147,8 +147,23 @@ Default privileges are revoked for tables **and** functions in schema `public`, 
 
 `admin_approve_chef(uuid)`, `admin_reject_chef(uuid, text)` and `admin_review_kitchen(uuid, text, text, text[], jsonb)` (migration `20261010120000`) make an admin decision one transaction: they lock the chef's `chefs` and `chef_private` rows (`for no key update`, always in that order), re-read everything, decide, write and insert the `notifications` row. They are `SECURITY INVOKER` with `search_path = ''`, EXECUTE only for `service_role`, and return jsonb `{ result: ... }`. The routes call them after checking `profiles.role = 'admin'`. Approve's completeness rules mirror `computeMissing()` and add "the stored file exists in `storage.objects`"; `tests/api/admin-chefs-decisions.test.ts` compares both lists. The RLS suite (`tests/rls/admin-decisions.test.ts`) checks that no browser role can call them.
 
+## Booking API functions (T-042)
+
+Migration `20261011100100_booking_api.sql`. All are `SECURITY INVOKER` with `search_path = ''`, `EXECUTE` for `service_role` only; the route checks who the caller is first. `tests/rls/booking-api.test.ts` checks the privileges.
+
+| Function | What it does |
+|---|---|
+| `create_booking(p jsonb)` | One transaction: advisory lock per customer, open-request limit (D-28, counted without stale requests), `FOR SHARE` on the chef row and the chosen availability rows, then the booking (`is_free_trial` only together with its claim), address, days, dish snapshots with `eat_by_date`, intake form, free-trial claim and the chef's notification. Returns `ok`, `too_many_open`, `chef_not_bookable`, `date_too_soon` or `chef_unavailable`; a double booking (23505 on `booking_days_one_per_chef_date`) or a second free trial (23505 on a `free_trial_one_per_*` index) is raised, which rolls everything back. |
+| `answer_booking(booking, chef, action, reason)` | Locks the booking row (`chef_id` must match), refuses anything but `requested`, turns an expired request into `expired` (returned, so it is saved), then accepts (chef must be approved) or declines (days freed by the existing trigger). Adds the customer's notification. |
+| `expire_stale_bookings(user)` | One conditional UPDATE `requested` to `expired` for requests past `expires_at` (`null` user means everyone), a notification for both parties, and a `release` list of declined / expired bookings whose claim is still `held` (the route calls `applyFreeTrialEvent` for each). |
+| `chef_remove_availability(chef, days)` | D-22: locks the chef's availability rows `FOR UPDATE`, refuses with the booked dates when a `requested` or `accepted` booking is on one of them, otherwise deletes. |
+| `chef_booked_dates(chef, from, to)`, `chefs_booked_on(day)` | `SECURITY DEFINER`, open to everyone: dates (or chef ids) that have an active booking day, ignoring stale requests. They return nothing else. |
+| `record_free_trial_block(customer, reason, window)` | Admin log: counts repeats in one row per customer and reason per window. |
+
+Lock order: customer advisory lock, then the `chefs` row (`FOR SHARE`), then availability rows. An admin reject locks `chefs` then `chef_private`; no cycle.
+
 ## Known limits and notes for reviewers
 
 - Admin can read messages (to review reports). Admin writes to moderation columns are allowed by policy and trigger; the server can do it too.
-- `requested` bookings hold the chef's date until declined or cancelled; an expiry rule is not defined (open question for the Planner).
+- `requested` bookings hold the chef's date until answered, declined, cancelled or expired. T-042 (D-19): an unanswered request expires at `expires_at` (the earlier of 72 hours after creation and 00:00 Toronto on day 1); expiry is lazy, see "Booking API functions" below.
 - Hosted Supabase: the migrations are applied with `supabase db push` by the Planner after review, not by this task.

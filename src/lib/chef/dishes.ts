@@ -6,6 +6,7 @@ import type { CreateDishRequest, Dish } from "@/lib/api/types";
 import {
   COOK_MINUTES_MAX,
   COOK_MINUTES_MIN,
+  ALLERGEN_CHOICES,
   COST_MAX_CENTS,
   DEFAULT_SHELF_LIFE_DAYS,
   MAX_ACTIVE_DISHES,
@@ -23,22 +24,8 @@ import {
 
 export { MAX_ACTIVE_DISHES };
 
-/** The priority allergens in Canada, plus gluten. Stored lower case (contract 5A). */
-export const ALLERGEN_CHOICES: { value: string; label: string }[] = [
-  { value: "milk", label: "Milk" },
-  { value: "eggs", label: "Eggs" },
-  { value: "peanuts", label: "Peanuts" },
-  { value: "tree nuts", label: "Tree nuts" },
-  { value: "sesame", label: "Sesame" },
-  { value: "soy", label: "Soy" },
-  { value: "wheat", label: "Wheat" },
-  { value: "gluten", label: "Gluten (other grains)" },
-  { value: "fish", label: "Fish" },
-  { value: "crustaceans", label: "Crustaceans (shrimp, crab)" },
-  { value: "molluscs", label: "Molluscs (clams, squid)" },
-  { value: "mustard", label: "Mustard" },
-  { value: "sulphites", label: "Sulphites" },
-];
+// The allergen picker lives in the domain module (T-042) so the booking intake can use the same list.
+export { ALLERGEN_CHOICES };
 const CHOICE_VALUES = new Set(ALLERGEN_CHOICES.map((c) => c.value));
 
 export const COST_MESSAGE = `Enter an amount in dollars from $0.00 to $${(COST_MAX_CENTS / 100).toFixed(2)}.`;
