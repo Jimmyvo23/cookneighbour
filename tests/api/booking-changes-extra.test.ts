@@ -19,12 +19,13 @@ import {
   day,
   noShow,
   shiftDays,
+  type TestChef,
 } from "./booking-helpers";
 import { newAdmin } from "./chef-helpers";
 
 beforeEach(() => freshLimits());
 
-const dayBody = (chef: { dishes: { pho: string } }, offset: number) => ({
+const dayBody = (chef: TestChef, offset: number) => ({
   date: day(offset),
   dishes: [{ dishId: chef.dishes.pho, quantity: 1 }],
 });
