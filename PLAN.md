@@ -157,7 +157,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-039 | Search API: approved chefs only, filters, distance sort | backend | T-030, T-037 | done |
 | T-040 | Search and results UI with map | frontend | T-039 | done |
 | T-041 | Chef detail page | frontend | T-039 | done |
-| T-042 | Booking API: create, estimate, accept / decline, expiry, eat-by, notifications | backend | T-037, T-038, T-061 | todo |
+| T-042 | Booking API: create, estimate, accept / decline, expiry, eat-by, notifications | backend | T-037, T-038, T-061 | done |
 | T-043 | Booking flow UI: days and dishes, location, intake form, allergy acknowledgement, grocery option, estimate, 6-hour warning, free-trial label, MOCK payment step | frontend | T-042 | todo |
 | T-044 | Grocery option A shopping list and option B receipt upload with mismatch flag (API) | backend | T-042 | todo |
 | T-045 | Grocery screens and chef booking dashboard (requests with intake, accept / decline, eat-by, missed pickup) | frontend | T-044, T-063 | todo |
@@ -219,6 +219,9 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-30 | 2026-10-10 | Keep the extra allergy synonym words added in T-061 (prawn, crab, lobster, clam, squid, oyster, mussel, scallop; groundnut, almond, cashew, walnut, pecan, pistachio, hazelnut); peanut and tree nuts warn on each other | Jimmy |
 | D-31 | 2026-10-10 | The search `avoidAllergens` filter uses the same synonym map as booking warnings (built in T-042) | Jimmy |
 | D-32 | 2026-10-10 | Add Health Canada's gluten sources (barley, rye, oat, triticale, spelt, kamut) and the condition words celiac and coeliac to the gluten group, plus bare macadamia, brazil, soybean (built in T-042; T-061 review findings 1 and 2) | Jimmy |
+| D-33 | 2026-10-10 | Completion: the chef marks "visit done" after the last day; if not, the booking completes automatically 24 hours after the last day unless a no-show or problem was reported (built in T-063; reviews in WO-5 need it) | Jimmy |
+| D-34 | 2026-10-10 | A chef must give a reason when declining a request (3 to 500 characters); the server refuses a reason that looks like a phone number, email or link (best effort, §6.8) (built in T-042) | Jimmy |
+| D-35 | 2026-10-10 | No extra rate limit on booking requests; the 3-open-requests cap (D-28) is enough for the prototype (README known limit) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -246,8 +249,9 @@ New from planning:
 - Q-20 ~~Should allergy matching know synonyms and spellings for the 13 picker allergens (gluten vs wheat is the riskiest; also dairy/lactose vs milk, shellfish/shrimp vs crustaceans, nuts vs peanuts, soya, mollusks, sulfites)? Planner suggests a small fixed synonym map. Needed before T-042.~~ Resolved by D-24 (2026-10-10).
 - Q-21 ~~A chef who offers only cooking at their own home, before an admin enables it, is hidden from search, but their public page opens with no booking option. Keep, or return the same 404 as other hidden chefs?~~ Resolved by D-25 (2026-10-10).
 - Q-22 ~~A-16 and §6.6 cover only a cancellation before the visit (released). They do not say what happens when a multi-day booking is cancelled after at least one day was cooked. The code (`freeTrialEffect`, `src/lib/domain/cancellation.ts:97`) currently releases the trial on any cancellation. Should that case release or consume the trial? Needed before T-042.~~ Resolved by D-26 (2026-10-10).
+- Q-23 The contact-details guard (D-34, `findContactDetails`) catches phone numbers, emails and links in free text sent before acceptance, but not street addresses. Should a street-address check be added (decline reasons now; cancel reasons in T-063; chat before acceptance in WO-5)? Not blocking.
 
-Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification.
+Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification. The contact-details filter is best effort (spelled-out digits, disguised emails and street addresses pass). No rate limit on booking requests beyond D-28 (D-35). Request expiry is lazy until a scheduled sweep is added (WO-7).
 
 ## 7. Task notes
 Notes for each finished task are added here (CLAUDE.md §8).
@@ -455,3 +459,11 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - D-24/D-30: `SYNONYM_GROUPS` in `src/lib/domain/allergy.ts`, both directions, no under-warning regression. D-25: a chef with no bookable location option gets the same 404 as an unknown id. Contract v1.3.1 (v1.4 stays for T-042).
 - Tests: unit 1264 (3 known-gap expected fails), API and RLS in CI (run 38093455855). CI failed once on an outdated exact-key test (builder fixed); the Tester's first pushes failed on two test-setup mistakes (fixed). Tester PASS, Reviewer APPROVE.
 - Findings for later: gluten grains missing (now D-32, T-042); coconut and buckwheat correctly do not match (Health Canada lists); mock admin adapter does not mirror the 409 or the reject side effect (T-062); the drift guard strips `--` even inside quotes (harmless today).
+
+### T-042 — Booking API (done 2026-10-10, PR #95; migrations applied to hosted 2026-10-10)
+- Contract v1.4 (§7A, plus 5B, 7, 11A): `POST /api/bookings/estimate`, `POST /api/bookings`, `GET /api/bookings`, `GET /api/bookings/:id`, `POST /api/bookings/:id/accept`, `POST /api/bookings/:id/decline`. T-063 route shapes are in §7A marked PROPOSED. New codes `DOUBLE_BOOKED`, `TOO_MANY_OPEN_REQUESTS`, `REQUEST_EXPIRED`, `DATE_BOOKED`, `DATE_TOO_SOON`, `CONTACT_DETAILS_NOT_ALLOWED`.
+- Migrations `20261011100000_booking_expired_status.sql` (enum value `expired`) and `20261011100100_booking_api.sql` (`create_booking`, `answer_booking`, `expire_stale_bookings`, `chef_remove_availability`, `record_free_trial_block` service-role only; public `chef_booked_dates` and `chefs_booked_on` return only approved chefs inside tomorrow..today+180). **Pushed to hosted 2026-10-10.**
+- Booking, days, dish snapshots with eat-by, intake, free-trial claim and chef notification are written in one transaction (T-038 MEDIUM closed). Double booking by unique index; D-28 by a per-customer advisory lock; accept, decline and expiry serialised under a row lock. D-19 expiry is lazy (create, list, detail, answer, availability); public reads skip stale requests without writing. D-22 409 `DATE_BOOKED`; D-23 blank intake refused; D-27 earliest day 1 is tomorrow (`firstBookableDay`); D-31/D-32 search uses the synonym map with the gluten grains. Free-trial block log grouped per customer, reason and hour. D-34 decline reason required, with the shared `src/lib/domain/contactDetails.ts` guard.
+- Tests: unit 1513 (3 known-gap expected fails), RLS, API and Playwright real + mock in CI (final run 38103215218). Tester round 1 PASS (37 cases incl. races repeated 4 to 5 times), round 2 PASS (D-34 and the guard). Reviewer APPROVE with 5 LOW; findings 1 (public date helpers too open) and 5 (stale comment) fixed in round 3, Reviewer confirmed APPROVE.
+- Carry-ins: T-063 — accept locks the chef row and re-checks `chef_home_enabled` (finding 2); D-33 completion; D-22 reject cascade; D-26 cooked marker; `findContactDetails` on cancel reasons. WO-5 — messages on a stale request (finding 4a); `findContactDetails` on chat before acceptance; notifications read route; admin lists incl. block `attempts`. WO-7 — scheduled `expire_stale_bookings(null)` (findings 3, 4b). T-062 — mock adapter still lists today and has no `firstBookableDay`; stale e2e-mock wording "booked days are not removed"; mirror 409 `DATE_BOOKED`. T-043 — show `wouldExpireAt`, the under-48-hour late-cancel warning, addresses after acceptance; handle `FREE_TRIAL_USED` by retrying with `useFreeTrial: false`.
+- Found during the task: `findContactDetails` flags dotted dates and 7+ digit runs (accepted, pinned in tests); Q-23 street addresses. No Docker on this Mac: API and RLS tests run only in CI; Backend checked SQL locally with PGlite (added to lessons-learned).
