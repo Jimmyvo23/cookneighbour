@@ -178,17 +178,16 @@ test("calendar: clearing a booked day shows the dates, focuses the error and sav
   await signUpChef(page, "Mai Tran");
   await openCalendar(page);
   // The MOCK adapter treats the day three days from today as booked.
-  const days = await page
-    .locator("button[data-day]")
-    .evaluateAll((els) => els.map((e) => e.getAttribute("data-day")!));
   const today = (await tabStop(page).getAttribute("data-day"))!;
-  const booked = days.find(
-    (d) =>
-      Date.parse(`${d}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`) ===
-      3 * 86400000,
-  );
-  test.skip(!booked, "the booked day is in the next month today");
+  const booked = new Date(Date.parse(`${today}T12:00:00Z`) + 3 * 86400000)
+    .toISOString()
+    .slice(0, 10);
   const cell = page.locator(`button[data-day="${booked}"]`);
+  // Near month end the booked day is in the next month: go there instead of skipping (T-062 tester).
+  if ((await cell.count()) === 0) {
+    await page.getByRole("button", { name: "Next month" }).click();
+  }
+  await expect(cell).toHaveCount(1);
   await cell.click();
   await page.getByRole("button", { name: "Save availability" }).click();
   await expect(page.getByText("Availability saved.")).toBeVisible();

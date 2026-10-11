@@ -518,11 +518,12 @@ test("D-21: an approved chef with a failed MOCK check is flagged in the queue; a
   // Rosa is rejected: her kitchen section explains why there is nothing to decide.
   await page.getByLabel("Status").selectOption("rejected");
   await openChef(page, "Rosa Lee");
-  const kitchen = page.getByRole("region", { name: "Kitchen (MOCK review)" });
-  if (await kitchen.count()) {
-    await expect(kitchen).toContainText("rejected");
-    await expect(
-      kitchen.getByRole("button", { name: /kitchen \(MOCK\)/ }),
-    ).toHaveCount(0);
-  }
+  // The seeded rejected chef has no chef's home, so no kitchen section; the section's own
+  // "rejected" text is covered in ReviewSections.tester.test.tsx. Either way: no review buttons.
+  await expect(
+    page.getByTestId("chef-status").filter({ visible: true }),
+  ).toContainText(/rejected/i);
+  await expect(
+    page.getByRole("button", { name: /kitchen \(MOCK\)/ }),
+  ).toHaveCount(0);
 });
