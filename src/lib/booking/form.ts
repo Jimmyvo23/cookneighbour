@@ -377,3 +377,18 @@ export function classifyBookingError(err: unknown): BookingFailure {
 export function estimateIsSendable(r: BookingEstimateResponse): boolean {
   return r.ok && r.estimate !== null && !r.estimate.exceedsSoftLimit;
 }
+
+const WHEN = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Toronto",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** A moment as Toronto wall-clock text, for example "Mon, Oct 12, 12:00 a.m.". */
+export function formatWhen(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : WHEN.format(d);
+}

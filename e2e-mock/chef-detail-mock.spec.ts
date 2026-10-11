@@ -30,7 +30,7 @@ const noOverflow = (page: Page) =>
       document.documentElement.clientWidth,
   );
 
-test("the chef page shows the profile, dishes with allergens, dates and a Book stub (MOCK)", async ({
+test("the chef page shows the profile, dishes with allergens, dates and a Book link (MOCK)", async ({
   page,
 }) => {
   await open(page, MAI);
@@ -93,13 +93,11 @@ test("the chef page shows the profile, dishes with allergens, dates and a Book s
   await expect(dates.getByTestId("bookable-date").first()).toBeVisible();
   expect(await dates.locator("time[datetime]").count()).toBeGreaterThan(20);
 
-  // The Book entry point is a stub: no booking is made.
-  const book = page.getByTestId("book-stub");
-  await expect(book).toHaveText("Booking opens soon");
-  await expect(book).toHaveAttribute("aria-disabled", "true");
-  await expect(book).toHaveAccessibleDescription(/does nothing yet/);
-  await book.click({ force: true });
-  await expect(page).toHaveURL(new RegExp(`/chefs/${MAI}$`));
+  // The Book entry point is a link to the booking flow (T-043): nothing is booked by the click.
+  const book = page.getByTestId("book-link");
+  await expect(book).toHaveText("Book Mai Tran (MOCK)");
+  await expect(book).toHaveAttribute("href", `/chefs/${MAI}/book`);
+  await expect(book).toHaveAccessibleDescription(/Nothing is sent or charged/);
 
   // Nothing private, and no request to hosted storage in MOCK mode.
   const text = (await page.locator("main").innerText()).toLowerCase();
@@ -148,7 +146,7 @@ test("every unknown chef shows the same 'Chef not found' (MOCK)", async ({
   await expect(page).toHaveURL(/\/search$/);
 });
 
-test("keyboard: the month details open with Enter and the Book stub does nothing (MOCK)", async ({
+test("keyboard: the month details open with Enter and the Book link can be focused (MOCK)", async ({
   page,
 }) => {
   await open(page, MAI);
@@ -161,12 +159,8 @@ test("keyboard: the month details open with Enter and the Book stub does nothing
   await page.keyboard.press("Enter");
   await expect(details).toHaveAttribute("open", "");
 
-  const book = page.getByTestId("book-stub");
+  const book = page.getByTestId("book-link");
   await book.focus();
-  await expect(book).toBeFocused();
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Space");
-  await expect(page).toHaveURL(new RegExp(`/chefs/${MAI}$`));
   await expect(book).toBeFocused();
 });
 

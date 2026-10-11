@@ -365,10 +365,10 @@ test("a visitor opens an approved chef's page from the real route: profile, dish
   await expect(page.locator(`time[datetime="${firstDay}"]`)).toBeVisible();
   await expect(page.locator(`time[datetime="${win.today}"]`)).toHaveCount(0);
 
-  // The Book entry point is a stub.
-  await expect(page.getByTestId("book-stub")).toHaveAttribute(
-    "aria-disabled",
-    "true",
+  // The Book entry point links to the booking flow (T-043).
+  await expect(page.getByTestId("book-link")).toHaveAttribute(
+    "href",
+    /\/chefs\/[0-9a-f-]+\/book$/,
   );
 
   // Nothing private on the page: the kitchen address, the chef's email and the storage paths of

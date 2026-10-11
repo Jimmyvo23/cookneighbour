@@ -24,9 +24,16 @@ export function adminPageRedirect(
   return roleRedirect(caller, "admin");
 }
 
+/** Same for customer pages (T-043: booking flow and my bookings). Chefs and admins go home. */
+export function customerPageRedirect(
+  caller: { role: string } | null,
+): string | null {
+  return roleRedirect(caller, "customer");
+}
+
 function roleRedirect(
   caller: { role: string } | null,
-  role: "chef" | "admin",
+  role: "chef" | "admin" | "customer",
 ): string | null {
   if (!caller) return "/login";
   return caller.role === role ? null : "/";
@@ -34,6 +41,7 @@ function roleRedirect(
 
 export const requireChefPage = () => requirePage(chefPageRedirect);
 export const requireAdminPage = () => requirePage(adminPageRedirect);
+export const requireCustomerPage = () => requirePage(customerPageRedirect);
 
 async function requirePage(
   redirectFor: (caller: { role: string } | null) => string | null,

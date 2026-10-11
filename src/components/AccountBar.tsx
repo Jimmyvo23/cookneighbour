@@ -67,6 +67,11 @@ export function AccountBar() {
       {me === undefined ? null : me ? (
         <>
           <span>Signed in as {me.profile.displayName}</span>
+          {me.profile.role === "customer" && (
+            <Link className={cls} href="/bookings">
+              My bookings
+            </Link>
+          )}
           {me.profile.role === "chef" && (
             <Link className={cls} href="/chef/apply">
               Chef application

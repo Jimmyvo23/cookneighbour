@@ -499,7 +499,7 @@ function createRoute(
       issues: ev.issues,
     });
 
-  let hooks = s.hooks;
+  const hooks = s.hooks;
   if (req.useFreeTrial) {
     if (
       trial.blocker === "PHONE_NOT_SUBMITTED" ||

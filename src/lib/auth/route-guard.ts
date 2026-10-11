@@ -30,6 +30,15 @@ function isAdminPage(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
+/** Customer pages (T-043): the booking flow /chefs/<id>/book and /bookings. Server guard is authoritative. */
+export function isCustomerPage(pathname: string): boolean {
+  return (
+    pathname === "/bookings" ||
+    pathname.startsWith("/bookings/") ||
+    /^\/chefs\/[^/]+\/book\/?$/.test(pathname)
+  );
+}
+
 /** Where to send the visitor from `pathname`, or null to stay. `me` is null when signed out. */
 export function redirectFor(
   pathname: string,
@@ -42,6 +51,10 @@ export function redirectFor(
   if (isChefPage(pathname)) {
     if (!me) return "/login";
     return me.profile.role === "chef" ? null : "/";
+  }
+  if (isCustomerPage(pathname)) {
+    if (!me) return "/login";
+    return me.profile.role === "customer" ? null : "/";
   }
   if (!me) {
     return pathname === "/verify-phone" || pathname === "/address"

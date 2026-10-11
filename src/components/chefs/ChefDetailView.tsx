@@ -1,7 +1,7 @@
 "use client";
 // Public chef page (T-041). Reads only GET /api/chefs/:id (docs/api-contract.md section 7), so it
 // can show nothing private: no address, phone, email, kitchen photos or check statuses. All chef
-// text is rendered as plain text (React escapes it). The "Book" button is a stub until WO-4b.
+// text is rendered as plain text (React escapes it). "Book" links to the booking flow (T-043).
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiClientError, apiFetch, isMockEnabled } from "@/lib/api/client";
@@ -140,7 +140,7 @@ function Dates({ chef }: { chef: PublicChefDetail }) {
       <p className="text-sm text-zinc-700 dark:text-zinc-300">
         {windowText(chef.firstBookableDay, chef.lastBookableDay)} These are the
         days the chef marked as available and has not been booked on. Same-day
-        booking is not possible. Nothing here books the chef.
+        booking is not possible.
       </p>
       {groups.length === 0 ? (
         <p data-testid="no-dates">
@@ -376,22 +376,33 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
         <h2 id="book-h" className="text-lg font-semibold">
           Book this chef
         </h2>
-        <p id={hintId} className="text-sm text-zinc-700 dark:text-zinc-300">
-          Booking opens soon. This button does nothing yet and no booking is
-          made.
-        </p>
-        <p>
-          <button
-            type="button"
-            aria-disabled="true"
-            aria-describedby={hintId}
-            data-testid="book-stub"
-            onClick={(e) => e.preventDefault()}
-            className="min-h-11 cursor-not-allowed rounded-md bg-zinc-200 px-4 font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
-          >
-            Booking opens soon
-          </button>
-        </p>
+        {chef.bookableDates.length > 0 ? (
+          <>
+            <p id={hintId} className="text-sm text-zinc-700 dark:text-zinc-300">
+              Pick 1 to 3 days and the dishes for each day, then review the
+              estimate. Nothing is sent or charged until you confirm on the last
+              step. You need to be logged in as a customer.
+            </p>
+            <p>
+              <Link
+                href={`/chefs/${encodeURIComponent(chef.id)}/book`}
+                aria-describedby={hintId}
+                data-testid="book-link"
+                className="inline-flex min-h-11 items-center rounded-md bg-emerald-800 px-4 font-semibold text-white hover:bg-emerald-900"
+              >
+                Book {chef.displayName}
+              </Link>
+            </p>
+          </>
+        ) : (
+          <p id={hintId} data-testid="book-unavailable">
+            This chef has no free days to book right now. Check back later or{" "}
+            <Link href="/search" className={linkCls}>
+              search for another home cook
+            </Link>
+            .
+          </p>
+        )}
       </section>
     </>
   );

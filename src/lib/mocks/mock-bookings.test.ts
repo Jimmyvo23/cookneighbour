@@ -393,7 +393,7 @@ describe("create", () => {
 
 describe("list, detail, expiry", () => {
   it("lists newest first with the open filter, and finds one booking", async () => {
-    let s = state();
+    const s = state();
     const a = await create(s, body({ useFreeTrial: false }));
     const b = await create(
       a.s,
