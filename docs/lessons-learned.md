@@ -54,6 +54,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 ## 5. Supabase and secrets
 
 - **After merging a PR that adds a migration**, run `npx supabase db push` so hosted matches. Write it in the task's PLAN.md notes.
+- In auto mode the permission check refuses `npx supabase db push` ("production deploy") and a Reviewer agent that approves a PR ("self-approval"). Do not work around it: ask Jimmy to run the push (`npx supabase db push --linked` from the main folder, then check with `npx supabase migration list --linked`) and to choose how the PR gets reviewed. *(T-063: the merge went ahead on Jimmy's chat approval and the review ran after the merge.)*
 - Never read, print or check the prefix of any key in `.env.local`. To check keys, run `npm run db:check` or ask Jimmy. *(A safety check blocked an attempt to read key prefixes.)*
 - A 401 from Supabase usually means a wrongly copied key: Jimmy copies it again and we run `npm run db:check`.
 - Loading seed data into hosted needs Jimmy's `SEED_ADMIN_PASSWORD` and his OK.
