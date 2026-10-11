@@ -6,7 +6,7 @@
 import pg from "pg";
 import { beforeAll, describe, expect, inject, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { cancellationTiming } from "@/lib/domain/cancellation";
+import { cancellationTiming } from "../../src/lib/domain/cancellation";
 import {
   anonClient,
   clientFor,
