@@ -231,6 +231,14 @@ function CheckItem({
   );
 }
 
+const FAILED_LABELS: Record<string, string> = {
+  id: "Government ID",
+  foodHandler: "Food Handler Certificate",
+  kitchen: "Kitchen",
+  police: "Police check",
+};
+const failedLabel = (k: string) => FAILED_LABELS[k] ?? k;
+
 function QueueItem({ item }: { item: AdminChefListItem }) {
   const homeOffered = item.locationOptions.includes("chef_home");
   return (
@@ -248,6 +256,17 @@ function QueueItem({ item }: { item: AdminChefListItem }) {
           <span className="sr-only"> (open application)</span>
         </Link>
       </h2>
+      {item.flagged && (
+        <p
+          data-testid="queue-flag"
+          className="rounded-md border border-amber-700 bg-amber-50 p-2 text-sm text-amber-950"
+        >
+          <strong>Needs a look:</strong> approved, but a check failed (
+          <MockBadge>MOCK</MockBadge>{" "}
+          {item.failedChecks.map(failedLabel).join(", ")}
+          ). The chef is still listed until you reject them.
+        </p>
+      )}
       <p className="text-sm">
         <span className="font-medium">
           Status: {chefStatusText(item.status)}

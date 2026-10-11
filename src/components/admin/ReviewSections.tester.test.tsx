@@ -265,6 +265,14 @@ describe("checks (MOCK)", () => {
 });
 
 describe("kitchen review (MOCK)", () => {
+  it("hides the review controls for a rejected chef and says why (D-21)", () => {
+    render(<KitchenSection {...props(detail(app({ status: "rejected" })))} />);
+    expect(host.textContent).toMatch(/rejected/);
+    expect(
+      [...host.querySelectorAll("button")].map((b) => b.textContent),
+    ).toEqual([]);
+    expect(host.querySelector("textarea")).toBeNull();
+  });
   it("has MOCK on the status and on both buttons", () => {
     render(<KitchenSection {...props(detail(app()))} />);
     expect(

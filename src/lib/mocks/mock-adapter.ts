@@ -761,6 +761,9 @@ function dishRoutes(route: string, body: unknown, s: MockState): Response {
   return json(200, next);
 }
 
+/** MOCK: this many days from today is a day with a booking (D-22 demo). */
+export const MOCK_BOOKED_DAY = 3;
+
 /** MOCK availability routes (contract 5B). Opt-in dates; window today..today+180 (Toronto). */
 function availabilityRoutes(
   route: string,
@@ -787,6 +790,15 @@ function availabilityRoutes(
   if (Object.keys(unknown).length) return validation(unknown);
   const { add, remove, errors } = parseAvailabilityBody(obj, today);
   if (Object.keys(errors).length) return validation(errors);
+  // MOCK D-22: the day three days from now always has a (made-up) booking, so it cannot be cleared.
+  const booked = remove.filter((d) => d === addDays(today, MOCK_BOOKED_DAY));
+  if (booked.length)
+    return fail(
+      409,
+      "DATE_BOOKED",
+      "A date you are clearing has an open booking.",
+      { dates: booked },
+    );
   const days = new Set(s.availability);
   for (const d of add) days.add(d);
   for (const d of remove) days.delete(d);

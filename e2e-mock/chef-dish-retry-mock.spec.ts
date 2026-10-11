@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PNG, signUpChef } from "./helpers";
+import { PNG, signUpChef, blockStorage } from "./helpers";
+
+test.beforeEach(async ({ page }) => {
+  await blockStorage(page);
+});
 
 // Round 2 (tester): an uploaded dish photo is kept when only the save failed (here: the 50 active
 // dish cap, a 409), and replaced when the chef picks a new file. Every upload makes one fresh

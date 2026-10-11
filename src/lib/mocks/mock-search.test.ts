@@ -179,7 +179,8 @@ describe("MOCK search routes (contract section 7)", () => {
     const d = r.data as PublicChefDetail;
     expect(r.status).toBe(200);
     expect(d.dishes.length).toBeGreaterThan(0);
-    expect(d.bookableDates[0] >= d.today).toBe(true);
+    expect(d.firstBookableDay).toBe(addDays(d.today, 1));
+    expect(d.bookableDates[0] >= d.firstBookableDay!).toBe(true);
     expect(d.bookableDates.at(-1)! <= d.lastBookableDay).toBe(true);
     const a = await get("/api/chefs/not-a-uuid");
     const b = await get("/api/chefs/00000000-0000-4000-8000-000000000001");
@@ -203,14 +204,12 @@ describe("MOCK search routes (contract section 7)", () => {
     expect(d.locationOptions).toEqual(["customer_home", "chef_home"]);
   });
 
-  it("T-041 demo data: the not-bookable chef is not in search but her page answers with no options", async () => {
+  it("T-041 demo data: the not-bookable chef is hidden: not in search and her page is a 404 (D-25)", async () => {
     const all = await list("?limit=50");
     expect(all.data.items.map((i) => i.id)).not.toContain(
       MOCK_NOT_BOOKABLE_CHEF.id,
     );
     const r = await get(`/api/chefs/${MOCK_NOT_BOOKABLE_CHEF.id}`);
-    expect(r.status).toBe(200);
-    expect((r.data as PublicChefDetail).locationOptions).toEqual([]);
-    expect(JSON.stringify(r.data)).not.toMatch(/address|phone|email/i);
+    expect(r.status).toBe(404);
   });
 });

@@ -125,3 +125,11 @@ export function diffDays(
     remove: [...s].filter((x) => !d.has(x)).sort(),
   };
 }
+
+/** The message for a refused clear of booked dates (409 DATE_BOOKED, D-22). Nothing was saved. */
+export function bookedDatesMessage(dates: readonly string[]): string {
+  if (dates.length === 0)
+    return "You cannot clear a day that has a booking. Nothing was saved.";
+  const list = dates.map(dayLabel).join("; ");
+  return `Nothing was saved. You cannot clear ${dates.length === 1 ? "a day that has" : "days that have"} a booking: ${list}. Keep ${dates.length === 1 ? "it" : "them"} ticked, or ask the customer to cancel first.`;
+}

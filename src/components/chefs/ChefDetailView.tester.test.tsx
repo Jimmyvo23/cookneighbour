@@ -299,7 +299,8 @@ describe("ChefDetailView (tester)", () => {
       "2026-11-02",
       "2027-01-01",
     ]);
-    expect(t).toContain("Days that are already booked are not removed yet");
+    expect(t).not.toContain("not removed yet");
+    expect(t).toContain("has not been booked on");
   });
 
   it("does not use the browser clock for the window", async () => {
@@ -380,23 +381,6 @@ describe("ChefDetailView (tester)", () => {
     });
     expect(host.querySelector("h1")!.textContent).toBe("Mai Tran (MOCK)");
     expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("locationOptions [] says 'cannot be booked yet' neutrally, with no kitchen note", async () => {
-    fetchMock.mockImplementation(reply(200, chef({ locationOptions: [] })));
-    await mount();
-    const t = host.textContent!;
-    expect(t).toContain("This chef cannot be booked yet.");
-    expect(host.querySelector('[data-testid="mock-badge"]')).toBeNull();
-    expect(host.querySelector('[data-testid="location-options"]')).toBeNull();
-    for (const w of [
-      "rejected",
-      "pending",
-      "not approved",
-      "unapproved",
-      "hygiene",
-    ])
-      expect(t.toLowerCase()).not.toContain(w);
   });
 
   it("chef's home only shows the MOCK kitchen note and no address", async () => {

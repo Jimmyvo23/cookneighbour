@@ -1,5 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { blockStorage } from "./helpers";
+
+test.beforeEach(async ({ page }) => {
+  await blockStorage(page);
+});
 
 // Runs against the MOCK adapter (playwright.mock.config.ts sets NEXT_PUBLIC_API_MOCK=1).
 // Chef display names are magic in mock mode (see src/lib/mocks/mock-adapter.ts):

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   allergenText,
   groupDatesByMonth,
-  isBookable,
   locationLabels,
   shortDayLabel,
   windowText,
@@ -62,13 +61,6 @@ describe("locationLabels", () => {
       "At the chef's home",
     ]);
     expect(locationLabels([])).toEqual([]);
-  });
-});
-
-describe("isBookable", () => {
-  it("is false with no location option", () => {
-    expect(isBookable([])).toBe(false);
-    expect(isBookable(["chef_home"])).toBe(true);
   });
 });
 

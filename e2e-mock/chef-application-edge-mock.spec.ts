@@ -1,5 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { blockStorage } from "./helpers";
+
+test.beforeEach(async ({ page }) => {
+  await blockStorage(page);
+});
 
 // Tester edge cases for T-033, run against the MOCK adapter (playwright.mock.config.ts).
 const PNG = {

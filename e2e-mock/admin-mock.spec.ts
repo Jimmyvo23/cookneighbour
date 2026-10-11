@@ -1,5 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoAxeViolations, loginAdmin, openChef } from "./helpers";
+import {
+  expectNoAxeViolations,
+  loginAdmin,
+  openChef,
+  blockStorage,
+} from "./helpers";
+
+test.beforeEach(async ({ page }) => {
+  await blockStorage(page);
+});
 
 // MOCK mode: the mock adapter plays the six /api/admin/chefs routes (src/lib/mocks/mock-admin.ts).
 // Every check status is a MOCK; nothing is verified.
@@ -485,4 +494,35 @@ test("an unbroken 120-character display name does not widen the page at 375px", 
   await expect(tid(page, "chef-status")).toBeVisible();
   expect(await overflow()).toBeLessThanOrEqual(0);
   await expectNoAxeViolations(page);
+});
+
+test("D-21: an approved chef with a failed MOCK check is flagged in the queue; a rejected chef's kitchen has no review controls (MOCK)", async ({
+  page,
+}) => {
+  await loginAdmin(page);
+  await page.getByLabel("Status").selectOption("approved");
+  await openChef(page, "Tuan Pham");
+  await page.getByLabel("Police check").selectOption("failed");
+  await page.getByRole("button", { name: "Save MOCK checks" }).click();
+  await expect(page.getByText(/MOCK checks saved/)).toBeVisible();
+  await page
+    .getByRole("link", { name: "Back to the chef applications" })
+    .click();
+  const flag = tid(page, "queue-flag");
+  await expect(flag).toHaveCount(1);
+  await expect(flag).toContainText("Needs a look");
+  await expect(flag).toContainText("Police check");
+  await expect(flag.getByTestId("mock-badge")).toBeVisible();
+  await expectNoAxeViolations(page);
+
+  // Rosa is rejected: her kitchen section explains why there is nothing to decide.
+  await page.getByLabel("Status").selectOption("rejected");
+  await openChef(page, "Rosa Lee");
+  const kitchen = page.getByRole("region", { name: "Kitchen (MOCK review)" });
+  if (await kitchen.count()) {
+    await expect(kitchen).toContainText("rejected");
+    await expect(
+      kitchen.getByRole("button", { name: /kitchen \(MOCK\)/ }),
+    ).toHaveCount(0);
+  }
 });

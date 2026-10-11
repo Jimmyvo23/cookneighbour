@@ -333,6 +333,15 @@ describe("saved search (back from the chef page keeps the filters)", () => {
     });
     expect(parseSavedForm(serializeForm(v))).toEqual(v);
   });
+  it("drops a saved text longer than the API accepts (TEXT_MAX, not 200)", async () => {
+    const { parseSavedForm, serializeForm } = await import("./search");
+    expect(
+      parseSavedForm(serializeForm(form({ city: "x".repeat(41) }))),
+    ).toBeNull();
+    expect(
+      parseSavedForm(serializeForm(form({ city: "x".repeat(40) }))),
+    ).not.toBeNull();
+  });
   it("ignores nothing, bad JSON, wrong types, unknown location types and huge lists", async () => {
     const { parseSavedForm } = await import("./search");
     expect(parseSavedForm(null)).toBeNull();

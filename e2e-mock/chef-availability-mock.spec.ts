@@ -171,3 +171,38 @@ test("calendar: mobile 375px has no horizontal scroll, targets are 44px", async 
   expect(box!.width).toBeGreaterThanOrEqual(36);
   await expectNoAxeViolations(page);
 });
+
+test("calendar: clearing a booked day shows the dates, focuses the error and saves nothing (D-22, MOCK)", async ({
+  page,
+}) => {
+  await signUpChef(page, "Mai Tran");
+  await openCalendar(page);
+  // The MOCK adapter treats the day three days from today as booked.
+  const days = await page
+    .locator("button[data-day]")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-day")!));
+  const today = (await tabStop(page).getAttribute("data-day"))!;
+  const booked = days.find(
+    (d) =>
+      Date.parse(`${d}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`) ===
+      3 * 86400000,
+  );
+  test.skip(!booked, "the booked day is in the next month today");
+  const cell = page.locator(`button[data-day="${booked}"]`);
+  await cell.click();
+  await page.getByRole("button", { name: "Save availability" }).click();
+  await expect(page.getByText("Availability saved.")).toBeVisible();
+  await cell.click(); // untick
+  await page.getByRole("button", { name: "Save availability" }).click();
+  const alert = page
+    .getByRole("alert")
+    .filter({ hasText: "Nothing was saved" });
+  await expect(alert).toBeFocused();
+  await expect(alert).toContainText("has a booking");
+  await expect(alert).toContainText(/\w+day, \w+ \d+, \d{4}/);
+  await expect(page.getByText("Availability saved.")).toHaveCount(0);
+  await expect(page.getByTestId("availability-summary")).toContainText(
+    "1 to clear",
+  );
+  await expectNoAxeViolations(page);
+});

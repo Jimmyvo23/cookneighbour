@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { expectNoAxeViolations, signUpChef } from "./helpers";
+import { expectNoAxeViolations, signUpChef, blockStorage } from "./helpers";
+
+test.beforeEach(async ({ page }) => {
+  await blockStorage(page);
+});
 
 // Tester edge cases for T-034 (MOCK mode). The mock adapter plays the server, so the "server day"
 // is the Toronto day computed from the (fixed) clock, never the browser's own time zone.

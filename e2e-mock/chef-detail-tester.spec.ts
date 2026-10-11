@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PNG } from "./helpers";
+import { PNG, blockStorage } from "./helpers";
 
 // Tester (T-041), MOCK mode: what "Back to the search" remembers (sessionStorage key
 // cookneighbour.search), tampered saved data, tabs, and keyboard order on the chef page.
@@ -7,6 +7,7 @@ const MAI = "00000000-0000-4000-8000-000000001001";
 const KEY = "cookneighbour.search";
 
 test.beforeEach(async ({ page }) => {
+  await blockStorage(page);
   await page.route("https://tile.openstreetmap.org/**", (route) =>
     route.fulfill({ contentType: "image/png", body: PNG.buffer }),
   );
@@ -217,14 +218,14 @@ test("two quick chef-to-chef navigations end on the last chef (MOCK)", async ({
   await expect(
     page.getByRole("heading", { level: 1, name: /Mai Tran/ }),
   ).toBeVisible();
-  await page.goto("/chefs/00000000-0000-4000-8000-000000001050");
+  await page.goto("/chefs/00000000-0000-4000-8000-000000001002");
   await page.goBack();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Mai Tran (MOCK)",
   );
   await page.goForward();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Nadia Petrova (MOCK)",
+    "Linh Nguyen (MOCK)",
   );
 });
 
