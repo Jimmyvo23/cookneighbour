@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-10 (after WO-4a).
+Last updated: 2026-10-11 (T-043).
 
 ## 1. Office status (Planner and every agent)
 
@@ -41,6 +41,9 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Test data that pollutes shared searches | Many booking-test chefs with cuisine "Vietnamese" pushed `search.test.ts` chefs off the first page of `cuisine=vietnamese` (T-042) | API tests share one database: give every test chef a unique cuisine tag by default and filter on it |
 | A rule change reaching old tests | D-27 (no same-day booking) changed the search date window, which broke mock, e2e and Tester tests that assumed "today" (T-042) | Before changing a shared rule, grep the unit, API, mock and Playwright tests for the old value and update them in the same PR |
 | Map markers without a name | (found by the builder, T-040) Leaflet `divIcon` pins had no accessible name and Enter did nothing | Set `aria-label` and a key handler on custom markers |
+| Hidden copies of a page share ids | (found by the builder, T-043) After in-app navigation an earlier page stays mounted but hidden, so two copies of the booking form had the same `id`s: a label or an error link could point at the hidden copy | Give every id on a page a per-instance prefix (`useId`, see `FieldScopeProvider` in `src/components/booking/parts.tsx`); test with a client-side `window.next.router.push` to a second form and click a label |
+| Remounted state that outlives the action | (found by the builder, T-043) A sent booking's review stayed in state; coming back re-ran the chef load, the dates were now taken, the review crashed on an empty date | After a successful send close the form (a "sent" state with a link), and make render code tolerate a cleared field |
+| Focus decided by two components | (found by the builder, T-043) A child and its parent both moved focus after an error, and React StrictMode re-ran only the child, so the summary stole focus from the alert | One owner moves focus per attempt (the form passes refs down), alert first, else the error summary |
 
 ## 4. Git and GitHub
 

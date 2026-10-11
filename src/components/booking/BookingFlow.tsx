@@ -44,7 +44,6 @@ import {
   pickedDishes,
   resizeDays,
   visitLimitMessage,
-  fieldDomId,
   type BookingDraft,
   type DayDraft,
   type FieldErrors,
@@ -78,8 +77,10 @@ import {
   Question,
   TextArea,
   dangerBoxCls,
+  FieldScopeProvider,
   errCls,
   inputCls,
+  useDomId,
   warnBoxCls,
 } from "@/components/booking/parts";
 
@@ -98,16 +99,19 @@ const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
 
 export function BookingFlow({ chefId }: { chefId: string }) {
   const router = useRouter();
+  const scope = useId();
   const [chefState, setChefState] = useState<ChefState>({ kind: "loading" });
   const [role, setRole] = useState<string | null>(null);
   const [draft, setDraft] = useState<BookingDraft>(emptyDraft);
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [phase, setPhase] = useState<"form" | "review">("form");
+  const [phase, setPhase] = useState<"form" | "review" | "sent">("form");
+  const [sentId, setSentId] = useState<string | null>(null);
   const [review, setReview] = useState<BookingEstimateResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [alert, setAlert] = useState<FlowAlert | null>(null);
   const [focusTick, setFocusTick] = useState(0);
   const alertRef = useRef<HTMLDivElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
   const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
   const formHeadingRef = useRef<HTMLHeadingElement>(null);
   const addressPrefilled = useRef(false);
@@ -191,9 +195,10 @@ export function BookingFlow({ chefId }: { chefId: string }) {
         : "Book a chef — CookNeighbour";
   }, [chefState]);
 
-  // Focus moves to the alert after any error (lessons-learned section 3).
+  // Focus moves after any error (lessons-learned section 3): to the alert when there is one (it
+  // explains what happened), else to the error summary.
   useEffect(() => {
-    if (focusTick && alert) alertRef.current?.focus();
+    if (focusTick) (alert ? alertRef : summaryRef).current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new attempt moves focus
   }, [focusTick]);
   useEffect(() => {
@@ -399,6 +404,11 @@ export function BookingFlow({ chefId }: { chefId: string }) {
         method: "POST",
         body: buildRequest(chef.id, draft, chef.dishes, sendTrial),
       });
+      // The form is closed before leaving, so coming back to this page never shows a request that
+      // was already sent (or a review whose dates are now taken).
+      setSentId(created.id);
+      setPhase("sent");
+      setReview(null);
       router.push(`/bookings/${encodeURIComponent(created.id)}?sent=1`);
     } catch (err) {
       handleFailure(err);
@@ -407,125 +417,169 @@ export function BookingFlow({ chefId }: { chefId: string }) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-8">
-      <p>
-        <Link href={`/chefs/${encodeURIComponent(chefId)}`} className={linkCls}>
-          Back to the chef page
-        </Link>
-      </p>
-
-      {chefState.kind === "loading" && (
-        <p role="status" data-testid="loading">
-          Loading the chef...
+    <FieldScopeProvider value={`bk${scope}-`}>
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-8">
+        <p>
+          <Link
+            href={`/chefs/${encodeURIComponent(chefId)}`}
+            className={linkCls}
+          >
+            Back to the chef page
+          </Link>
         </p>
-      )}
-      {chefState.kind === "notFound" && (
-        <div data-testid="not-found" className="flex flex-col gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            This chef cannot be booked
-          </h1>
-          <p>
-            We could not find this chef, or the chef is not taking bookings
-            right now. Nothing was sent.
-          </p>
-          <p>
-            <Link href="/search" className={linkCls}>
-              Search for a home cook
-            </Link>
-          </p>
-        </div>
-      )}
-      {chefState.kind === "error" && (
-        <div
-          role="alert"
-          data-testid="load-error"
-          className="flex flex-col gap-3"
-        >
-          <h1 className="text-2xl font-semibold tracking-tight">
-            The booking page did not load
-          </h1>
-          <p>Something went wrong on our side or the connection dropped.</p>
-          <p>
-            <button
-              type="button"
-              onClick={() => void loadChef(false)}
-              className={secondaryButtonCls}
-            >
-              Try again
-            </button>
-          </p>
-        </div>
-      )}
 
-      {chef && role !== null && role !== "customer" && (
-        <div role="alert" data-testid="not-customer" className={warnBoxCls}>
-          Only customer accounts can book a chef. Log in with a customer account
-          to continue.
-        </div>
-      )}
-
-      {chef && (
-        <>
-          <header className="flex flex-col gap-1">
-            <h1
-              ref={formHeadingRef}
-              tabIndex={-1}
-              className="text-2xl font-semibold tracking-tight"
-            >
-              Book {chef.displayName}
+        {chefState.kind === "loading" && (
+          <p role="status" data-testid="loading">
+            Loading the chef...
+          </p>
+        )}
+        {chefState.kind === "notFound" && (
+          <div data-testid="not-found" className="flex flex-col gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              This chef cannot be booked
             </h1>
-            <p className={hintCls}>
-              Step {phase === "form" ? "1" : "2"} of 2:{" "}
-              {phase === "form" ? "your request" : "review and send"}. Nothing
-              is sent, and nothing is charged, until you press &quot;Send
-              booking request&quot; on the second step.
+            <p>
+              We could not find this chef, or the chef is not taking bookings
+              right now. Nothing was sent.
             </p>
-          </header>
+            <p>
+              <Link href="/search" className={linkCls}>
+                Search for a home cook
+              </Link>
+            </p>
+          </div>
+        )}
+        {chefState.kind === "error" && (
+          <div
+            role="alert"
+            data-testid="load-error"
+            className="flex flex-col gap-3"
+          >
+            <h1 className="text-2xl font-semibold tracking-tight">
+              The booking page did not load
+            </h1>
+            <p>Something went wrong on our side or the connection dropped.</p>
+            <p>
+              <button
+                type="button"
+                onClick={() => void loadChef(false)}
+                className={secondaryButtonCls}
+              >
+                Try again
+              </button>
+            </p>
+          </div>
+        )}
 
-          {alert && (
-            <div
-              ref={alertRef}
-              tabIndex={-1}
-              role="alert"
-              data-testid="flow-alert"
-              className={dangerBoxCls}
-            >
-              <p>{alert.message}</p>
-              {alert.action && <p className="mt-2">{alert.action}</p>}
-            </div>
-          )}
+        {chef && role !== null && role !== "customer" && (
+          <div role="alert" data-testid="not-customer" className={warnBoxCls}>
+            Only customer accounts can book a chef. Log in with a customer
+            account to continue.
+          </div>
+        )}
 
-          {phase === "form" && (
-            <FormStep
-              chef={chef}
-              draft={draft}
-              errors={errors}
-              focusTick={focusTick}
-              busy={busy}
-              onSubmit={onReview}
-              patch={patch}
-              patchDay={patchDay}
-              setDraft={setDraft}
-              setErrors={setErrors}
-            />
-          )}
-          {phase === "review" && review && (
-            <ReviewStep
-              chef={chef}
-              draft={draft}
-              review={review}
-              busy={busy}
-              headingRef={reviewHeadingRef}
-              onEdit={() => {
-                setPhase("form");
-                setAlert(null);
-              }}
-              onSend={onSend}
-            />
-          )}
-        </>
-      )}
-    </main>
+        {chef && (
+          <>
+            <header className="flex flex-col gap-1">
+              <h1
+                ref={formHeadingRef}
+                tabIndex={-1}
+                className="text-2xl font-semibold tracking-tight"
+              >
+                Book {chef.displayName}
+              </h1>
+              {phase !== "sent" && (
+                <p className={hintCls}>
+                  Step {phase === "form" ? "1" : "2"} of 2:{" "}
+                  {phase === "form" ? "your request" : "review and send"}.
+                  Nothing is sent, and nothing is charged, until you press
+                  &quot;Send booking request&quot; on the second step.
+                </p>
+              )}
+            </header>
+
+            {phase === "sent" && sentId && (
+              <div
+                role="status"
+                data-testid="sent-panel"
+                className="flex flex-col gap-3 rounded-md border-2 border-emerald-800 bg-emerald-50 p-3 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50"
+              >
+                <p className="font-semibold">
+                  Your request was sent. Nothing was charged.
+                </p>
+                <p>
+                  <Link
+                    href={`/bookings/${encodeURIComponent(sentId)}`}
+                    className={linkCls}
+                  >
+                    View your booking
+                  </Link>
+                </p>
+                <p>
+                  <button
+                    type="button"
+                    className={secondaryButtonCls}
+                    onClick={() => {
+                      setDraft((d) => ({
+                        ...emptyDraft(),
+                        address: d.address,
+                      }));
+                      setPhase("form");
+                      setSentId(null);
+                      void loadChef(true);
+                    }}
+                  >
+                    Book another visit with this chef
+                  </button>
+                </p>
+              </div>
+            )}
+
+            {alert && (
+              <div
+                ref={alertRef}
+                tabIndex={-1}
+                role="alert"
+                data-testid="flow-alert"
+                className={dangerBoxCls}
+              >
+                <p>{alert.message}</p>
+                {alert.action && <p className="mt-2">{alert.action}</p>}
+              </div>
+            )}
+
+            {phase === "form" && (
+              <FormStep
+                chef={chef}
+                draft={draft}
+                errors={errors}
+                summaryRef={summaryRef}
+                busy={busy}
+                onSubmit={onReview}
+                patch={patch}
+                patchDay={patchDay}
+                setDraft={setDraft}
+                setErrors={setErrors}
+              />
+            )}
+            {phase === "review" && review && (
+              <ReviewStep
+                chef={chef}
+                draft={draft}
+                review={review}
+                busy={busy}
+                headingRef={reviewHeadingRef}
+                onEdit={() => {
+                  setPhase("form");
+                  setAlert(null);
+                }}
+                onSend={onSend}
+              />
+            )}
+          </>
+        )}
+      </main>
+    </FieldScopeProvider>
   );
 }
 
@@ -536,7 +590,7 @@ function FormStep({
   chef,
   draft,
   errors,
-  focusTick,
+  summaryRef,
   busy,
   onSubmit,
   patch,
@@ -547,7 +601,7 @@ function FormStep({
   chef: PublicChefDetail;
   draft: BookingDraft;
   errors: FieldErrors;
-  focusTick: number;
+  summaryRef: React.RefObject<HTMLDivElement | null>;
   busy: boolean;
   onSubmit: (e: React.FormEvent) => void;
   patch: (p: Partial<BookingDraft>, clear?: string[]) => void;
@@ -559,6 +613,10 @@ function FormStep({
     () => localConflicts(draft, chef.dishes),
     [draft, chef.dishes],
   );
+  const dayCountId = useDomId("day-count");
+  const noAllergiesId = useDomId("intake.allergies-none");
+  const ackId = useDomId("allergyConflictAcknowledged");
+  const noDietId = useDomId("intake.dietaryNotes-none");
   const offered = chef.locationOptions;
   const labels = Object.fromEntries(
     offered.map((o, i) => [o, locationLabels(offered)[i]]),
@@ -571,7 +629,7 @@ function FormStep({
       aria-label="Booking request"
       className="flex flex-col gap-5"
     >
-      <ErrorSummary errors={errors} focusTick={focusTick} />
+      <ErrorSummary errors={errors} innerRef={summaryRef} />
 
       <section aria-labelledby="days-h" className={cardCls}>
         <h2 id="days-h" className="text-lg font-semibold">
@@ -584,11 +642,11 @@ function FormStep({
           hours.
         </p>
         <div className="flex flex-col gap-1">
-          <label htmlFor="bk-day-count" className="text-sm font-medium">
+          <label htmlFor={dayCountId} className="text-sm font-medium">
             How many days?
           </label>
           <select
-            id="bk-day-count"
+            id={dayCountId}
             value={draft.days.length}
             onChange={(e) =>
               patch({ days: resizeDays(draft.days, Number(e.target.value)) })
@@ -787,7 +845,7 @@ function FormStep({
                 ["intake.allergies", "allergyConflictAcknowledged"],
               )
             }
-            id={fieldDomId("intake.allergies-none")}
+            id={noAllergiesId}
           />
           <div
             role="group"
@@ -853,7 +911,7 @@ function FormStep({
             <div className="mt-2">
               <Choice
                 type="checkbox"
-                id={fieldDomId("allergyConflictAcknowledged")}
+                id={ackId}
                 label="I understand and want to keep these dishes"
                 checked={draft.conflictAcknowledged}
                 invalid={Boolean(errors.allergyConflictAcknowledged)}
@@ -887,7 +945,7 @@ function FormStep({
                 ["intake.dietaryNotes"],
               )
             }
-            id={fieldDomId("intake.dietaryNotes-none")}
+            id={noDietId}
           />
           <TextArea
             label="Dietary needs (for example halal, vegetarian, low salt)"
@@ -954,8 +1012,8 @@ function DayFields({
     chef.bookableDates.filter((d) => d >= chef.firstBookableDay),
   );
   const takenSet = new Set(taken);
-  const dateId = fieldDomId(dateKey);
-  const dishId = fieldDomId(dishKey);
+  const dateId = useDomId(dateKey);
+  const dishId = useDomId(dishKey);
   const dishErr = errors[dishKey];
   return (
     <fieldset
@@ -1224,8 +1282,10 @@ function ReviewStep({
             >
               <p className="font-semibold">
                 Day {i + 1}:{" "}
-                <time dateTime={d.date}>{shortDayLabel(d.date, true)}</time> (
-                {formatMinutes(dayMinutes(d, chef.dishes))})
+                <time dateTime={d.date}>
+                  {d.date ? shortDayLabel(d.date, true) : "no date chosen"}
+                </time>{" "}
+                ({formatMinutes(dayMinutes(d, chef.dishes))})
               </p>
               <ul className="list-disc pl-5 text-sm">
                 {pickedDishes(d, chef.dishes).map((p) => (

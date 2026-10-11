@@ -27,6 +27,7 @@ import {
   secondaryButtonCls,
 } from "@/components/chef/parts";
 import {
+  FieldScopeProvider,
   EstimateLines,
   MockPayment,
   TextArea,
@@ -440,13 +441,15 @@ function CancelSection({
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
   const alertRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const scope = useId();
   const confirmRef = useRef<HTMLHeadingElement>(null);
   const alertId = useId();
   const late = isInsideLateWindow(firstDay, new Date());
 
   useEffect(() => {
     if (!tick) return;
-    const bad = document.getElementById("bk-cancel-reason-notes");
+    const bad = formRef.current?.querySelector<HTMLElement>("textarea");
     (fields.reason && bad ? bad : alertRef.current)?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new attempt moves focus
   }, [tick]);
@@ -497,81 +500,88 @@ function CancelSection({
           </button>
         </p>
       ) : (
-        <form onSubmit={cancel} noValidate className="flex flex-col gap-3">
-          <h3
-            ref={confirmRef}
-            tabIndex={-1}
-            className="text-base font-semibold"
+        <FieldScopeProvider value={`cx${scope}-`}>
+          <form
+            ref={formRef}
+            onSubmit={cancel}
+            noValidate
+            className="flex flex-col gap-3"
           >
-            Are you sure?
-          </h3>
-          {late ? (
-            <p
-              role="note"
-              data-testid="late-cancel-warning"
-              className={warnBoxCls}
+            <h3
+              ref={confirmRef}
+              tabIndex={-1}
+              className="text-base font-semibold"
             >
-              <span aria-hidden="true">&#9888; </span>
-              <span className="font-semibold">
-                This will be a late cancellation.
-              </span>{" "}
-              Your first day is less than 48 hours away. Nothing is charged
-              either way in this prototype, but the late cancellation is
-              recorded.
-            </p>
-          ) : (
-            <p data-testid="free-cancel-note" className={infoBoxCls}>
-              Your first day is more than 48 hours away, so this is an on-time
-              cancellation.
-            </p>
-          )}
-          {b.isFreeTrial && (
+              Are you sure?
+            </h3>
+            {late ? (
+              <p
+                role="note"
+                data-testid="late-cancel-warning"
+                className={warnBoxCls}
+              >
+                <span aria-hidden="true">&#9888; </span>
+                <span className="font-semibold">
+                  This will be a late cancellation.
+                </span>{" "}
+                Your first day is less than 48 hours away. Nothing is charged
+                either way in this prototype, but the late cancellation is
+                recorded.
+              </p>
+            ) : (
+              <p data-testid="free-cancel-note" className={infoBoxCls}>
+                Your first day is more than 48 hours away, so this is an on-time
+                cancellation.
+              </p>
+            )}
+            {b.isFreeTrial && (
+              <p className={hintCls}>
+                If no day has been cooked yet, your free first booking is not
+                used up.
+              </p>
+            )}
+            <div
+              id={alertId}
+              ref={alertRef}
+              tabIndex={-1}
+              role="alert"
+              className={error ? dangerBoxCls : "sr-only"}
+              data-testid="cancel-error"
+            >
+              {error}
+            </div>
+            <TextArea
+              label="Reason (optional)"
+              errorKey="cancel-reason"
+              error={fields.reason}
+              hint="Do not include phone numbers, emails or links."
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setError(null);
+                  setFields({});
+                }}
+                disabled={busy}
+                className={secondaryButtonCls}
+              >
+                Keep my booking
+              </button>
+              <button type="submit" disabled={busy} className={buttonCls}>
+                {busy ? "Cancelling..." : "Yes, cancel this booking"}
+              </button>
+            </div>
             <p className={hintCls}>
-              If no day has been cooked yet, your free first booking is not used
-              up.
+              <MockBadge>MOCK</MockBadge> No payment was taken, so there is
+              nothing to refund.
             </p>
-          )}
-          <div
-            id={alertId}
-            ref={alertRef}
-            tabIndex={-1}
-            role="alert"
-            className={error ? dangerBoxCls : "sr-only"}
-            data-testid="cancel-error"
-          >
-            {error}
-          </div>
-          <TextArea
-            label="Reason (optional)"
-            errorKey="cancel-reason"
-            error={fields.reason}
-            hint="Do not include phone numbers, emails or links."
-            maxLength={500}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                setError(null);
-                setFields({});
-              }}
-              disabled={busy}
-              className={secondaryButtonCls}
-            >
-              Keep my booking
-            </button>
-            <button type="submit" disabled={busy} className={buttonCls}>
-              {busy ? "Cancelling..." : "Yes, cancel this booking"}
-            </button>
-          </div>
-          <p className={hintCls}>
-            <MockBadge>MOCK</MockBadge> No payment was taken, so there is
-            nothing to refund.
-          </p>
-        </form>
+          </form>
+        </FieldScopeProvider>
       )}
     </section>
   );

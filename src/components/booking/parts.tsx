@@ -1,6 +1,6 @@
 "use client";
 // Small building blocks for the booking screens (T-043).
-import { useEffect, useId, useRef } from "react";
+import { createContext, useContext, useId } from "react";
 import type { BookingEstimate } from "@/lib/api/types";
 import { MockBadge } from "@/components/MockBadge";
 import { formatDollars, formatMinutes } from "@/lib/chef/dishes";
@@ -9,6 +9,17 @@ import {
   orderedErrors,
   type FieldErrors,
 } from "@/lib/booking/form";
+
+/**
+ * Page-scoped ids. Earlier pages stay mounted but hidden after in-app navigation (cacheComponents),
+ * so two copies of the same form can be in the document at once; a plain id would make a label or
+ * an error link point at the hidden copy. Every id of a booking screen starts with its own scope.
+ */
+const FieldScope = createContext("");
+export const FieldScopeProvider = FieldScope.Provider;
+export function useDomId(key: string): string {
+  return useContext(FieldScope) + fieldDomId(key);
+}
 
 export const inputCls =
   "min-h-11 w-full rounded-md border border-zinc-400 bg-white px-3 text-base text-zinc-900 aria-[invalid=true]:border-red-700 aria-[invalid=true]:border-2 dark:bg-zinc-900 dark:text-zinc-100";
@@ -33,7 +44,7 @@ export function Input({
   error?: string;
   hint?: string;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "id">) {
-  const id = fieldDomId(errorKey);
+  const id = useDomId(errorKey);
   const described =
     [hint ? `${id}-hint` : "", error ? `${id}-error` : ""]
       .filter(Boolean)
@@ -79,7 +90,7 @@ export function TextArea({
   error?: string;
   hint?: string;
 } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "id">) {
-  const id = fieldDomId(errorKey) + "-notes";
+  const id = useDomId(errorKey) + "-notes";
   const described =
     [hint ? `${id}-hint` : "", error ? `${id}-error` : ""]
       .filter(Boolean)
@@ -131,7 +142,7 @@ export function Question({
   hint?: string;
   children: React.ReactNode;
 }) {
-  const id = fieldDomId(errorKey);
+  const id = useDomId(errorKey);
   const described =
     [hint ? `${id}-hint` : "", error ? `${id}-error` : ""]
       .filter(Boolean)
@@ -220,28 +231,25 @@ export function Choice({
 }
 
 /**
- * Error summary at the top of a form. It takes focus when it appears or changes (lessons-learned
- * section 3) and each message links to the field it is about.
+ * Error summary at the top of a form. The owner of the form moves focus to it (through `innerRef`)
+ * after a failed attempt (lessons-learned section 3), so there is one place that decides between
+ * this summary and an alert above it. Each message links to the field it is about.
  */
 export function ErrorSummary({
   errors,
-  focusTick,
+  innerRef,
   title = "Please fix these answers",
 }: {
   errors: FieldErrors;
-  focusTick: number;
+  innerRef: React.RefObject<HTMLDivElement | null>;
   title?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const scope = useContext(FieldScope);
   const items = orderedErrors(errors);
-  useEffect(() => {
-    if (focusTick && items.length) ref.current?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new attempt moves focus
-  }, [focusTick]);
   if (items.length === 0) return null;
   return (
     <div
-      ref={ref}
+      ref={innerRef}
       tabIndex={-1}
       role="alert"
       data-testid="error-summary"
@@ -252,10 +260,12 @@ export function ErrorSummary({
         {items.map((e) => (
           <li key={e.key}>
             <a
-              href={`#${fieldDomId(e.key)}`}
+              href={`#${scope}${fieldDomId(e.key)}`}
               className="font-medium underline"
               onClick={(ev) => {
-                const target = document.getElementById(fieldDomId(e.key));
+                const target = document.getElementById(
+                  scope + fieldDomId(e.key),
+                );
                 if (target) {
                   ev.preventDefault();
                   target.focus();
@@ -336,63 +346,65 @@ export function EstimateLines({
   const waived = e.freeTrialWaivedCents ?? 0;
   const money = (c: number) => formatDollars(c);
   return (
-    <dl data-testid="estimate" className="flex flex-col">
-      <Line
-        label="Total cooking time"
-        value={formatMinutes(e.cookMinutes)}
-        note="Added up from the dishes you picked"
-      />
-      {freeTrial && waived > 0 ? (
-        <>
+    <div data-testid="estimate-block">
+      <dl data-testid="estimate" className="flex flex-col">
+        <Line
+          label="Total cooking time"
+          value={formatMinutes(e.cookMinutes)}
+          note="Added up from the dishes you picked"
+        />
+        {freeTrial && waived > 0 ? (
+          <>
+            <Line
+              label="Labour before the free first booking"
+              value={money(e.labourBeforeWaiverCents ?? e.labourCents + waived)}
+            />
+            <Line
+              label="Free first booking"
+              value={`-${money(waived)}`}
+              note="Labour is waived once per customer"
+            />
+            <Line label="Labour you pay" value={money(e.labourCents)} />
+          </>
+        ) : (
           <Line
-            label="Labour before the free first booking"
-            value={money(e.labourBeforeWaiverCents ?? e.labourCents + waived)}
+            label="Labour"
+            value={money(e.labourCents)}
+            note={
+              freeTrial
+                ? "Free first booking"
+                : "Cooking time times the chef's hourly rate"
+            }
           />
+        )}
+        <Line
+          label="Ingredients (estimated)"
+          value={money(e.ingredientsCents)}
+          note="Paid at cost, with no markup"
+        />
+        {locationType === "customer_home" ? (
           <Line
-            label="Free first booking"
-            value={`-${money(waived)}`}
-            note="Labour is waived once per customer"
+            label="Travel fee"
+            value={money(e.travelCents)}
+            note={
+              e.distanceKm === null
+                ? undefined
+                : `About ${e.distanceKm} km one way at ${money(e.travelRateCentsPerKm)} per km, for ${visits} ${visits === 1 ? "visit" : "visits"}`
+            }
           />
-          <Line label="Labour you pay" value={money(e.labourCents)} />
-        </>
-      ) : (
+        ) : (
+          <Line
+            label="Travel fee"
+            value={money(0)}
+            note="None: you pick up the meals at the chef's home"
+          />
+        )}
         <Line
-          label="Labour"
-          value={money(e.labourCents)}
-          note={
-            freeTrial
-              ? "Free first booking"
-              : "Cooking time times the chef's hourly rate"
-          }
+          label="Estimated total"
+          value={`${money(e.totalCents)} ${e.currency}`}
+          strong
         />
-      )}
-      <Line
-        label="Ingredients (estimated)"
-        value={money(e.ingredientsCents)}
-        note="Paid at cost, with no markup"
-      />
-      {locationType === "customer_home" ? (
-        <Line
-          label="Travel fee"
-          value={money(e.travelCents)}
-          note={
-            e.distanceKm === null
-              ? undefined
-              : `About ${e.distanceKm} km one way at ${money(e.travelRateCentsPerKm)} per km, for ${visits} ${visits === 1 ? "visit" : "visits"}`
-          }
-        />
-      ) : (
-        <Line
-          label="Travel fee"
-          value={money(0)}
-          note="None: you pick up the meals at the chef's home"
-        />
-      )}
-      <Line
-        label="Estimated total"
-        value={`${money(e.totalCents)} ${e.currency}`}
-        strong
-      />
+      </dl>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
         <MockBadge>MOCK</MockBadge>
         <span data-testid="platform-fee">
@@ -401,7 +413,7 @@ export function EstimateLines({
           included in the total.
         </span>
       </div>
-    </dl>
+    </div>
   );
 }
 

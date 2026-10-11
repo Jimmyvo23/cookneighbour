@@ -22,6 +22,7 @@ export default defineConfig({
         "**/admin-real.spec.ts",
         "**/admin-queue-real.spec.ts",
         "**/search-real.spec.ts",
+        "**/booking-real.spec.ts",
       ],
   forbidOnly: !!env.CI,
   retries: env.CI ? 1 : 0,
