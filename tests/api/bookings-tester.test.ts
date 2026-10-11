@@ -226,14 +226,15 @@ describe("a refused booking leaves nothing behind (one transaction)", () => {
 });
 
 describe("notifications carry no personal data", () => {
-  it("requested, accepted, declined and expired notes hold no name, phone, address, allergy or reason text", async () => {
+  it("requested, accepted, declined and expired notes hold no name, phone, address, or allergy text", async () => {
     const chef = await bookableChef({ name: "Chef Zelda Quill" });
     const c = await bookingCustomer();
     const intake = {
       allergyNotes: "peanut SECRETALLERGY",
       dietaryNotes: "halal SECRETDIET",
     };
-    const reason = "Sorry SECRETREASON";
+    // The chef's own decline reason is shown to the customer by design (tested in bookings.test.ts).
+    const reason = "I am travelling that week.";
     const acc = await bookOk(
       c,
       bookingBody(chef, { days: [dayBody(chef, 4)], intake }),
@@ -261,7 +262,8 @@ describe("notifications carry no personal data", () => {
       "L5B",
       "Booking Customer",
       "Zelda",
-      "SECRET",
+      "SECRETALLERGY",
+      "SECRETDIET",
       c.id,
     ]) {
       expect(text, bad).not.toContain(bad);
