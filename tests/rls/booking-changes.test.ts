@@ -125,7 +125,10 @@ describe("booking-change functions are server-only", () => {
 
 describe("pickup_proposals and booking_flags: who can read, nobody writes from a browser", () => {
   it("parties and admin read proposals; strangers and anon do not; browsers cannot write", async () => {
-    const chef = await makeChef(svc, "bc-pp-chef");
+    const chef = await makeChef(svc, "bc-pp-chef", {
+      options: ["customer_home", "chef_home"],
+      chefHomeEnabled: true,
+    });
     const cust = await makeCustomer(svc, "bc-pp-cust");
     const b = await makeBooking(svc, {
       customer: cust,
@@ -185,7 +188,10 @@ describe("pickup_proposals and booking_flags: who can read, nobody writes from a
   });
 
   it("at most one live proposal per day (unique index backstop)", async () => {
-    const chef = await makeChef(svc, "bc-uq-chef");
+    const chef = await makeChef(svc, "bc-uq-chef", {
+      options: ["customer_home", "chef_home"],
+      chefHomeEnabled: true,
+    });
     const cust = await makeCustomer(svc, "bc-uq-cust");
     const b = await makeBooking(svc, {
       customer: cust,
