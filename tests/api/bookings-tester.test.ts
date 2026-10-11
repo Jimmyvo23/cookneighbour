@@ -405,3 +405,82 @@ describe("malformed bodies are 4xx, never 500", () => {
     expect(await bookingCount(c.id)).toBe(0);
   });
 });
+
+describe("D-34 a refused decline reason changes nothing", () => {
+  it("contact details or a blank reason leave status, reason, dates, trial and notes untouched", async () => {
+    const chef = await bookableChef();
+    const c = await bookingCustomer();
+    const r = await bookOk(c, bookingBody(chef, { useFreeTrial: true }));
+    const notesBefore = (await notesFor(c.id)).length;
+    const chefNotesBefore = (await notesFor(chef.id)).length;
+    for (const reason of [
+      "Call +1 (905) 555-0123",
+      "905.555.0123",
+      "9055550123",
+      "555 0123",
+      "me@example.com",
+      "see example.com/me",
+      "http://x.io",
+    ]) {
+      const d = await decline(chef.b, r.id, { reason });
+      expect(d.status, reason).toBe(422);
+      expect(d.body.error.code, reason).toBe("CONTACT_DETAILS_NOT_ALLOWED");
+      expect(d.body.error.fields.reason).toBeTruthy();
+      // The refusal does not echo the text back.
+      expect(d.text).not.toContain(reason);
+    }
+    for (const body of [
+      {},
+      { reason: null },
+      { reason: "  " },
+      { reason: 7 },
+    ]) {
+      const d = await decline(chef.b, r.id, body);
+      expect(d.status).toBe(422);
+      expect(d.body.error.code).toBe("VALIDATION_FAILED");
+    }
+    const row = await bookingRow(r.id);
+    expect(row.status).toBe("requested");
+    expect(row.decline_reason).toBeNull();
+    expect(row.responded_at).toBeNull();
+    expect((await claimOf(r.id))?.state).toBe("held");
+    const days = await svc
+      .from("booking_days")
+      .select("is_active")
+      .eq("booking_id", r.id);
+    expect(days.data).toEqual([{ is_active: true }]);
+    expect((await notesFor(c.id)).length).toBe(notesBefore);
+    expect((await notesFor(chef.id)).length).toBe(chefNotesBefore);
+    expect((await notesFor(c.id, "booking_declined")).length).toBe(0);
+    // The date is still held: nobody else can take it.
+    const other = await bookingCustomer();
+    const clash = await book(other, bookingBody(chef));
+    expect(clash.body.error.code).toBe("DOUBLE_BOOKED");
+    // And the chef can still decline properly afterwards.
+    const ok = await decline(chef.b, r.id, {
+      reason: "Fully booked 2026-10-20",
+    });
+    expect(ok.status, ok.text).toBe(200);
+    expect((await claimOf(r.id))?.state).toBe("released");
+  });
+
+  it("length limits: 2 characters and 501 are refused, 3 and 500 pass; a stranger still sees only a 404", async () => {
+    const chef = await bookableChef();
+    const stranger = await bookableChef();
+    const c = await bookingCustomer();
+    const r = await bookOk(c, bookingBody(chef));
+    expect((await decline(chef.b, r.id, { reason: "ab" })).status).toBe(422);
+    expect(
+      (await decline(chef.b, r.id, { reason: "a".repeat(501) })).status,
+    ).toBe(422);
+    // Not the owner: 404 even with a reason holding a phone number.
+    const s = await decline(stranger.b, r.id, { reason: "905 555 0123" });
+    expect(s.status).toBe(404);
+    expect((await bookingRow(r.id)).status).toBe("requested");
+    expect(
+      (await decline(chef.b, r.id, { reason: "a".repeat(500) })).status,
+    ).toBe(200);
+    const r2 = await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 6)] }));
+    expect((await decline(chef.b, r2.id, { reason: "abc" })).status).toBe(200);
+  });
+});
