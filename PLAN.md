@@ -149,7 +149,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-058 | Lessons-learned file for all agents (`docs/lessons-learned.md`) | planner | — | done |
 | T-059 | Reject unsafe text in display name and address (server; T-033 tester F1) | backend | T-028 | done |
 
-### Phase 4 — Customer side (WO-4a: T-037 to T-041; WO-4b: T-061, T-042 to T-045, T-062, T-063)
+### Phase 4 — Customer side (WO-4a: T-037 to T-041; WO-4b: T-061, T-042 to T-045, T-062 to T-066)
 | ID | Task | Owner | Depends on | State |
 |---|---|---|---|---|
 | T-037 | Domain rules (TDD): estimate, 6-hour limit, booking validation (1–3 days, past date, double booking, service area, chef-home offered), allergy conflict, receipt check, cancellation timing | backend | T-020 | done |
@@ -162,7 +162,10 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-044 | Grocery option A shopping list and option B receipt upload with mismatch flag (API) | backend | T-042 | todo |
 | T-045 | Grocery screens and chef booking dashboard (requests with intake, accept / decline, eat-by, missed pickup) | frontend | T-044, T-063 | todo |
 | T-061 | Rule changes from D-21, D-24, D-25 (admin MOCK checks, allergy synonyms, unbookable chef 404) | backend | T-035, T-037, T-039 | done |
-| T-063 | Booking changes API: cancel, no-show, missed pickup, kitchen-address change, chef-reject cascade (split from T-042) | backend | T-042 | todo |
+| T-063 | Booking changes API: cancel, no-show, missed pickup, kitchen-address change, chef-reject cascade (split from T-042) | backend | T-042 | done |
+| T-064 | D-22 flagged bookings: an open flag blocks auto and manual completion and the rejected chef's actions until an admin decides (T-063 review M3; scope after Q-28) | backend | T-063 | todo |
+| T-065 | Kitchen address privacy: snapshot the chef's kitchen address on the booking at acceptance and return it from `get_booking_contact`; N3 check and write in one locked database function (T-063 review M4, L4) | backend | T-063 | todo |
+| T-066 | T-063 small fixes and tests: D-36 auto-complete needs a cooked day, else flag for admin (update `tests/api/booking-changes.test.ts:336`); reject cascade skips stale requests (L1); completion voids accepted pickup proposals (L2); chef's-home auto-completion API test and SQL-vs-TS `completionDue`/`pickupDeadline` test (L5) | backend | T-063 | todo |
 | T-062 | UI updates from D-21, D-22, D-25, D-27 (admin flag, booked-date 409, chef page 404) | frontend | T-061, T-042 | done |
 
 ### Phase 5 — Engagement (WO-5)
@@ -222,6 +225,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-33 | 2026-10-10 | Completion: the chef marks "visit done" after the last day; if not, the booking completes automatically 24 hours after the last day unless a no-show or problem was reported (built in T-063; reviews in WO-5 need it) | Jimmy |
 | D-34 | 2026-10-10 | A chef must give a reason when declining a request (built in T-042) | Jimmy |
 | D-35 | 2026-10-10 | No extra rate limit on booking requests; the 3-open-requests cap (D-28) is enough for the prototype (README known limit) | Jimmy |
+| D-36 | 2026-10-11 | Auto-completion (D-33) happens only when at least one day was cooked; otherwise the booking is flagged for the admin instead of completing, so the free trial is not used and reviews do not open (Q-29, Reviewer's suggestion; fix in T-066) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -238,7 +242,7 @@ New from planning:
 - Q-9 ~~Stripe test-mode checkout, or a pure mock payment step (A-10)? A pure mock is cheaper to build.~~ Resolved by D-18 (2026-10-10).
 - Q-10 Real eat-by window must be confirmed against Ontario public-health guidance before any real launch.
 - Q-11 ~~How long may a `requested` booking hold a chef's date before it expires, and should customers be rate-limited on requests?~~ Resolved by D-19 and D-28 (2026-10-10).
-- Q-12 Should contact details re-lock some days after a visit is completed?
+- Q-12 Should contact details re-lock some days after a visit is completed? Now urgent: T-063 makes `completed` and no-show statuses reachable, and `get_booking_contact` returns the chef's *current* address and phone, so past chef's-home customers see a new address with no time limit (T-063 review M4; T-065 fixes the address part).
 - Q-13 May an approved chef clear their bio or photo and stay listed in search? (Planner suggests blocking it: an approved profile must stay complete.) Interim: A-20 hides them from search and the public page.
 - Q-14 Should replaced ID and food-handler files be deleted from Storage? (Deleting data needs Jimmy's OK; today they stay as orphans.)
 - Q-15 ~~Confirm or replace the draft allergen-awareness and kitchen-hygiene acknowledgement wording from T-033.~~ Resolved by D-14 (2026-10-08).
@@ -250,6 +254,13 @@ New from planning:
 - Q-21 ~~A chef who offers only cooking at their own home, before an admin enables it, is hidden from search, but their public page opens with no booking option. Keep, or return the same 404 as other hidden chefs?~~ Resolved by D-25 (2026-10-10).
 - Q-22 ~~A-16 and §6.6 cover only a cancellation before the visit (released). They do not say what happens when a multi-day booking is cancelled after at least one day was cooked. The code (`freeTrialEffect`, `src/lib/domain/cancellation.ts:97`) currently releases the trial on any cancellation. Should that case release or consume the trial? Needed before T-042.~~ Resolved by D-26 (2026-10-10).
 - Q-23 The contact-details guard (D-34, `findContactDetails`) catches phone numbers, emails and links in free text sent before acceptance, but not street addresses. Should a street-address check be added (decline reasons now; cancel reasons in T-063; chat before acceptance in WO-5)? Not blocking.
+- Q-24 (T-063 Q-A) Should a chef cancelling after a cooked day use up the customer's free trial (D-26 read literally, as built) or release it?
+- Q-25 (T-063 Q-B) How early may a no-show be reported? Built: from 00:00 on the visit date. Should bookings get a visit start time?
+- Q-26 (T-063 Q-C; review L3) Should the customer confirm "I picked up my meals"? Today the chef alone can mark "pickup missed" after the deadline, even when the pickup went fine, which also blocks the customer's review.
+- Q-27 (T-063 Q-D) Which final status does a booking get when the admin resolves a problem report? Needed before WO-5. Until then an `open` or `reviewing` report keeps it `accepted`.
+- Q-28 (T-063 Q-E; review M3) Do customers of flagged (D-22) bookings need more than the neutral notice (refund, rebooking)? Should flagged bookings be frozen until an admin acts (Reviewer suggests yes, T-064)?
+- Q-29 ~~(T-063 review M1) Auto-completion (D-33) today completes a booking even when no day was cooked, which uses up the free trial and opens reviews; manual "visit done" needs every day cooked. Should auto-completion need at least one cooked day, and otherwise flag the booking for the admin (Reviewer's suggestion)? Not a contradiction of D-33 as written. Before WO-5.~~ Resolved by D-36 (2026-10-11).
+- Q-30 (T-063 review M2) A chef no-show releases the trial (A-16) even after a cooked day, so a customer can report a chef no-show on day 2 and keep the trial, while cancelling would use it (D-26). Should a chef no-show after a cooked day use up the trial? Linked to Q-25. **Planner recommends:** yes, consume it, in line with D-26 (any cooked day uses the trial, whoever ends the booking); the uncooked days are freed and the customer pays nothing for them. Otherwise a false chef no-show report becomes a way to get a second free booking. Waiting for Jimmy's OK.
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification. The contact-details filter is best effort (spelled-out digits, disguised emails and street addresses pass). No rate limit on booking requests beyond D-28 (D-35). Request expiry is lazy until a scheduled sweep is added (WO-7).
 
@@ -473,3 +484,11 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Mocks now mirror the real API: rejected-chef kitchen review 409, reject turns the chef's home off, 409 `DATE_BOOKED` (in MOCK the day 3 days from today is always booked), hidden chef 404, dates start tomorrow. `blockStorage(page)` is in every mock Playwright spec that renders photos (lessons-learned backfill done).
 - Tests: unit 1520 (3 known-gap expected fails), mock Playwright 121, real Playwright/API/RLS in CI (green on the PR's final head 8a781a7, run 38113060263). Tester PASS; it fixed a calendar e2e that skipped itself near month end and a vacuous admin-mock check. Reviewer round 1 REQUEST CHANGES (1 MEDIUM: the 409 message promised "ask the customer to cancel", which does not exist yet; 4 LOW wording/type/test fixes); round 2 APPROVE.
 - Later: T-063/WO-5 — the 409 message can suggest cancel or chat once they exist. WO-6 README demo script — mention the MOCK booked day (today + 3).
+
+### T-063 — Booking changes API (done 2026-10-11, PR #101 merged c3677e8; migration applied to hosted 2026-10-11)
+- Contract v1.5 (§7A "Booking changes"; error fields `reason` and `latest`; new BookingDetail fields `cookedAt`, `pickupDeadlineDate`, `pickups`). Routes under `/api/bookings/:id/`: `cancel`, `no-show`, `complete`, `days/:dayNumber/cooked`, `days/:dayNumber/pickup/propose`, `days/:dayNumber/pickup/respond`, `pickup/missed`.
+- Migration `20261011200000_booking_changes.sql`: `change_booking`, `sweep_booking_changes` (lazy D-33 auto-complete), time helpers; tables `pickup_proposals` and `booking_flags` (RLS, select-only); `answer_booking` locks the chef row and re-checks `approved` and `chef_home_enabled` (T-042 finding 2); `admin_reject_chef` does the D-22 cascade. **Pushed to hosted 2026-10-11 by Jimmy** (verified with `supabase migration list --linked`).
+- Built: D-20 cancel timing, D-26 cooked marker (cooked before cancel consumes the trial), D-29 missed pickup, D-33 completion, D-34 contact-details guard on cancel reasons, N3 kitchen-address change blocked while a chef's-home booking is accepted. Builder assumptions 1-9 are in `.team/handoffs/T-063-backend.md`; the Reviewer found none that conflicts with a recorded decision. 3 and 7 are now Q-25 and Q-24; 4 (24 h = end of the last date + 24 h, later for chef's-home pickups) stands until Jimmy says otherwise.
+- Tests: unit 1550 (3 known-gap expected fails), API and RLS in CI only (no Docker locally), CI green on the final head 87c0ec2. Tester PASS and added 6 API tests (`booking-changes-extra.test.ts`). Correction to the Tester handoff: the auto-complete with zero cooked days case *is* covered, by `tests/api/booking-changes.test.ts:336-343`, so that test must change if Q-29 changes the rule.
+- **Process:** the Reviewer agent was blocked twice by the auto-mode permission check ("self-approval"), so Jimmy approved the merge in chat. The Reviewer then did a post-merge review (comment on PR #101; `.team/handoffs/T-063-reviewer.md`): no revert needed, security, locking, RLS and the MOCK labels are sound; 4 MEDIUM, 6 LOW. M1 → Q-29, M2 → Q-30, M3 → T-064 and Q-28, M4 → T-065 and Q-12, L1/L2/L5 → T-066, L3 → Q-26, L4 → T-065, L6 → Q-23.
+- Next agents: T-045 uses `days[].cookedAt`, `pickupDeadlineDate`, `pickups`, `error.reason`, `error.latest`, and tells chefs the kitchen address is locked while a chef's-home booking is accepted (409 `kitchen_in_use`). T-043 shows the `late` warning when day 1 is under 48 h away; `cancelledBy: system` means the chef was removed. WO-5: admin list shows `booking_flags`; resolve reports (Q-27); reviews rely on `completed` (settle Q-29 and Q-30 first). WO-7: schedule `expire_stale_bookings(null)` and `sweep_booking_changes(null)`.
