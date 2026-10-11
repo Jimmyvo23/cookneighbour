@@ -100,6 +100,14 @@ async function blocks(customerId: string) {
   expect(error).toBeNull();
   return (data ?? []).map((b) => b.reason as string);
 }
+async function blockAttempts(customerId: string) {
+  const { data, error } = await svc
+    .from("free_trial_blocks")
+    .select("attempts")
+    .eq("customer_id", customerId);
+  expect(error).toBeNull();
+  return (data ?? []).reduce((n, b) => n + (b.attempts as number), 0);
+}
 async function claimCount(customerId: string) {
   const { data, error } = await svc
     .from("free_trial_claims")
@@ -365,7 +373,9 @@ describe("races", () => {
       expect(r.reason.code).toBe("FREE_TRIAL_USED");
     }
     expect(await claimCount(c.id)).toBe(1);
-    expect(await blocks(c.id)).toHaveLength(4);
+    // T-042: repeated attempts for one reason are counted in one row, not four.
+    expect(await blocks(c.id)).toEqual(["customer"]);
+    expect(await blockAttempts(c.id)).toBe(4);
   });
 
   it("parallel holds by two accounts at the same address: exactly one wins", async () => {
