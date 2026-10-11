@@ -16,3 +16,10 @@ Honest "Nothing was saved"; focus to `role="alert"`; dark-mode contrast ~7:1; mo
 - T-063/WO-5: the 409 message may suggest cancel/chat once they exist.
 - `parseSavedForm` compares raw length, `validate` trimmed length (compare `.trim().length`).
 - README demo script: mention the MOCK booked day (today + 3).
+
+## Round 2 (head 38fa508): APPROVE
+
+All five findings fixed: (1) 409 message ends "Keep it/them ticked.", test asserts no "cancel" for 0/1/2 dates; (2) availability hint reworded; (3) queue flag says "stays approved"; (4) `firstBookableDay` required, set by real route, mock adapter and estimate; no optional uses left in src/e2e; (5) e2e asserts 200 unconditionally (helper offers both places). `parseSavedForm` now compares `.trim().length` like `validate()`; values still safe (INFO: surrounding whitespace uncapped, own sessionStorage only).
+Local: lint, tsc, prettier clean; vitest 1520 passed (+3 expected failures). CI `ci` SUCCESS on 38fa508.
+
+Later (unchanged): suggest cancel/chat in the 409 message once T-063/WO-5 add them; README demo script mentions the MOCK booked day (today + 3).
