@@ -128,6 +128,13 @@ export async function bookingCustomer(
 
 export const NONE = { noAllergies: true, noDietaryNeeds: true };
 
+/**
+ * The default visit day: at least 3 days ahead when the chef ticked one, so the 72 hour expiry
+ * (not midnight tomorrow) applies and a slow CI run near midnight cannot expire a fresh request.
+ */
+const defaultOffset = (chef: TestChef) =>
+  chef.ticked.find((t) => t >= 3) ?? chef.ticked[0] ?? 3;
+
 /** A valid create body: one day at the customer's home, the chef's first dish. */
 export function bookingBody(
   chef: TestChef,
@@ -143,7 +150,7 @@ export function bookingBody(
     },
     days: [
       {
-        date: day(chef.ticked[0] ?? 1),
+        date: day(defaultOffset(chef)),
         dishes: [{ dishId: Object.values(chef.dishes)[0], quantity: 1 }],
       },
     ],
