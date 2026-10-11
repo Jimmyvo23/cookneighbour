@@ -1,4 +1,4 @@
-import type { ApiError, ApiErrorCode } from "@/lib/api/types";
+import type { ApiError, ApiErrorCode, BookingIssue } from "@/lib/api/types";
 
 /** MOCK switch. The mock adapter runs only when NEXT_PUBLIC_API_MOCK is exactly "1".
  *  Unset, blank or anything else means the real routes (also in development). */
@@ -14,6 +14,10 @@ export class ApiClientError extends Error {
   readonly missing?: string[];
   /** DATE_BOOKED: the dates (YYYY-MM-DD) that have an open booking. */
   readonly dates?: string[];
+  /** Booking requests (T-042): every domain problem the server found. */
+  readonly issues?: BookingIssue[];
+  /** INVALID_STATE on a booking change (T-063): a stable reason code. */
+  readonly reason?: string;
 
   constructor(
     status: number,
@@ -24,6 +28,8 @@ export class ApiClientError extends Error {
       retryAfterSeconds?: number;
       missing?: string[];
       dates?: string[];
+      issues?: BookingIssue[];
+      reason?: string;
     } = {},
   ) {
     super(message);
@@ -34,6 +40,8 @@ export class ApiClientError extends Error {
     this.retryAfterSeconds = extra.retryAfterSeconds;
     this.missing = extra.missing;
     this.dates = extra.dates;
+    this.issues = extra.issues;
+    this.reason = extra.reason;
   }
 }
 
@@ -105,6 +113,8 @@ export async function apiFetch<T>(
     retryAfterSeconds: retry,
     missing: err.missing,
     dates: err.dates,
+    issues: err.issues,
+    reason: err.reason,
   });
 }
 

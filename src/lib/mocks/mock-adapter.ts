@@ -17,6 +17,7 @@
 // Dishes and availability (T-034) follow contract 5A and 5B and reuse src/lib/domain/dishes.ts.
 //   MOCK dish photos are never stored; a photo path is accepted when its name is well formed.
 // Public search routes (T-040) live in mock-search.ts (seeded approved chefs, real pure rules).
+// Booking routes (T-043) live in mock-bookings.ts (real pure validation, pricing and timing rules).
 // Chef application rules reuse the real pure functions in src/lib/domain/chef-application.ts.
 // MOCK: files are never stored (see mockUploader); a path is accepted if its name is well formed.
 import type {
@@ -76,6 +77,12 @@ import {
   seedAdminQueue,
   type MockQueueChef,
 } from "@/lib/mocks/mock-admin";
+import {
+  bookingRoutes,
+  hideHeldDates,
+  type MockBookingRow,
+  type MockHooks,
+} from "@/lib/mocks/mock-bookings";
 import { searchRoutes } from "@/lib/mocks/mock-search";
 import {
   displayNameProblem,
@@ -100,6 +107,10 @@ interface MockState {
   availability: string[];
   /** MOCK admin queue of made-up chef applications (admin accounts only). */
   adminQueue: MockQueueChef[];
+  /** MOCK bookings of the signed-in customer (newest first), see mock-bookings.ts (T-043). */
+  bookings: MockBookingRow[];
+  /** MOCK test hooks for the booking routes; set only from tests. */
+  hooks: MockHooks;
 }
 
 const KEY = "cookneighbour-mock-api-state";
@@ -112,6 +123,8 @@ const EMPTY: MockState = {
   dishes: [],
   availability: [],
   adminQueue: [],
+  bookings: [],
+  hooks: {},
 };
 let memory: MockState = { ...EMPTY };
 
@@ -373,7 +386,7 @@ export async function mockFetch(
   }
   // Public search routes (T-040): no session needed, so they come before every other route.
   const searched = searchRoutes(method, path);
-  if (searched) return searched;
+  if (searched) return hideHeldDates(searched, path, load());
 
   const s = load();
   const route = `${method} ${path}`;
@@ -454,6 +467,13 @@ export async function mockFetch(
   // Everything below needs a session.
   if (!s.profile) {
     return fail(401, "UNAUTHENTICATED", "Please log in first.");
+  }
+
+  // Booking routes (T-043): estimate, create, list, detail and the customer's cancel.
+  const booked = bookingRoutes(method, path, body, s);
+  if (booked) {
+    if (booked.next) save({ ...s, ...booked.next });
+    return booked.res;
   }
 
   if (route === "GET /api/me") return json(200, me(s));
