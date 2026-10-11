@@ -165,7 +165,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-063 | Booking changes API: cancel, no-show, missed pickup, kitchen-address change, chef-reject cascade (split from T-042) | backend | T-042 | done |
 | T-064 | D-22 flagged bookings: an open flag blocks auto and manual completion and the rejected chef's actions until an admin decides (T-063 review M3; scope after Q-28) | backend | T-063 | todo |
 | T-065 | Kitchen address privacy: snapshot the chef's kitchen address on the booking at acceptance and return it from `get_booking_contact`; N3 check and write in one locked database function (T-063 review M4, L4) | backend | T-063 | todo |
-| T-066 | T-063 small fixes and tests: reject cascade skips stale requests (L1); completion voids accepted pickup proposals (L2); chef's-home auto-completion API test and SQL-vs-TS `completionDue`/`pickupDeadline` test (L5) | backend | T-063 | todo |
+| T-066 | T-063 small fixes and tests: D-36 auto-complete needs a cooked day, else flag for admin (update `tests/api/booking-changes.test.ts:336`); reject cascade skips stale requests (L1); completion voids accepted pickup proposals (L2); chef's-home auto-completion API test and SQL-vs-TS `completionDue`/`pickupDeadline` test (L5) | backend | T-063 | todo |
 | T-062 | UI updates from D-21, D-22, D-25, D-27 (admin flag, booked-date 409, chef page 404) | frontend | T-061, T-042 | done |
 
 ### Phase 5 — Engagement (WO-5)
@@ -225,6 +225,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-33 | 2026-10-10 | Completion: the chef marks "visit done" after the last day; if not, the booking completes automatically 24 hours after the last day unless a no-show or problem was reported (built in T-063; reviews in WO-5 need it) | Jimmy |
 | D-34 | 2026-10-10 | A chef must give a reason when declining a request (built in T-042) | Jimmy |
 | D-35 | 2026-10-10 | No extra rate limit on booking requests; the 3-open-requests cap (D-28) is enough for the prototype (README known limit) | Jimmy |
+| D-36 | 2026-10-11 | Auto-completion (D-33) happens only when at least one day was cooked; otherwise the booking is flagged for the admin instead of completing, so the free trial is not used and reviews do not open (Q-29, Reviewer's suggestion; fix in T-066) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -258,8 +259,8 @@ New from planning:
 - Q-26 (T-063 Q-C; review L3) Should the customer confirm "I picked up my meals"? Today the chef alone can mark "pickup missed" after the deadline, even when the pickup went fine, which also blocks the customer's review.
 - Q-27 (T-063 Q-D) Which final status does a booking get when the admin resolves a problem report? Needed before WO-5. Until then an `open` or `reviewing` report keeps it `accepted`.
 - Q-28 (T-063 Q-E; review M3) Do customers of flagged (D-22) bookings need more than the neutral notice (refund, rebooking)? Should flagged bookings be frozen until an admin acts (Reviewer suggests yes, T-064)?
-- Q-29 (T-063 review M1) Auto-completion (D-33) today completes a booking even when no day was cooked, which uses up the free trial and opens reviews; manual "visit done" needs every day cooked. Should auto-completion need at least one cooked day, and otherwise flag the booking for the admin (Reviewer's suggestion)? Not a contradiction of D-33 as written. Before WO-5.
-- Q-30 (T-063 review M2) A chef no-show releases the trial (A-16) even after a cooked day, so a customer can report a chef no-show on day 2 and keep the trial, while cancelling would use it (D-26). Should a chef no-show after a cooked day use up the trial? Linked to Q-25.
+- Q-29 ~~(T-063 review M1) Auto-completion (D-33) today completes a booking even when no day was cooked, which uses up the free trial and opens reviews; manual "visit done" needs every day cooked. Should auto-completion need at least one cooked day, and otherwise flag the booking for the admin (Reviewer's suggestion)? Not a contradiction of D-33 as written. Before WO-5.~~ Resolved by D-36 (2026-10-11).
+- Q-30 (T-063 review M2) A chef no-show releases the trial (A-16) even after a cooked day, so a customer can report a chef no-show on day 2 and keep the trial, while cancelling would use it (D-26). Should a chef no-show after a cooked day use up the trial? Linked to Q-25. **Planner recommends:** yes, consume it, in line with D-26 (any cooked day uses the trial, whoever ends the booking); the uncooked days are freed and the customer pays nothing for them. Otherwise a false chef no-show report becomes a way to get a second free booking. Waiting for Jimmy's OK.
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification. The contact-details filter is best effort (spelled-out digits, disguised emails and street addresses pass). No rate limit on booking requests beyond D-28 (D-35). Request expiry is lazy until a scheduled sweep is added (WO-7).
 
