@@ -17,16 +17,20 @@ export function allergyAcknowledgementIssue(
     message: string;
   };
 } {
+  // D-23: both answers must be explicit (for example "None"); blank text is refused.
   if (
     !intake ||
     typeof intake.allergies !== "string" ||
-    typeof intake.dietaryNotes !== "string"
+    typeof intake.dietaryNotes !== "string" ||
+    intake.allergies.trim() === "" ||
+    intake.dietaryNotes.trim() === ""
   )
     return {
       conflicts: [],
       error: {
         code: "INTAKE_MISSING",
-        message: "Complete the allergies and dietary notes form.",
+        message:
+          'Answer the allergies and dietary questions (write "None" if there is nothing).',
       },
     };
   // Unique dishes only: the same dish on two days is one conflict.

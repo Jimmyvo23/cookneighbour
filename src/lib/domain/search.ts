@@ -199,8 +199,10 @@ export function parseSearchQuery(
   const dateRaw = one("date");
   if (dateRaw && !errors.date) {
     const last = addDays(ctx.today, AVAILABILITY_HORIZON_DAYS);
-    if (!isRealDate(dateRaw) || dateRaw < ctx.today || dateRaw > last)
-      errors.date = `Pick a date from ${ctx.today} to ${last} (YYYY-MM-DD).`;
+    // D-27: no same-day bookings, so the first date a customer can search is tomorrow.
+    const first = addDays(ctx.today, 1);
+    if (!isRealDate(dateRaw) || dateRaw < first || dateRaw > last)
+      errors.date = `Pick a date from ${first} to ${last} (YYYY-MM-DD).`;
     else date = dateRaw;
   }
 

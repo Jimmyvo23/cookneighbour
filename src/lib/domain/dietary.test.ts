@@ -28,3 +28,34 @@ describe("chefMatchesDietary (A-17)", () => {
     expect(chefMatchesDietary([], ["  "])).toBe(true);
   });
 });
+
+// D-31 (T-042): the search filter understands the same synonyms as the booking allergy warning.
+describe("synonyms in the search filter (D-31)", () => {
+  it("avoiding gluten also avoids a dish listing wheat or barley", () => {
+    expect(dishAvoidsAllergens(d(["wheat"]), ["gluten"])).toBe(false);
+    expect(dishAvoidsAllergens(d(["barley"]), ["gluten"])).toBe(false);
+    expect(dishAvoidsAllergens(d(["oats"]), ["celiac"])).toBe(false);
+  });
+  it("avoiding dairy, shrimp or nuts finds the dishes the booking would warn about", () => {
+    expect(dishAvoidsAllergens(d(["milk"]), ["dairy"])).toBe(false);
+    expect(dishAvoidsAllergens(d(["crustaceans"]), ["shrimp"])).toBe(false);
+    expect(dishAvoidsAllergens(d(["tree nuts"]), ["nuts"])).toBe(false);
+    expect(dishAvoidsAllergens(d(["peanuts"]), ["tree nuts"])).toBe(false);
+    expect(dishAvoidsAllergens(d(["sulphites"]), ["sulfites"])).toBe(false);
+  });
+  it("keeps dishes that have nothing to do with the avoided words", () => {
+    expect(dishAvoidsAllergens(d(["fish"]), ["gluten", "dairy"])).toBe(true);
+    expect(dishAvoidsAllergens(d([]), ["gluten"])).toBe(true);
+    expect(dishAvoidsAllergens(d(["sesame"]), ["soy"])).toBe(true);
+  });
+  it("a chef matches when one active dish is free of every avoided word", () => {
+    expect(chefMatchesDietary([d(["wheat"]), d(["fish"])], ["gluten"])).toBe(
+      true,
+    );
+    expect(chefMatchesDietary([d(["wheat"])], ["gluten"])).toBe(false);
+  });
+  it("uses every avoided entry, each on its own", () => {
+    expect(dishAvoidsAllergens(d(["milk"]), ["gluten", "dairy"])).toBe(false);
+    expect(dishAvoidsAllergens(d(["fish"]), ["gluten", "dairy"])).toBe(true);
+  });
+});

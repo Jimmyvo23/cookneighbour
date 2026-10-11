@@ -41,3 +41,16 @@ export const RECEIPT_TOLERANCE_MIN_CENTS = 500;
 /** Currency and country stored with every estimate (CLAUDE.md 3). */
 export const DEFAULT_CURRENCY = "CAD";
 export const DEFAULT_COUNTRY = "CA";
+
+/** D-19: an unanswered `requested` booking expires this many hours after it is made, or at the start of day 1 if sooner. */
+export const REQUEST_EXPIRY_HOURS = 72;
+
+/** D-28: a customer may have at most this many bookings in `requested` state at once. */
+export const MAX_OPEN_REQUESTS = 3;
+
+/** T-038 follow-up: the same blocked free-trial attempt (customer and reason) is logged at most once per window. */
+export const FREE_TRIAL_BLOCK_LOG_WINDOW_MINUTES = 60;
+
+/** Intake form text limits (D-23): picked allergens plus free text. */
+export const INTAKE_ALLERGY_NOTES_MAX = 300;
+export const INTAKE_DIETARY_NOTES_MAX = 500;

@@ -6,7 +6,7 @@ import type {
 } from "@/lib/api/types";
 import { mockFetch } from "@/lib/mocks/mock-adapter";
 import { MOCK_CHEFS, MOCK_NOT_BOOKABLE_CHEF } from "@/lib/mocks/mock-search";
-import { torontoToday } from "@/lib/domain/dishes";
+import { addDays, torontoToday } from "@/lib/domain/dishes";
 
 const H = { "Content-Type": "application/json" };
 async function get(path: string) {
@@ -96,8 +96,8 @@ describe("MOCK search routes (contract section 7)", () => {
   });
 
   it("filters by a date the chef ticked", async () => {
-    const today = torontoToday();
-    const all = (await list(`?date=${today}`)).data.items.length;
+    const tomorrow = addDays(torontoToday(), 1); // D-27: no same-day bookings
+    const all = (await list(`?date=${tomorrow}`)).data.items.length;
     expect(all).toBeGreaterThan(0);
     expect(all).toBeLessThanOrEqual(MOCK_CHEFS.length);
   });

@@ -50,10 +50,14 @@ const TEXT_MAX = 40;
 /** Same ceiling as the API, so a hand-edited URL cannot ask for an absurd list. */
 const AVOID_MAX = 14;
 
-/** The booking window the API allows (D-15): today to today + 180 days, Toronto. The server's
- *  answer is final; this only sets the date picker's limits and a quick message. */
+/** The booking window the API allows: tomorrow (D-27, no same-day bookings) to today + 180 days
+ *  (D-15), Toronto. The server's answer is final; this only sets the date picker's limits and a
+ *  quick message. */
 export function dateWindow(today: string): { min: string; max: string } {
-  return { min: today, max: addDays(today, AVAILABILITY_HORIZON_DAYS) };
+  return {
+    min: addDays(today, 1),
+    max: addDays(today, AVAILABILITY_HORIZON_DAYS),
+  };
 }
 
 /** Quick checks before sending. Returns field errors keyed like the API's `fields`. */

@@ -78,7 +78,10 @@ describe("MOCK search routes: error and edge behaviour matches section 7", () =>
   });
 
   it("date: window ends are accepted, one day outside is 422, fake dates are 422", async () => {
-    expect((await call(`/api/chefs?date=${today}`)).status).toBe(200);
+    expect((await call(`/api/chefs?date=${today}`)).status).toBe(422); // D-27
+    expect((await call(`/api/chefs?date=${addDays(today, 1)}`)).status).toBe(
+      200,
+    );
     expect((await call(`/api/chefs?date=${addDays(today, 180)}`)).status).toBe(
       200,
     );

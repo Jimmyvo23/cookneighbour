@@ -72,7 +72,7 @@ const req = (over: Partial<BookingRequest> = {}): BookingRequest => ({
   locationType: "customer_home",
   customerPostal: "L5N 1A1",
   days: [{ date: D1, dishes: [{ dishId: "pho", quantity: 1 }] }],
-  intake: { allergies: "", dietaryNotes: "" },
+  intake: { allergies: "None", dietaryNotes: "None" },
   ...over,
 });
 const codes = (r: ReturnType<typeof validateBooking>): BookingIssueCode[] =>
@@ -138,29 +138,65 @@ describe("validateBooking: days and dates (CLAUDE.md 10)", () => {
       codes(validateBooking(req({ days: four }), chef(), ctx())),
     ).toContain("DAYS_COUNT");
   });
-  it("rejects a date in the past but allows today", () => {
-    expect(
+  it("rejects a date in the past, and today too: day 1 is tomorrow at the earliest (D-27)", () => {
+    const one = (date: string) =>
       codes(
         validateBooking(
-          req({
-            days: [
-              { date: "2026-10-07", dishes: [{ dishId: "pho", quantity: 1 }] },
-            ],
-          }),
+          req({ days: [{ date, dishes: [{ dishId: "pho", quantity: 1 }] }] }),
           chef(),
           ctx(),
         ),
-      ),
-    ).toEqual(["DATE_IN_PAST"]);
+      );
+    expect(one("2026-10-07")).toEqual(["DATE_IN_PAST"]);
+    expect(one(TODAY)).toEqual(["DATE_TOO_SOON"]);
+    expect(one(addDays(TODAY, 1))).toEqual(["CHEF_UNAVAILABLE"]);
+    const ok = chef({
+      availableDates: new Set([TODAY, addDays(TODAY, 1)]),
+    });
     expect(
       validateBooking(
         req({
-          days: [{ date: TODAY, dishes: [{ dishId: "pho", quantity: 1 }] }],
+          days: [
+            {
+              date: addDays(TODAY, 1),
+              dishes: [{ dishId: "pho", quantity: 1 }],
+            },
+          ],
         }),
-        chef(),
+        ok,
         ctx(),
       ).errors,
     ).toEqual([]);
+  });
+  it("today is refused on any day of a multi-day booking, not only day 1", () => {
+    const r = validateBooking(
+      req({
+        days: [
+          { date: D1, dishes: [{ dishId: "pho", quantity: 1 }] },
+          { date: TODAY, dishes: [{ dishId: "pho", quantity: 1 }] },
+        ],
+      }),
+      chef(),
+      ctx(),
+    );
+    expect(r.errors.map((e) => [e.code, e.dayIndex])).toEqual([
+      ["DATE_TOO_SOON", 1],
+    ]);
+  });
+  it("the intake needs an explicit answer: blank allergies or dietary notes are refused (D-23)", () => {
+    const blank = (allergies: string, dietaryNotes: string) =>
+      codes(
+        validateBooking(
+          req({ intake: { allergies, dietaryNotes } }),
+          chef(),
+          ctx(),
+        ),
+      );
+    expect(blank("", "None")).toEqual(["INTAKE_MISSING"]);
+    expect(blank("None", "")).toEqual(["INTAKE_MISSING"]);
+    expect(blank("   ", "None")).toEqual(["INTAKE_MISSING"]);
+    expect(blank("None", " \n ")).toEqual(["INTAKE_MISSING"]);
+    expect(blank("None", "None")).toEqual([]);
   });
   it("enforces the D-15 window: today + 180 days is the last bookable day", () => {
     const last = addDays(TODAY, 180);
@@ -408,7 +444,7 @@ describe("validateBooking: intake and allergies", () => {
     ).toEqual(["INTAKE_MISSING"]);
   });
   it("an allergy that matches a chosen dish needs an acknowledgement", () => {
-    const base = req({ intake: { allergies: "Soy", dietaryNotes: "" } });
+    const base = req({ intake: { allergies: "Soy", dietaryNotes: "None" } });
     const r = validateBooking(base, chef(), ctx());
     expect(codes(r)).toEqual(["ALLERGY_NOT_ACKNOWLEDGED"]);
     expect(r.allergyConflicts).toEqual([
@@ -424,7 +460,7 @@ describe("validateBooking: intake and allergies", () => {
   });
   it("no conflict when the allergy is not in the chosen dishes", () => {
     const r = validateBooking(
-      req({ intake: { allergies: "shellfish", dietaryNotes: "" } }),
+      req({ intake: { allergies: "shellfish", dietaryNotes: "None" } }),
       chef(),
       ctx(),
     );
@@ -434,7 +470,7 @@ describe("validateBooking: intake and allergies", () => {
   it("the same dish on two days is one conflict", () => {
     const r = validateBooking(
       req({
-        intake: { allergies: "soy", dietaryNotes: "" },
+        intake: { allergies: "soy", dietaryNotes: "None" },
         days: [D1, D2].map((date) => ({
           date,
           dishes: [{ dishId: "pho", quantity: 1 }],

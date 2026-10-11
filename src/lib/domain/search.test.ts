@@ -122,8 +122,9 @@ describe("parseSearchQuery", () => {
     expect(q("minRateCents=0").errors).toEqual({});
   });
 
-  it("validates the date: real, and inside today..today+180 (D-15)", () => {
-    expect(q(`date=${TODAY}`).errors).toEqual({});
+  it("validates the date: real, and inside tomorrow..today+180 (D-15, D-27)", () => {
+    expect(q(`date=${TODAY}`).errors.date).toMatch(/2026-10-10/); // no same-day bookings
+    expect(q("date=2026-10-10").errors).toEqual({}); // tomorrow
     expect(q("date=2027-04-07").errors).toEqual({}); // today + 180
     expect(q("date=2027-04-08").errors.date).toBeTruthy();
     expect(q("date=2026-10-08").errors.date).toBeTruthy();

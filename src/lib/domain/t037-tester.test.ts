@@ -493,7 +493,7 @@ describe("booking validation extra boundaries", () => {
   ): BookingRequest => ({
     locationType: "chef_home",
     days: [{ date, dishes: [{ dishId: "d", quantity: 1 }] }],
-    intake: { allergies: "", dietaryNotes: "" },
+    intake: { allergies: "None", dietaryNotes: "None" },
     ...over,
   });
   const ctx = (today = "2026-10-08") => ({
@@ -503,8 +503,10 @@ describe("booking validation extra boundaries", () => {
   });
   const codes = (x: ReturnType<typeof validateBooking>) =>
     x.errors.map((e) => e.code);
-  it("window: today ok, day 180 ok, day 181 beyond (2026-10-08 + 180 = 2027-04-06)", () => {
-    expect(codes(validateBooking(r("2026-10-08"), mk(), ctx()))).toEqual([]);
+  it("window: today refused (D-27), day 180 ok, day 181 beyond (2026-10-08 + 180 = 2027-04-06)", () => {
+    expect(codes(validateBooking(r("2026-10-08"), mk(), ctx()))).toEqual([
+      "DATE_TOO_SOON",
+    ]);
     expect(codes(validateBooking(r("2027-04-06"), mk(), ctx()))).toEqual([]);
     expect(codes(validateBooking(r("2027-04-07"), mk(), ctx()))).toEqual([
       "DATE_BEYOND_WINDOW",
@@ -516,7 +518,7 @@ describe("booking validation extra boundaries", () => {
   it("window follows the supplied Toronto today (late evening UTC does not shift it)", () => {
     // caller passes Toronto today; at 2026-10-09T01:00Z Toronto is still 10-08
     expect(
-      codes(validateBooking(r("2026-10-08"), mk(), ctx("2026-10-08"))),
+      codes(validateBooking(r("2026-10-10"), mk(), ctx("2026-10-09"))),
     ).toEqual([]);
   });
   it("service radius: exact metres inside, one metre less outside", () => {

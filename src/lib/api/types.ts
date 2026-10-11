@@ -606,10 +606,7 @@ export interface AllergyConflictView {
 }
 
 export type FreeTrialBlocker =
-  | "PHONE_NOT_SUBMITTED"
-  | "PHONE_NOT_VERIFIED"
-  | "ADDRESS_NOT_SET"
-  | "USED";
+  "PHONE_NOT_SUBMITTED" | "PHONE_NOT_VERIFIED" | "ADDRESS_NOT_SET" | "USED";
 
 export interface BookingEstimateResponse {
   ok: boolean;
@@ -664,7 +661,10 @@ export interface BookingDetail {
   days: BookingDayView[];
   estimate: Omit<
     BookingEstimate,
-    "labourBeforeWaiverCents" | "freeTrialWaivedCents" | "exceedsSoftLimit"
+    | "labourBeforeWaiverCents"
+    | "freeTrialWaivedCents"
+    | "exceedsSoftLimit"
+    | "days"
   >;
   intake: {
     allergies: string;
