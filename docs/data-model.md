@@ -32,7 +32,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 |---|---|
 | `postal_prefixes` | GTA prefix (e.g. `L5B`), city, lat, lng. Public reference data (A-1). |
 | `profiles` | One row per auth user (created by trigger on `auth.users` insert). Role, display name, country/currency/language. **No private data.** |
-| `profile_private` | Phone (E.164), `phone_hash`, `phone_verified` (MOCK), home address, `postal_prefix`, `address_hash`. Created empty by the same trigger. |
+| `profile_private` | Phone (E.164), `phone_hash`, `phone_verified` (MOCK), home address, `postal_prefix`, `address_hash`; since T-067 also `saved_intake` (jsonb, the customer's allergy and dietary form) and `saved_intake_at`. Created empty by the same trigger. |
 | `chefs` | Public listing: status, display name, bio, photo, cuisines, languages, hourly rate, service prefix and radius, `location_options` (array), `chef_home_enabled` (admin sets after the MOCK kitchen review), cached `rating_avg` / `review_count`. |
 | `chef_private` | Reject reason, `police_check_status`, ID / food-handler / kitchen MOCK statuses, document and kitchen-photo paths, kitchen address, allergen and kitchen-hygiene acknowledgements. |
 | `dishes` | Name, photo, description, cuisine, `cook_minutes`, `ingredient_cost_cents`, servings, allergens, `shelf_life_days` (default 2), `is_active`. |
