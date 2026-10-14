@@ -37,3 +37,11 @@ Regression: none. 3 expected-fail unit tests are the same as round 1 (`ChefDetai
 Tests added: `src/components/booking/PerDayEstimate.sums.test.tsx` (1/2/3 days x trial on/off sums against real `estimateBooking` output, plus a test that documents that API days labour is 0 under the trial).
 
 Results: unit 1623 pass + 3 expected fail; mock e2e 148 pass; eslint, tsc, prettier clean.
+
+## Round 3 - Tester re-check of the caption fix (head da21929)
+
+Result: **PASS**. The round 2 MEDIUM bug is closed.
+1. New trial caption is true: `estimateBooking` sets `days[].labourCents = 0` under the trial, and the totals block (`parts.tsx`) shows labour before waiver and the waived deduction, so "each day shows $0.00 ... full value in the totals above" matches.
+2. No-trial caption unchanged (empty string); travel captions unchanged.
+3. My sums tests (`PerDayEstimate.sums.test.tsx`) pass; src/components/booking: 17 tests pass; eslint and tsc clean.
+4. Diff since 0b9ca23: only the caption string in `BookingFlow.tsx`, `PerDayEstimate.test.tsx` and the frontend handoff. Nothing else changed.
