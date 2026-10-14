@@ -8,6 +8,10 @@ import { beforeAll, describe, expect, inject, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cancellationTiming } from "../../src/lib/domain/cancellation";
 import {
+  completionDue,
+  pickupDeadline,
+} from "../../src/lib/domain/bookingChanges";
+import {
   anonClient,
   clientFor,
   dayPlus,
@@ -286,6 +290,87 @@ describe("the SQL time rules equal the TypeScript ones", () => {
               firstVisitDate: first,
               cancelledBy: "customer",
             }).timing,
+          );
+        }
+      }
+    } finally {
+      await client.end();
+    }
+  });
+});
+
+describe("the SQL completion and pickup rules equal the TypeScript ones (L5)", () => {
+  // 2026-10-31 -> the clocks go back on 2026-11-01; 2027-03-12 -> they go forward on 2027-03-14.
+  const lastDays = ["2026-10-31", "2026-12-20", "2027-03-12"];
+
+  it("booking_pickup_end equals pickupDeadline", async () => {
+    const client = new pg.Client({ connectionString: localEnv().dbUrl });
+    await client.connect();
+    try {
+      for (const eat of [...lastDays, "2026-11-01", "2027-03-13"]) {
+        const r = await client.query(
+          "select public.booking_pickup_end($1::date) as t",
+          [eat],
+        );
+        expect(new Date(r.rows[0].t).getTime(), eat).toBe(
+          pickupDeadline(eat).getTime(),
+        );
+      }
+    } finally {
+      await client.end();
+    }
+  });
+
+  it("booking_auto_complete_at equals completionDue (customer's home) and the later of the two rules (chef's home)", async () => {
+    const client = new pg.Client({ connectionString: localEnv().dbUrl });
+    await client.connect();
+    try {
+      for (const last of lastDays) {
+        const chef = await makeChef(svc, `bc-ac-${last}`);
+        const cust = await makeCustomer(svc, `bc-ac-c-${last}`);
+        const home = await makeBooking(svc, {
+          customer: cust,
+          chef,
+          dates: [last],
+          status: "accepted",
+        });
+        const r = await client.query(
+          "select public.booking_auto_complete_at($1) as t",
+          [home.id],
+        );
+        expect(new Date(r.rows[0].t).getTime(), last).toBe(
+          completionDue(last).getTime(),
+        );
+
+        // Chef's home: the earliest eat-by of the day decides the pickup deadline.
+        for (const eatOffset of [1, 6]) {
+          const chef2 = await makeChef(svc, `bc-ac2-${last}-${eatOffset}`);
+          const b = await makeBooking(svc, {
+            customer: cust,
+            chef: chef2,
+            dates: [last],
+            status: "accepted",
+            location: "chef_home",
+          });
+          const eat = dayPlus(last, eatOffset);
+          for (const e of [dayPlus(last, eatOffset + 3), eat]) {
+            const ins = await svc.from("booking_day_dishes").insert({
+              booking_day_id: b.dayIds[0],
+              dish_name: "Pho",
+              cook_minutes: 60,
+              eat_by_date: e,
+            });
+            expect(ins.error).toBeNull();
+          }
+          const q = await client.query(
+            "select public.booking_auto_complete_at($1) as t",
+            [b.id],
+          );
+          expect(new Date(q.rows[0].t).getTime(), `${last} +${eatOffset}`).toBe(
+            Math.max(
+              completionDue(last).getTime(),
+              pickupDeadline(eat).getTime(),
+            ),
           );
         }
       }

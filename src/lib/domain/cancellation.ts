@@ -93,7 +93,8 @@ export interface FreeTrialContext {
  * and `accepted` keep the claim held (T-038 owns the state machine).
  *
  * D-26: a cancellation releases the trial only when no day was cooked yet; after at least one
- * cooked day it consumes it. The server reads the per-day marker (booking_days.cooked_at) and
+ * cooked day it consumes it. D-37: a chef no-show works the same way (a cooked day uses the trial
+ * up, otherwise it is released). The server reads the per-day marker (booking_days.cooked_at) and
  * passes it in `ctx`; without it a cancellation releases (the pre-visit case).
  */
 export function freeTrialEffect(
@@ -105,9 +106,10 @@ export function freeTrialEffect(
     case "no_show_customer":
       return "consume";
     case "cancelled":
+    case "no_show_chef":
+      // D-26 (cancel) and D-37 (chef no-show): a cooked day uses the trial up.
       return ctx.anyDayCooked ? "consume" : "release";
     case "declined":
-    case "no_show_chef":
     case "expired":
       return "release";
     default:

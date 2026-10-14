@@ -365,9 +365,23 @@ describe("applyFreeTrialEvent: cancellation and the D-26 cooked marker", () => {
       expect((await applyFreeTrialEvent(b, "cancelled", d)).changed).toBe(
         false,
       );
-      await expect(
-        applyFreeTrialEvent(b, "no_show_chef", d),
-      ).rejects.toMatchObject({ code: "INVALID_STATE" });
+      await expect(applyFreeTrialEvent(b, "expired", d)).rejects.toMatchObject({
+        code: "INVALID_STATE",
+      });
+    }
+  });
+  it("D-37: a chef no-show after a cooked day consumes it, without one it releases", async () => {
+    for (const cooked of [true, false]) {
+      const { db, id } = setup();
+      const b = booking(db, id);
+      const d = { db: db.as(), pepper: PEPPER };
+      if (cooked)
+        db.t.booking_days.push({ booking_id: b, cooked_at: "2026-10-12" });
+      await holdFreeTrial(id, b, d);
+      expect(await applyFreeTrialEvent(b, "no_show_chef", d)).toEqual({
+        changed: true,
+        state: cooked ? "consumed" : "released",
+      });
     }
   });
 });

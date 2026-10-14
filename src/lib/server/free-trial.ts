@@ -342,9 +342,10 @@ export async function applyFreeTrialEvent(
   if (cur.error) throw new Error(`claim lookup failed: ${cur.error.message}`);
   if (!cur.data) return { changed: false, state: null };
 
-  // D-26: only a cancellation depends on the cooked marker; read it when the caller did not say.
+  // D-26 / D-37: a cancellation and a chef no-show depend on the cooked marker (freeTrialEffect
+  // decides which events); read it when the caller did not say.
   let anyDayCooked = deps.anyDayCooked;
-  if (event === "cancelled" && anyDayCooked === undefined) {
+  if (anyDayCooked === undefined) {
     const c = await db
       .from("booking_days")
       .select("id")
