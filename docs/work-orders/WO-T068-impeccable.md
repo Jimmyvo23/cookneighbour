@@ -1,6 +1,8 @@
 # Work Order WO-T068: Impeccable design skill for Frontend
 
-Tasks: T-068 (issue to be created after approval)
+Tasks: T-068 (issue #106)
+
+Approval: Jimmy approved 2026-10-13 (decide ids `WO-T068-frontend` with the design hook on, `WO-T068-tester`, `WO-T068-reviewer`; telemetry off).
 
 ## What the check found (2026-10-13, from the official repo and site)
 
@@ -12,7 +14,7 @@ Tasks: T-068 (issue to be created after approval)
 - **Install for Claude Code at project level** (official "Option 1"): from the repo root, `npx impeccable@4.5.2 install --providers=claude --scope=project`. This writes the skill to `.claude/skills/impeccable/` (committed, so the whole team uses the same version) and makes no change to Jimmy's personal `~/.claude`. The other Claude Code route, `/plugin marketplace add pbakaus/impeccable`, is a per-user plugin install, so it is **not** used.
 - **What else it touches** (things to know before approving):
   1. **Engine binary outside the repo.** On first use, the launcher downloads a pinned, self-contained engine binary once into `~/.impeccable/bin/`. It is a cache, not a setting, but it does live in Jimmy's home folder.
-  2. **Optional design hook.** If accepted, the installer adds a hook to `.claude/settings.local.json` (gitignored, this Mac only). The hook runs the detector after every UI file edit, and it runs even when a tool call is denied, so it can download the engine. **Recommendation: skip the hook (`--no-hooks`) for the trial** and run the commands on purpose.
+  2. **Optional design hook.** If accepted, the installer adds a hook to `.claude/settings.local.json` (this Mac only; ignored today only by Jimmy's global git ignore, so T-068 adds it to the repo `.gitignore`). The hook runs the detector after every UI file edit, and it runs even when a tool call is denied, so it can download the engine. **Recommendation: skip the hook (`--no-hooks`) for the trial** and run the commands on purpose. *(Overridden by Jimmy's decision below: hook on. The hook must end up in the main folder's `.claude/settings.local.json`, not a worktree's, because the session loads hooks from the main folder; the Planner places it after Jimmy confirms.)*
   3. **Telemetry.** When a new design starts, the skill calls impeccable.style to deal "visual worlds". It sends anonymous data (a random key, the catalogue id, client version) and never project files, code or names. The call itself always happens; recording can be turned off for the whole project with `"telemetry": false` in `.impeccable/config.json`. **Recommendation: turn it off**, to keep the rule of sending as little as possible.
   4. **New project files.** `/impeccable init` writes `PRODUCT.md` (and later `DESIGN.md`) at the repo root, and working files go under `.impeccable/`. The official `.gitignore` block keeps screenshots, caches and per-developer config out of git.
 
@@ -30,7 +32,7 @@ The Planner also adds a proposed step to the WO-6 board: "Run `/impeccable audit
 
 ## Recommendation
 
-Approve all three, with `--no-hooks` and telemetry off. Both are easy to switch on later. Total effort S.
+Approve all three, with `--no-hooks` and telemetry off *(overridden: Jimmy chose hook on)*. Both are easy to switch on later. Total effort S.
 
 **Jimmy's decision (2026-10-13):** Frontend approved **with the design hook on**; Tester and Reviewer approved as written. Telemetry stays off.
 
@@ -42,4 +44,4 @@ Approve all three, with `--no-hooks` and telemetry off. Both are easy to switch 
 
 ## Decision
 
-Ask Jimmy per agent: Approve, Reject or Approve with changes. Record each answer with `team-status decide`, ids `WO-T068-frontend`, `WO-T068-tester`, `WO-T068-reviewer`.
+Decided 2026-10-13 (see Approval above). Each answer was recorded with `team-status decide`, ids `WO-T068-frontend`, `WO-T068-tester`, `WO-T068-reviewer`.
