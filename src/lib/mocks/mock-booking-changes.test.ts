@@ -685,3 +685,79 @@ describe("customer seeding hook (tests only)", () => {
     expect(r.items).toHaveLength(1);
   });
 });
+
+describe("chef cancel and customer no-show (T-070)", () => {
+  it("cancels an accepted booking with the D-20 timing and the optional reason", async () => {
+    const c = asChef();
+    // A04 is accepted with day 1 today: inside 48 hours, so late.
+    const r = await c.call("POST", `/api/bookings/${A04}/cancel`, {
+      reason: "  I am ill  ",
+    });
+    expect(r.status).toBe(200);
+    const d = r.json as BookingDetail;
+    expect(d).toMatchObject({
+      status: "cancelled",
+      cancelledBy: "chef",
+      cancellationTiming: "late",
+      cancelReason: "I am ill",
+    });
+  });
+  it("an empty body is fine and a far-away first day is on time", async () => {
+    const c = asChef();
+    await c.call("POST", `/api/bookings/${A01}/accept`);
+    const r = await c.call("POST", `/api/bookings/${A01}/cancel`, {});
+    const d = r.json as BookingDetail;
+    expect(d.status).toBe("cancelled");
+    expect(d.cancellationTiming).toBe("on_time");
+    expect(d.cancelReason).toBeNull();
+  });
+  it("refuses contact details, a short reason and unknown keys before looking at the state", async () => {
+    const c = asChef();
+    const contact = await c.call("POST", `/api/bookings/${A04}/cancel`, {
+      reason: "call me on 416 555 0199",
+    });
+    expect(contact.status).toBe(422);
+    expect(contact.error.code).toBe("CONTACT_DETAILS_NOT_ALLOWED");
+    expect(
+      (await c.call("POST", `/api/bookings/${A04}/cancel`, { reason: "no" }))
+        .status,
+    ).toBe(422);
+    expect(
+      (await c.call("POST", `/api/bookings/${A04}/cancel`, { x: 1 })).status,
+    ).toBe(422);
+  });
+  it("a chef cannot cancel a waiting request (chef_use_decline), a finished one or one with nothing left", async () => {
+    const c = asChef();
+    const req = await c.call("POST", `/api/bookings/${A01}/cancel`, {});
+    expect(req.status).toBe(409);
+    expect(req.error.reason).toBe("chef_use_decline");
+    // A03: accepted, its only visit was yesterday and cooked.
+    const none = await c.call("POST", `/api/bookings/${A03}/cancel`, {});
+    expect(none.status).toBe(409);
+    expect(none.error.reason).toBe("nothing_left");
+    await c.call("POST", `/api/bookings/${A04}/cancel`, {});
+    const twice = await c.call("POST", `/api/bookings/${A04}/cancel`, {});
+    expect(twice.error.reason).toBe("wrong_status");
+  });
+  it("reports a customer no-show from the visit date for an uncooked visit", async () => {
+    const c = asChef();
+    const r = await c.call("POST", `/api/bookings/${A04}/no-show`);
+    expect(r.status).toBe(200);
+    const d = r.json as BookingDetail;
+    expect(d.status).toBe("no_show_customer");
+    expect(d.noShow).toMatchObject({ dayNumber: 1, pickupMissed: false });
+  });
+  it("refuses a no-show with no visit due, then a second report", async () => {
+    const c = asChef();
+    // A03: its only visit is cooked, so nothing is due.
+    const none = await c.call("POST", `/api/bookings/${A03}/no-show`);
+    expect(none.status).toBe(409);
+    expect(none.error.reason).toBe("no_visit_due");
+    // A01 is only requested.
+    const wrong = await c.call("POST", `/api/bookings/${A01}/no-show`);
+    expect(wrong.error.reason).toBe("wrong_status");
+    await c.call("POST", `/api/bookings/${A04}/no-show`);
+    const twice = await c.call("POST", `/api/bookings/${A04}/no-show`);
+    expect(twice.error.reason).toBe("wrong_status");
+  });
+});

@@ -286,7 +286,9 @@ function Ready({
         ) : (
           <p data-testid="kitchen-later" className={infoBoxCls}>
             {b.locationType === "chef_home"
-              ? "The chef's kitchen address is shared with you once the chef accepts this booking."
+              ? b.status === "requested"
+                ? "The chef's kitchen address is shared with you once the chef accepts this booking."
+                : "The chef's kitchen address is not shown for this booking."
               : "Your cooking address is not available on this page."}
           </p>
         )}
@@ -299,7 +301,9 @@ function Ready({
           </p>
         ) : (
           <p data-testid="contact-later" className={hintCls}>
-            Phone numbers are shared only after the chef accepts.
+            {b.status === "requested"
+              ? "Phone numbers are shared only after the chef accepts."
+              : "The chef's phone number is not shown for this booking."}
           </p>
         )}
       </section>

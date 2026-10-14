@@ -24,6 +24,7 @@ import {
   dayIsDue,
 } from "@/lib/booking/changes";
 import { formatWhen } from "@/lib/booking/form";
+import { freeTrialEffect } from "@/lib/domain/cancellation";
 import { formatMinutes } from "@/lib/chef/dishes";
 import { torontoToday } from "@/lib/domain/dishes";
 import { allergenText, shortDayLabel } from "@/lib/search/detail";
@@ -46,6 +47,7 @@ import {
 } from "@/components/booking/parts";
 import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { ChefPickups } from "@/components/booking/PickupSections";
+import { ChefEndSections } from "@/components/booking/ChefEndSections";
 
 const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
 
@@ -217,6 +219,10 @@ function Ready({
       </section>
 
       {b.status === "accepted" && <Finish b={b} onChange={changed} />}
+
+      {b.status === "accepted" && (
+        <ChefEndSections booking={b} onChange={changed} />
+      )}
     </>
   );
 }
@@ -242,6 +248,13 @@ function StatusNotes({ b }: { b: BookingDetail }) {
           {b.cancellationTiming === "late"
             ? " It was less than 48 hours before the first day."
             : ""}
+          {b.isFreeTrial && b.cancelledBy !== "system"
+            ? freeTrialEffect("cancelled", {
+                anyDayCooked: b.days.some((d) => d.cookedAt !== null),
+              }) === "consume"
+              ? " A day had been cooked, so the customer's free first booking counts as used."
+              : " No day had been cooked, so the customer keeps their free first booking."
+            : ""}
         </p>
       )}
       {b.status === "expired" && (
@@ -255,7 +268,7 @@ function StatusNotes({ b }: { b: BookingDetail }) {
           {b.status === "no_show_customer"
             ? b.noShow.pickupMissed
               ? "You marked the pickup as missed. This is a customer no-show for the whole booking."
-              : "You reported a customer no-show."
+              : `You reported a customer no-show${b.isFreeTrial ? ". The customer's free first booking counts as used" : ""}.`
             : "A chef no-show was reported."}
         </p>
       )}
@@ -511,9 +524,9 @@ function KitchenNote({ status }: { status: BookingStatus }) {
   if (status === "accepted")
     return (
       <p data-testid="kitchen-note" className={infoBoxCls}>
-        The customer can now see your kitchen address. It stays locked until
-        this booking is finished, so it cannot be changed on your application
-        page until then.
+        The customer can now see your kitchen address. While you have an
+        accepted booking at your home, your kitchen address is locked and cannot
+        be changed on your application page.
       </p>
     );
   if (
@@ -524,14 +537,16 @@ function KitchenNote({ status }: { status: BookingStatus }) {
     return (
       <p data-testid="kitchen-note" className={hintCls}>
         This booking is finished. The customer can still see your kitchen
-        address for it. Your kitchen address is no longer locked.
+        address for it. This booking no longer locks your kitchen address.
+        Another accepted booking at your home can still lock it.
       </p>
     );
   if (status === "cancelled")
     return (
       <p data-testid="kitchen-note" className={hintCls}>
         This booking was cancelled. The customer cannot see your kitchen address
-        for it. Your kitchen address is no longer locked.
+        for it. This booking no longer locks your kitchen address. Another
+        accepted booking at your home can still lock it.
       </p>
     );
   return (

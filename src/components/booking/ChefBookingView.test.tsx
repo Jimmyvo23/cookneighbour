@@ -466,7 +466,7 @@ describe("wording on finished bookings (round 3, M1)", () => {
     await open(as(9103, "completed"));
     const n = h.q("kitchen-note")?.textContent ?? "";
     expect(n).toContain("can still see your kitchen address");
-    expect(n).toContain("no longer locked");
+    expect(n).toContain("no longer locks your kitchen address");
     expect(h.text()).not.toMatch(never);
   });
   it("a customer no-show keeps the same wording", async () => {
@@ -485,7 +485,7 @@ describe("wording on finished bookings (round 3, M1)", () => {
     await open(as(9103, "cancelled"));
     const n = h.q("kitchen-note")?.textContent ?? "";
     expect(n).toContain("cannot see your kitchen address");
-    expect(n).toContain("no longer locked");
+    expect(n).toContain("no longer locks your kitchen address");
   });
   it("only a waiting request says 'once you accept'", async () => {
     await open(as(9101, "requested"));

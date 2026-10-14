@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { ApiClientError } from "@/lib/api/client";
-import type { BookingDayView, ReceiptView } from "@/lib/api/types";
+import type {
+  BookingDayView,
+  BookingDetail,
+  ReceiptView,
+} from "@/lib/api/types";
 import {
+  canChefCancel,
+  cancelBookingErrorText,
+  noShowDay,
+  noShowErrorText,
   canMarkPickupMissed,
   canPropose,
   changeErrorText,
@@ -258,5 +266,98 @@ describe("receipt wording", () => {
         r({ id: "2", status: "waiting" }),
       ])?.id,
     ).toBe("2");
+  });
+});
+
+describe("chef cancel and no-show (T-070)", () => {
+  const book = (
+    status: BookingDetail["status"],
+    days: Partial<BookingDayView>[],
+  ) =>
+    ({
+      status,
+      days: days.map((d, i) => day({ dayNumber: i + 1, ...d })),
+    }) as BookingDetail;
+  const T = "2026-10-20";
+
+  it("can cancel an accepted booking while a visit that is not cooked is today or later", () => {
+    expect(
+      canChefCancel(book("accepted", [{ date: T, cookedAt: null }]), T),
+    ).toBe(true);
+    expect(
+      canChefCancel(
+        book("accepted", [{ date: "2026-10-21", cookedAt: null }]),
+        T,
+      ),
+    ).toBe(true);
+  });
+  it("cannot cancel when every visit is cooked or past, or the booking is not accepted", () => {
+    expect(
+      canChefCancel(book("accepted", [{ date: T, cookedAt: "x" }]), T),
+    ).toBe(false);
+    expect(
+      canChefCancel(
+        book("accepted", [{ date: "2026-10-19", cookedAt: null }]),
+        T,
+      ),
+    ).toBe(false);
+    expect(
+      canChefCancel(book("requested", [{ date: T, cookedAt: null }]), T),
+    ).toBe(false);
+  });
+  it("finds the earliest due visit that is not cooked", () => {
+    const b = book("accepted", [
+      { date: "2026-10-19", cookedAt: "x" },
+      { date: "2026-10-20", cookedAt: null },
+      { date: "2026-10-21", cookedAt: null },
+    ]);
+    expect(noShowDay(b, T)?.dayNumber).toBe(2);
+  });
+  it("finds no due visit before the visit date, or when it is cooked, or when not accepted", () => {
+    expect(
+      noShowDay(book("accepted", [{ date: "2026-10-21", cookedAt: null }]), T),
+    ).toBeNull();
+    expect(
+      noShowDay(book("accepted", [{ date: T, cookedAt: "x" }]), T),
+    ).toBeNull();
+    expect(
+      noShowDay(book("completed", [{ date: T, cookedAt: null }]), T),
+    ).toBeNull();
+  });
+  it("words every cancel refusal", () => {
+    expect(cancelBookingErrorText(inv("wrong_status"))).toMatch(
+      /not accepted any more/,
+    );
+    expect(cancelBookingErrorText(inv("chef_use_decline"))).toMatch(
+      /Decline it with a reason/,
+    );
+    expect(cancelBookingErrorText(inv("nothing_left"))).toMatch(
+      /nothing left to cancel/,
+    );
+    expect(cancelBookingErrorText(inv("expired"))).toMatch(/expired/);
+    expect(
+      cancelBookingErrorText(
+        new ApiClientError(422, "CONTACT_DETAILS_NOT_ALLOWED", "server text", {
+          fields: { reason: "Remove the contact details." },
+        }),
+      ),
+    ).toMatch(/phone numbers, emails and links/);
+    expect(
+      cancelBookingErrorText(
+        new ApiClientError(422, "VALIDATION_FAILED", "Check", {
+          fields: { reason: "Enter 3 to 500 characters." },
+        }),
+      ),
+    ).toBe("Enter 3 to 500 characters.");
+    expect(cancelBookingErrorText(new Error("x"))).toMatch(/try again/i);
+  });
+  it("words every no-show refusal", () => {
+    expect(noShowErrorText(inv("wrong_status"))).toMatch(
+      /not accepted any more/,
+    );
+    expect(noShowErrorText(inv("no_visit_due"))).toMatch(/from the visit date/);
+    expect(
+      noShowErrorText(new ApiClientError(403, "FORBIDDEN", "Only the chef.")),
+    ).toBe("Only the chef.");
   });
 });
