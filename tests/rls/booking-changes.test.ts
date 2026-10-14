@@ -267,6 +267,53 @@ describe("pickup_proposals and booking_flags: who can read, nobody writes from a
   });
 });
 
+describe("T-066: no_day_cooked flags", () => {
+  it("the new reason is allowed, others are not; only the admin reads it", async () => {
+    const chef = await makeChef(svc, "bc-nd-chef");
+    const cust = await makeCustomer(svc, "bc-nd-cust");
+    const b = await makeBooking(svc, {
+      customer: cust,
+      chef,
+      dates: [far(5)],
+      status: "accepted",
+    });
+    const bad = await svc
+      .from("booking_flags")
+      .insert({ booking_id: b.id, reason: "something_else" });
+    expect(bad.error).not.toBeNull();
+    const ok = await svc
+      .from("booking_flags")
+      .insert({ booking_id: b.id, reason: "no_day_cooked" });
+    expect(ok.error).toBeNull();
+    // One flag per booking: a second reason cannot be added.
+    const dup = await svc
+      .from("booking_flags")
+      .insert({ booking_id: b.id, reason: "chef_rejected" });
+    expect(dup.error).not.toBeNull();
+    expectRows(
+      await (
+        await clientFor(fx.admin)
+      )
+        .from("booking_flags")
+        .select("booking_id, reason")
+        .eq("booking_id", b.id),
+      1,
+    );
+    for (const c of [
+      await clientFor(cust),
+      await clientFor(chef),
+      anonClient(),
+    ]) {
+      expectNoRows(
+        await c
+          .from("booking_flags")
+          .select("booking_id")
+          .eq("booking_id", b.id),
+      );
+    }
+  });
+});
+
 describe("the SQL time rules equal the TypeScript ones", () => {
   it("cancellation timing agrees at the 48-hour boundary, across a daylight-saving change", async () => {
     const client = new pg.Client({ connectionString: localEnv().dbUrl });
