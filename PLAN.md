@@ -233,6 +233,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-39 | 2026-10-11 | The booking review shows a per-day estimate breakdown (cooking time, labour, ingredients) under the totals (T-043 builder Q-2) | Jimmy |
 | D-40 | 2026-10-11 | A customer who already has 3 open requests (D-28) is warned before the booking form, not only at send. Built as a warning; the server still refuses the fourth (T-043 builder Q-3) | Jimmy |
 | D-41 | 2026-10-11 | The customer's own cooking address stays visible on their booking page at all times (T-043 builder Q-4) | Jimmy |
+| D-42 | 2026-10-13 | Standing merge rule: inside a Work Order Jimmy approved, the Planner merges a PR once the Reviewer posts an APPROVE comment and `ci` is green, without asking each time. Migrations to hosted, deploys and anything outside an approved Work Order still go to Jimmy | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
