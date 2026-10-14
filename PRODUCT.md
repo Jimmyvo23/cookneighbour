@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-<!-- Source: CLAUDE.md sections 2 to 4 only. Nothing here is invented. Where the format asks for something those sections do not answer, it says "Not decided yet (open question for Jimmy)". Platform comes from the stack in CLAUDE.md section 5 (Next.js web app, mobile-first). -->
+<!-- Positioning, voice, product principles and accessibility: drafted by the Planner, approved by Jimmy 2026-10-14 (D-45). Everything else: source CLAUDE.md sections 2 to 4 only. Nothing here is invented. Where the format asks for something those sections do not answer, it says "Not decided yet (open question for Jimmy)". Platform comes from the stack in CLAUDE.md section 5 (Next.js web app, mobile-first). -->
 
 ## Platform
 
@@ -26,7 +26,7 @@ Success for the prototype: a working, demo-ready end-to-end flow. It is also a p
 
 ## Positioning
 
-**Proposed by the Planner 2026-10-14, awaiting Jimmy's OK (Q-31).** Home-cooked food from your own culture, made by a neighbour, for far less than a private chef and less than eating out every day. It is warm and personal, not a restaurant-delivery app and not a luxury chef service.
+Home-cooked food from your own culture, made by a neighbour, for far less than a private chef and less than eating out every day. It is warm and personal, not a restaurant-delivery app and not a luxury chef service.
 
 ## Operating Context
 
@@ -46,15 +46,13 @@ Success for the prototype: a working, demo-ready end-to-end flow. It is also a p
 
 ## Brand Commitments
 
-Name: CookNeighbour (default; alternatives such as GrandmaPlate, TableMates, Nana's Table are an open question for Jimmy). Voice: **Proposed by the Planner 2026-10-14, awaiting Jimmy's OK (Q-31).** warm, plain and respectful, like a helpful neighbour; no hype, no slang, no guilt. Logo and visual identity: Not decided yet (open question for Jimmy).
+Name: CookNeighbour (default; alternatives such as GrandmaPlate, TableMates, Nana's Table are an open question for Jimmy). Voice: warm, plain and respectful, like a helpful neighbour; no hype, no slang, no guilt. Logo and visual identity: Not decided yet (open question for Jimmy).
 
 ## Evidence on Hand
 
 As of 2026-10-14: only seed and demo data (GTA chefs across several cuisines). No real customers, chefs, testimonials, reviews or press exist. Future work must not fabricate any.
 
 ## Product Principles
-
-**Proposed by the Planner 2026-10-14, awaiting Jimmy's OK (Q-31).**
 
 1. Trust first: show what is checked, what is a MOCK, and what is still unknown, honestly.
 2. Plain words: short sentences that someone reading English as a second language can follow.
@@ -66,4 +64,4 @@ Established constraints from the spec that design must respect: mocks are always
 
 ## Accessibility & Inclusion
 
-**Proposed by the Planner 2026-10-14, awaiting Jimmy's OK (Q-31).** Target WCAG 2.2 level AA (checked with axe in T-052). Mobile-first, large tap targets, readable text sizes, never colour alone to carry meaning. Older users (retired chefs) and English learners are core users, so favour clarity over density.
+Target WCAG 2.2 level AA (checked with axe in T-052). Mobile-first, large tap targets, readable text sizes, never colour alone to carry meaning. Older users (retired chefs) and English learners are core users, so favour clarity over density.
