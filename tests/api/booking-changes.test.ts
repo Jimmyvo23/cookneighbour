@@ -20,6 +20,7 @@ import {
   cooked,
   day,
   getBooking,
+  makeStale,
   missed,
   NO_BODY,
   noShow,
@@ -333,11 +334,51 @@ describe("POST /api/bookings/:id/complete and the D-33 auto-completion", () => {
     expect(r.body.error.reason).toBe("problem_reported");
   });
 
-  it("completes by itself once the day after the last day has ended (read triggers it)", async () => {
-    const { cust, id } = await setup({ trial: true });
-    await shiftDays(id, 5);
+  it("completes by itself once the day after the last day has ended and a day was cooked (read triggers it)", async () => {
+    const { chef, cust, id } = await setup({ offsets: [3, 4], trial: true });
+    await shiftDays(id, 3);
+    expect((await cooked(chef.b, id, 1)).status).toBe(200);
+    await shiftDays(id, 3); // both days are over; day 2 was never cooked
     const r = await getBooking(cust.b, id);
     expect(r.status).toBe(200);
+    expect(r.body.status).toBe("completed");
+    expect((await claimOf(id))?.state).toBe("consumed");
+  });
+
+  it("D-36: with no cooked day it is NOT completed; one flag for the admin, trial kept, one notice each", async () => {
+    const { chef, cust, id } = await setup({ trial: true });
+    await shiftDays(id, 5);
+    for (let i = 0; i < 2; i++) {
+      const r = await getBooking(cust.b, id);
+      expect(r.status).toBe(200);
+      expect(r.body.status).toBe("accepted");
+    }
+    expect((await getBooking(chef.b, id)).body.status).toBe("accepted");
+    expect((await bookingRow(id)).completed_at).toBeNull();
+    expect((await claimOf(id))?.state).toBe("held");
+    const f = await svc
+      .from("booking_flags")
+      .select("reason")
+      .eq("booking_id", id);
+    expect(f.error).toBeNull();
+    expect(f.data).toEqual([{ reason: "no_day_cooked" }]);
+    expect((await notesFor(cust.id, "booking_flagged")).length).toBe(1);
+    expect((await notesFor(chef.id, "booking_flagged")).length).toBe(1);
+    // The chef cannot complete it without cooking either.
+    expect((await complete(chef.b, id)).body.error.reason).toBe(
+      "days_not_cooked",
+    );
+  });
+
+  it("chef's home: waits for the pickup deadline of every day before completing (L5)", async () => {
+    const { chef, cust, id } = await setup({ home: true, trial: true });
+    await shiftDays(id, 5); // visit 2 days ago: the customer's-home rule would already complete
+    expect((await cooked(chef.b, id, 1)).status).toBe(200);
+    await setEatBy(id, 1); // meals are good until the end of tomorrow
+    expect((await getBooking(cust.b, id)).body.status).toBe("accepted");
+    expect((await claimOf(id))?.state).toBe("held");
+    await setEatBy(id, -1); // the pickup window is over
+    const r = await getBooking(cust.b, id);
     expect(r.body.status).toBe("completed");
     expect((await claimOf(id))?.state).toBe("consumed");
   });
@@ -607,5 +648,94 @@ describe("N3: the kitchen address while an accepted chef's-home booking exists",
       body: kitchen("2 Other Street"),
     });
     expect(ok.status, ok.text).toBe(200);
+  });
+});
+
+describe("L2: completion voids pickup proposals", () => {
+  it("an agreed pickup is void once the chef completes the booking", async () => {
+    const { chef, cust, id } = await setup({ home: true });
+    await shiftDays(id, 3);
+    await cooked(chef.b, id, 1);
+    const when = new Date(Date.now() + 86_400_000).toISOString();
+    expect((await propose(cust.b, id, 1, { proposedAt: when })).status).toBe(
+      200,
+    );
+    expect((await respond(chef.b, id, 1, { accept: true })).status).toBe(200);
+    expect((await complete(chef.b, id)).status).toBe(200);
+    const p = await svc
+      .from("pickup_proposals")
+      .select("status")
+      .eq("booking_id", id);
+    expect(p.error).toBeNull();
+    expect(p.data).toEqual([{ status: "void" }]);
+  });
+
+  it("an open proposal is void too", async () => {
+    const { chef, cust, id } = await setup({ home: true });
+    await shiftDays(id, 3);
+    await cooked(chef.b, id, 1);
+    const when = new Date(Date.now() + 86_400_000).toISOString();
+    await propose(cust.b, id, 1, { proposedAt: when });
+    expect((await complete(chef.b, id)).status).toBe(200);
+    const p = await svc
+      .from("pickup_proposals")
+      .select("status")
+      .eq("booking_id", id);
+    expect(p.data).toEqual([{ status: "void" }]);
+  });
+});
+
+describe("D-37: a chef no-show and the free trial", () => {
+  it("after at least one cooked day it uses the trial up", async () => {
+    const { chef, cust, id } = await setup({ offsets: [3, 4], trial: true });
+    await shiftDays(id, 4); // day 1 yesterday, day 2 today
+    expect((await cooked(chef.b, id, 1)).status).toBe(200);
+    const r = await noShow(cust.b, id);
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.status).toBe("no_show_chef");
+    expect(r.body.noShow).toMatchObject({ dayNumber: 2 });
+    expect((await claimOf(id))?.state).toBe("consumed");
+  });
+
+  it("with no cooked day the trial is released (customer can book again)", async () => {
+    const { chef, cust, id } = await setup({ trial: true });
+    await shiftDays(id, 3);
+    expect((await noShow(cust.b, id)).body.status).toBe("no_show_chef");
+    expect((await claimOf(id))?.state).toBe("released");
+    const again = await bookOk(
+      cust,
+      bookingBody(chef, { days: [dayBody(chef, 9)], useFreeTrial: true }),
+    );
+    expect(again.body.isFreeTrial).toBe(true);
+  });
+});
+
+describe("L1: the reject cascade leaves a stale request to the expiry", () => {
+  it("a request that ran out of time becomes expired, not cancelled; a live one is cancelled", async () => {
+    const chef = await bookableChef();
+    const c1 = await bookingCustomer();
+    const c2 = await bookingCustomer();
+    const stale = await bookOk(
+      c1,
+      bookingBody(chef, { days: [dayBody(chef, 5)], useFreeTrial: true }),
+    );
+    const live = await bookOk(
+      c2,
+      bookingBody(chef, { days: [dayBody(chef, 7)] }),
+    );
+    await makeStale(stale.id);
+    const admin = await newAdmin();
+    const r = await admin.b.call(
+      (req) => rejectRoute(req, { params: Promise.resolve({ id: chef.id }) }),
+      { body: { reason: "Documents did not pass." } },
+    );
+    expect(r.status, r.text).toBe(200);
+    expect((await bookingRow(live.id)).status).toBe("cancelled");
+    expect((await bookingRow(stale.id)).status).toBe("requested");
+    const g = await getBooking(c1.b, stale.id);
+    expect(g.body.status).toBe("expired");
+    expect(g.body.cancelledBy).toBeNull();
+    expect((await claimOf(stale.id))?.state).toBe("released");
+    expect((await notesFor(c1.id, "booking_cancelled")).length).toBe(0);
   });
 });
