@@ -3,9 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   anonClient,
   clientFor,
+  expectDenied,
   expectNoRows,
   expectRows,
   ids,
+  serviceClient,
 } from "./helpers";
 
 const fx = inject("fx");
@@ -410,5 +412,49 @@ describe("get_booking_contact (CLAUDE.md 6.8)", () => {
     const text = JSON.stringify(res.data);
     expect(text).not.toContain(fx.hashes.c1Phone);
     expect(text).not.toContain(fx.hashes.c1Address);
+  });
+});
+
+describe("saved allergy profile (T-067)", () => {
+  it("profile_private.saved_intake: owner and admin read; others and anon see nothing; no client writes", async () => {
+    const svc = serviceClient();
+    await svc
+      .from("profile_private")
+      .update({
+        saved_intake: { noAllergies: true },
+        saved_intake_at: new Date().toISOString(),
+      })
+      .eq("profile_id", fx.c1.id);
+    const [c1, c2, h1, admin] = await Promise.all(
+      [fx.c1, fx.c2, fx.h1, fx.admin].map(clientFor),
+    );
+    expectRows(
+      await c1
+        .from("profile_private")
+        .select("saved_intake")
+        .eq("profile_id", fx.c1.id),
+      1,
+    );
+    expectRows(
+      await admin
+        .from("profile_private")
+        .select("saved_intake")
+        .eq("profile_id", fx.c1.id),
+      1,
+    );
+    for (const other of [c2, h1, anonClient()])
+      expectNoRows(
+        await other
+          .from("profile_private")
+          .select("saved_intake")
+          .eq("profile_id", fx.c1.id),
+      );
+    expectDenied(
+      await c1
+        .from("profile_private")
+        .update({ saved_intake: { forged: true } })
+        .eq("profile_id", fx.c1.id)
+        .select(),
+    );
   });
 });
