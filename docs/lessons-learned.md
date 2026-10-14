@@ -44,6 +44,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Hidden copies of a page share ids | (found by the builder, T-043) After in-app navigation an earlier page stays mounted but hidden, so two copies of the booking form had the same `id`s: a label or an error link could point at the hidden copy | Give every id on a page a per-instance prefix (`useId`, see `FieldScopeProvider` in `src/components/booking/parts.tsx`); test with a client-side `window.next.router.push` to a second form and click a label |
 | Remounted state that outlives the action | (found by the builder, T-043) A sent booking's review stayed in state; coming back re-ran the chef load, the dates were now taken, the review crashed on an empty date | After a successful send close the form (a "sent" state with a link), and make render code tolerate a cleared field |
 | Focus decided by two components | (found by the builder, T-043) A child and its parent both moved focus after an error, and React StrictMode re-ran only the child, so the summary stole focus from the alert | One owner moves focus per attempt (the form passes refs down), alert first, else the error summary |
+| Tests fed data the API never sends | (T-043) A unit test passed non-zero per-day labour with the free trial on, so a caption that said labour was "before the free booking" passed while the API really sends $0.00 | Build test data with the real domain function (`estimateBooking`) or copy a real API response, never hand-made values that cannot happen |
 
 ## 4. Git and GitHub
 
@@ -58,6 +59,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 
 - **After merging a PR that adds a migration**, run `npx supabase db push` so hosted matches. Write it in the task's PLAN.md notes.
 - In auto mode the permission check refuses `npx supabase db push` ("production deploy") and a Reviewer agent that approves a PR ("self-approval"). Do not work around it: ask Jimmy to run the push (`npx supabase db push --linked` from the main folder, then check with `npx supabase migration list --linked`) and to choose how the PR gets reviewed. *(T-063: the merge went ahead on Jimmy's chat approval and the review ran after the merge.)*
+- Since T-043 the Reviewer agent can start in auto mode, but one GitHub account cannot approve its own PR. The Reviewer posts its verdict as a comment that starts with "APPROVE" or "REQUEST CHANGES". `main` protection requires only `ci`. For T-043 Jimmy approved the merge plan in chat, and the Planner merged on the Reviewer's APPROVE comment plus green CI. Since D-42 (2026-10-13) this is the standing rule inside an approved Work Order; hosted migrations, deploys and anything outside a Work Order still go to Jimmy.
 - Never read, print or check the prefix of any key in `.env.local`. To check keys, run `npm run db:check` or ask Jimmy. *(A safety check blocked an attempt to read key prefixes.)*
 - A 401 from Supabase usually means a wrongly copied key: Jimmy copies it again and we run `npm run db:check`.
 - Loading seed data into hosted needs Jimmy's `SEED_ADMIN_PASSWORD` and his OK.
