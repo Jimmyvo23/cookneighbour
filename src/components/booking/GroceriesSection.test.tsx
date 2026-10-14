@@ -456,6 +456,29 @@ describe("the customer answers a receipt", () => {
     });
   });
 
+  it("a dispute note of 301 characters is refused locally; exactly 300 is sent (tester)", async () => {
+    const b = seededBooking(9106, "customer");
+    const r = flagged(b);
+    await open(b, "customer", [r], {
+      [`POST /api/bookings/${b.id}/receipts/${r.id}/respond`]: json(200, {
+        ...r,
+        status: "disputed",
+      }),
+    });
+    await h.click(h.button("Dispute this receipt"));
+    const area = h.host.querySelector("textarea") as HTMLTextAreaElement;
+    await h.type(area, "x".repeat(301));
+    await h.click(h.button("Send dispute"));
+    expect(callsTo(h.fetchMock, "/respond")).toHaveLength(0);
+    expect(area.getAttribute("aria-invalid")).toBe("true");
+    await h.type(area, "x".repeat(300));
+    await h.click(h.button("Send dispute"));
+    expect(callsTo(h.fetchMock, "/respond")[0][2]).toEqual({
+      action: "dispute",
+      note: "x".repeat(300),
+    });
+  });
+
   it("'Go back' leaves the dispute form without sending", async () => {
     const b = seededBooking(9106, "customer");
     await open(b, "customer", [flagged(b)]);
