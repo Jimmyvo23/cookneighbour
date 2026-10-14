@@ -30,3 +30,11 @@ From: tester  To: reviewer
 
 ## What the next agent needs
 - Reviewer: check the open questions above and the MOCK wording in the UI task T-045. No bugs to fix.
+
+## Round 2 (commit 24eb41b) - PASS
+
+- New rule (`booking_accepts_receipts` requires `grocery_option = 'chef_shops'`) is tested both ways: `tests/rls/receipts.test.ts` uploads as the chef on an accepted option B booking (allowed), flips it to customer_buys with the service role, and the same upload is then refused. `tests/rls/storage.test.ts` now uses its own accepted chef_shops booking for the positive case; customer, other chef and anon are still refused.
+- My earlier tests still hold: `receipts-tester.test.ts` sets chef_shops before uploading; `groceries-tester.test.ts` uploads go through the service-role helper (not subject to the policy), and its option A case expects 409 not_chef_shops from the route. No change needed.
+- CI run 38581556170 on 24eb41b: green. Log shows RLS tests step ran receipts, storage and receipts-tester files; RLS 14 files / 143 tests passed; API route tests 23 files / 596 passed; unit 64 files / 1709 passed (3 expected fail).
+- Local: lint clean, tsc clean, unit tests 64 files / 1709 passed.
+- No app code changed. No new bugs.
