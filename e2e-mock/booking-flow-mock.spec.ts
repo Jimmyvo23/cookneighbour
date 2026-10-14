@@ -481,6 +481,8 @@ test("a lost free-trial race offers the full-price booking after showing the new
   await expect(page.getByTestId("estimate")).toContainText(/Labour.*\$84\.00/);
   await expect(page.getByTestId("trial-applied")).toHaveCount(0);
   await expect(page.getByTestId("flow-alert")).toContainText("full price");
+  // One owner moves focus: the alert keeps it, the review heading does not steal it.
+  await expect(page.getByTestId("flow-alert")).toBeFocused();
   await page.getByRole("button", { name: "Send booking request" }).click();
   await expect(page).toHaveURL(/\/bookings\/[0-9a-f-]{36}\?sent=1$/);
   await expect(page.getByTestId("trial-label")).toHaveCount(0);
@@ -574,6 +576,20 @@ test("a customer with 3 open requests is warned before the form (MOCK, D-40)", a
   await expectNoAxeViolations(page);
   await warn.getByRole("link", { name: "See your requests" }).click();
   await expect(page).toHaveURL(/\/bookings$/);
+});
+
+test("the review names the typed cooking address, not 'your home' (MOCK)", async ({
+  page,
+}) => {
+  await signUpCustomer(page);
+  await openBooking(page);
+  await fillForm(page, { offsets: [5], trial: false });
+  await page.getByLabel("Street address").fill("99 Other Rd");
+  await toReview(page);
+  await expect(page.getByTestId("review-heading")).toBeFocused();
+  const where = page.getByText("At this address: 99 Other Rd, Mississauga");
+  await expect(where).toBeVisible();
+  await expect(page.getByText(/At your home \(/)).toHaveCount(0);
 });
 
 test("a fourth open request is refused with a way to the list (MOCK, D-28)", async ({
@@ -720,6 +736,16 @@ test("a second form in the same tab: labels and error links use the visible copy
     }, path);
   await go(`/chefs/${LINH}/book`);
   await expect(page).toHaveURL(new RegExp(`/chefs/${LINH}/book$`));
+  // The booking page stays mounted but hidden: no id may appear twice (section headings too).
+  await expect(page.getByLabel("How many days?")).toBeVisible();
+  const dupIds = await page.evaluate(() => {
+    const seen = new Map<string, number>();
+    document
+      .querySelectorAll("[id]")
+      .forEach((n) => seen.set(n.id, (seen.get(n.id) ?? 0) + 1));
+    return [...seen].filter(([, c]) => c > 1).map(([id]) => id);
+  });
+  expect(dupIds).toEqual([]);
   const visible = page.locator("main").filter({ visible: true });
   await expect(visible.getByRole("heading", { level: 1 })).toHaveText(
     "Book Linh Nguyen (MOCK)",

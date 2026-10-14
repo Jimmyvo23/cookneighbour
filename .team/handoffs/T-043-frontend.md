@@ -78,3 +78,11 @@ From: frontend  To: tester
 - Bug: under the free trial the API sends `days[].labourCents = 0`, but the caption said labour was "before the free first booking".
 - Fix (frontend only, option a): the caption now reads "Labour is free on this first booking, so each day shows $0.00. The full value of the waived labour is in the totals above." (`PerDayEstimate` in `BookingFlow.tsx`).
 - `PerDayEstimate.test.tsx` now uses realistic data (labour 0 per day under the trial) and checks the new wording. The Tester's `PerDayEstimate.sums.test.tsx` still passes.
+
+## Round 4 (Reviewer's 5 LOW findings)
+1. Heading ids: every section heading id in `FormStep`, `ReviewStep`, `Ready`, `CancelSection` and `MockPayment` now comes from a per-instance `useId()` prefix. Test: the "second form in the same tab" mock e2e now asserts no duplicate id in the document while the booking page stays mounted hidden.
+2. Focus: the heading-focus effect in `BookingFlow` skips while an alert is showing, so "Book at full price instead" leaves focus on the alert. Test: `toBeFocused()` added in the full-price mock e2e.
+3. Review wording: "At this address: <line>, <city>" for customer-home bookings. Test: new mock e2e (typed address is shown, "At your home (" is not).
+4. "Waiting now": `BookingList` fetches `GET /api/bookings?status=requested&limit=20` (same query as the D-40 warning). Test: new `BookingList.test.tsx` (first page has 20 other-status items, 3 requested are elsewhere, count shows 3).
+5. `kitchen-later` text depends on `locationType`: chef's home keeps the kitchen sentence; customer's home says "Your cooking address is not available on this page." Test added in `BookingDetailView.test.tsx`.
+- Local: lint, typecheck, prettier clean; 1625 unit tests pass (3 expected fail); 149 mock e2e pass.

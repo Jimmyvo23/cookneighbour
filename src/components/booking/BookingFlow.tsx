@@ -287,8 +287,12 @@ export function BookingFlow({ chefId }: { chefId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new attempt moves focus
   }, [focusTick]);
   useEffect(() => {
+    // One owner moves focus per attempt: when an alert is showing (for example after "Book at full
+    // price instead") the alert effect above already focused it, so the heading must not steal it.
+    if (alert) return;
     if (phase === "review") reviewHeadingRef.current?.focus();
     else if (review) formHeadingRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a step change moves focus
   }, [phase, review]);
 
   const chef = chefState.kind === "ready" ? chefState.chef : null;
@@ -714,6 +718,7 @@ function FormStep({
   setDraft: React.Dispatch<React.SetStateAction<BookingDraft>>;
   setErrors: React.Dispatch<React.SetStateAction<FieldErrors>>;
 }) {
+  const hid = useId();
   const conflicts = useMemo(
     () => localConflicts(draft, chef.dishes),
     [draft, chef.dishes],
@@ -736,8 +741,8 @@ function FormStep({
     >
       <ErrorSummary errors={errors} innerRef={summaryRef} />
 
-      <section aria-labelledby="days-h" className={cardCls}>
-        <h2 id="days-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-days-h`} className={cardCls}>
+        <h2 id={`${hid}-days-h`} className="text-lg font-semibold">
           Days and dishes
         </h2>
         <p className={hintCls}>
@@ -791,8 +796,8 @@ function FormStep({
         ))}
       </section>
 
-      <section aria-labelledby="where-h" className={cardCls}>
-        <h2 id="where-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-where-h`} className={cardCls}>
+        <h2 id={`${hid}-where-h`} className="text-lg font-semibold">
           Where should the chef cook?
         </h2>
         <Question
@@ -875,8 +880,8 @@ function FormStep({
         )}
       </section>
 
-      <section aria-labelledby="groc-h" className={cardCls}>
-        <h2 id="groc-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-groc-h`} className={cardCls}>
+        <h2 id={`${hid}-groc-h`} className="text-lg font-semibold">
           Groceries
         </h2>
         <Question
@@ -918,8 +923,8 @@ function FormStep({
         </Question>
       </section>
 
-      <section aria-labelledby="intake-h" className={cardCls}>
-        <h2 id="intake-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-intake-h`} className={cardCls}>
+        <h2 id={`${hid}-intake-h`} className="text-lg font-semibold">
           Allergies and dietary needs (required)
         </h2>
         <p className={hintCls}>
@@ -1065,8 +1070,8 @@ function FormStep({
         </Question>
       </section>
 
-      <section aria-labelledby="trial-h" className={cardCls}>
-        <h2 id="trial-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-trial-h`} className={cardCls}>
+        <h2 id={`${hid}-trial-h`} className="text-lg font-semibold">
           Free first booking
         </h2>
         <Choice
@@ -1317,6 +1322,7 @@ function ReviewStep({
   onEdit: () => void;
   onSend: () => void;
 }) {
+  const hid = useId();
   const est = review.estimate!;
   const location = draft.locationType as LocationType;
   const first = earliestDate(draft);
@@ -1338,8 +1344,8 @@ function ReviewStep({
         Review your request
       </h2>
 
-      <section aria-labelledby="sum-h" className={cardCls}>
-        <h3 id="sum-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-sum-h`} className={cardCls}>
+        <h3 id={`${hid}-sum-h`} className="text-lg font-semibold">
           Your request
         </h3>
         <dl className="flex flex-col gap-2 text-sm">
@@ -1351,7 +1357,7 @@ function ReviewStep({
             <dt className="font-medium">Where</dt>
             <dd>
               {location === "customer_home"
-                ? `At your home (${draft.address.line.trim()}, ${draft.address.city.trim()})`
+                ? `At this address: ${draft.address.line.trim()}, ${draft.address.city.trim()}`
                 : "At the chef's home"}
             </dd>
           </div>
@@ -1420,8 +1426,8 @@ function ReviewStep({
         )}
       </section>
 
-      <section aria-labelledby="est-h" className={cardCls}>
-        <h3 id="est-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-est-h`} className={cardCls}>
+        <h3 id={`${hid}-est-h`} className="text-lg font-semibold">
           Estimate
         </h3>
         <p className={hintCls}>
@@ -1464,8 +1470,8 @@ function ReviewStep({
         )}
       </section>
 
-      <section aria-labelledby="before-h" className={cardCls}>
-        <h3 id="before-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-before-h`} className={cardCls}>
+        <h3 id={`${hid}-before-h`} className="text-lg font-semibold">
           Before you send
         </h3>
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">

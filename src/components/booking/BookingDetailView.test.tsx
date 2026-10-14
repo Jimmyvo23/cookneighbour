@@ -153,6 +153,17 @@ describe("BookingDetailView", () => {
     expect(text()).not.toMatch(/\+1\d{10}/);
   });
 
+  it("does not talk about the chef's kitchen for a booking at the customer's home", async () => {
+    fetchMock.mockImplementation(
+      reply(
+        200,
+        booking({ locationType: "customer_home", cookingPlace: null }),
+      ),
+    );
+    await mount();
+    expect(q("kitchen-later")?.textContent).not.toContain("kitchen");
+  });
+
   it("shows the kitchen and the chef's phone once the API sends them", async () => {
     fetchMock.mockImplementation(
       reply(

@@ -165,6 +165,7 @@ function Ready({
   sent: boolean;
   onChange: (b: BookingDetail) => void;
 }) {
+  const hid = useId();
   const canCancel = b.status === "requested" || b.status === "accepted";
   const firstDay = b.days[0]?.date;
   const anyCooked = b.days.some((d) => d.cookedAt !== null);
@@ -202,8 +203,8 @@ function Ready({
 
       <StatusNotes b={b} anyCooked={anyCooked} />
 
-      <section aria-labelledby="days-h" className={cardCls}>
-        <h2 id="days-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-days-h`} className={cardCls}>
+        <h2 id={`${hid}-days-h`} className="text-lg font-semibold">
           Days and dishes
         </h2>
         <ol className="flex flex-col gap-3" aria-label="Days">
@@ -245,8 +246,8 @@ function Ready({
         </p>
       </section>
 
-      <section aria-labelledby="where-h" className={cardCls}>
-        <h2 id="where-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-where-h`} className={cardCls}>
+        <h2 id={`${hid}-where-h`} className="text-lg font-semibold">
           Where and who
         </h2>
         <p>
@@ -272,8 +273,9 @@ function Ready({
           </p>
         ) : (
           <p data-testid="kitchen-later" className={infoBoxCls}>
-            The chef&apos;s kitchen address is shared with you once the chef
-            accepts this booking.
+            {b.locationType === "chef_home"
+              ? "The chef's kitchen address is shared with you once the chef accepts this booking."
+              : "Your cooking address is not available on this page."}
           </p>
         )}
         {b.contact?.phone ? (
@@ -290,8 +292,8 @@ function Ready({
         )}
       </section>
 
-      <section aria-labelledby="intake-h" className={cardCls}>
-        <h2 id="intake-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-intake-h`} className={cardCls}>
+        <h2 id={`${hid}-intake-h`} className="text-lg font-semibold">
           Your allergy and dietary answers
         </h2>
         <p>
@@ -322,8 +324,8 @@ function Ready({
         )}
       </section>
 
-      <section aria-labelledby="est-h" className={cardCls}>
-        <h2 id="est-h" className="text-lg font-semibold">
+      <section aria-labelledby={`${hid}-est-h`} className={cardCls}>
+        <h2 id={`${hid}-est-h`} className="text-lg font-semibold">
           Estimate
         </h2>
         <EstimateLines
@@ -434,6 +436,7 @@ function CancelSection({
   firstDay: string;
   onChange: (b: BookingDetail) => void;
 }) {
+  const hid = useId();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [fields, setFields] = useState<FieldErrors>({});
@@ -485,8 +488,8 @@ function CancelSection({
   }
 
   return (
-    <section aria-labelledby="cancel-h" className={cardCls}>
-      <h2 id="cancel-h" className="text-lg font-semibold">
+    <section aria-labelledby={`${hid}-cancel-h`} className={cardCls}>
+      <h2 id={`${hid}-cancel-h`} className="text-lg font-semibold">
         Cancel this booking
       </h2>
       {!open ? (

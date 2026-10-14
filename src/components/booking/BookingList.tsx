@@ -53,10 +53,23 @@ export function BookingList() {
     document.title = "My bookings — CookNeighbour";
   }, []);
 
-  const waiting =
-    state.kind === "ready"
-      ? state.items.filter((b) => b.status === "requested").length
-      : 0;
+  // The same query as the form warning (D-40), so the count never depends on how many pages of
+  // other statuses were loaded.
+  const [waiting, setWaiting] = useState(0);
+  useEffect(() => {
+    let current = true;
+    apiFetch<BookingListResponse>(
+      "/api/bookings?status=requested&limit=20",
+    ).then(
+      (r) => {
+        if (current && Array.isArray(r?.items)) setWaiting(r.items.length);
+      },
+      () => {},
+    );
+    return () => {
+      current = false;
+    };
+  }, [state.kind]);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-8">

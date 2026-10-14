@@ -419,14 +419,15 @@ export function EstimateLines({
 
 /** The MOCK payment step (D-18). Nothing is charged and no card is asked for. */
 export function MockPayment() {
+  const hid = useId();
   return (
     <section
-      aria-labelledby="pay-h"
+      aria-labelledby={`${hid}-pay-h`}
       data-testid="mock-payment"
       className="flex flex-col gap-2 rounded-md border-2 border-amber-600 bg-amber-50 p-3 text-amber-950 dark:bg-amber-950 dark:text-amber-50"
     >
       <h2
-        id="pay-h"
+        id={`${hid}-pay-h`}
         className="flex flex-wrap items-center gap-2 text-lg font-semibold"
       >
         Payment <MockBadge>MOCK</MockBadge>
