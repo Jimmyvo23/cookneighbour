@@ -168,7 +168,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-066 | T-063 small fixes and tests: D-36 auto-complete needs a cooked day, else flag for admin (update `tests/api/booking-changes.test.ts:336`); reject cascade skips stale requests (L1); completion voids accepted pickup proposals (L2); chef's-home auto-completion API test and SQL-vs-TS `completionDue`/`pickupDeadline` test (L5); D-37 a chef no-show after a cooked day uses the trial | backend | T-063 | todo |
 | T-062 | UI updates from D-21, D-22, D-25, D-27 (admin flag, booked-date 409, chef page 404) | frontend | T-061, T-042 | done |
 | T-067 | Saved allergy profile: the customer's allergies and dietary notes are stored on their profile and prefill the intake form (D-38); needs a migration | backend, frontend | T-043 | todo |
-| T-068 | Impeccable (impeccable.style) as Frontend's design skill: check licence and cost, project-level install, name it in `.claude/agents/frontend.md`, trial on the next UI task; proposed WO-6 step to run Impeccable's audit and polish once across all pages. **Own Work Order; Jimmy approves before anything is installed** | frontend | T-043 | todo |
+| T-068 | Impeccable (impeccable.style) as Frontend's design skill: check licence and cost, project-level install, name it in `.claude/agents/frontend.md`, trial on the next UI task; proposed WO-6 step to run Impeccable's audit and polish once across all pages. **Own Work Order; Jimmy approves before anything is installed** | frontend | T-043 | done |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -187,6 +187,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-052 | Accessibility pass (axe checks in Playwright) and fixes | frontend | Phase 5 | todo |
 | T-053 | Security and privacy review of the whole app | reviewer | T-050, T-051 | todo |
 | T-054 | README: setup, mocks list, known limits, demo script; open legal risks | planner | T-053 | todo |
+| T-069 | Impeccable `audit` then `polish` once across all pages before the mentor demo (D-43; WO-6 step from T-068); fixes go through the normal Tester and Reviewer gate | frontend | T-052 | todo |
 | T-055 | Vercel deploy (free tier, seed data only) — **separate Work Order WO-7** | backend | T-054 | todo |
 
 ## 5. Decisions log
@@ -234,6 +235,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-40 | 2026-10-11 | A customer who already has 3 open requests (D-28) is warned before the booking form, not only at send. Built as a warning; the server still refuses the fourth (T-043 builder Q-3) | Jimmy |
 | D-41 | 2026-10-11 | The customer's own cooking address stays visible on their booking page at all times (T-043 builder Q-4) | Jimmy |
 | D-42 | 2026-10-13 | Standing merge rule: inside a Work Order Jimmy approved, the Planner merges a PR once the Reviewer posts an APPROVE comment and `ci` is green, without asking each time. Migrations to hosted, deploys and anything outside an approved Work Order still go to Jimmy | Jimmy |
+| D-43 | 2026-10-14 | Impeccable 4.5.2 is Frontend's design skill (T-068): project-level install, telemetry off (`.impeccable/config.json`, plus `IMPECCABLE_NO_TELEMETRY=1` in the hook command), design hook on in the main folder's `.claude/settings.local.json` (not committed). A WO-6 step (T-069) runs `audit` and `polish` across all pages before the mentor demo. Trial on T-045 | Jimmy |
+| D-44 | 2026-10-14 | Remove the 4 installer-shipped `.claude/agents/impeccable-*.md` agents (outside the team roster, no status reporting or approval gate, unrestricted writes). Reinstall only inside an approved Work Order if live mode or asset work is planned | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -269,6 +272,7 @@ New from planning:
 - Q-28 (T-063 Q-E; review M3) Do customers of flagged (D-22) bookings need more than the neutral notice (refund, rebooking)? Should flagged bookings be frozen until an admin acts (Reviewer suggests yes, T-064)?
 - Q-29 ~~(T-063 review M1) Auto-completion (D-33) today completes a booking even when no day was cooked, which uses up the free trial and opens reviews; manual "visit done" needs every day cooked. Should auto-completion need at least one cooked day, and otherwise flag the booking for the admin (Reviewer's suggestion)? Not a contradiction of D-33 as written. Before WO-5.~~ Resolved by D-36 (2026-10-11).
 - Q-30 ~~(T-063 review M2) A chef no-show releases the trial (A-16) even after a cooked day, so a customer can report a chef no-show on day 2 and keep the trial, while cancelling would use it (D-26). Should a chef no-show after a cooked day use up the trial? Linked to Q-25. **Planner recommends:** yes, consume it, in line with D-26 (any cooked day uses the trial, whoever ends the booking); the uncooked days are freed and the customer pays nothing for them. Otherwise a false chef no-show report becomes a way to get a second free booking.~~ Resolved by D-37 (2026-10-11).
+- Q-31 (T-068) `PRODUCT.md` positioning, brand voice, product principles and accessibility standard: Jimmy asked the Planner to draft them (2026-10-14). Draft is in `PRODUCT.md`, marked "Proposed, awaiting Jimmy's OK". Needed before T-045 uses Impeccable.
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification. The contact-details filter is best effort (spelled-out digits, disguised emails and street addresses pass). No rate limit on booking requests beyond D-28 (D-35). Request expiry is lazy until a scheduled sweep is added (WO-7).
 
@@ -515,3 +519,9 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Install command (run from the repo root, 2026-10-14): `npx impeccable@4.5.2 install --providers=claude --scope=project --yes` (skill version 4.5.2, engine v0.1.14). `install --help` documents no separate hook flag; `--yes` accepts the detected defaults, which includes the design hook, and `--no-hooks` is the documented way to skip it.
 - The hook went only to `.claude/settings.local.json` (gitignored here, committed `.claude/settings.json` untouched). The 16 MB engine binary the installer drops in `.claude/skills/impeccable/scripts/bin/` is gitignored; the launcher downloads the pinned engine into `~/.impeccable/` on first use.
 - `.impeccable/config.json` has `"telemetry": false` (committed, shared). `PRODUCT.md` is written from CLAUDE.md sections 2 to 4 only; gaps say "Not decided yet (open question for Jimmy)".
+- Done 2026-10-14: PR #107 merged fe56d03 (Work Order PR #105 merged 30506b0), issue #106 closed, no migration. Tester PASS (lint clean, unit 1625 + 3 expected fails, mock e2e 149); Reviewer APPROVE (3 LOW, see `.team/handoffs/T-068-reviewer.md`). Merged under D-42.
+- The installer exited with code 1 after printing "Done"; all files were in place and `detect` works. It shipped no LICENSE or NOTICE, so the upstream files were added (byte-identical, checked by the Reviewer). ESLint ignores `.claude/skills/**` (vendored scripts gave 94 warnings).
+- Telemetry: the installed files do not document the config key, so the Planner and Reviewer checked upstream `crates/context/src/telemetry.rs`: `"telemetry": false` in the project `.impeccable/config.json` is honoured. The hook command also sets `IMPECCABLE_NO_TELEMETRY=1` as a second guard.
+- Hook: the installer wrote it into the worktree's `settings.local.json`; after merge and Jimmy's OK (D-43) the Planner placed it in the main folder's `.claude/settings.local.json` (SessionStart, PostToolUse on Edit|Write, Stop). A manual run exited 0, and the first run downloaded engine 0.1.14 into `~/.impeccable/bin/` (checksum-checked). It runs for every agent, Backend too.
+- Baseline for the T-045 trial (`detect`, 4.5.2): search, bookings, booking and search components clean; across `src/app` and `src/components` one finding, `[overused-font]` Arial at `src/app/globals.css:25`. Not fixed (left for T-045 or T-069).
+- D-44: the 4 `impeccable-*` agents were removed in the notes PR. Only the skill's new-work and live-mode flows spawn them; `frontend.md` now says to skip those steps (our Tester and Reviewer cover them). Q-31: PRODUCT.md gaps drafted by the Planner, waiting for Jimmy.

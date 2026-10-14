@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-11 (T-043).
+Last updated: 2026-10-14 (T-068).
 
 ## 1. Office status (Planner and every agent)
 
@@ -53,6 +53,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - Switching branches with local changes: use `git stash`, never copy + `rm`. *(A tracked handoff file was deleted by accident.)*
 - When the main folder is busy on another branch, the agent works in a git worktree. `team-status` is still run from the main project folder.
 - Never push to `main`, never force-push. Never loosen branch protection to go faster.
+- **Installers that write `.claude/settings.local.json` write to the checkout that runs them.** In a worktree the hook lands in the worktree and the session (which loads the main folder's settings) never sees it. Have the builder put the block in its handoff; the Planner places it in the main folder after merge and Jimmy's OK. *(T-068 Impeccable hook.)*
 - On macOS, `sed -i` needs an empty suffix: `sed -i '' 's/a/b/' file`. *(GNU-style `sed -i` failed during T-040.)*
 
 ## 5. Supabase and secrets
