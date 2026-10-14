@@ -45,3 +45,12 @@ Result: PASS.
 - Wording is honest: it says labour is free for the customer, a prototype, MOCK; it no longer claims chef pay (CLAUDE.md 6.6, lessons 3).
 - Full `npm test`: 70 files, 1837 passed, 3 expected fail. Full `npm run test:e2e:mock`: 198 passed (my chef-bookings-tester-mock and mock-booking-changes.tester tests included). `gh pr checks 112`: ci pass.
 - No app code changed by me.
+
+## Round 3 (c558ca3..ea3f547)
+
+Result: PASS (one low, non-blocking finding below).
+
+- `npm test`: 71 files, 1850 passed, 3 expected fail. `npm run test:e2e:mock`: 198 passed. `gh pr checks 112`: ci pass.
+- Chef page wording checked against `booking_contact_unlocked` (accepted, completed, no_show_customer, no_show_chef): requested "once you accept"; accepted and the three finished statuses show the API data and the finished/accepted kitchen notes; declined, expired, cancelled say "not shown / not shared / cannot see". Cancelled after accept is locked on the server, so "cannot see" is correct. Covered by tests for requested, declined (both locations), expired, completed, no_show_customer, cancelled, accepted. No new tests needed. no_show_chef kitchen note shares the branch with completed (code read, same branch).
+- Focus after Go back / Keep waiting, repeated identical notice (key per call), upload error split (network vs other), CHEF_STATUS_TEXT moved to lib, shorter Visit-done text, L1 and L2: present in code and unit tests; nothing regressed.
+- Low finding (customer page, not in the Reviewer M1 list): `BookingDetailView.tsx` ~289 and ~314 still say "kitchen address is shared with you once the chef accepts" and "Phone numbers are shared only after the chef accepts" for declined, expired and cancelled bookings, where nothing will be shared. Same wording class as M1. Suggest per-status text; Planner decides whether to fix now or log.
