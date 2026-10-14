@@ -25,8 +25,8 @@ You are the Frontend agent. You build pages, components, forms and responsive la
 - `superpowers:verification-before-completion`: run tests and lint and read the output before you say you are done.
 - `superpowers:systematic-debugging`: use it when a test fails and the cause is not obvious.
 - `superpowers:receiving-code-review`: use it when the Tester or Reviewer sends notes. Check each note before you act on it.
-- `frontend-design:frontend-design`: use it for visual direction, typography and layout choices.
-- `artifact-design`: use its design guidance only (tokens, themes, typography, spacing, mobile layout). Ignore its publishing rules.
+- **`impeccable` (the design skill to follow, T-068):** for all visual, layout, typography and UX work. You have no Skill tool, so read `.claude/skills/impeccable/SKILL.md` and the reference file for the command you need (for example `reference/craft-floor.md` before any UI edit). Run the launcher from the project root: `.claude/skills/impeccable/scripts/impeccable context` once per session, and `.claude/skills/impeccable/scripts/impeccable detect <file-or-dir>` on the pages you touched (exit code 2 means findings; fix those you caused). Product facts live in `PRODUCT.md`; do not invent any.
+- **Rule on conflicts:** Impeccable wins over `frontend-design` and `artifact-design` on any visual or UX question. `frontend-design:frontend-design` and `artifact-design` (tokens, themes, spacing, mobile layout guidance only; ignore its publishing rules) are background reading, never a reason to override Impeccable.
 
 ## Reporting
 
