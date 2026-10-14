@@ -20,8 +20,8 @@ Tasks: T-068 (issue to be created after approval)
 
 | Agent | Task | Plan (100 words or fewer) | Effort (S/M/L) | Risk |
 |---|---|---|---|---|
-| frontend | T-068 install and wiring | On branch `feature/T-068-impeccable`: run `npx impeccable@4.5.2 install --providers=claude --scope=project --no-hooks`; add the official `.gitignore` block; create `.impeccable/config.json` with `"telemetry": false`; write `PRODUCT.md` in the format `/impeccable init` uses, from CLAUDE.md §2–4 only (no invented facts). Update `.claude/agents/frontend.md`: Impeccable is the design skill to follow (read `.claude/skills/impeccable/SKILL.md`, run its launcher for `detect`), with `frontend-design` kept only as background and Impeccable winning on any conflict. Record command and version in PLAN.md. Open the PR. | S | The subagent has no Skill tool, so it uses the skill by reading its files and running the launcher; check this works |
-| tester | T-068 checks | Confirm lint, unit, mock e2e and CI still pass; `git status` shows no screenshots or caches; nothing in `~/.claude` changed; `.impeccable/config.json` has telemetry off; no hook in any settings file; run the detector once on two existing pages (search and booking) and attach the findings as the trial baseline. | S | Detector findings may be noisy; report, do not fix |
+| frontend | T-068 install and wiring | On branch `feature/T-068-impeccable`: run `npx impeccable@4.5.2 install --providers=claude --scope=project` without `--no-hooks`, so the design hook is installed (Jimmy's decision; check `install --help` first for how to accept the hook without a prompt, and do not invent flags); add the official `.gitignore` block; create `.impeccable/config.json` with `"telemetry": false`; write `PRODUCT.md` in the format `/impeccable init` uses, from CLAUDE.md §2–4 only (no invented facts). Update `.claude/agents/frontend.md`: Impeccable is the design skill to follow (read `.claude/skills/impeccable/SKILL.md`, run its launcher for `detect`), with `frontend-design` kept only as background and Impeccable winning on any conflict. Record command and version in PLAN.md. Open the PR. | S | The subagent has no Skill tool, so it uses the skill by reading its files and running the launcher; check this works |
+| tester | T-068 checks | Confirm lint, unit, mock e2e and CI still pass; `git status` shows no screenshots or caches; nothing in `~/.claude` changed; `.impeccable/config.json` has telemetry off; the design hook is only in `.claude/settings.local.json` (gitignored) and runs the detector after a UI edit; run the detector once on two existing pages (search and booking) and attach the findings as the trial baseline. | S | Detector findings may be noisy; report, do not fix |
 | reviewer | T-068 review | Review the PR: licence and NOTICE kept, no secrets, no personal settings touched, `frontend.md` wording gives one clear rule (Impeccable first), `PRODUCT.md` has no invented requirements, `.gitignore` is correct. | S | Low |
 
 The Planner also adds a proposed step to the WO-6 board: "Run `/impeccable audit` then `/impeccable polish` once across all pages before the mentor demo" (as part of T-052 or a new row). PLAN.md gets decision D-43 once Jimmy approves. A lessons-learned line is added only if setup goes wrong.
@@ -32,9 +32,10 @@ The Planner also adds a proposed step to the WO-6 board: "Run `/impeccable audit
 
 Approve all three, with `--no-hooks` and telemetry off. Both are easy to switch on later. Total effort S.
 
+**Jimmy's decision (2026-10-13):** Frontend approved **with the design hook on**; Tester and Reviewer approved as written. Telemetry stays off.
+
 ## Left out
 
-- The automatic design hook (can be turned on later with one command after the trial).
 - Running `audit` and `polish` across the app now: that is the WO-6 step.
 - Fixing anything the detector finds on existing pages: the baseline is only reported.
 - The browser extension, live mode and other tools' folders (Cursor, Codex and so on).
