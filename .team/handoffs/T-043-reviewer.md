@@ -20,3 +20,9 @@ Reviewer ran: lint, typecheck, prettier clean; 1623 unit tests pass (same 3 expe
 ## Checked and OK
 
 WO row complete (days, dishes, location options, intake D-23, allergy tick D-24/D-38, grocery A/B at cost, estimate matches `pricing.ts`, MOCK platform fee not collected, travel only at customer's home, 6 h limit, free trial and FREE_TRIAL_USED race, MOCK payment D-18, D-27, D-28, D-40 warning-only, D-20 warnings, D-39 per-day from `days[]`). Privacy §6.8 and D-41 respected. Server guards via `requireCustomerPage()` plus client layer; other customer's booking is 404. MOCK labels honest. Accessibility: error summary, focus after errors, axe light and dark, keyboard, 375 px. The `/bookings` list page (outside the WO row) is fine and well under the 25% scope threshold.
+
+## Round 4 (head 43710bc)
+
+Verdict: APPROVE (posted as a gh comment). All 5 low findings closed: per-instance `useId` heading ids with an e2e duplicate-id check; heading focus skipped while an alert shows (all other focus paths traced); "At this address" wording; `BookingList` count from `status=requested&limit=20`; `locationType`-dependent fallback. Reviewer ran eslint, tsc, prettier, booking unit tests (19/19) and mock `booking-flow*` (28/28); CI green.
+
+Info only: "Waiting now: 0" shows briefly before the count call answers and stays 0 if it fails (server still enforces D-28). `ChefDetailView.tsx` still has a fixed `where-h` id (outside this PR; no clash now).
