@@ -26,3 +26,8 @@ Server guards (`requireChefPage` layout + pages, fail closed); addresses/phones 
 ## Impeccable trial (Reviewer's view)
 
 Follows PRODUCT.md: allergies and conflicts before Accept/Decline, eat-by on every dish, MOCK everywhere it applies, privacy per API (apart from M1). Consistent with existing pages (shared card, button, info/warning styles; no new colours, fonts or icons). Some sentences are long for English learners (e.g. chef's-home "Visit done" paragraph, `ChefBookingView.tsx:734`). Static `detect` added nothing; value came from the reference guides plus axe, 375 px and dark-mode checks. No screenshots seen.
+
+## Round 3
+
+Head ea3f547: APPROVE. M1 fixed (per-status kitchen and contact wording matches `booking_contact_unlocked`; "once you accept" hints only while `requested`; tests for each status). L1–L6 fixed; L7 skipped by the Planner. `useAnnounce` sound and used by all three pages. Nits: N1 "no longer locked" is too absolute while another accepted chef's-home booking exists (contract N3), suggest "This booking no longer locks your kitchen address" (*Planner: T-070*); N2 a live region redrawn with its text may not announce on some screen readers, focus covers it. Merged 5a8afdb on green `ci` (202d34a).
+
