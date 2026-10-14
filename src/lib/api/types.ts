@@ -752,3 +752,83 @@ export interface DeclineBookingRequest {
   /** Required (D-34), 3 to 500 characters, no phone numbers, emails or URLs. */
   reason: string;
 }
+
+// ---------------------------------------------------------------------------
+// Grocery options and receipts (T-044, contract section 7B)
+// ---------------------------------------------------------------------------
+export interface GroceryPlanView {
+  buyer: "customer" | "chef";
+  deliverTo: LocationType;
+  /** Option A at the chef's home: the customer delivers or sends the ingredients to the chef. */
+  customerDeliversToChef: boolean;
+  /** Option B: the chef uploads a receipt; reimbursed at cost (MOCK). */
+  receiptRequired: boolean;
+  note: string;
+}
+export interface ShoppingListDishView {
+  name: string;
+  quantity: number;
+  servings: number;
+  ingredientCostCents: number;
+  allergens: string[];
+  lineCostCents: number;
+}
+export interface ShoppingListDayView {
+  dayNumber: number;
+  date: string;
+  dishes: ShoppingListDishView[];
+  estimatedCostCents: number;
+}
+/** GET /api/bookings/:id/shopping-list. Per dish, not per ingredient (ASSUMPTION, see section 7B). */
+export interface ShoppingListResponse {
+  bookingId: string;
+  groceryOption: GroceryOption;
+  locationType: LocationType;
+  currency: string;
+  plan: GroceryPlanView;
+  days: ShoppingListDayView[];
+  /** Equals the booking estimate's `ingredientsCents`. */
+  estimatedCostCents: number;
+}
+export type ReceiptStatus = "waiting" | "confirmed" | "disputed" | "superseded";
+export interface ReceiptView {
+  id: string;
+  bookingId: string;
+  amountCents: number;
+  currency: string;
+  estimatedIngredientsCents: number;
+  /** Receipt minus estimate; positive = the chef spent more than estimated. */
+  differenceCents: number;
+  toleranceCents: number;
+  /** A-15: differs from the estimate by more than the larger of 15% or $5.00. */
+  mismatchFlagged: boolean;
+  status: ReceiptStatus;
+  customerConfirmedAt: string | null;
+  customerDisputedAt: string | null;
+  disputeNote: string | null;
+  createdAt: string;
+  /** Signed link, valid 10 minutes; null for a replaced receipt or if it could not be made. */
+  fileUrl: string | null;
+  /** MOCK: nothing is collected. `amountCents` is set once the customer confirmed. */
+  reimbursement: { mock: true; collected: false; amountCents: number | null };
+}
+export interface ReceiptList {
+  bookingId: string;
+  groceryOption: GroceryOption;
+  estimatedIngredientsCents: number;
+  currency: string;
+  /** Oldest first, replaced receipts included (status `superseded`). */
+  items: ReceiptView[];
+}
+/** POST /api/bookings/:id/receipts (chef). */
+export interface SubmitReceiptRequest {
+  /** `<booking id>/<new file name>.png|jpg|jpeg|pdf` in the `receipts` bucket, already uploaded. */
+  filePath: string;
+  amountCents: number;
+}
+/** POST /api/bookings/:id/receipts/:receiptId/respond (customer). */
+export interface AnswerReceiptRequest {
+  action: "confirm" | "dispute";
+  /** Required for `dispute` (3 to 300 characters), not allowed for `confirm`. */
+  note?: string;
+}
