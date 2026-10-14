@@ -168,7 +168,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-066 | T-063 small fixes and tests: D-36 auto-complete needs a cooked day, else flag for admin (update `tests/api/booking-changes.test.ts:336`); reject cascade skips stale requests (L1); completion voids accepted pickup proposals (L2); chef's-home auto-completion API test and SQL-vs-TS `completionDue`/`pickupDeadline` test (L5); D-37 a chef no-show after a cooked day uses the trial | backend | T-063 | todo |
 | T-062 | UI updates from D-21, D-22, D-25, D-27 (admin flag, booked-date 409, chef page 404) | frontend | T-061, T-042 | done |
 | T-067 | Saved allergy profile: the customer's allergies and dietary notes are stored on their profile and prefill the intake form (D-38); needs a migration | backend, frontend | T-043 | todo |
-| T-068 | Impeccable (impeccable.style) as Frontend's design skill: check licence and cost, project-level install, name it in `.claude/agents/frontend.md`, trial on the next UI task; WO-6 gets an Impeccable audit and polish step. **Own Work Order; Jimmy approves before anything is installed** | frontend | T-043 | todo |
+| T-068 | Impeccable (impeccable.style) as Frontend's design skill: check licence and cost, project-level install, name it in `.claude/agents/frontend.md`, trial on the next UI task; proposed WO-6 step to run Impeccable's audit and polish once across all pages. **Own Work Order; Jimmy approves before anything is installed** | frontend | T-043 | todo |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -228,7 +228,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-34 | 2026-10-10 | A chef must give a reason when declining a request (built in T-042) | Jimmy |
 | D-35 | 2026-10-10 | No extra rate limit on booking requests; the 3-open-requests cap (D-28) is enough for the prototype (README known limit) | Jimmy |
 | D-36 | 2026-10-11 | Auto-completion (D-33) happens only when at least one day was cooked; otherwise the booking is flagged for the admin instead of completing, so the free trial is not used and reviews do not open (Q-29, Reviewer's suggestion; fix in T-066) | Jimmy |
-| D-37 | 2026-10-11 | A chef no-show after at least one cooked day uses up the free trial (in line with D-26); with no cooked day the trial is released. The uncooked days cost the customer nothing (Q-30; fix in T-066) | Jimmy |
+| D-37 | 2026-10-11 | A chef no-show after at least one cooked day uses up the free trial (in line with D-26); with no cooked day the trial is released. The uncooked days cost the customer nothing (Q-30: Jimmy accepted the Planner's recommendation as written; fix in T-066) | Jimmy |
 | D-38 | 2026-10-11 | One allergy acknowledgement tick on the review step is enough, as long as allergies are stored on the customer's profile (new task T-067) (T-043 builder Q-1) | Jimmy |
 | D-39 | 2026-10-11 | The booking review shows a per-day estimate breakdown (cooking time, labour, ingredients) under the totals (T-043 builder Q-2) | Jimmy |
 | D-40 | 2026-10-11 | A customer who already has 3 open requests (D-28) is warned before the booking form, not only at send. Built as a warning; the server still refuses the fourth (T-043 builder Q-3) | Jimmy |
