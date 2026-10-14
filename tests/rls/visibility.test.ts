@@ -181,6 +181,9 @@ describe("database-level guarantees", () => {
     "authenticated notifications.read_at update",
   ].sort();
   const expectedFunctions: string[] = [
+    // T-044: storage policy helper for receipt uploads (true only for the booking's chef while
+    // the booking is accepted or completed); a policy helper like is_booking_chef.
+    "booking_accepts_receipts",
     "booking_contact_unlocked",
     "can_view_kitchen_photos",
     "get_booking_contact",
