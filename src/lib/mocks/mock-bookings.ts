@@ -6,8 +6,9 @@
 // The rules are the real pure functions: request parsing (bookingRequest.ts), validation
 // (bookingValidation.ts), pricing (pricing.ts), expiry and cancellation timing, contact-detail
 // check. Differences from the real API, on purpose:
-//   - no chef can answer here (accept, decline, cooked, complete are T-045): a booking stays
-//     `requested` until it expires (D-19) or the customer cancels it;
+//   - a customer's booking stays `requested` until it expires (D-19) or the customer cancels it:
+//     no chef answers it. The chef's side (T-045: accept, decline, cooked, complete, pickups,
+//     groceries) is mock-booking-changes.ts, with made-up requests for a signed-in chef;
 //   - test hooks in the saved state (set from a test with sessionStorage, never by the UI):
 //       hooks.otherBooked[chefId] = [dates]  another customer holds those dates, so create answers
 //                                            409 DOUBLE_BOOKED (the page may still list them);
@@ -27,6 +28,7 @@ import type {
   BookingSummary,
   FreeTrialBlocker,
   MeProfile,
+  ReceiptView,
   PublicChefDetail,
 } from "@/lib/api/types";
 import { addDays, isRealDate, torontoToday } from "@/lib/domain/dishes";
@@ -48,6 +50,11 @@ import { MAX_OPEN_REQUESTS } from "@/lib/domain/config";
 import { findContactDetails } from "@/lib/domain/contactDetails";
 import { estimateBooking, type Estimate } from "@/lib/domain/pricing";
 import { weekday } from "@/lib/chef/calendar";
+import {
+  changeRoute,
+  seedChefBookings,
+  seedCustomerBookings,
+} from "@/lib/mocks/mock-booking-changes";
 import { AVAILABILITY_HORIZON_DAYS } from "@/lib/domain/dishes";
 import { hasUnsafeText } from "@/lib/domain/text-safety";
 import {
@@ -62,12 +69,21 @@ export interface MockBookingRow {
   /** The customer's cooking address (customer_home) or the chef's made-up kitchen (chef_home). */
   place: { line: string; city: string; postalCode: string };
   chefPhone: string;
+  /** Made-up phone of the customer, shown to the chef once accepted (T-045). */
+  customerPhone?: string;
 }
 
 export interface MockHooks {
   otherBooked?: Record<string, string[]>;
   trialRaceOnce?: boolean;
+  /** T-045: the chef's kitchen was switched off, so accepting a chef's-home request answers 409. */
+  chefHomeOff?: boolean;
+  /** T-045: a signed-in customer gets the same made-up bookings, seen from their side (once). */
+  seedCustomer?: boolean;
 }
+
+/** A MOCK receipt as saved: the API view plus the path the chef "uploaded" (never returned). */
+export type MockReceipt = ReceiptView & { filePath: string };
 
 /** The slice of the adapter's saved state these routes read. */
 export interface BookingMockState {
@@ -77,12 +93,28 @@ export interface BookingMockState {
   address: { line: string; city: string; postalCode: string } | null;
   bookings: MockBookingRow[];
   hooks: MockHooks;
+  /** T-045: made-up requests to the signed-in chef; seeded on first use. */
+  chefBookings?: MockBookingRow[];
+  chefSeeded?: boolean;
+  customerSeeded?: boolean;
+  /** T-045: receipts by booking id (both sides read them). */
+  receipts?: Record<string, MockReceipt[]>;
 }
 
 export interface BookingRouteResult {
   res: Response;
   /** New values for the saved state, when the route changed anything. */
-  next?: Partial<Pick<BookingMockState, "bookings" | "hooks">>;
+  next?: Partial<
+    Pick<
+      BookingMockState,
+      | "bookings"
+      | "hooks"
+      | "chefBookings"
+      | "chefSeeded"
+      | "customerSeeded"
+      | "receipts"
+    >
+  >;
 }
 
 const KITCHEN = {
@@ -91,7 +123,8 @@ const KITCHEN = {
   postalCode: "L5B1A1",
 };
 const CHEF_PHONE = "+14165550100";
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CENTRES = new Map(
   MOCK_PREFIXES.map((p) => [p.prefix, { lat: p.lat, lng: p.lng }]),
 );
@@ -103,20 +136,20 @@ const ACTIVE: readonly BookingStatus[] = [
   "no_show_chef",
 ];
 /** Statuses that show the other party's address and phone (contract 7A, "Who sees what"). */
-const SHOWS_CONTACT: readonly BookingStatus[] = [
+export const SHOWS_CONTACT: readonly BookingStatus[] = [
   "accepted",
   "completed",
   "no_show_customer",
   "no_show_chef",
 ];
 
-function json(status: number, body: unknown) {
+export function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
   });
 }
-function fail(
+export function fail(
   status: number,
   code: ApiErrorCode,
   message: string,
@@ -124,7 +157,7 @@ function fail(
 ): BookingRouteResult {
   return { res: json(status, { error: { code, message, ...extra } }) };
 }
-const notFound = (what = "Booking") =>
+export const notFound = (what = "Booking") =>
   fail(404, "NOT_FOUND", `${what} not found.`);
 
 // ---------------------------------------------------------------------------
@@ -150,10 +183,31 @@ export function sweepMock(
   return changed ? out : null;
 }
 
-/** What the customer sees of a stored row: contact details only once accepted. */
-export function viewOf(r: MockBookingRow): BookingDetail {
+/**
+ * What the viewer sees of a stored row: contact details only once accepted (CLAUDE.md 6.8).
+ * Customer: always their own cooking address (customer_home); the chef's kitchen and phone after
+ * acceptance. Chef (T-045): the customer's cooking address and phone after acceptance; never a
+ * kitchen address (it is their own).
+ */
+export function viewOf(
+  r: MockBookingRow,
+  role: "customer" | "chef" = "customer",
+): BookingDetail {
   const d = r.detail;
   const shows = SHOWS_CONTACT.includes(d.status);
+  if (role === "chef")
+    return {
+      ...d,
+      viewerRole: "chef",
+      cookingPlace:
+        shows && d.locationType === "customer_home" ? r.place : null,
+      contact: shows
+        ? {
+            displayName: d.customer.displayName,
+            phone: r.customerPhone ?? "+14165550111",
+          }
+        : null,
+    };
   const own = d.locationType === "customer_home"; // the customer's own cooking address
   return {
     ...d,
@@ -323,7 +377,7 @@ function evaluate(
   };
 }
 
-function mapEstimate(
+export function mapEstimate(
   e: Estimate,
   dates: string[],
   distanceMetres: number | null,
@@ -398,36 +452,91 @@ export function bookingRoutes(
   const p = url.pathname;
   const one = /^\/api\/bookings\/([^/]+)$/.exec(p);
   const cancel = /^\/api\/bookings\/([^/]+)\/cancel$/.exec(p);
-  const isOther = /^\/api\/bookings\/[^/]+\/.+/.exec(p) && !cancel;
+  const sub = /^\/api\/bookings\/[^/]+\/.+/.exec(p) && !cancel;
   if (
     p !== "/api/bookings" &&
     p !== "/api/bookings/estimate" &&
     !one &&
     !cancel &&
-    !isOther
+    !sub
   )
     return null;
 
   // Session and role (the adapter already answered 401 for no session).
-  if (s.profile?.role !== "customer")
-    return fail(403, "FORBIDDEN", "Only customers can use this.");
+  const role = s.profile?.role;
+  if (role !== "customer" && role !== "chef")
+    return fail(403, "FORBIDDEN", "Only customers and chefs can use this.");
+
+  // The signed-in chef sees made-up requests, seeded on first use (T-045).
+  let base = s;
+  let seeded: BookingRouteResult["next"];
+  if (role === "chef" && !s.chefSeeded) {
+    const rows = seedChefBookings(s.profile!, now);
+    base = {
+      ...s,
+      chefBookings: rows.rows,
+      chefSeeded: true,
+      receipts: rows.receipts,
+    };
+    seeded = {
+      chefBookings: rows.rows,
+      chefSeeded: true,
+      receipts: rows.receipts,
+    };
+  }
+
+  if (role === "customer" && s.hooks.seedCustomer && !s.customerSeeded) {
+    const made = seedCustomerBookings(s.profile!, now);
+    base = {
+      ...s,
+      bookings: [...made.rows, ...s.bookings],
+      customerSeeded: true,
+      receipts: { ...(s.receipts ?? {}), ...made.receipts },
+    };
+    seeded = {
+      bookings: base.bookings,
+      customerSeeded: true,
+      receipts: base.receipts,
+    };
+  }
 
   // Lazy expiry (D-19) before anything reads the list.
-  const swept = sweepMock(s.bookings, now);
-  const state: BookingMockState = swept ? { ...s, bookings: swept } : s;
-  const carry = (res: BookingRouteResult): BookingRouteResult =>
-    swept && !res.next ? { ...res, next: { bookings: swept } } : res;
+  const key = role === "chef" ? "chefBookings" : "bookings";
+  const swept = sweepMock(base[key] ?? [], now);
+  const state: BookingMockState = swept ? { ...base, [key]: swept } : base;
+  const carry = (res: BookingRouteResult): BookingRouteResult => {
+    const extra = {
+      ...(seeded ?? {}),
+      ...(swept && !res.next?.[key] ? { [key]: swept } : {}),
+    };
+    return Object.keys(extra).length
+      ? { ...res, next: { ...extra, ...(res.next ?? {}) } }
+      : res;
+  };
+
+  if (role === "chef") {
+    if (p === "/api/bookings" && method === "GET")
+      return carry(listRoute(url, state, "chef"));
+    if (one && method === "GET")
+      return carry(detailRoute(one[1], state, "chef"));
+    const changed = changeRoute(method, p, body, state, "chef", now);
+    if (changed) return carry(changed);
+    return carry(fail(403, "FORBIDDEN", "Only customers can use this."));
+  }
 
   if (p === "/api/bookings/estimate" && method === "POST")
     return carry(estimateRoute(body, state, now));
   if (p === "/api/bookings" && method === "POST")
     return carry(createRoute(body, state, now));
   if (p === "/api/bookings" && method === "GET")
-    return carry(listRoute(url, state));
-  if (one && method === "GET") return carry(detailRoute(one[1], state));
+    return carry(listRoute(url, state, "customer"));
+  if (one && method === "GET")
+    return carry(detailRoute(one[1], state, "customer"));
   if (cancel && method === "POST")
     return carry(cancelRoute(cancel[1], body, state, now));
-  return fail(404, "NOT_FOUND", "Not found.");
+  const changed = changeRoute(method, p, body, state, "customer", now);
+  if (changed) return carry(changed);
+  return carry(fail(404, "NOT_FOUND", "Not found."));
 }
 
 function estimateRoute(
@@ -621,7 +730,10 @@ function createRoute(
   };
 }
 
-function summaryOf(r: MockBookingRow): BookingSummary {
+function summaryOf(
+  r: MockBookingRow,
+  role: "customer" | "chef",
+): BookingSummary {
   const d = r.detail;
   const dates = d.days.map((x) => x.date).sort();
   return {
@@ -636,11 +748,18 @@ function summaryOf(r: MockBookingRow): BookingSummary {
     dates,
     totalCents: d.estimate.totalCents,
     currency: d.estimate.currency,
-    counterparty: { id: d.chef.id, displayName: d.chef.displayName },
+    counterparty:
+      role === "chef"
+        ? { id: d.customer.id, displayName: d.customer.displayName }
+        : { id: d.chef.id, displayName: d.chef.displayName },
   };
 }
 
-function listRoute(url: URL, s: BookingMockState): BookingRouteResult {
+function listRoute(
+  url: URL,
+  s: BookingMockState,
+  role: "customer" | "chef",
+): BookingRouteResult {
   const status = url.searchParams.get("status") ?? "all";
   const known = [
     "requested",
@@ -658,25 +777,29 @@ function listRoute(url: URL, s: BookingMockState): BookingRouteResult {
     return fail(422, "VALIDATION_FAILED", "Check the highlighted fields.", {
       fields: { status: "Use a booking status, open or all." },
     });
-  const rows = s.bookings.filter((r) =>
-    status === "all"
-      ? true
-      : status === "open"
-        ? r.detail.status === "requested" || r.detail.status === "accepted"
-        : r.detail.status === status,
+  const rows = (role === "chef" ? (s.chefBookings ?? []) : s.bookings).filter(
+    (r) =>
+      status === "all"
+        ? true
+        : status === "open"
+          ? r.detail.status === "requested" || r.detail.status === "accepted"
+          : r.detail.status === status,
   );
   const out: BookingListResponse = {
-    items: rows.map(summaryOf),
+    items: rows.map((r) => summaryOf(r, role)),
     nextCursor: null,
   };
   return { res: json(200, out) };
 }
 
-function detailRoute(id: string, s: BookingMockState): BookingRouteResult {
-  const r = UUID.test(id)
-    ? s.bookings.find((x) => x.detail.id === id)
-    : undefined;
-  return r ? { res: json(200, viewOf(r)) } : notFound();
+function detailRoute(
+  id: string,
+  s: BookingMockState,
+  role: "customer" | "chef",
+): BookingRouteResult {
+  const rows = role === "chef" ? (s.chefBookings ?? []) : s.bookings;
+  const r = UUID.test(id) ? rows.find((x) => x.detail.id === id) : undefined;
+  return r ? { res: json(200, viewOf(r, role)) } : notFound();
 }
 
 function cancelRoute(

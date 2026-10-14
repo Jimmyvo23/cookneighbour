@@ -538,6 +538,8 @@ function KitchenSection({
         <strong>{app.chefHomeEnabled ? "on" : "off"}</strong>. Changing your
         kitchen address or photos switches it off and sends the kitchen back for
         review. Your kitchen address is not shown on your public chef profile.
+        It is shared with a customer only after you accept their booking at your
+        home, and it is locked while you have an accepted booking at your home.
       </p>
       <form
         noValidate

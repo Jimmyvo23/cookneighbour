@@ -128,7 +128,10 @@ describe("BookingDetailView", () => {
   it("asks for the booking by id with a GET and shows a waiting request with its expiry", async () => {
     fetchMock.mockImplementation(reply(200, booking()));
     await mount();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The booking is read once; the groceries section (T-045) reads its own list next to it.
+    expect(
+      fetchMock.mock.calls.filter((c) => c[0] === `/api/bookings/${ID}`),
+    ).toHaveLength(1);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`/api/bookings/${ID}`);
     expect(init.method).toBe("GET");

@@ -26,6 +26,9 @@ import {
   hintCls,
   secondaryButtonCls,
 } from "@/components/chef/parts";
+import { NOTICE_BOX_CLS, useAnnounce } from "@/components/booking/useAnnounce";
+import { GroceriesSection } from "@/components/booking/GroceriesSection";
+import { CustomerPickups } from "@/components/booking/PickupSections";
 import {
   FieldScopeProvider,
   EstimateLines,
@@ -166,6 +169,13 @@ function Ready({
   onChange: (b: BookingDetail) => void;
 }) {
   const hid = useId();
+  // After a successful pickup proposal or receipt answer the form that was used goes away, so this
+  // page announces the result and takes focus (one owner, lessons-learned section 3).
+  const { announce, notice } = useAnnounce();
+  const changed = (next: BookingDetail, message?: string) => {
+    onChange(next);
+    if (message) announce(message);
+  };
   const canCancel = b.status === "requested" || b.status === "accepted";
   const firstDay = b.days[0]?.date;
   const anyCooked = b.days.some((d) => d.cookedAt !== null);
@@ -200,6 +210,8 @@ function Ready({
           </p>
         )}
       </header>
+
+      {notice("notice", NOTICE_BOX_CLS)}
 
       <StatusNotes b={b} anyCooked={anyCooked} />
 
@@ -291,6 +303,10 @@ function Ready({
           </p>
         )}
       </section>
+
+      <CustomerPickups booking={b} onChange={changed} />
+
+      <GroceriesSection booking={b} viewer="customer" />
 
       <section aria-labelledby={`${hid}-intake-h`} className={cardCls}>
         <h2 id={`${hid}-intake-h`} className="text-lg font-semibold">

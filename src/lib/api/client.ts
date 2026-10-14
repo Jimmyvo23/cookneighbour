@@ -18,6 +18,8 @@ export class ApiClientError extends Error {
   readonly issues?: BookingIssue[];
   /** INVALID_STATE on a booking change (T-063): a stable reason code. */
   readonly reason?: string;
+  /** VALIDATION_FAILED on a pickup time (T-063): the first instant that is too late (ISO). */
+  readonly latest?: string;
 
   constructor(
     status: number,
@@ -30,6 +32,7 @@ export class ApiClientError extends Error {
       dates?: string[];
       issues?: BookingIssue[];
       reason?: string;
+      latest?: string;
     } = {},
   ) {
     super(message);
@@ -42,6 +45,7 @@ export class ApiClientError extends Error {
     this.dates = extra.dates;
     this.issues = extra.issues;
     this.reason = extra.reason;
+    this.latest = extra.latest;
   }
 }
 
@@ -115,6 +119,7 @@ export async function apiFetch<T>(
     dates: err.dates,
     issues: err.issues,
     reason: err.reason,
+    latest: err.latest,
   });
 }
 

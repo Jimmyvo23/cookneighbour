@@ -78,18 +78,27 @@ describe("routing", () => {
     expect(bookingRoutes("GET", "/api/me", {}, state())).toBeNull();
     expect(bookingRoutes("GET", "/api/chefs", {}, state())).toBeNull();
   });
-  it("is customer only", async () => {
+  it("is for customers and chefs only (admins get 403)", async () => {
     const r = call(
       "GET",
+      "/api/bookings",
+      {},
+      state({ profile: { ...state().profile!, role: "admin" } }),
+    );
+    expect(r.res.status).toBe(403);
+  });
+  it("a customer cannot use the chef routes (403); the chef side is in mock-booking-changes.test.ts", async () => {
+    const r = call("POST", `/api/bookings/${MAI.id}/accept`, {}, state());
+    expect(r.res.status).toBe(403);
+  });
+  it("a chef cannot create a booking", async () => {
+    const r = call(
+      "POST",
       "/api/bookings",
       {},
       state({ profile: { ...state().profile!, role: "chef" } }),
     );
     expect(r.res.status).toBe(403);
-  });
-  it("answers 404 for the chef routes it cannot mock", async () => {
-    const r = call("POST", `/api/bookings/${MAI.id}/accept`, {}, state());
-    expect(r.res.status).toBe(404);
   });
 });
 

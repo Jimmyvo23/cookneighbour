@@ -1,0 +1,58 @@
+# Handoff: T-045 Chef booking dashboard and grocery screens
+
+From: frontend  To: tester
+
+## What changed
+- Branch: `feature/T-045-chef-dashboard`. Pull request: see the PR "T-045" (Closes #33). No API route, migration, contract text or business rule changed. Built against contract v1.6 (7A, 7B).
+- Chef pages (server guard in `src/app/chef/layout.tsx` and again in each page with `requireChefPage`): `src/app/chef/bookings/page.tsx` (`ChefBookingList`, grouped: waiting for your answer / accepted / finished) and `src/app/chef/bookings/[id]/page.tsx` (`ChefBookingView`). "Bookings" link added to `ChefNav` (first, marks current for sub-pages) and to `AccountBar`.
+- `ChefBookingView`: intake (allergies, dietary) and allergy conflicts before the answer; days, dishes, eat-by dates; accept; decline with a required reason (D-34); "Mark day N as cooked" (from the visit date); "Visit done"; where and who (customer address and phone only when the API sends them); kitchen-address notice (shared on accept, locked while accepted); estimate in the chef's wording; MOCK payment note. After a successful change one element (`data-testid="notice"`) takes focus; after a failure the alert (or the invalid field) does.
+- `PickupSections.tsx`: `CustomerPickups` (on the customer's booking page: history, propose or re-propose a time in Toronto time until `pickupDeadlineDate`, shows `error.latest`) and `ChefPickups` (accept or decline the open proposal; "Mark pickup missed" with a confirm step once a cooked day's window has passed).
+- `GroceriesSection.tsx` (both parties): option A per-dish shopping list and plan note; option B receipts: chef upload (browser Supabase session, `receipts/<booking id>/<fresh uuid>.<png|jpg|pdf>`, `upsert: false`, then POST path and `amountCents`), customer confirm / dispute (3 to 300 chars), flagged receipts show `differenceCents` and `toleranceCents` and need an answer, MOCK badge on every reimbursement, signed link opened only if http(s), refetched every 8 minutes (links last 10), earlier receipts in a `details`.
+- `BookingDetailView.tsx` (customer): now shows `CustomerPickups` and `GroceriesSection`, plus the same announce-and-focus notice.
+- `ChefApplicationView.tsx` kitchen text and `describeError` (`src/lib/chef/form.ts`): `kitchen_in_use` is worded.
+- Pure helpers `src/lib/booking/changes.ts` (error words by `reason`, Toronto time to ISO with offset, pickup window rules, receipt file rules and fresh path, safe link, wording). `ApiClientError` now carries `latest`.
+- Mock: `src/lib/mocks/mock-booking-changes.ts` (new; chef routes, pickups, shopping list, receipts, seeds), `mock-bookings.ts` (role dispatch, chef view, list/detail per role), `mock-adapter.ts` (state fields; the chef application PATCH answers 409 `kitchen_in_use` when an accepted chef's-home booking exists). Six made-up requests are seeded for a signed-in chef on first use; dates are relative to today. Test hooks: `hooks.chefHomeOff`, `hooks.seedCustomer` (a customer gets the same six bookings from their side).
+- Tests: unit `src/lib/booking/changes.test.ts`, `src/lib/mocks/mock-booking-changes.test.ts`, components `ChefBookingView.test.tsx`, `GroceriesSection.test.tsx`, `PickupSections.test.tsx` (helpers in `testkit.tsx`, data from the real seed functions); mock e2e `e2e-mock/chef-bookings-mock.spec.ts`, `e2e-mock/customer-changes-mock.spec.ts` (axe light and dark, 375 px, keyboard, all storage requests blocked and asserted empty). Updated old tests: `mock-bookings.test.ts` (routing: chef is now allowed, admin 403, customer on chef routes 403), `BookingDetailView.test.tsx` (counts only the booking GET).
+
+## How to verify
+- `npm run lint && npm run typecheck && npx prettier --check . && npm test && npm run build` (local: 1830 pass, 3 expected fail).
+- `npm run test:e2e:mock` (local: 192 pass).
+- By hand: `NEXT_PUBLIC_API_MOCK=1 npm run dev`, log in with an email starting `chef`, open `/chef/bookings`.
+- Real-mode (CI only, not run locally): no real e2e spec was added; the real routes are covered by T-042, T-063 and T-044 API tests.
+
+## Known gaps or risks
+- Backend gaps: (1) `plan.note` is written to the customer ("You buy..."). The customer sees it verbatim; the chef gets the same facts in chef wording built from `plan` fields in the UI. Backend could send a `noteForChef`. (2) `ReceiptView` has no `viewer`-specific text and no file name/type, so the page cannot say "PDF" or "PNG". (3) No notification read route, so a chef learns of a new request only by opening the dashboard. (4) The list has no intake or conflict flag, so the dashboard cannot say "allergy conflict" per row. (5) `ChefBookingList` cannot filter by status server-side beyond what 7A offers; it loads `all` (limit 50) and groups in the browser.
+- Not built (not in the approved row): chef cancel of an accepted booking, chef reporting a customer no-show (routes exist: `cancel`, `no-show`), "report a problem", reviews, chat.
+- The receipt upload and refetch of the signed link run only against real storage; they are proven by component tests with a stubbed uploader, not end to end. The real storage upload path is unproven until Tester or Jimmy tries hosted.
+- The "Mark day cooked" button is shown only when the Toronto date has come, a UI hint; the server (409 `too_early`) decides.
+- In mock mode a customer cannot get their own request answered; the `seedCustomer` hook exists only for tests.
+
+## What the next agent needs
+- Tester ideas (CLAUDE.md section 10): double click on Accept or Send receipt; accepting an expired request (409 `REQUEST_EXPIRED` and the lazy sweep); a stale page (accepted in another tab); receipt exactly at the tolerance (not flagged) and just over; receipts on a completed booking; dispute then a new receipt (earlier receipts list); a pickup proposed after the deadline or in the past (`error.latest` in the message); "pickup missed" before the window (409 `pickup_window_open`); completing a chef's-home booking early; contact details in a decline reason; privacy: no customer address or phone before accept in the page text and the API answers; another chef's booking id is the same not-found page; customer opening `/chef/...` is redirected; hidden page copies (in-app navigation list to detail) share no ids.
+- Open questions for Jimmy: Q-1 Should the chef be able to cancel an accepted booking and report a customer no-show from this dashboard (routes exist)? Q-2 Should "Visit done" for a chef's-home booking be blocked until the pickup deadlines have passed (now only warned)? Q-3 Is the per-dish shopping list enough for chefs (already decided OK by Jimmy 2026-10-14), or should chefs add their own ingredient notes? Q-4 Should the chef see the customer's free-trial status ("Free first booking") as it is shown now?
+- Assumptions (easy to change): pickups are entered and shown in Toronto time; the dashboard groups bookings in the browser; the kitchen-address wording follows contract N3.
+
+## Impeccable trial
+- Used: `SKILL.md` (setup, mode choice), `impeccable context` (loaded PRODUCT.md), `reference/craft-floor.md` (before editing UI), `reference/operate.md` (Operate mode: tool should disappear into the task, one family, consistency), `reference/layout.md` and `reference/clarify.md` (grouping, reading order, wording of actions and errors), `reference/harden.md` (long text, empty and error states). Not run: `critique`, `audit`, `polish`, `typeset`, `shape` (no separate command pass; I applied the references while building and took one batched screenshot round at 420 px of the chef list and request pages).
+- `impeccable detect` before: `src/components/booking` and `src/app/chef` as on main gave no findings (exit 0). After: the same paths with all new files gave no findings (exit 0). `--json` gave `[]`. The design hook did not print anything in this session (it is installed in the main folder's settings, not the worktree, see lessons-learned section 4).
+- What it changed in my choices: the dashboard is grouped by what the chef must do (answer, accepted, finished) instead of one flat list; allergies and dietary needs are the first section of a request and sit above the answer buttons (PRODUCT principle 4); dividers inside cards instead of nested bordered cards; no icon glyphs in new warnings (text "Check this:" instead; the existing MockBadge keeps its glyph); no repeated status line in the "waiting" group; one announcement element per page owns focus after a change; confirm steps name the action on both the message and the button ("Yes, mark pickup missed").
+- What did not work or was not useful: the detector is static and cannot judge hierarchy, contrast in context or copy, so it found nothing; the real checks were axe, 375 px, dark mode and the screenshots. The skill's long "go bold" framing does not fit an Operate screen that must stay consistent with existing pages; I followed `operate.md` instead. Helper-agent steps (`impeccable-finish-reviewer`, `impeccable-documenter`) skipped as `frontend.md` says (D-44). I did not change `globals.css` or fonts (T-069).
+
+## Round 2 (Jimmy's decisions, 2026-10-14)
+- Q-1 chef cancel and customer no-show buttons: separate new task T-070, not built here.
+- Q-2 "Visit done" warning for chef's-home bookings is enough: unchanged.
+- Q-3 per-dish shopping list is fine (D-46): unchanged.
+- Q-4 the chef keeps the "Free first booking" label and now also reads "Labour is free for the customer on this booking (prototype, MOCK)." followed by a MOCK badge (`ChefBookingView.tsx`, `data-testid="trial-label"`). It replaces the earlier "does not pay labour / your pay is simulated" sentence. The label appears only on the chef's request page (the list keeps its short "Free first booking" tag).
+- Tests: component test "labels a free first booking for the chef with the MOCK note" (also checks no label without the trial) and an assertion in the mock e2e "shows the intake...".
+
+## Round 3 (Reviewer: REQUEST CHANGES, M1 and L1 to L6)
+- M1 fixed (`ChefBookingView.tsx`): "once you accept" hints show only while `requested`. Other statuses without data say "not shown for this booking". Kitchen note per status: requested and accepted as before; completed, customer no-show and chef no-show: "The customer can still see your kitchen address for it. No longer locked."; cancelled: "The customer cannot see your kitchen address for it. No longer locked."; declined and expired: "was not shared". Component tests for declined (both locations), expired, completed (both locations), customer no-show, cancelled, and a waiting request.
+- L1: pickup-missed confirm now says "Later days that were not cooked are cancelled."
+- L2: `pickupWindowPassed` comment corrected (it only checks the window).
+- L3: "Go back" (decline form, dispute form) and "Keep waiting" return focus to the button that opened them. Tests added.
+- L4: new `src/components/booking/useAnnounce.tsx` (small shared hook, used by the chef page, the customer page and groceries). Each message is a new element, so the same message twice is focused again. Test: `useAnnounce.test.tsx`.
+- L5: an upload that storage refuses no longer says "Check your connection"; only a thrown network error does. Test added.
+- L6: `CHEF_STATUS_TEXT` moved to `src/lib/booking/changes.ts`; the list no longer imports the view.
+- L7 skipped as asked.
+- Also: the chef's-home "Visit done" paragraph is now short sentences ("Wait until the customer has picked up the meals. Or wait until the pickup times have passed. Then press Visit done. After that you cannot mark a missed pickup.").
+- Local: lint, typecheck, prettier clean; 1850 unit tests pass (3 expected fail); 198 mock e2e pass; `impeccable detect` on `src/components/booking` clean.

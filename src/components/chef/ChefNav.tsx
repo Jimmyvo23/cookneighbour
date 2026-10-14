@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
+  { href: "/chef/bookings", label: "Bookings" },
   { href: "/chef/apply", label: "Application" },
   { href: "/chef/dishes", label: "Dishes" },
   { href: "/chef/availability", label: "Availability" },
@@ -18,7 +19,8 @@ export function ChefNav() {
       className="mx-auto flex w-full max-w-2xl flex-wrap gap-2 px-4 pt-4"
     >
       {LINKS.map((l) => {
-        const current = pathname === l.href;
+        const current =
+          pathname === l.href || pathname.startsWith(`${l.href}/`);
         return (
           <Link
             key={l.href}

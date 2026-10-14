@@ -158,6 +158,9 @@ export function describeError(err: unknown): string {
         : "Your application is not complete yet.";
     }
     case "INVALID_STATE":
+      // T-063: the kitchen address is locked while a chef's-home booking is accepted.
+      if (err.reason === "kitchen_in_use")
+        return "You have an accepted booking at your home, so your kitchen address cannot be changed until that booking is finished. You can still change other details and photos.";
       return `${err.message} Reload the page if this keeps happening.`;
     case "NOT_FOUND":
       return "The server could not find that file. Upload it again.";

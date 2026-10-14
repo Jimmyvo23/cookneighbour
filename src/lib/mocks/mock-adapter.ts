@@ -18,6 +18,7 @@
 //   MOCK dish photos are never stored; a photo path is accepted when its name is well formed.
 // Public search routes (T-040) live in mock-search.ts (seeded approved chefs, real pure rules).
 // Booking routes (T-043) live in mock-bookings.ts (real pure validation, pricing and timing rules).
+// The chef's side and the grocery routes (T-045) live in mock-booking-changes.ts.
 // Chef application rules reuse the real pure functions in src/lib/domain/chef-application.ts.
 // MOCK: files are never stored (see mockUploader); a path is accepted if its name is well formed.
 import type {
@@ -82,6 +83,7 @@ import {
   hideHeldDates,
   type MockBookingRow,
   type MockHooks,
+  type MockReceipt,
 } from "@/lib/mocks/mock-bookings";
 import { searchRoutes } from "@/lib/mocks/mock-search";
 import {
@@ -111,6 +113,12 @@ interface MockState {
   bookings: MockBookingRow[];
   /** MOCK test hooks for the booking routes; set only from tests. */
   hooks: MockHooks;
+  /** MOCK requests to the signed-in chef, seeded on first use (T-045). */
+  chefBookings: MockBookingRow[];
+  chefSeeded: boolean;
+  customerSeeded: boolean;
+  /** MOCK receipts by booking id (T-045). */
+  receipts: Record<string, MockReceipt[]>;
 }
 
 const KEY = "cookneighbour-mock-api-state";
@@ -125,6 +133,10 @@ const EMPTY: MockState = {
   adminQueue: [],
   bookings: [],
   hooks: {},
+  chefBookings: [],
+  chefSeeded: false,
+  customerSeeded: false,
+  receipts: {},
 };
 let memory: MockState = { ...EMPTY };
 
@@ -469,7 +481,8 @@ export async function mockFetch(
     return fail(401, "UNAUTHENTICATED", "Please log in first.");
   }
 
-  // Booking routes (T-043): estimate, create, list, detail and the customer's cancel.
+  // Booking routes (T-043, T-045): estimate, create, list, detail, cancel, and the changes and
+  // grocery routes of both roles.
   const booked = bookingRoutes(method, path, body, s);
   if (booked) {
     if (booked.next) save({ ...s, ...booked.next });
@@ -604,6 +617,21 @@ function chefRoutes(route: string, body: unknown, s: MockState): Response {
       const plan = planPrivateChange(privateState(next), {
         kitchenAddress: v.kitchenAddress,
       });
+      // N3 (T-063): a changed kitchen address is refused while a chef's-home booking is accepted.
+      if (
+        "kitchen_address_line" in plan.columns &&
+        s.chefBookings.some(
+          (r) =>
+            r.detail.status === "accepted" &&
+            r.detail.locationType === "chef_home",
+        )
+      )
+        return fail(
+          409,
+          "INVALID_STATE",
+          "The kitchen address cannot be changed while a booking at your home is accepted.",
+          { reason: "kitchen_in_use" },
+        );
       next = applyColumns(next, plan.columns, plan.disableChefHome);
     }
     save({ ...s, chef: next });

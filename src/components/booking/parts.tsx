@@ -337,11 +337,14 @@ export function EstimateLines({
   locationType,
   freeTrial,
   visits,
+  viewer = "customer",
 }: {
   e: EstimateShape;
   locationType: "customer_home" | "chef_home";
   freeTrial: boolean;
   visits: number;
+  /** The chef reads the same numbers in their own words (T-045). */
+  viewer?: "customer" | "chef";
 }) {
   const waived = e.freeTrialWaivedCents ?? 0;
   const money = (c: number) => formatDollars(c);
@@ -351,7 +354,11 @@ export function EstimateLines({
         <Line
           label="Total cooking time"
           value={formatMinutes(e.cookMinutes)}
-          note="Added up from the dishes you picked"
+          note={
+            viewer === "chef"
+              ? "Added up from the dishes picked"
+              : "Added up from the dishes you picked"
+          }
         />
         {freeTrial && waived > 0 ? (
           <>
@@ -396,7 +403,11 @@ export function EstimateLines({
           <Line
             label="Travel fee"
             value={money(0)}
-            note="None: you pick up the meals at the chef's home"
+            note={
+              viewer === "chef"
+                ? "None: the customer picks up the meals at your home"
+                : "None: you pick up the meals at the chef's home"
+            }
           />
         )}
         <Line
