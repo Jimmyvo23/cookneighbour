@@ -344,7 +344,10 @@ describe("the SQL completion and pickup rules equal the TypeScript ones (L5)", (
 
         // Chef's home: the earliest eat-by of the day decides the pickup deadline.
         for (const eatOffset of [1, 6]) {
-          const chef2 = await makeChef(svc, `bc-ac2-${last}-${eatOffset}`);
+          const chef2 = await makeChef(svc, `bc-ac2-${last}-${eatOffset}`, {
+            options: ["customer_home", "chef_home"],
+            chefHomeEnabled: true,
+          });
           const b = await makeBooking(svc, {
             customer: cust,
             chef: chef2,
