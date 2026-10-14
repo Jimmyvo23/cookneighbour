@@ -55,7 +55,7 @@ const uid = (n: number) =>
 const photo = (n: number) =>
   `${uid(n)}/photo-aaaaaaaa-aaaa-4aaa-8aaa-${String(n).padStart(12, "0")}.png`;
 
-interface MockChef extends ChefCandidate {
+export interface MockChef extends ChefCandidate {
   bio: string;
   /** Weekdays (0 = Sunday) this MOCK chef ticks, standing in for the availability calendar. */
   weekdays: number[];

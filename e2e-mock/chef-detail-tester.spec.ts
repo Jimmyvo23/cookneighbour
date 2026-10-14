@@ -206,7 +206,7 @@ test("chef page: every interactive element is reachable by Tab and the tab title
       ),
     );
   }
-  expect(seen.has("book-stub")).toBe(true);
+  expect(seen.has("book-link")).toBe(true);
   expect(seen.has("SUMMARY")).toBe(true);
   await expect(page).toHaveTitle("Mai Tran (MOCK) — CookNeighbour");
 });
@@ -229,13 +229,15 @@ test("two quick chef-to-chef navigations end on the last chef (MOCK)", async ({
   );
 });
 
-test("the Book stub makes no network request (MOCK)", async ({ page }) => {
+test("the Book link makes no network request of its own on the chef page (MOCK)", async ({
+  page,
+}) => {
   await page.goto(`/chefs/${MAI}`);
-  await expect(page.getByTestId("book-stub")).toBeVisible();
+  const link = page.getByTestId("book-link");
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute("href", `/chefs/${MAI}/book`);
   const requests: string[] = [];
   page.on("request", (r) => requests.push(`${r.method()} ${r.url()}`));
-  await page.getByTestId("book-stub").click({ force: true });
-  await page.getByTestId("book-stub").press("Enter");
   await page.waitForTimeout(300);
-  expect(requests).toEqual([]);
+  expect(requests.filter((r) => r.includes("/api/"))).toEqual([]);
 });

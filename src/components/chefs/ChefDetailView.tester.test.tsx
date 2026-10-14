@@ -103,7 +103,7 @@ afterEach(() => {
 });
 
 describe("ChefDetailView (tester)", () => {
-  it("makes exactly one request, a GET of /api/chefs/:id, and none for the Book stub", async () => {
+  it("makes exactly one request, a GET of /api/chefs/:id, and none for the Book link", async () => {
     fetchMock.mockImplementation(reply(200, chef()));
     await mount();
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -111,11 +111,11 @@ describe("ChefDetailView (tester)", () => {
     expect(url).toBe(`/api/chefs/${ID}`);
     expect(init.method).toBe("GET");
 
-    const book = host.querySelector<HTMLButtonElement>(
-      '[data-testid="book-stub"]',
+    // The Book entry is a plain link to the booking flow (T-043): it opens a page, it makes no request.
+    const book = host.querySelector<HTMLAnchorElement>(
+      '[data-testid="book-link"]',
     )!;
-    expect(book.getAttribute("aria-disabled")).toBe("true");
-    await act(async () => book.click());
+    expect(book.getAttribute("href")).toBe(`/chefs/${ID}/book`);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

@@ -1,0 +1,70 @@
+// @vitest-environment jsdom
+// T-043 round 4: "Waiting now" must come from the status=requested query (the same one as the
+// D-40 form warning), not from counting the first page of bookings of every status.
+import { createRoot, type Root } from "react-dom/client";
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { BookingList } from "@/components/booking/BookingList";
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+const item = (i: number, status: string) => ({
+  id: `00000000-0000-4000-8000-0000000001${String(i).padStart(2, "0")}`,
+  status,
+  locationType: "customer_home",
+  isFreeTrial: false,
+  firstDay: "2030-01-10",
+  dates: ["2030-01-10"],
+  groceryOption: "customer_buys",
+  createdAt: "2030-01-01T00:00:00Z",
+  expiresAt: null,
+  totalCents: 1000,
+  currency: "CAD",
+  counterparty: { id: "c1", displayName: "Mai", photoPath: null },
+});
+
+let root: Root;
+let host: HTMLElement;
+beforeEach(() => {
+  host = document.createElement("div");
+  document.body.appendChild(host);
+  root = createRoot(host);
+});
+afterEach(() => {
+  act(() => root.unmount());
+  host.remove();
+  vi.unstubAllGlobals();
+});
+
+describe("BookingList waiting count", () => {
+  it("counts requested bookings from the requested query, not the first page", async () => {
+    // The first page holds 20 older bookings of other statuses; 3 requested ones are on page 2.
+    const page = Array.from({ length: 20 }, (_, i) => item(i, "completed"));
+    const requested = [1, 2, 3].map((i) => item(50 + i, "requested"));
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            items: url.includes("status=requested") ? requested : page,
+            nextCursor: url.includes("status=requested") ? null : "next",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await act(async () => {
+      root.render(<BookingList />);
+    });
+    await act(async () => {});
+    expect(
+      fetchMock.mock.calls.some((c) =>
+        String(c[0]).includes("status=requested"),
+      ),
+    ).toBe(true);
+    expect(host.textContent).toContain("Waiting now: 3");
+  });
+});

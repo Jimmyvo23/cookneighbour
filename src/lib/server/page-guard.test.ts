@@ -7,7 +7,11 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("next/server", () => ({ connection: vi.fn() }));
 vi.mock("@/lib/server/caller", () => ({ requireCaller: vi.fn() }));
 
-import { adminPageRedirect, chefPageRedirect } from "@/lib/server/page-guard";
+import {
+  adminPageRedirect,
+  chefPageRedirect,
+  customerPageRedirect,
+} from "@/lib/server/page-guard";
 
 describe("chefPageRedirect", () => {
   it("signed out goes to /login", () =>
@@ -30,4 +34,17 @@ describe("adminPageRedirect", () => {
     expect(adminPageRedirect({ role: "admin" })).toBeNull());
   it("an unknown role is treated as not an admin (fails closed)", () =>
     expect(adminPageRedirect({ role: "superuser" })).toBe("/"));
+});
+
+describe("customerPageRedirect", () => {
+  it("signed out goes to /login", () =>
+    expect(customerPageRedirect(null)).toBe("/login"));
+  it("chef and admin go home", () => {
+    expect(customerPageRedirect({ role: "chef" })).toBe("/");
+    expect(customerPageRedirect({ role: "admin" })).toBe("/");
+  });
+  it("customer stays", () =>
+    expect(customerPageRedirect({ role: "customer" })).toBeNull());
+  it("an unknown role is treated as not a customer (fails closed)", () =>
+    expect(customerPageRedirect({ role: "superuser" })).toBe("/"));
 });

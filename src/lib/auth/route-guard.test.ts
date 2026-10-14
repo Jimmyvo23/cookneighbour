@@ -127,3 +127,26 @@ describe("landingPath", () => {
     expect(landingPath(me(true, true))).toBe("/");
   });
 });
+
+describe("customer pages (T-043; the server guard is the real one)", () => {
+  const pages = [
+    "/bookings",
+    "/bookings/abc",
+    "/chefs/00000000-0000-4000-8000-000000001001/book",
+  ];
+  it("sends visitors to /login", () => {
+    for (const p of pages) expect(redirectFor(p, null)).toBe("/login");
+  });
+  it("sends chefs and admins home, lets customers stay", () => {
+    for (const p of pages) {
+      expect(redirectFor(p, asRole(me(true, true), "chef"))).toBe("/");
+      expect(redirectFor(p, asRole(me(true, true), "admin"))).toBe("/");
+      expect(redirectFor(p, asRole(me(true, true), "customer"))).toBeNull();
+    }
+  });
+  it("leaves the public chef page open to everyone", () => {
+    const chefPage = "/chefs/00000000-0000-4000-8000-000000001001";
+    expect(redirectFor(chefPage, null)).toBeNull();
+    expect(redirectFor(chefPage, asRole(me(true, true), "chef"))).toBeNull();
+  });
+});
