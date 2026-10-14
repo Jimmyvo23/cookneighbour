@@ -21,3 +21,19 @@ None.
 - INFO: `BookingFlow.tsx` is about 1,400 lines; split later.
 - Builder's open questions Q-1 to Q-4 remain for Jimmy.
 - Admin server guard and the real-route spec depend on CI.
+
+## Round 2 (D-39, D-40) - Tester re-check
+
+Result: **PASS with one bug (MEDIUM, caption is false under the free trial)**. Head checked: 5e04b03.
+
+Bug (MEDIUM, frontend): `PerDayEstimate` says "Labour here is before the free first booking; the total above has it waived" when the trial applies. The API does the opposite: `estimateBooking` sets `days[].labourCents = 0` when `isFreeTrial` (src/lib/domain/pricing.ts, `const labourCents = input.isFreeTrial ? 0 : fullLabour`), and only the totals carry `labourBeforeWaiverCents` / `freeTrialWaivedCents`. So with the trial every day row shows Labour $0.00 and the caption is wrong. The builder's unit test passes non-zero labour with `freeTrial: true`, and the e2e uses `trial: false`, so neither caught it. Fix options (Jimmy/Planner choice): (a) change the caption to "Labour is $0.00 because of the free first booking" (frontend only), or (b) backend adds per-day full labour to `days[]` and the contract. The contract lists `days[]` with `date, cookMinutes, labourCents, ingredientsCents, travelCents, platformFeeCents` and does not say labour is post-waiver; it should.
+
+D-39 checks: per-day cookMinutes, labour and ingredients sum exactly to the totals for 1, 2 and 3 days, with and without the trial (new test). Rows are sorted by date and numbered Day 1..n. Travel and platform fee are in the API days[] but not shown per day (travel shown only as a caption); the totals block still shows them. Not a bug, noted.
+
+D-40 checks: the count uses `GET /api/bookings?status=requested&limit=20` and counts only `requested`, which matches D-28 and the backend rule (`create_booking`: `status = 'requested'` and not past `expires_at`; accepted bookings do NOT count). The list route runs the lazy expiry first, so expired requests drop out of the count. So "open" in the backend means requested and not expired only. (Do not confuse with the list filter `status=open`, which is requested + accepted; the builder correctly did not use it.) limit=20 is above the cap of 3, so the count is exact. A failed count call shows no warning (server still refuses with TOO_MANY_OPEN_REQUESTS). Refetch runs whenever phase changes away from review (returning to the form). Minor: on a failed refetch the previous count stays (stale), harmless. Warning-only does not conflict with PLAN.md D-28 (which asks for a clear error on the fourth request) or the WO; no question for Jimmy.
+
+Regression: none. 3 expected-fail unit tests are the same as round 1 (`ChefDetailView.tester.test.tsx`, marked expected fail).
+
+Tests added: `src/components/booking/PerDayEstimate.sums.test.tsx` (1/2/3 days x trial on/off sums against real `estimateBooking` output, plus a test that documents that API days labour is 0 under the trial).
+
+Results: unit 1623 pass + 3 expected fail; mock e2e 148 pass; eslint, tsc, prettier clean.
