@@ -3,7 +3,8 @@
 // Authorization (contract section 2): the role comes from profiles.role (requireChefParty /
 // requireCustomer / requireBookingParty in bookings.ts; admins get 403). The booking id from the
 // URL is matched against the caller's OWN rows (customer_id or chef_id = the session user); someone
-// else's booking and a missing one give the same 404, and the body is not read before that. Reads
+// else's booking and a missing one give the same 404. The route parses the JSON body first
+// (400 for malformed JSON), but no field of it is looked at before the ownership check. Reads
 // use the caller's user-scoped client, so row-level security is a second line of defence (bookings,
 // booking_days, receipts and the receipts bucket are readable by the two parties and admin only).
 // Writes are the database functions submit_receipt / answer_receipt: the booking row is locked FOR

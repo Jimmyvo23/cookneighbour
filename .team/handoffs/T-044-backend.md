@@ -9,7 +9,7 @@ From: backend  To: tester
 - Migration (new, one): `supabase/migrations/20261014100000_grocery_receipts.sql`
   - `receipts`: `superseded_at`, `customer_disputed_at`, `dispute_note`; unique `file_path`; one current receipt per booking (partial unique index); not both confirmed and disputed.
   - `submit_receipt` and `answer_receipt` (SECURITY INVOKER, `search_path = ''`, service_role only). Booking row locked FOR UPDATE, state re-checked under the lock, one transaction; `answer_receipt` is a single conditional UPDATE. Lock order: booking row only.
-  - Storage: `receipts_insert_chef` replaced: upload only while the booking is `accepted` or `completed` (helper `booking_accepts_receipts`). Still no update/delete policy, so insert-only.
+  - Storage: `receipts_insert_chef` replaced: upload only for a `chef_shops` booking while `accepted` or `completed` (round 2: option B added; helper `booking_accepts_receipts`). Still no update/delete policy, so insert-only.
   - NOT pushed to hosted. The Planner asks Jimmy after merge (`npx supabase db push --linked`, then `migration list --linked`).
 - Files:
   - Domain: `src/lib/domain/groceries.ts` (+ `groceries.test.ts`, 33 unit tests). Reuses `receipt.ts` (`checkReceipt`, A-15) and `isSafeStoragePath`.
@@ -45,3 +45,9 @@ From: backend  To: tester
 - Option A at the chef's home: `plan.customerDeliversToChef` is true; show `plan.note`.
 - `days[].labourCents` is after the free-trial waiver (0 under the trial).
 - Tester ideas: Unicode and long file names, PDF vs PNG, receipts on a completed booking, answer on cancelled booking (409 wrong_status), many parallel uploads, signed link for a stranger (should not exist; the list is 404).
+
+## Round 2 (Reviewer LOWs)
+- LOW-1: `booking_accepts_receipts` now also requires `grocery_option = 'chef_shops'` (same unpushed migration edited). New RLS test in `tests/rls/receipts.test.ts` (chef of an accepted option A booking cannot upload; the same chef can once it is option B). The existing storage test in `tests/rls/storage.test.ts` used an option A fixture booking, so it now creates its own accepted `chef_shops` booking.
+- LOW-2: comment in `src/lib/server/groceries.ts` now says the JSON is parsed first and no field is read before the ownership check. Route order unchanged.
+- Contract 7B storage sentence updated.
+- Jimmy decided 2026-10-14: shopping list per dish is OK; one current receipt per booking; disputes are resolved via an admin view in WO-5; receipts only while accepted or completed. Open questions 1, 2, 4, 5 above are therefore answered. Still open: A-15 tolerance, and orphan-file cleanup (needs delete approval).

@@ -12,8 +12,8 @@
 --   * answer_receipt(booking, customer, receipt, action, note): the customer confirms or disputes.
 --     One conditional UPDATE (... where not yet answered and not superseded), so two answers, or an
 --     answer racing a replacement, cannot both win.
---   * Storage: the receipts bucket accepts an upload only while the booking is accepted or
---     completed (earlier policy: any status). There is still no update or delete policy for
+--   * Storage: the receipts bucket accepts an upload only for a chef_shops booking that is accepted
+--     or completed (earlier policy: any booking, any status). There is still no update or delete policy for
 --     clients, so an object can never be overwritten.
 --
 -- Lock order: the booking row only (no chef row), so no deadlock with change_booking / answer_booking.
@@ -133,7 +133,7 @@ revoke execute on function public.answer_receipt(uuid, uuid, uuid, text, text) f
 grant execute on function public.submit_receipt(uuid, uuid, text, integer, boolean) to service_role;
 grant execute on function public.answer_receipt(uuid, uuid, uuid, text, text) to service_role;
 
--- Storage: uploads only while the booking is accepted or completed.
+-- Storage: uploads only for option B (chef_shops) bookings, while accepted or completed.
 create function public.booking_accepts_receipts(p_booking uuid) returns boolean
 language sql stable security definer
 set search_path = ''
@@ -141,6 +141,7 @@ as $$
   select exists (
     select 1 from public.bookings b
     where b.id = p_booking and b.chef_id = (select auth.uid())
+      and b.grocery_option = 'chef_shops'
       and b.status in ('accepted', 'completed')
   );
 $$;

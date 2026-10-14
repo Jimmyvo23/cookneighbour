@@ -1,6 +1,13 @@
 import { beforeAll, describe, expect, inject, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { anonClient, clientFor, rand } from "./helpers";
+import {
+  anonClient,
+  clientFor,
+  dayPlus,
+  makeBooking,
+  rand,
+  serviceClient,
+} from "./helpers";
 
 const fx = inject("fx");
 const b = fx.bookings;
@@ -131,7 +138,28 @@ describe("storage: receipts (booking parties only)", () => {
   });
 
   it("only the booking's chef can upload a receipt", async () => {
-    const name = `${b.acceptedC1H1}/up-${rand(3)}.png`;
+    // T-044: uploads are for option B (chef_shops) bookings only; make one that is accepted.
+    const made = await makeBooking(serviceClient(), {
+      customer: fx.c1,
+      chef: fx.h1,
+      dates: [
+        dayPlus(
+          new Date().toISOString().slice(0, 10),
+          400 + Math.floor(Math.random() * 300),
+        ),
+      ],
+      status: "accepted",
+    });
+    expect(
+      (
+        await serviceClient()
+          .from("bookings")
+          .update({ grocery_option: "chef_shops" })
+          .eq("id", made.id)
+      ).error,
+    ).toBeNull();
+    const bk = made.id;
+    const name = `${bk}/up-${rand(3)}.png`;
     expect(
       (
         await h1.storage
@@ -143,7 +171,7 @@ describe("storage: receipts (booking parties only)", () => {
       (
         await c1.storage
           .from("receipts")
-          .upload(`${b.acceptedC1H1}/cust-${rand(3)}.png`, png(), {
+          .upload(`${bk}/cust-${rand(3)}.png`, png(), {
             contentType: "image/png",
           })
       ).error,
@@ -152,7 +180,7 @@ describe("storage: receipts (booking parties only)", () => {
       (
         await h2.storage
           .from("receipts")
-          .upload(`${b.acceptedC1H1}/other-${rand(3)}.png`, png(), {
+          .upload(`${bk}/other-${rand(3)}.png`, png(), {
             contentType: "image/png",
           })
       ).error,
@@ -161,7 +189,7 @@ describe("storage: receipts (booking parties only)", () => {
       (
         await anonClient()
           .storage.from("receipts")
-          .upload(`${b.acceptedC1H1}/anon-${rand(3)}.png`, png(), {
+          .upload(`${bk}/anon-${rand(3)}.png`, png(), {
             contentType: "image/png",
           })
       ).error,

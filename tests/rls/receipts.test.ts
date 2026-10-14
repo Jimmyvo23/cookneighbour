@@ -289,6 +289,26 @@ describe("storage: receipts upload rules", () => {
       ).not.toBeNull();
   });
 
+  it("the chef of an accepted option A (customer_buys) booking cannot upload", async () => {
+    const chef = await makeChef(svc, "rc-oa-chef");
+    const cust = await makeCustomer(svc, "rc-oa-cust");
+    const id = await chefShopsBooking(chef, cust, "accepted", 12);
+    const h = await clientFor(chef);
+    const up = async () =>
+      (
+        await h.storage
+          .from("receipts")
+          .upload(`${id}/r-${rand(4)}.png`, png(), { contentType: "image/png" })
+      ).error;
+    expect(await up()).toBeNull(); // allowed control: option B
+    const set = await svc
+      .from("bookings")
+      .update({ grocery_option: "customer_buys" })
+      .eq("id", id);
+    expect(set.error).toBeNull();
+    expect(await up()).not.toBeNull();
+  });
+
   it("nobody can overwrite or delete an uploaded receipt", async () => {
     const chef = await makeChef(svc, "rc-ow-chef");
     const cust = await makeCustomer(svc, "rc-ow-cust");
