@@ -163,8 +163,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-045 | Grocery screens and chef booking dashboard (requests with intake, accept / decline, eat-by, missed pickup) | frontend | T-044, T-063 | done |
 | T-061 | Rule changes from D-21, D-24, D-25 (admin MOCK checks, allergy synonyms, unbookable chef 404) | backend | T-035, T-037, T-039 | done |
 | T-063 | Booking changes API: cancel, no-show, missed pickup, kitchen-address change, chef-reject cascade (split from T-042) | backend | T-042 | done |
-| T-064 | D-22 flagged bookings: an open flag blocks auto and manual completion and the rejected chef's actions until an admin decides (T-063 review M3; scope after Q-28) D-53: frozen until an admin decides (no completion, no chef actions), customer sees a neutral notice; no refund or rebooking flow (payments are MOCK). | backend | T-063 | todo |
-| T-065 | Kitchen address privacy: snapshot the chef's kitchen address on the booking at acceptance and return it from `get_booking_contact`; N3 check and write in one locked database function (T-063 review M4, L4) D-52: phone and address re-lock 7 days after the last visit day (chat stays). | backend | T-063 | todo |
+| T-064 | D-22 flagged bookings: an open flag blocks auto and manual completion and the rejected chef's actions until an admin decides (T-063 review M3; scope set by D-53); D-53: frozen until an admin decides (no completion, no chef actions), customer sees a neutral notice; no refund or rebooking flow (payments are MOCK). | backend | T-063 | todo |
+| T-065 | Kitchen address privacy: snapshot the chef's kitchen address on the booking at acceptance and return it from `get_booking_contact`; N3 check and write in one locked database function (T-063 review M4, L4); D-52: phone and address hidden again 7 days after the last visit day, whatever the status (chat stays). | backend | T-063 | todo |
 | T-066 | T-063 small fixes and tests: D-36 auto-complete needs a cooked day, else flag for admin (update `tests/api/booking-changes.test.ts:336`); reject cascade skips stale requests (L1); completion voids accepted pickup proposals (L2); chef's-home auto-completion API test and SQL-vs-TS `completionDue`/`pickupDeadline` test (L5); D-37 a chef no-show after a cooked day uses the trial | backend | T-063 | todo |
 | T-062 | UI updates from D-21, D-22, D-25, D-27 (admin flag, booked-date 409, chef page 404) | frontend | T-061, T-042 | done |
 | T-067 | Saved allergy profile: the customer's allergies and dietary notes are stored on their profile and prefill the intake form (D-38); needs a migration | backend, frontend | T-043 | todo |
@@ -178,7 +178,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 |---|---|---|---|---|
 | T-046 | Messaging backend: Realtime, RLS, contact details hidden until accepted | backend | T-042 | todo |
 | T-047 | Chat UI | frontend | T-046 | todo |
-| T-048 | Reviews (completed bookings only) and report-a-problem API; admin lists of bookings, reports, free-trial blocks D-54: resolving a report, the admin picks the booking's final status (completed, cancelled, chef no-show, customer no-show) with a note; the free trial follows the existing rule for that status. Also covers D-36 `no_day_cooked` flags. | backend | T-042 | todo |
+| T-048 | Reviews (completed bookings only) and report-a-problem API; admin lists of bookings, reports, free-trial blocks; D-54: resolving a report, the admin picks the booking's final status (completed, cancelled, chef no-show, customer no-show) with a note; the free trial follows the existing rule for that status. | backend | T-042 | todo |
 | T-049 | Reviews, report button, admin lists UI | frontend | T-048 | todo |
 
 ### Phase 6 — Hardening (WO-6, deploy has its own WO-7)
@@ -247,8 +247,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-49 | 2026-10-14 | Receipts can be uploaded and answered only while the booking is `accepted` or `completed` (T-044 Q-5). Option B (`chef_shops`) only was already the API rule (§6.4); the storage policy now matches it (Reviewer LOW-1, not a new decision) | Jimmy |
 | D-50 | 2026-10-14 | On a chef's-home booking, "Visit done" before the pickup deadlines pass only warns the chef (it removes "pickup missed"); no block (T-045 Q-2) | Jimmy |
 | D-51 | 2026-10-14 | On a free first booking the chef sees "Free first booking" plus "Labour is free for the customer on this booking (prototype, MOCK)." with a MOCK badge (T-045 Q-4). Chef cancel and customer-no-show buttons go to a separate task, T-070 (T-045 Q-1) | Jimmy |
-| D-52 | 2026-10-14 | Contact details (phone and address) re-lock 7 days after the last visit day of a completed or no-show booking; chat stays (was Q-12; built in T-065) | Jimmy |
-| D-53 | 2026-10-14 | A flagged booking (D-22, D-36) is frozen until an admin decides: no completion and no chef actions; the customer sees a neutral notice; no refund or rebooking flow (was Q-28; T-064) | Jimmy |
+| D-52 | 2026-10-14 | Contact details (phone and address) are visible from acceptance until 7 days after the last visit day, then hidden again, whatever the status; chat stays (was Q-12; built in T-065) | Jimmy |
+| D-53 | 2026-10-14 | A flagged booking (D-22) is frozen until an admin decides: no completion and no chef actions; the customer sees a neutral notice; no refund or rebooking flow (was Q-28; T-064) | Jimmy |
 | D-54 | 2026-10-14 | When an admin resolves a problem report, the admin picks the booking's final status (completed, cancelled, chef no-show, customer no-show) with a note; the free trial follows the rule for that status (was Q-27; T-048) | Jimmy |
 | D-55 | 2026-10-14 | On a chef's-home booking the customer can confirm "I picked up my meals"; after that the chef cannot mark the pickup missed (was Q-26; T-071) | Jimmy |
 
@@ -290,6 +290,8 @@ New from planning:
 - Q-32 (T-044) Receipt files that are uploaded but never registered (or refused) stay in the private receipts bucket; clients cannot delete them. Cleanup (for example a scheduled job removing unregistered files older than a day) deletes data, so it needs Jimmy's approval. Not blocking; candidate for WO-6.
 - Q-33 (T-044) A-15 receipt-mismatch tolerance (the larger of 15% or $5.00, configurable) is still an assumption. Confirm or change before the demo.
 - Q-34 (T-045 backend gaps, not blocking) (1) `plan.note` is customer wording only; the chef UI builds its own from `plan` fields (a chef-side note would be cleaner). (2) `ReceiptView` has no file name, type or viewer-specific text. (3) No notification read route (WO-5). (4) The booking list has no allergy-conflict flag, so the chef sees conflicts only on the request page. (5) No server-side status grouping; the UI loads up to 50 and groups in the browser. Planner suggests: (3) in WO-5, the rest as one small backend task when needed.
+- Q-35 (T-066 Q-1) Should the booking page tell both parties why an accepted booking whose days are all past and uncooked is waiting for an admin (D-36 `no_day_cooked` flag)? Interim: T-072 shows a neutral "waiting for a check" state.
+- Q-36 (T-066 Q-2) When an admin resolves a D-36 `no_day_cooked` flag, which final status does the booking get (cancelled, chef no-show, or the admin picks as in D-54)? Needed before T-048. Is a D-36 flagged booking frozen like D-53, or may the chef still mark past days cooked (as built, and as T-072 prompts)?
 
 Known limits for the README: cheap SIMs and multiple addresses can evade the free-trial rule; real launch needs ID verification. The contact-details filter is best effort (spelled-out digits, disguised emails and street addresses pass). No rate limit on booking requests beyond D-28 (D-35). Request expiry is lazy until a scheduled sweep is added (WO-7).
 
