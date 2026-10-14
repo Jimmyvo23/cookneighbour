@@ -135,6 +135,14 @@ export function torontoLocalToIso(local: string): string | null {
   return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
 }
 
+/** Toronto wall-clock now as a `datetime-local` value ("2026-10-20T15:30"), for the `min` of the input. */
+export function torontoNowLocal(now: Date = new Date()): string {
+  const p = Object.fromEntries(
+    TZ_PARTS.formatToParts(now).map((x) => [x.type, x.value]),
+  );
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
 /** The first instant a pickup can no longer be arranged for a day: the end of its deadline date. */
 export function pickupEnd(deadlineDate: string): Date {
   return torontoStartOfDay(addDays(deadlineDate, 1));

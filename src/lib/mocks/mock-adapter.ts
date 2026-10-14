@@ -615,6 +615,21 @@ function chefRoutes(route: string, body: unknown, s: MockState): Response {
       const plan = planPrivateChange(privateState(next), {
         kitchenAddress: v.kitchenAddress,
       });
+      // N3 (T-063): a changed kitchen address is refused while a chef's-home booking is accepted.
+      if (
+        "kitchen_address_line" in plan.columns &&
+        s.chefBookings.some(
+          (r) =>
+            r.detail.status === "accepted" &&
+            r.detail.locationType === "chef_home",
+        )
+      )
+        return fail(
+          409,
+          "INVALID_STATE",
+          "The kitchen address cannot be changed while a booking at your home is accepted.",
+          { reason: "kitchen_in_use" },
+        );
       next = applyColumns(next, plan.columns, plan.disableChefHome);
     }
     save({ ...s, chef: next });

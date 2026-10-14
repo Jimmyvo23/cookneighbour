@@ -271,11 +271,13 @@ function receipt(
   };
 }
 
+export type SeededReceipts = Record<string, MockReceipt[]>;
+
 /** The made-up requests for a signed-in chef (MOCK). Dates are relative to today. */
 export function seedChefBookings(
   chef: MeProfile,
   now: Date,
-): { rows: MockBookingRow[]; receipts: Record<string, MockReceipt[]> } {
+): { rows: MockBookingRow[]; receipts: SeededReceipts } {
   const today = torontoToday(now);
   const base = { chef, now };
   const a03Date = addDays(today, -1);

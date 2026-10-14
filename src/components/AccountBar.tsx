@@ -73,9 +73,14 @@ export function AccountBar() {
             </Link>
           )}
           {me.profile.role === "chef" && (
-            <Link className={cls} href="/chef/apply">
-              Chef application
-            </Link>
+            <>
+              <Link className={cls} href="/chef/bookings">
+                Bookings
+              </Link>
+              <Link className={cls} href="/chef/apply">
+                Chef application
+              </Link>
+            </>
           )}
           {me.profile.role === "admin" && (
             <Link className={cls} href="/admin/chefs">

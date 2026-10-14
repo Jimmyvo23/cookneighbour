@@ -26,6 +26,8 @@ import {
   hintCls,
   secondaryButtonCls,
 } from "@/components/chef/parts";
+import { GroceriesSection } from "@/components/booking/GroceriesSection";
+import { CustomerPickups } from "@/components/booking/PickupSections";
 import {
   FieldScopeProvider,
   EstimateLines,
@@ -166,6 +168,17 @@ function Ready({
   onChange: (b: BookingDetail) => void;
 }) {
   const hid = useId();
+  // After a successful pickup proposal or receipt answer the form that was used goes away, so this
+  // page announces the result and takes focus (one owner, lessons-learned section 3).
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (notice) noticeRef.current?.focus();
+  }, [notice]);
+  const changed = (next: BookingDetail, message?: string) => {
+    onChange(next);
+    if (message) setNotice(message);
+  };
   const canCancel = b.status === "requested" || b.status === "accepted";
   const firstDay = b.days[0]?.date;
   const anyCooked = b.days.some((d) => d.cookedAt !== null);
@@ -200,6 +213,20 @@ function Ready({
           </p>
         )}
       </header>
+
+      <p
+        ref={noticeRef}
+        tabIndex={-1}
+        role="status"
+        data-testid="notice"
+        className={
+          notice
+            ? "rounded-md border-2 border-emerald-800 bg-emerald-50 p-3 font-semibold text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50"
+            : "sr-only"
+        }
+      >
+        {notice}
+      </p>
 
       <StatusNotes b={b} anyCooked={anyCooked} />
 
@@ -291,6 +318,10 @@ function Ready({
           </p>
         )}
       </section>
+
+      <CustomerPickups booking={b} onChange={changed} />
+
+      <GroceriesSection booking={b} viewer="customer" />
 
       <section aria-labelledby={`${hid}-intake-h`} className={cardCls}>
         <h2 id={`${hid}-intake-h`} className="text-lg font-semibold">
