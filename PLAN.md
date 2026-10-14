@@ -241,7 +241,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-46 | 2026-10-14 | The option A shopping list is per dish (name, quantity, servings, allergens, estimated cost), not per ingredient; chat covers exact items (T-044 Q-1) | Jimmy |
 | D-47 | 2026-10-14 | One current receipt per booking; the chef replaces it only after the customer disputes it; several shops go into one total (T-044 Q-2) | Jimmy |
 | D-48 | 2026-10-14 | A disputed receipt is resolved through an admin view of disputed receipts in WO-5; until then it stays open (T-044 Q-4) | Jimmy |
-| D-49 | 2026-10-14 | Receipts can be uploaded and answered only while the booking is `accepted` or `completed`, and only for option B (`chef_shops`) bookings (T-044 Q-5, Reviewer LOW-1) | Jimmy |
+| D-49 | 2026-10-14 | Receipts can be uploaded and answered only while the booking is `accepted` or `completed` (T-044 Q-5). Option B (`chef_shops`) only was already the API rule (§6.4); the storage policy now matches it (Reviewer LOW-1, not a new decision) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
