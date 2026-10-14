@@ -26,6 +26,7 @@ import {
   hintCls,
   secondaryButtonCls,
 } from "@/components/chef/parts";
+import { NOTICE_BOX_CLS, useAnnounce } from "@/components/booking/useAnnounce";
 import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { CustomerPickups } from "@/components/booking/PickupSections";
 import {
@@ -170,14 +171,10 @@ function Ready({
   const hid = useId();
   // After a successful pickup proposal or receipt answer the form that was used goes away, so this
   // page announces the result and takes focus (one owner, lessons-learned section 3).
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeRef = useRef<HTMLParagraphElement>(null);
-  useEffect(() => {
-    if (notice) noticeRef.current?.focus();
-  }, [notice]);
+  const { announce, notice } = useAnnounce();
   const changed = (next: BookingDetail, message?: string) => {
     onChange(next);
-    if (message) setNotice(message);
+    if (message) announce(message);
   };
   const canCancel = b.status === "requested" || b.status === "accepted";
   const firstDay = b.days[0]?.date;
@@ -214,19 +211,7 @@ function Ready({
         )}
       </header>
 
-      <p
-        ref={noticeRef}
-        tabIndex={-1}
-        role="status"
-        data-testid="notice"
-        className={
-          notice
-            ? "rounded-md border-2 border-emerald-800 bg-emerald-50 p-3 font-semibold text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50"
-            : "sr-only"
-        }
-      >
-        {notice}
-      </p>
+      {notice("notice", NOTICE_BOX_CLS)}
 
       <StatusNotes b={b} anyCooked={anyCooked} />
 

@@ -18,6 +18,7 @@ import type {
   BookingStatus,
 } from "@/lib/api/types";
 import {
+  CHEF_STATUS_TEXT,
   allDaysCooked,
   changeErrorText,
   dayIsDue,
@@ -26,6 +27,7 @@ import { formatWhen } from "@/lib/booking/form";
 import { formatMinutes } from "@/lib/chef/dishes";
 import { torontoToday } from "@/lib/domain/dishes";
 import { allergenText, shortDayLabel } from "@/lib/search/detail";
+import { NOTICE_BOX_CLS, useAnnounce } from "@/components/booking/useAnnounce";
 import { MockBadge } from "@/components/MockBadge";
 import {
   Alert,
@@ -46,18 +48,6 @@ import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { ChefPickups } from "@/components/booking/PickupSections";
 
 const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
-
-/** The chef's words for each status (the customer's page has its own). */
-export const CHEF_STATUS_TEXT: Record<BookingStatus, string> = {
-  requested: "Waiting for your answer",
-  accepted: "You accepted this booking",
-  declined: "You declined this request",
-  cancelled: "Cancelled",
-  completed: "Completed",
-  no_show_customer: "Closed as a customer no-show",
-  no_show_chef: "Marked as a chef no-show",
-  expired: "Expired: nobody answered in time",
-};
 
 type State =
   | { kind: "loading" }
@@ -158,14 +148,10 @@ function Ready({
 }) {
   const hid = useId();
   // One owner moves focus after a successful change: the notice below (lessons-learned section 3).
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeRef = useRef<HTMLParagraphElement>(null);
-  useEffect(() => {
-    if (notice) noticeRef.current?.focus();
-  }, [notice]);
+  const { announce, notice } = useAnnounce();
   const changed = (next: BookingDetail, message?: string) => {
     onChange(next);
-    if (message) setNotice(message);
+    if (message) announce(message);
   };
   return (
     <>
@@ -177,19 +163,7 @@ function Ready({
           <span className="sr-only">Status: </span>
           {CHEF_STATUS_TEXT[b.status]}
         </p>
-        <p
-          ref={noticeRef}
-          tabIndex={-1}
-          role="status"
-          data-testid="notice"
-          className={
-            notice
-              ? "rounded-md border-2 border-emerald-800 bg-emerald-50 p-3 font-semibold text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50"
-              : "sr-only"
-          }
-        >
-          {notice}
-        </p>
+        {notice("notice", NOTICE_BOX_CLS)}
         {b.isFreeTrial && (
           <p data-testid="trial-label">
             <span className="rounded-md border-2 border-emerald-800 px-2 py-0.5 text-sm font-bold text-emerald-900 dark:text-emerald-200">
@@ -500,7 +474,9 @@ function Where({ b }: { b: BookingDetail }) {
         </p>
       ) : b.locationType === "customer_home" ? (
         <p data-testid="address-later" className={infoBoxCls}>
-          The customer&apos;s address is shown once you accept this booking.
+          {b.status === "requested"
+            ? "The customer's address is shown once you accept this booking."
+            : "The customer's address is not shown for this booking."}
         </p>
       ) : null}
       {b.contact?.phone ? (
@@ -512,7 +488,9 @@ function Where({ b }: { b: BookingDetail }) {
         </p>
       ) : (
         <p data-testid="contact-later" className={hintCls}>
-          The customer&apos;s phone number is shown once you accept.
+          {b.status === "requested"
+            ? "The customer's phone number is shown once you accept."
+            : "The customer's phone number is not shown for this booking."}
         </p>
       )}
       {b.locationType === "chef_home" && <KitchenNote status={b.status} />}
@@ -538,10 +516,27 @@ function KitchenNote({ status }: { status: BookingStatus }) {
         page until then.
       </p>
     );
+  if (
+    status === "completed" ||
+    status === "no_show_customer" ||
+    status === "no_show_chef"
+  )
+    return (
+      <p data-testid="kitchen-note" className={hintCls}>
+        This booking is finished. The customer can still see your kitchen
+        address for it. Your kitchen address is no longer locked.
+      </p>
+    );
+  if (status === "cancelled")
+    return (
+      <p data-testid="kitchen-note" className={hintCls}>
+        This booking was cancelled. The customer cannot see your kitchen address
+        for it. Your kitchen address is no longer locked.
+      </p>
+    );
   return (
     <p data-testid="kitchen-note" className={hintCls}>
-      Your kitchen address was shared with the customer only while the booking
-      was accepted.
+      Your kitchen address was not shared with the customer for this booking.
     </p>
   );
 }
@@ -560,6 +555,15 @@ function Answer({
   const scope = useId();
   const sec = useSection();
   const [declining, setDeclining] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+  const goingBack = useRef(false);
+  useEffect(() => {
+    // "Go back" removes the button that has focus: return focus to the button that opened the form.
+    if (!declining && goingBack.current) {
+      goingBack.current = false;
+      opener.current?.focus();
+    }
+  }, [declining]);
   const [reason, setReason] = useState("");
   const formRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -665,6 +669,7 @@ function Answer({
                 <button
                   type="button"
                   disabled={sec.busy}
+                  ref={opener}
                   onClick={() => setDeclining(true)}
                   className={secondaryButtonCls}
                 >
@@ -685,6 +690,7 @@ function Answer({
                   type="button"
                   disabled={sec.busy}
                   onClick={() => {
+                    goingBack.current = true;
                     setDeclining(false);
                     setReason("");
                   }}
@@ -731,7 +737,7 @@ function Finish({
           <p>
             Every day is cooked.{" "}
             {home
-              ? "Wait until the customer has collected their meals, or until the pickup times have passed, before you press Visit done. Once the booking is completed you can no longer mark a missed pickup."
+              ? "Wait until the customer has picked up the meals. Or wait until the pickup times have passed. Then press Visit done. After that you cannot mark a missed pickup."
               : "Press Visit done when you have finished and left."}
           </p>
           <Alert id={sec.alertId} message={sec.error} />

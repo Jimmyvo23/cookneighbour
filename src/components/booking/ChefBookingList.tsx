@@ -10,7 +10,7 @@ import { formatWhen } from "@/lib/booking/form";
 import { formatDollars } from "@/lib/chef/dishes";
 import { shortDayLabel } from "@/lib/search/detail";
 import { secondaryButtonCls } from "@/components/chef/parts";
-import { CHEF_STATUS_TEXT } from "@/components/booking/ChefBookingView";
+import { CHEF_STATUS_TEXT } from "@/lib/booking/changes";
 
 const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
 

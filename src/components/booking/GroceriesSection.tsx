@@ -33,6 +33,7 @@ import { formatDollars } from "@/lib/chef/dishes";
 import { checkReceipt } from "@/lib/domain/receipt";
 import { allergenText, shortDayLabel } from "@/lib/search/detail";
 import { formatWhen } from "@/lib/booking/form";
+import { useAnnounce } from "@/components/booking/useAnnounce";
 import { MockBadge } from "@/components/MockBadge";
 import {
   Alert,
@@ -98,8 +99,7 @@ export function GroceriesSection({
   const [receipts, setReceipts] = useState<ReceiptList | null>(null);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeRef = useRef<HTMLParagraphElement>(null);
+  const { announce, notice } = useAnnounce();
   const seq = useRef(0);
   const enabled = showsGroceries(b.status);
 
@@ -147,10 +147,6 @@ export function GroceriesSection({
     return () => clearInterval(t);
   }, [enabled, optionB, load]);
 
-  useEffect(() => {
-    if (notice) noticeRef.current?.focus();
-  }, [notice]);
-
   if (!enabled) return null;
 
   const current = receipts ? currentReceipt(receipts.items) : null;
@@ -163,7 +159,7 @@ export function GroceriesSection({
     receipts !== null &&
     (!current || current.status === "disputed");
   const done = (message: string) => {
-    setNotice(message);
+    announce(message);
     void load(true);
   };
 
@@ -176,19 +172,10 @@ export function GroceriesSection({
       <h2 id={`${hid}-h`} className="text-lg font-semibold">
         Groceries
       </h2>
-      <p
-        ref={noticeRef}
-        tabIndex={-1}
-        role="status"
-        data-testid="groceries-notice"
-        className={
-          notice
-            ? "font-medium text-emerald-900 dark:text-emerald-300"
-            : "sr-only"
-        }
-      >
-        {notice}
-      </p>
+      {notice(
+        "groceries-notice",
+        "font-medium text-emerald-900 dark:text-emerald-300",
+      )}
       {loading && !list && <p role="status">Loading the groceries...</p>}
       {failed && (
         <div
@@ -569,6 +556,7 @@ function UploadFields({
           ? mockUploader
           : await browserUploader();
         let upError: { message: string } | null;
+        let network = false;
         try {
           ({ error: upError } = await uploader.upload(
             RECEIPT_BUCKET,
@@ -578,10 +566,13 @@ function UploadFields({
           ));
         } catch {
           upError = { message: "network" };
+          network = true;
         }
         if (upError)
           throw new UploadFailed(
-            "Could not upload the file. Check your connection and try again.",
+            network
+              ? "Could not upload the file. Check your connection and try again."
+              : "Could not upload the file. Try again, or choose a different file.",
           );
         await apiFetch<ReceiptView>(
           `/api/bookings/${encodeURIComponent(bookingId)}/receipts`,
@@ -678,6 +669,15 @@ function ReceiptAnswerForm({
   const scope = useId();
   const sec = useSection();
   const [disputing, setDisputing] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+  const goingBack = useRef(false);
+  useEffect(() => {
+    // "Go back" removes the focused button: return focus to the button that opened the form.
+    if (!disputing && goingBack.current) {
+      goingBack.current = false;
+      opener.current?.focus();
+    }
+  }, [disputing]);
   const [note, setNote] = useState("");
   const noteRef = useRef<HTMLDivElement>(null);
   const path = `/api/bookings/${encodeURIComponent(bookingId)}/receipts/${encodeURIComponent(r.id)}/respond`;
@@ -754,6 +754,7 @@ function ReceiptAnswerForm({
               <button
                 type="button"
                 disabled={sec.busy}
+                ref={opener}
                 onClick={() => setDisputing(true)}
                 className={secondaryButtonCls}
               >
@@ -774,6 +775,7 @@ function ReceiptAnswerForm({
                 type="button"
                 disabled={sec.busy}
                 onClick={() => {
+                  goingBack.current = true;
                   setDisputing(false);
                   setNote("");
                 }}

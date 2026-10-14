@@ -44,3 +44,15 @@ From: frontend  To: tester
 - Q-3 per-dish shopping list is fine (D-46): unchanged.
 - Q-4 the chef keeps the "Free first booking" label and now also reads "Labour is free for the customer on this booking (prototype, MOCK)." followed by a MOCK badge (`ChefBookingView.tsx`, `data-testid="trial-label"`). It replaces the earlier "does not pay labour / your pay is simulated" sentence. The label appears only on the chef's request page (the list keeps its short "Free first booking" tag).
 - Tests: component test "labels a free first booking for the chef with the MOCK note" (also checks no label without the trial) and an assertion in the mock e2e "shows the intake...".
+
+## Round 3 (Reviewer: REQUEST CHANGES, M1 and L1 to L6)
+- M1 fixed (`ChefBookingView.tsx`): "once you accept" hints show only while `requested`. Other statuses without data say "not shown for this booking". Kitchen note per status: requested and accepted as before; completed, customer no-show and chef no-show: "The customer can still see your kitchen address for it. No longer locked."; cancelled: "The customer cannot see your kitchen address for it. No longer locked."; declined and expired: "was not shared". Component tests for declined (both locations), expired, completed (both locations), customer no-show, cancelled, and a waiting request.
+- L1: pickup-missed confirm now says "Later days that were not cooked are cancelled."
+- L2: `pickupWindowPassed` comment corrected (it only checks the window).
+- L3: "Go back" (decline form, dispute form) and "Keep waiting" return focus to the button that opened them. Tests added.
+- L4: new `src/components/booking/useAnnounce.tsx` (small shared hook, used by the chef page, the customer page and groceries). Each message is a new element, so the same message twice is focused again. Test: `useAnnounce.test.tsx`.
+- L5: an upload that storage refuses no longer says "Check your connection"; only a thrown network error does. Test added.
+- L6: `CHEF_STATUS_TEXT` moved to `src/lib/booking/changes.ts`; the list no longer imports the view.
+- L7 skipped as asked.
+- Also: the chef's-home "Visit done" paragraph is now short sentences ("Wait until the customer has picked up the meals. Or wait until the pickup times have passed. Then press Visit done. After that you cannot mark a missed pickup.").
+- Local: lint, typecheck, prettier clean; 1850 unit tests pass (3 expected fail); 198 mock e2e pass; `impeccable detect` on `src/components/booking` clean.

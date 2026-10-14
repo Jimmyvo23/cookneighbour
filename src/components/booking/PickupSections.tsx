@@ -432,6 +432,15 @@ function MissedPickup({
 }) {
   const sec = useSection();
   const [confirming, setConfirming] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+  const goingBack = useRef(false);
+  useEffect(() => {
+    // "Keep waiting" removes the focused button: return focus to the button that opened the step.
+    if (!confirming && goingBack.current) {
+      goingBack.current = false;
+      opener.current?.focus();
+    }
+  }, [confirming]);
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (confirming) headingRef.current?.focus();
@@ -468,6 +477,7 @@ function MissedPickup({
         <p>
           <button
             type="button"
+            ref={opener}
             onClick={() => setConfirming(true)}
             className={secondaryButtonCls}
           >
@@ -485,8 +495,8 @@ function MissedPickup({
           </h4>
           <p className="mt-1">
             This counts as a no-show by the customer for the whole booking
-            {b.isFreeTrial ? " and uses up their free first booking" : ""}. Days
-            that were not cooked are cancelled. You cannot undo it.
+            {b.isFreeTrial ? " and uses up their free first booking" : ""}.
+            Later days that were not cooked are cancelled. You cannot undo it.
           </p>
           <div className="mt-3 flex flex-wrap gap-3">
             <button
@@ -500,7 +510,10 @@ function MissedPickup({
             <button
               type="button"
               disabled={sec.busy}
-              onClick={() => setConfirming(false)}
+              onClick={() => {
+                goingBack.current = true;
+                setConfirming(false);
+              }}
               className={secondaryButtonCls}
             >
               Keep waiting

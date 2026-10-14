@@ -314,9 +314,7 @@ describe("an accepted booking", () => {
   it("warns a chef's-home chef that completing ends the missed-pickup option", async () => {
     const b = seededBooking(9103, "chef");
     await open(b);
-    expect(h.q("finish")?.textContent).toContain(
-      "no longer mark a missed pickup",
-    );
+    expect(h.q("finish")?.textContent).toContain("cannot mark a missed pickup");
   });
 });
 
@@ -424,6 +422,89 @@ describe("pickups and a missed pickup", () => {
     const alert = h.host.querySelector('[role="alert"]') as HTMLElement;
     expect(alert.textContent).toContain("can still pick up");
     expect(document.activeElement).toBe(alert);
+  });
+});
+
+describe("wording on finished bookings (round 3, M1)", () => {
+  const as = (n: 9101 | 9102 | 9103 | 9104, status: BookingDetail["status"]) =>
+    seededBooking(n, "chef", (b) => ({
+      ...b,
+      status,
+      // What the API sends: nothing private for declined, expired and cancelled bookings.
+      cookingPlace: ["declined", "expired", "cancelled"].includes(status)
+        ? null
+        : b.cookingPlace,
+      contact: ["declined", "expired", "cancelled"].includes(status)
+        ? null
+        : b.contact,
+    }));
+  const never = /once you accept/;
+
+  it("a declined customer's-home request never promises an address 'once you accept'", async () => {
+    await open(as(9101, "declined"));
+    expect(h.q("address-later")?.textContent).toContain(
+      "not shown for this booking",
+    );
+    expect(h.q("contact-later")?.textContent).toContain(
+      "not shown for this booking",
+    );
+    expect(h.text()).not.toMatch(never);
+  });
+  it("a declined chef's-home request says the kitchen address was not shared", async () => {
+    await open(as(9102, "declined"));
+    const n = h.q("kitchen-note")?.textContent ?? "";
+    expect(n).toContain("was not shared");
+    expect(n).not.toContain("accepted");
+    expect(h.text()).not.toMatch(never);
+  });
+  it("an expired request is worded like a declined one", async () => {
+    await open(as(9102, "expired"));
+    expect(h.q("kitchen-note")?.textContent).toContain("was not shared");
+    expect(h.text()).not.toMatch(never);
+  });
+  it("a completed chef's-home booking says the customer can still see the kitchen address, and it is not locked", async () => {
+    await open(as(9103, "completed"));
+    const n = h.q("kitchen-note")?.textContent ?? "";
+    expect(n).toContain("can still see your kitchen address");
+    expect(n).toContain("no longer locked");
+    expect(h.text()).not.toMatch(never);
+  });
+  it("a customer no-show keeps the same wording", async () => {
+    await open(as(9103, "no_show_customer"));
+    expect(h.q("kitchen-note")?.textContent).toContain(
+      "can still see your kitchen address",
+    );
+  });
+  it("a completed customer's-home booking still shows the customer's address and phone from the API", async () => {
+    await open(as(9104, "completed"));
+    expect(h.q("cooking-place")?.textContent).toContain("Maple Ave");
+    expect(h.q("contact")).not.toBeNull();
+    expect(h.q("address-later")).toBeNull();
+  });
+  it("a cancelled chef's-home booking says the customer cannot see the kitchen address", async () => {
+    await open(as(9103, "cancelled"));
+    const n = h.q("kitchen-note")?.textContent ?? "";
+    expect(n).toContain("cannot see your kitchen address");
+    expect(n).toContain("no longer locked");
+  });
+  it("only a waiting request says 'once you accept'", async () => {
+    await open(as(9101, "requested"));
+    expect(h.text()).toMatch(never);
+  });
+});
+
+describe("focus and announcements (round 3)", () => {
+  it("'Go back' from the decline form returns focus to 'Decline this request'", async () => {
+    await open(seededBooking(9101, "chef"));
+    await h.click(h.button("Decline this request"));
+    await h.click(h.button("Go back"));
+    expect(document.activeElement).toBe(h.button("Decline this request"));
+  });
+  it("'Keep waiting' returns focus to 'Mark pickup missed'", async () => {
+    await open(seededBooking(9105, "chef"));
+    await h.click(h.button("Mark pickup missed"));
+    await h.click(h.button("Keep waiting"));
+    expect(document.activeElement).toBe(h.button("Mark pickup missed"));
   });
 });
 

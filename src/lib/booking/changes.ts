@@ -6,6 +6,7 @@ import { ApiClientError } from "@/lib/api/client";
 import type {
   BookingDayView,
   BookingDetail,
+  BookingStatus,
   ReceiptView,
 } from "@/lib/api/types";
 import { torontoStartOfDay } from "@/lib/domain/cancellation";
@@ -169,8 +170,9 @@ export function canPropose(day: BookingDayView, now: Date): boolean {
 }
 
 /**
- * The chef may mark "pickup missed" when a cooked day's pickup window has passed (the server
- * checks the same thing: 409 `pickup_window_open` otherwise) and no pickup time was agreed for it.
+ * True when a cooked day's pickup window is over (the server checks the same thing: 409
+ * `pickup_window_open` otherwise). It does not look at proposals: callers that care whether a
+ * pickup time was agreed check that themselves.
  */
 export function pickupWindowPassed(day: BookingDayView, now: Date): boolean {
   if (!day.cookedAt || !day.pickupDeadlineDate) return false;
@@ -265,3 +267,15 @@ export function currentReceipt(items: ReceiptView[]): ReceiptView | null {
 
 /** The signed link lasts 10 minutes (contract 7B); refetch a little earlier. */
 export const FILE_URL_REFRESH_MS = 8 * 60 * 1000;
+
+/** The chef's words for each booking status (the customer's page has its own). */
+export const CHEF_STATUS_TEXT: Record<BookingStatus, string> = {
+  requested: "Waiting for your answer",
+  accepted: "You accepted this booking",
+  declined: "You declined this request",
+  cancelled: "Cancelled",
+  completed: "Completed",
+  no_show_customer: "Closed as a customer no-show",
+  no_show_chef: "Marked as a chef no-show",
+  expired: "Expired: nobody answered in time",
+};

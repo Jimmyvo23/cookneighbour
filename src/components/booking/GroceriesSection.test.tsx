@@ -245,6 +245,8 @@ describe("option B: the chef's receipt", () => {
     ).toHaveLength(0);
     const alert = h.host.querySelector('[role="alert"]') as HTMLElement;
     expect(alert.textContent).toContain("Could not upload the file");
+    // The storage said no (not a network problem): do not tell the chef to check the connection.
+    expect(alert.textContent).not.toContain("connection");
     expect(alert.textContent).not.toContain("policy");
     expect(document.activeElement).toBe(alert);
   });
@@ -477,6 +479,14 @@ describe("the customer answers a receipt", () => {
       action: "dispute",
       note: "x".repeat(300),
     });
+  });
+
+  it("'Go back' returns focus to 'Dispute this receipt'", async () => {
+    const b = seededBooking(9106, "customer");
+    await open(b, "customer", [flagged(b)]);
+    await h.click(h.button("Dispute this receipt"));
+    await h.click(h.button("Go back"));
+    expect(document.activeElement).toBe(h.button("Dispute this receipt"));
   });
 
   it("'Go back' leaves the dispute form without sending", async () => {
