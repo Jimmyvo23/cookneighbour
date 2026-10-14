@@ -61,9 +61,20 @@ describe("PerDayEstimate (D-39)", () => {
     expect(el.textContent).toContain("Travel is charged for each visit");
   });
 
-  it("says labour is before the free first booking when it applies", () => {
-    const el = render({ days, freeTrial: true, location: "chef_home" });
-    expect(el.textContent).toContain("before the free first booking");
+  it("under the free trial each day shows $0.00 labour and the caption says why", () => {
+    // Realistic API data: with the free trial days[].labourCents is already 0 (pricing.ts).
+    const freeDays = days.map((d) => ({ ...d, labourCents: 0 }));
+    const el = render({
+      days: freeDays,
+      freeTrial: true,
+      location: "chef_home",
+    });
+    const rows = el.querySelectorAll('[data-testid="per-day-row"]');
+    expect(rows[0].textContent).toContain("Labour$0.00");
+    expect(rows[1].textContent).toContain("Labour$0.00");
+    expect(el.textContent).toContain("Labour is free on this first booking");
+    expect(el.textContent).toContain("waived labour is in the totals above");
+    expect(el.textContent).not.toContain("before the free first booking");
     expect(el.textContent).toContain("No travel fee");
   });
 

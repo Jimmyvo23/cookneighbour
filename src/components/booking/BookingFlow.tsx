@@ -116,7 +116,7 @@ export function PerDayEstimate({
       <h4 className="font-semibold">Day by day</h4>
       <p className={hintCls}>
         {freeTrial
-          ? "Labour here is before the free first booking; the total above has it waived. "
+          ? "Labour is free on this first booking, so each day shows $0.00. The full value of the waived labour is in the totals above. "
           : ""}
         {location === "customer_home"
           ? "Travel is charged for each visit."

@@ -73,3 +73,8 @@ From: frontend  To: tester
 - D-41 (Q-4): own address stays visible. No change.
 - No backend, contract or migration change.
 - Local results: lint, typecheck, prettier clean; 1616 unit tests pass (3 expected fail); 148 mock e2e pass.
+
+## Round 3 (Tester MEDIUM: per-day caption)
+- Bug: under the free trial the API sends `days[].labourCents = 0`, but the caption said labour was "before the free first booking".
+- Fix (frontend only, option a): the caption now reads "Labour is free on this first booking, so each day shows $0.00. The full value of the waived labour is in the totals above." (`PerDayEstimate` in `BookingFlow.tsx`).
+- `PerDayEstimate.test.tsx` now uses realistic data (labour 0 per day under the trial) and checks the new wording. The Tester's `PerDayEstimate.sums.test.tsx` still passes.
