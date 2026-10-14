@@ -26,7 +26,7 @@ Success for the prototype: a working, demo-ready end-to-end flow. It is also a p
 
 ## Positioning
 
-Not decided yet (open question for Jimmy).
+**Proposed by the Planner 2026-10-14, awaiting Jimmy's OK (Q-31).** Home-cooked food from your own culture, made by a neighbour, for far less than a private chef and less than eating out every day. It is warm and personal, not a restaurant-delivery app and not a luxury chef service.
 
 ## Operating Context
 
@@ -46,16 +46,24 @@ Not decided yet (open question for Jimmy).
 
 ## Brand Commitments
 
-Name: CookNeighbour (default; alternatives such as GrandmaPlate, TableMates, Nana's Table are an open question for Jimmy). Voice, logo and visual identity: Not decided yet (open question for Jimmy).
+Name: CookNeighbour (default; alternatives such as GrandmaPlate, TableMates, Nana's Table are an open question for Jimmy). Voice: **Proposed by the Planner 2026-10-14, awaiting Jimmy's OK (Q-31).** warm, plain and respectful, like a helpful neighbour; no hype, no slang, no guilt. Logo and visual identity: Not decided yet (open question for Jimmy).
 
 ## Evidence on Hand
 
-Only seed and demo data (GTA chefs across several cuisines). No real customers, chefs, testimonials, reviews or press exist. Future work must not fabricate any.
+As of 2026-10-14: only seed and demo data (GTA chefs across several cuisines). No real customers, chefs, testimonials, reviews or press exist. Future work must not fabricate any.
 
 ## Product Principles
 
-Not decided yet (open question for Jimmy). Established constraints from the spec that design must respect: mocks are always labelled "MOCK"; no nationality filtering; collect the minimum personal data.
+**Proposed by the Planner 2026-10-14, awaiting Jimmy's OK (Q-31).**
+
+1. Trust first: show what is checked, what is a MOCK, and what is still unknown, honestly.
+2. Plain words: short sentences that someone reading English as a second language can follow.
+3. Prices are never a surprise: show the estimate and how it is built before anyone commits.
+4. Safety is visible: allergies and "eat by" dates are easy to find, not hidden.
+5. Privacy by default: show the other person only what they need, when they need it.
+
+Established constraints from the spec that design must respect: mocks are always labelled "MOCK"; no nationality filtering; collect the minimum personal data.
 
 ## Accessibility & Inclusion
 
-Not decided yet (open question for Jimmy).
+**Proposed by the Planner 2026-10-14, awaiting Jimmy's OK (Q-31).** Target WCAG 2.2 level AA (checked with axe in T-052). Mobile-first, large tap targets, readable text sizes, never colour alone to carry meaning. Older users (retired chefs) and English learners are core users, so favour clarity over density.
