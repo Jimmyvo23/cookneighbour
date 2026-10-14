@@ -100,6 +100,12 @@ test.describe("a waiting request", () => {
     await expect(intake).toContainText("peanuts, carries an EpiPen");
     await expect(intake).toContainText("No beef for the children");
     await expect(page.getByTestId("conflicts")).toContainText("Chicken satay");
+    await expect(page.getByTestId("trial-label")).toContainText(
+      "Labour is free for the customer on this booking (prototype, MOCK).",
+    );
+    await expect(
+      page.getByTestId("trial-label").getByTestId("mock-badge"),
+    ).toBeVisible();
     await expect(page.getByTestId("eat-by").first()).toContainText("Eat by");
     await expect(page.getByTestId("address-later")).toContainText(
       "once you accept",

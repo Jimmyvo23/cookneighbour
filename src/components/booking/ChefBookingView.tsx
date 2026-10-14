@@ -196,8 +196,8 @@ function Ready({
               Free first booking
             </span>{" "}
             <span className={hintCls}>
-              The customer does not pay labour. <MockBadge>MOCK</MockBadge> Your
-              pay for this booking is simulated.
+              Labour is free for the customer on this booking (prototype, MOCK).{" "}
+              <MockBadge>MOCK</MockBadge>
             </span>
           </p>
         )}

@@ -83,6 +83,20 @@ describe("a waiting request", () => {
     expect(h.text()).not.toContain("Maple Ave");
   });
 
+  it("labels a free first booking for the chef with the MOCK note", async () => {
+    await open(seededBooking(9101, "chef"));
+    const l = h.q("trial-label")!;
+    expect(l.textContent).toContain("Free first booking");
+    expect(l.textContent).toContain(
+      "Labour is free for the customer on this booking (prototype, MOCK).",
+    );
+    expect(l.querySelector('[data-testid="mock-badge"]')).not.toBeNull();
+    h.cleanup();
+    h = harness();
+    await open(seededBooking(9102, "chef"));
+    expect(h.q("trial-label")).toBeNull();
+  });
+
   it("shows eat-by dates for every dish", async () => {
     const b = seededBooking(9101, "chef");
     await open(b);
