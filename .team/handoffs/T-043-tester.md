@@ -45,3 +45,13 @@ Result: **PASS**. The round 2 MEDIUM bug is closed.
 2. No-trial caption unchanged (empty string); travel captions unchanged.
 3. My sums tests (`PerDayEstimate.sums.test.tsx`) pass; src/components/booking: 17 tests pass; eslint and tsc clean.
 4. Diff since 0b9ca23: only the caption string in `BookingFlow.tsx`, `PerDayEstimate.test.tsx` and the frontend handoff. Nothing else changed.
+
+## Round 4 - Tester re-check of the Reviewer's 5 LOW fixes (builder head bea6740)
+
+Result: **PASS**. Full unit suite 1625 pass + 3 expected fail (same 3); full mock e2e 149 pass; eslint and tsc clean.
+1. Heading ids: all booking section headings use a per-instance `useId` prefix; no fixed `*-h` id or `aria-labelledby` string is left in booking code or tests. The mock e2e now fails on any duplicate id with the hidden booking page mounted. (Note, out of scope: `ChefDetailView.tsx` still has a fixed `where-h` id; it no longer clashes with the booking pages.)
+2. Focus: the heading effect skips while an alert shows. Mutation check: removing `if (alert) return;` makes the "lost free-trial race" e2e fail on `toBeFocused()`. Closed, test effective.
+3. "At this address: <line>, <city>": new e2e checks the typed address is shown and "At your home (" is gone; the old string would fail it.
+4. `BookingList` count now comes from `status=requested&limit=20`; the new unit test (20 completed on page 1, 3 requested elsewhere) would show 0 with the old filter. Closed.
+5. `kitchen-later` depends on `locationType`; new unit test fails with the old text (it contains "kitchen").
+No regressions found.
