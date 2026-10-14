@@ -96,15 +96,26 @@ function parseAddress(
   return { line, city, postalCode: postal as string };
 }
 
-interface IntakeResult {
+/** The intake form as the customer filled it (normalized). Saved on the profile (T-067). */
+export interface IntakeForm {
+  noAllergies: boolean;
+  allergens: string[];
+  allergyNotes: string;
+  noDietaryNeeds: boolean;
+  dietaryNotes: string;
+}
+
+export interface IntakeResult {
   value?: { allergies: string; dietaryNotes: string };
+  /** The normalized form behind `value` (same checks), for the saved profile copy. */
+  form?: IntakeForm;
   /** What is missing or inconsistent. Only reported when creating. */
   incomplete: Record<string, string>;
   /** Unsafe or too long text, unknown values: reported in both modes. */
   invalid: Record<string, string>;
 }
 
-function parseIntake(v: unknown): IntakeResult {
+export function parseIntake(v: unknown): IntakeResult {
   const incomplete: Record<string, string> = {};
   const invalid: Record<string, string> = {};
   if (!isObject(v)) {
@@ -186,6 +197,13 @@ function parseIntake(v: unknown): IntakeResult {
   return {
     incomplete,
     invalid,
+    form: {
+      noAllergies,
+      allergens: picked,
+      allergyNotes,
+      noDietaryNeeds,
+      dietaryNotes,
+    },
     value: {
       allergies: noAllergies
         ? "None"
