@@ -32,7 +32,7 @@ From: tester  To: reviewer
 ## Known gaps or risks (observations, not bugs)
 1. Server guards (customer, other chef, anonymous) are covered by `chefPageRedirect` unit tests; the redirect itself needs a real session and is only exercised in CI/real mode. In MOCK mode the guard is skipped by design and the client layer applies. A pending chef passes the guard (role is `chef`), same as the other chef pages; the API decides what they see.
 2. Real storage upload and signed-link refresh are proven only by component tests with a stubbed uploader (the builder said so too). Needs a hosted try by Jimmy or a real-mode e2e later.
-3. "Visit done" for a chef's-home booking only warns before pickup deadlines (Q-2 for Jimmy); the d-29 flow still works if the chef completes early.
+3. "Visit done" for a chef's-home booking only warns before pickup deadlines (Q-2 for Jimmy); the D-29 flow still works if the chef completes early.
 - A fully two-sided D-29 journey in the browser is not possible in mock mode (chef and customer have separate state); I covered the chain at route level with the real mock routes.
 
 ## What the next agent needs
