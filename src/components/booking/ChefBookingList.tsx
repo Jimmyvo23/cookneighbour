@@ -185,9 +185,11 @@ function Group({
                   <span className="sr-only">, booking</span>
                 </Link>
               </p>
-              <p className="text-sm font-medium">
-                {CHEF_STATUS_TEXT[b.status]}
-              </p>
+              {b.status !== "requested" && (
+                <p className="text-sm font-medium">
+                  {CHEF_STATUS_TEXT[b.status]}
+                </p>
+              )}
               {b.status === "requested" && b.expiresAt && (
                 <p className="text-sm">
                   Answer by {formatWhen(b.expiresAt)} (Toronto time)

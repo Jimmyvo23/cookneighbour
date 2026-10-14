@@ -53,6 +53,7 @@ import { weekday } from "@/lib/chef/calendar";
 import {
   changeRoute,
   seedChefBookings,
+  seedCustomerBookings,
 } from "@/lib/mocks/mock-booking-changes";
 import { AVAILABILITY_HORIZON_DAYS } from "@/lib/domain/dishes";
 import { hasUnsafeText } from "@/lib/domain/text-safety";
@@ -77,6 +78,8 @@ export interface MockHooks {
   trialRaceOnce?: boolean;
   /** T-045: the chef's kitchen was switched off, so accepting a chef's-home request answers 409. */
   chefHomeOff?: boolean;
+  /** T-045: a signed-in customer gets the same made-up bookings, seen from their side (once). */
+  seedCustomer?: boolean;
 }
 
 /** A MOCK receipt as saved: the API view plus the path the chef "uploaded" (never returned). */
@@ -93,6 +96,7 @@ export interface BookingMockState {
   /** T-045: made-up requests to the signed-in chef; seeded on first use. */
   chefBookings?: MockBookingRow[];
   chefSeeded?: boolean;
+  customerSeeded?: boolean;
   /** T-045: receipts by booking id (both sides read them). */
   receipts?: Record<string, MockReceipt[]>;
 }
@@ -103,7 +107,12 @@ export interface BookingRouteResult {
   next?: Partial<
     Pick<
       BookingMockState,
-      "bookings" | "hooks" | "chefBookings" | "chefSeeded" | "receipts"
+      | "bookings"
+      | "hooks"
+      | "chefBookings"
+      | "chefSeeded"
+      | "customerSeeded"
+      | "receipts"
     >
   >;
 }
@@ -473,6 +482,21 @@ export function bookingRoutes(
       chefBookings: rows.rows,
       chefSeeded: true,
       receipts: rows.receipts,
+    };
+  }
+
+  if (role === "customer" && s.hooks.seedCustomer && !s.customerSeeded) {
+    const made = seedCustomerBookings(s.profile!, now);
+    base = {
+      ...s,
+      bookings: [...made.rows, ...s.bookings],
+      customerSeeded: true,
+      receipts: { ...(s.receipts ?? {}), ...made.receipts },
+    };
+    seeded = {
+      bookings: base.bookings,
+      customerSeeded: true,
+      receipts: base.receipts,
     };
   }
 

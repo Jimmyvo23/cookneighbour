@@ -116,6 +116,7 @@ interface MockState {
   /** MOCK requests to the signed-in chef, seeded on first use (T-045). */
   chefBookings: MockBookingRow[];
   chefSeeded: boolean;
+  customerSeeded: boolean;
   /** MOCK receipts by booking id (T-045). */
   receipts: Record<string, MockReceipt[]>;
 }
@@ -134,6 +135,7 @@ const EMPTY: MockState = {
   hooks: {},
   chefBookings: [],
   chefSeeded: false,
+  customerSeeded: false,
   receipts: {},
 };
 let memory: MockState = { ...EMPTY };

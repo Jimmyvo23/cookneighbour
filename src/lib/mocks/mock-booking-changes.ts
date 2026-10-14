@@ -376,6 +376,38 @@ export function seedChefBookings(
   };
 }
 
+/**
+ * The same made-up bookings seen by a signed-in customer (test hook `seedCustomer`, MOCK): the
+ * chef is a made-up one, the customer is the signed-in user. Used by the mock e2e tests of the
+ * customer's pickup and receipt screens, which need bookings in states a customer cannot reach
+ * alone in mock mode (nobody answers their requests).
+ */
+export function seedCustomerBookings(
+  customer: MeProfile,
+  now: Date,
+): { rows: MockBookingRow[]; receipts: SeededReceipts } {
+  const chef: MeProfile = {
+    id: uid(1001),
+    role: "chef",
+    displayName: "Mai Tran (MOCK)",
+    country: "CA",
+    currency: "CAD",
+    language: "en",
+  };
+  const made = seedChefBookings(chef, now);
+  return {
+    rows: made.rows.map((r) => ({
+      ...r,
+      detail: {
+        ...r.detail,
+        viewerRole: "customer" as const,
+        customer: { id: customer.id, displayName: customer.displayName },
+      },
+    })),
+    receipts: made.receipts,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Router for everything after /api/bookings/:id/
 // ---------------------------------------------------------------------------

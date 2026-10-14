@@ -651,3 +651,37 @@ describe("shopping list and receipts", () => {
     });
   });
 });
+
+describe("customer seeding hook (tests only)", () => {
+  it("gives a customer the same bookings from their side, once, only when asked", async () => {
+    const plain = asCustomer([]);
+    const none = (await plain.call("GET", "/api/bookings"))
+      .json as BookingListResponse;
+    expect(none.items).toEqual([]);
+
+    const cust = new Session(
+      chef({
+        profile: { ...chef().profile!, role: "customer", displayName: "Sam" },
+        hooks: { seedCustomer: true },
+      }),
+    );
+    const list = (await cust.call("GET", "/api/bookings"))
+      .json as BookingListResponse;
+    expect(list.items).toHaveLength(6);
+    expect(list.items[0].counterparty.displayName).toBe("Mai Tran (MOCK)");
+    const again = (await cust.call("GET", "/api/bookings"))
+      .json as BookingListResponse;
+    expect(again.items).toHaveLength(6);
+    const d = (await cust.call("GET", `/api/bookings/${A03}`))
+      .json as BookingDetail;
+    expect(d.viewerRole).toBe("customer");
+    expect(d.customer.displayName).toBe("Sam");
+    // The customer sees the chef's kitchen once accepted, never the customer's own phone.
+    expect(d.cookingPlace?.line).toMatch(/Kitchen/);
+    expect(d.contact?.phone).toBe("+14165550100");
+    // And the receipts are reachable.
+    const r = (await cust.call("GET", `/api/bookings/${A06}/receipts`))
+      .json as ReceiptList;
+    expect(r.items).toHaveLength(1);
+  });
+});
