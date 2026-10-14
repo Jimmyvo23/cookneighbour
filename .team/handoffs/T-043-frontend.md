@@ -65,3 +65,11 @@ From: frontend  To: tester
 - Q-2: Should the price step show the per-day breakdown (the API returns it)? It currently shows totals only, plus the days and dishes above.
 - Q-3: After "request sent", should a customer who is already at 3 open requests be warned on the form (before filling it in) instead of at the end? The form does not know the count; a call to `GET /api/bookings?status=requested` would tell it.
 - Q-4: The customer's own cooking address is visible on their booking page at all times (the contract says so). Is that the wanted behaviour for the page, or should it also wait for acceptance?
+
+## Round 2 (WO-4b, Jimmy's decisions D-38 to D-41)
+- D-38 (Q-1): one allergy tick on the review stays. No change. The saved allergy profile is T-067, not built.
+- D-39 (Q-2) per-day estimate: the review now has a "Day by day" block under the totals (`PerDayEstimate` in `src/components/booking/BookingFlow.tsx`). Source: the estimate API response, `estimate.days[]` (date, cookMinutes, labourCents, ingredientsCents), nothing computed in the browser. Labour per day is before the free first booking; the block says so when the trial applies. Totals are unchanged. Tests: `src/components/booking/PerDayEstimate.test.tsx`, mock e2e "the review shows an estimate for each day".
+- D-40 (Q-3) warning before the form: after the role is known, the form step calls `GET /api/bookings?status=requested&limit=20` and, with `MAX_OPEN_REQUESTS` (3) or more, shows `open-limit-warning` above the form: why, and a link to `/bookings`. It is a warning, not a block: the form stays usable and the server `TOO_MANY_OPEN_REQUESTS` handling is unchanged. If the count call fails there is no warning. The count is refreshed whenever the flow returns to the form step. Test: mock e2e "a customer with 3 open requests is warned before the form" (also checks no warning at 2, axe, and the link). The older "fourth open request is refused" test still covers the server path.
+- D-41 (Q-4): own address stays visible. No change.
+- No backend, contract or migration change.
+- Local results: lint, typecheck, prettier clean; 1616 unit tests pass (3 expected fail); 148 mock e2e pass.

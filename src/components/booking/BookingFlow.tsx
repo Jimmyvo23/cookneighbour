@@ -21,6 +21,7 @@ import {
 import { ApiClientError, apiFetch } from "@/lib/api/client";
 import type {
   BookingDetail,
+  BookingEstimate,
   BookingEstimateResponse,
   GroceryOption,
   LocationType,
@@ -54,7 +55,11 @@ import {
   formatDollars,
   formatMinutes,
 } from "@/lib/chef/dishes";
-import { MAX_BOOKING_DAYS, MAX_DISH_QUANTITY } from "@/lib/domain/config";
+import {
+  MAX_BOOKING_DAYS,
+  MAX_DISH_QUANTITY,
+  MAX_OPEN_REQUESTS,
+} from "@/lib/domain/config";
 import {
   allergenText,
   groupDatesByMonth,
@@ -95,6 +100,68 @@ interface FlowAlert {
   action?: React.ReactNode;
 }
 
+// D-39: per-day breakdown from the estimate API's `estimate.days` (no browser-side computing).
+export function PerDayEstimate({
+  days,
+  freeTrial,
+  location,
+}: {
+  days: BookingEstimate["days"];
+  freeTrial: boolean;
+  location: LocationType;
+}) {
+  if (!days || days.length === 0) return null;
+  return (
+    <div data-testid="per-day-estimate">
+      <h4 className="font-semibold">Day by day</h4>
+      <p className={hintCls}>
+        {freeTrial
+          ? "Labour here is before the free first booking; the total above has it waived. "
+          : ""}
+        {location === "customer_home"
+          ? "Travel is charged for each visit."
+          : "No travel fee for the chef's home."}
+      </p>
+      <ol className="mt-1 flex flex-col gap-2" aria-label="Estimate per day">
+        {[...days]
+          .sort((a, b) => (a.date < b.date ? -1 : 1))
+          .map((d, i) => (
+            <li
+              key={d.date}
+              data-testid="per-day-row"
+              className="rounded-md border border-zinc-300 p-3 text-sm dark:border-zinc-700"
+            >
+              <p className="font-semibold">
+                Day {i + 1}:{" "}
+                <time dateTime={d.date}>{shortDayLabel(d.date, true)}</time>
+              </p>
+              <dl className="flex flex-col">
+                <div className="flex justify-between gap-4">
+                  <dt>Cooking time</dt>
+                  <dd className="tabular-nums">
+                    {formatMinutes(d.cookMinutes)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt>Labour</dt>
+                  <dd className="tabular-nums">
+                    {formatDollars(d.labourCents)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt>Ingredients (estimated)</dt>
+                  <dd className="tabular-nums">
+                    {formatDollars(d.ingredientsCents)}
+                  </dd>
+                </div>
+              </dl>
+            </li>
+          ))}
+      </ol>
+    </div>
+  );
+}
+
 const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
 
 export function BookingFlow({ chefId }: { chefId: string }) {
@@ -115,6 +182,8 @@ export function BookingFlow({ chefId }: { chefId: string }) {
   const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
   const formHeadingRef = useRef<HTMLHeadingElement>(null);
   const addressPrefilled = useRef(false);
+  // D-40: how many requests wait for an answer, so the customer is warned before filling the form.
+  const [openCount, setOpenCount] = useState<number | null>(null);
 
   // The newest chef request wins.
   const seq = useRef(0);
@@ -187,6 +256,22 @@ export function BookingFlow({ chefId }: { chefId: string }) {
       current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (role !== "customer" || phase === "review") return;
+    let current = true;
+    apiFetch<{ items: unknown[] }>(
+      "/api/bookings?status=requested&limit=20",
+    ).then(
+      (r) => {
+        if (current && Array.isArray(r?.items)) setOpenCount(r.items.length);
+      },
+      () => {}, // the server still refuses a fourth request (TOO_MANY_OPEN_REQUESTS)
+    );
+    return () => {
+      current = false;
+    };
+  }, [role, phase]);
 
   useEffect(() => {
     document.title =
@@ -547,6 +632,26 @@ export function BookingFlow({ chefId }: { chefId: string }) {
                 {alert.action && <p className="mt-2">{alert.action}</p>}
               </div>
             )}
+
+            {phase === "form" &&
+              openCount !== null &&
+              openCount >= MAX_OPEN_REQUESTS && (
+                <div data-testid="open-limit-warning" className={warnBoxCls}>
+                  <p className="font-semibold">
+                    <span aria-hidden="true">&#9888; </span>
+                    You already have {openCount} requests waiting for an answer.
+                  </p>
+                  <p>
+                    You can have up to {MAX_OPEN_REQUESTS} at a time, so a chef
+                    is never asked by someone who is waiting on others. A new
+                    request will be refused until a chef answers one or you
+                    cancel one.{" "}
+                    <Link href="/bookings" className={linkCls}>
+                      See your requests
+                    </Link>
+                  </p>
+                </div>
+              )}
 
             {phase === "form" && (
               <FormStep
@@ -1328,6 +1433,11 @@ function ReviewStep({
           locationType={location}
           freeTrial={trialApplied}
           visits={days.length}
+        />
+        <PerDayEstimate
+          days={est.days}
+          freeTrial={trialApplied}
+          location={location}
         />
         {trialApplied && (
           <p

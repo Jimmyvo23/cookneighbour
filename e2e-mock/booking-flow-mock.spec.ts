@@ -529,6 +529,53 @@ test("a date that is already taken when the estimate runs is marked on its day (
   );
 });
 
+test("the review shows an estimate for each day (MOCK, D-39)", async ({
+  page,
+}) => {
+  await signUpCustomer(page);
+  await openBooking(page);
+  await fillForm(page, {
+    offsets: [5, 6],
+    dishes: [["Pho bo"], ["Goi cuon (fresh rolls)"]],
+    trial: false,
+  });
+  await toReview(page);
+  const rows = page.getByTestId("per-day-row");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText("Day 1");
+  await expect(rows.nth(0)).toContainText("3 h");
+  await expect(rows.nth(1)).toContainText("Day 2");
+  await expect(rows.nth(1)).toContainText("1 h");
+  await expect(rows.nth(0)).toContainText(/Labour/);
+  await expect(rows.nth(0)).toContainText(/Ingredients \(estimated\)/);
+  await expect(page.getByTestId("estimate")).toContainText("Estimated total");
+  await expectNoAxeViolations(page);
+});
+
+test("a customer with 3 open requests is warned before the form (MOCK, D-40)", async ({
+  page,
+}) => {
+  await signUpCustomer(page);
+  await bookOne(page, 7);
+  await bookOne(page, 8);
+  await openBooking(page);
+  // Two open requests: no warning yet.
+  await expect(page.getByLabel("How many days?")).toBeVisible();
+  await expect(page.getByTestId("open-limit-warning")).toHaveCount(0);
+  await fillForm(page, { offsets: [9], trial: false });
+  await toReview(page);
+  await page.getByRole("button", { name: "Send booking request" }).click();
+  await expect(page).toHaveURL(/\/bookings\/[0-9a-f-]{36}/);
+
+  await openBooking(page);
+  const warn = page.getByTestId("open-limit-warning");
+  await expect(warn).toContainText("3 requests waiting for an answer");
+  await expect(warn).toContainText("up to 3");
+  await expectNoAxeViolations(page);
+  await warn.getByRole("link", { name: "See your requests" }).click();
+  await expect(page).toHaveURL(/\/bookings$/);
+});
+
 test("a fourth open request is refused with a way to the list (MOCK, D-28)", async ({
   page,
 }) => {
