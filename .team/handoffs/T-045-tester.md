@@ -37,3 +37,11 @@ From: tester  To: reviewer
 
 ## What the next agent needs
 - Reviewer: check the four Frontend open questions (Q-1 to Q-4) are carried into PLAN.md; confirm the Impeccable notes. Nothing blocks.
+
+## Round 2 (commit 0d968a7)
+
+Result: PASS.
+- Chef view shows "Free first booking" plus exactly "Labour is free for the customer on this booking (prototype, MOCK)." and a MockBadge, only when b.isFreeTrial (unit test checks the non-trial booking has no label).
+- Wording is honest: it says labour is free for the customer, a prototype, MOCK; it no longer claims chef pay (CLAUDE.md 6.6, lessons 3).
+- Full `npm test`: 70 files, 1837 passed, 3 expected fail. Full `npm run test:e2e:mock`: 198 passed (my chef-bookings-tester-mock and mock-booking-changes.tester tests included). `gh pr checks 112`: ci pass.
+- No app code changed by me.
