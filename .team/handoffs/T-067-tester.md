@@ -2,7 +2,7 @@
 
 From: tester  To: reviewer
 
-## Verdict: PASS (pending CI on the added API/RLS tests; see CI line below)
+## Verdict: PASS (CI green on 093b93f, run 38664095191)
 
 ## What I checked (code read plus tests)
 - Routes `GET/PUT/DELETE /api/me/intake`: customers only via `requireCustomer()` (role from the `profiles` row, not JWT metadata). DELETE checks content-type before auth (400 for a bad type even when anonymous; harmless).
