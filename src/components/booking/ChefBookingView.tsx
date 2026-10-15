@@ -19,9 +19,13 @@ import type {
 } from "@/lib/api/types";
 import {
   CHEF_STATUS_TEXT,
+  CONTACT_ENDED_TEXT,
+  CONTACT_LOCKED_TEXT,
   allDaysCooked,
   changeErrorText,
   chefNoShowTrialText,
+  contactOpenText,
+  contactWindow,
   dayIsDue,
   isWaitingForCheck,
   pastUncookedDays,
@@ -252,8 +256,8 @@ function StatusNotes({ b }: { b: BookingDetail }) {
                     /, (\d+)$/,
                     " and $1",
                   )} have passed and are not marked as cooked.`}{" "}
-            Did you cook? Mark it as cooked in &quot;Days and dishes&quot;
-            below.
+            Did you cook? Mark {missed.length === 1 ? "it" : "them"} as cooked
+            in &quot;Days and dishes&quot; below.
           </p>
           {isWaitingForCheck(b, today) && (
             <p data-testid="waiting-check">
@@ -497,6 +501,8 @@ function Cooked({
 
 function Where({ b }: { b: BookingDetail }) {
   const hid = useId();
+  const win = contactWindow(b);
+  const windowText = contactOpenText(win);
   return (
     <section
       aria-labelledby={`${hid}-h`}
@@ -521,7 +527,9 @@ function Where({ b }: { b: BookingDetail }) {
         <p data-testid="address-later" className={infoBoxCls}>
           {b.status === "requested"
             ? "The customer's address is shown once you accept this booking."
-            : "The customer's address is not shown for this booking."}
+            : win.kind === "ended"
+              ? "The customer's address is hidden now."
+              : "The customer's address is not shown for this booking."}
         </p>
       ) : null}
       {b.contact?.phone ? (
@@ -535,16 +543,33 @@ function Where({ b }: { b: BookingDetail }) {
         <p data-testid="contact-later" className={hintCls}>
           {b.status === "requested"
             ? "The customer's phone number is shown once you accept."
-            : "The customer's phone number is not shown for this booking."}
+            : win.kind === "ended"
+              ? CONTACT_ENDED_TEXT
+              : win.kind === "locked"
+                ? `The customer's phone number is not shown for this booking. ${CONTACT_LOCKED_TEXT}`
+                : "The customer's phone number is not shown for this booking."}
         </p>
       )}
-      {b.locationType === "chef_home" && <KitchenNote status={b.status} />}
+      {windowText && (
+        <p data-testid="contact-window" className={hintCls}>
+          {windowText}
+        </p>
+      )}
+      {b.locationType === "chef_home" && (
+        <KitchenNote status={b.status} ended={win.kind === "ended"} />
+      )}
     </section>
   );
 }
 
 /** What the chef is told about their kitchen address (T-033, contract N3 and `kitchen_in_use`). */
-function KitchenNote({ status }: { status: BookingStatus }) {
+function KitchenNote({
+  status,
+  ended,
+}: {
+  status: BookingStatus;
+  ended: boolean;
+}) {
   if (status === "requested")
     return (
       <p data-testid="kitchen-note" className={infoBoxCls}>
@@ -556,9 +581,11 @@ function KitchenNote({ status }: { status: BookingStatus }) {
   if (status === "accepted")
     return (
       <p data-testid="kitchen-note" className={infoBoxCls}>
-        The customer can now see your kitchen address. While you have an
-        accepted booking at your home, your kitchen address is locked and cannot
-        be changed on your application page.
+        {ended
+          ? "The customer can no longer see your kitchen address: it is hidden 7 days after the last visit day."
+          : "The customer can now see your kitchen address until 7 days after the last visit day."}{" "}
+        While you have an accepted booking at your home, your kitchen address is
+        locked and cannot be changed on your application page.
       </p>
     );
   if (
@@ -568,9 +595,12 @@ function KitchenNote({ status }: { status: BookingStatus }) {
   )
     return (
       <p data-testid="kitchen-note" className={hintCls}>
-        This booking is finished. The customer can still see your kitchen
-        address for it. This booking no longer locks your kitchen address.
-        Another accepted booking at your home can still lock it.
+        This booking is finished.{" "}
+        {ended
+          ? "The customer can no longer see your kitchen address for it: it is hidden 7 days after the last visit day."
+          : "The customer can still see your kitchen address for it until 7 days after the last visit day."}{" "}
+        This booking no longer locks your kitchen address. Another accepted
+        booking at your home can still lock it.
       </p>
     );
   if (status === "cancelled")

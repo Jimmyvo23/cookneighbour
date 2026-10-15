@@ -7,6 +7,9 @@ import type {
 } from "@/lib/api/types";
 import {
   canChefCancel,
+  canCustomerCancel,
+  contactOpenText,
+  contactWindow,
   cancelBookingErrorText,
   noShowDay,
   isWaitingForCheck,
@@ -452,5 +455,74 @@ describe("waiting for a check around Toronto midnight (T-072 tester)", () => {
     // 2026-11-02 04:59Z is 23:59 EST on 1 Nov; 05:00Z is midnight on 2 Nov.
     expect(waitingAt("2026-11-02T04:59:00Z", "2026-11-01")).toBe(false);
     expect(waitingAt("2026-11-02T05:00:00Z", "2026-11-01")).toBe(true);
+  });
+});
+
+describe("customer cancel guard and contact window (T-073)", () => {
+  const book = (over: Partial<BookingDetail>, dates: string[] = []) =>
+    ({
+      status: "accepted",
+      contact: null,
+      days: dates.map((date, i) => day({ dayNumber: i + 1, date })),
+      ...over,
+    }) as BookingDetail;
+  const T = "2026-10-20";
+
+  it("customer can cancel while a visit is today or later, or while only requested", () => {
+    expect(canCustomerCancel(book({}, [T]), T)).toBe(true);
+    expect(canCustomerCancel(book({}, ["2026-10-19", "2026-10-21"]), T)).toBe(
+      true,
+    );
+    expect(
+      canCustomerCancel(book({ status: "requested" }, ["2026-10-19"]), T),
+    ).toBe(true);
+  });
+  it("customer cannot cancel when every visit is past, or the status is final", () => {
+    expect(canCustomerCancel(book({}, ["2026-10-18", "2026-10-19"]), T)).toBe(
+      false,
+    );
+    for (const status of [
+      "completed",
+      "cancelled",
+      "declined",
+      "expired",
+    ] as const)
+      expect(canCustomerCancel(book({ status }, [T]), T)).toBe(false);
+  });
+
+  it("classifies the contact window from the status and what the server sent", () => {
+    const contact = { displayName: "A", phone: "+14165550100" };
+    expect(contactWindow(book({ status: "requested" })).kind).toBe("later");
+    expect(contactWindow(book({ status: "cancelled" })).kind).toBe("locked");
+    expect(contactWindow(book({ status: "declined" })).kind).toBe("never");
+    expect(contactWindow(book({ status: "expired" })).kind).toBe("never");
+    for (const status of [
+      "accepted",
+      "completed",
+      "no_show_customer",
+      "no_show_chef",
+    ] as const) {
+      expect(contactWindow(book({ status })).kind).toBe("ended");
+      expect(contactWindow(book({ status, contact })).kind).toBe("open");
+    }
+  });
+
+  it("words the cut-off in Toronto time (DST-safe) and says nothing when not open", () => {
+    // 00:00 Toronto on 2026-10-28 is 04:00Z (EDT); 2026-11-04 is 05:00Z (EST).
+    const summer = contactOpenText({
+      kind: "open",
+      until: "2026-10-28T04:00:00.000Z",
+    });
+    expect(summer).toContain("Oct 28");
+    expect(summer).toContain("12:00");
+    expect(summer).toContain("Toronto time");
+    expect(
+      contactOpenText({ kind: "open", until: "2026-11-04T05:00:00.000Z" }),
+    ).toContain("Nov 4");
+    expect(contactOpenText({ kind: "open", until: null })).toContain(
+      "7 days after the last visit day",
+    );
+    expect(contactOpenText({ kind: "ended" })).toBeNull();
+    expect(contactOpenText({ kind: "locked" })).toBeNull();
   });
 });

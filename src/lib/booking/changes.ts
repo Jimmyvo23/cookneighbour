@@ -235,6 +235,63 @@ export function canChefCancel(b: BookingDetail, today: string): boolean {
 }
 
 /**
+ * Customer cancel guard (T-072 L-B): the customer can cancel a requested booking, or an accepted
+ * one while a visit is left (a day dated today or later; Toronto). When every visit is past the
+ * server answers 409 `nothing_left`, so the button is not shown. A requested booking can always
+ * be cancelled; the server decides the rest.
+ */
+export function canCustomerCancel(b: BookingDetail, today: string): boolean {
+  if (b.status === "requested") return true;
+  return b.status === "accepted" && b.days.some((d) => d.date >= today);
+}
+
+/**
+ * Where a booking stands in the contact window (D-52, D-56). The server decides; this only words
+ * what it sent. `open`: phone/address shown (until `until`, Toronto time). `ended`: the booking
+ * was accepted, completed or a no-show but the server no longer sends contact (7 days after the
+ * last visit day). `locked`: cancelled, so contact closed at once (D-56). `later`: requested.
+ * `never`: declined or expired.
+ */
+export type ContactWindow =
+  | { kind: "open"; until: string | null }
+  | { kind: "ended" }
+  | { kind: "locked" }
+  | { kind: "later" }
+  | { kind: "never" };
+
+export function contactWindow(b: BookingDetail): ContactWindow {
+  switch (b.status) {
+    case "requested":
+      return { kind: "later" };
+    case "cancelled":
+      return { kind: "locked" };
+    case "declined":
+    case "expired":
+      return { kind: "never" };
+    default:
+      return b.contact
+        ? { kind: "open", until: b.contactVisibleUntil ?? null }
+        : { kind: "ended" };
+  }
+}
+
+export const CONTACT_RULE =
+  "Phone numbers and addresses are hidden 7 days after the last visit day. Chat stays open.";
+
+/** The sentence under the contact details while they are visible. Null when nothing is shown. */
+export function contactOpenText(w: ContactWindow): string | null {
+  if (w.kind !== "open") return null;
+  return w.until
+    ? `Visible until ${formatWhen(w.until)} (Toronto time). ${CONTACT_RULE}`
+    : CONTACT_RULE;
+}
+
+/** The sentence that replaces hidden contact details, for the ended and cancelled cases. */
+export const CONTACT_ENDED_TEXT = `Contact details are hidden now. ${CONTACT_RULE}`;
+export const CONTACT_LOCKED_TEXT =
+  "Phone numbers and addresses are locked when a booking is cancelled. Chat stays open.";
+
+/**
  * The visit a customer no-show can be reported for: the earliest day whose date has come and that
  * was not marked cooked (contract 7A: reportable from the visit date, an ASSUMPTION there). Null
  * when none is due.

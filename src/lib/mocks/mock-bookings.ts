@@ -45,7 +45,10 @@ import {
   type BookableDish,
   type BookingChef,
 } from "@/lib/domain/bookingValidation";
-import { cancellationTiming } from "@/lib/domain/cancellation";
+import {
+  cancellationTiming,
+  torontoStartOfDay,
+} from "@/lib/domain/cancellation";
 import { MAX_OPEN_REQUESTS } from "@/lib/domain/config";
 import { findContactDetails } from "@/lib/domain/contactDetails";
 import { estimateBooking, type Estimate } from "@/lib/domain/pricing";
@@ -192,13 +195,22 @@ export function sweepMock(
 export function viewOf(
   r: MockBookingRow,
   role: "customer" | "chef" = "customer",
+  now: Date = new Date(),
 ): BookingDetail {
   const d = r.detail;
-  const shows = SHOWS_CONTACT.includes(d.status);
+  // D-52 (T-065): contact is hidden again at 00:00 Toronto on the last visit day + 8 (this mirrors
+  // `booking_contact_ends_at`). `contactVisibleUntil` is null whenever contact is hidden.
+  const last = d.days.map((x) => x.date).sort()[d.days.length - 1];
+  const endsAt = last ? torontoStartOfDay(addDays(last, 8)) : null;
+  const shows =
+    SHOWS_CONTACT.includes(d.status) &&
+    (!endsAt || now.getTime() < endsAt.getTime());
+  const contactVisibleUntil = shows && endsAt ? endsAt.toISOString() : null;
   if (role === "chef")
     return {
       ...d,
       viewerRole: "chef",
+      contactVisibleUntil,
       cookingPlace:
         shows && d.locationType === "customer_home" ? r.place : null,
       contact: shows
@@ -211,6 +223,7 @@ export function viewOf(
   const own = d.locationType === "customer_home"; // the customer's own cooking address
   return {
     ...d,
+    contactVisibleUntil,
     cookingPlace: own || shows ? r.place : null,
     contact: shows
       ? { displayName: d.chef.displayName, phone: r.chefPhone }
