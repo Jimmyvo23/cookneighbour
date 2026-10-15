@@ -37,6 +37,7 @@ import {
   parseProposedAt,
   pickupDeadline,
 } from "@/lib/domain/bookingChanges";
+import { KITCHEN_ADDRESS_MISSING_MESSAGE } from "@/lib/booking/changes";
 import { cancellationTiming } from "@/lib/domain/cancellation";
 import { findContactDetails } from "@/lib/domain/contactDetails";
 import { addDays, torontoToday } from "@/lib/domain/dishes";
@@ -569,7 +570,7 @@ export function changeRoute(
       if (d.locationType === "chef_home" && s.hooks.kitchenAddressMissing)
         return invalid(
           "kitchen_address_missing",
-          "Your kitchen address is missing, so this booking cannot be accepted. Adding a kitchen address switches cooking at your home off until an admin checks it again, so declining this request is the practical choice.",
+          KITCHEN_ADDRESS_MISSING_MESSAGE,
         );
       return save({ ...d, status: "accepted", respondedAt: now.toISOString() });
     }

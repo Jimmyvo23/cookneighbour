@@ -533,7 +533,7 @@ export function bookingRoutes(
     if (p === "/api/bookings" && method === "GET")
       return carry(listRoute(url, state, "chef"));
     if (one && method === "GET")
-      return carry(detailRoute(one[1], state, "chef"));
+      return carry(detailRoute(one[1], state, "chef", now));
     const changed = changeRoute(method, p, body, state, "chef", now);
     if (changed) return carry(changed);
     return carry(fail(403, "FORBIDDEN", "Only customers can use this."));
@@ -546,7 +546,7 @@ export function bookingRoutes(
   if (p === "/api/bookings" && method === "GET")
     return carry(listRoute(url, state, "customer"));
   if (one && method === "GET")
-    return carry(detailRoute(one[1], state, "customer"));
+    return carry(detailRoute(one[1], state, "customer", now));
   if (cancel && method === "POST")
     return carry(cancelRoute(cancel[1], body, state, now));
   const changed = changeRoute(method, p, body, state, "customer", now);
@@ -811,10 +811,11 @@ function detailRoute(
   id: string,
   s: BookingMockState,
   role: "customer" | "chef",
+  now: Date = new Date(),
 ): BookingRouteResult {
   const rows = role === "chef" ? (s.chefBookings ?? []) : s.bookings;
   const r = UUID.test(id) ? rows.find((x) => x.detail.id === id) : undefined;
-  return r ? { res: json(200, viewOf(r, role)) } : notFound();
+  return r ? { res: json(200, viewOf(r, role, now)) } : notFound();
 }
 
 function cancelRoute(
