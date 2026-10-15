@@ -191,6 +191,8 @@ export function BookingFlow({ chefId }: { chefId: string }) {
   const [saved, setSaved] = useState<SavedIntakeResponse | null>(null);
   const [saveToProfile, setSaveToProfile] = useState(false);
   const savedRef = useRef<SavedIntakeResponse | null>(null);
+  // The profile PUT that may still be running when the sent state shows; "Book another visit" waits for it.
+  const profilePutRef = useRef<Promise<unknown> | null>(null);
 
   // The newest chef request wins.
   const seq = useRef(0);
@@ -531,10 +533,15 @@ export function BookingFlow({ chefId }: { chefId: string }) {
       let profileFailed = false;
       if (saveToProfile) {
         try {
-          await apiFetch<SavedIntakeResponse>("/api/me/intake", {
+          const putPromise = apiFetch<SavedIntakeResponse>("/api/me/intake", {
             method: "PUT",
             body: intakeFromDraft(draft),
           });
+          profilePutRef.current = putPromise.catch(() => {});
+          const put = await putPromise;
+          // "Book another visit" must refill from what was just saved, not the page-open snapshot.
+          savedRef.current = put;
+          setSaved(put);
         } catch {
           profileFailed = true;
         }
@@ -651,7 +658,8 @@ export function BookingFlow({ chefId }: { chefId: string }) {
                   <button
                     type="button"
                     className={secondaryButtonCls}
-                    onClick={() => {
+                    onClick={async () => {
+                      await profilePutRef.current;
                       const fill = savedRef.current?.intake;
                       setDraft((d) => ({
                         ...emptyDraft(),

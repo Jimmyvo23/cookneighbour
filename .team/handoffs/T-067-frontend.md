@@ -24,3 +24,12 @@ From: frontend  To: tester
 
 ## What the next agent needs
 Test ideas: type in the form before the profile loads; save with the box ticked then change the profile page; two tabs; phone width 375; chef or admin visiting `/allergies`.
+
+## Round 2
+
+Fixed bug T67-T1 (LOW), "Book another visit with this chef" refilled from the page-open profile.
+
+- `src/components/booking/BookingFlow.tsx`: after the post-booking `PUT /api/me/intake` succeeds, `savedRef.current` and `saved` are set from its response. The PUT promise is kept in `profilePutRef`, and the "Book another visit" button awaits it, so a click while the save is still running refills from the new profile.
+- `e2e-mock/allergy-profile-tester-mock.spec.ts`: removed `test.fail()`. The test held the sent state by aborting the navigation request, but Next then falls back to a hard navigation that also fails and leaves an error page. Changed it to a request that never answers (`page.route(..., () => {})`), which keeps the sent state on screen. Test code only.
+- Impeccable finish-reviewer/documenter steps skipped (D-44). No visual change.
+- Results: prettier, lint, typecheck clean; unit 2002 passed plus 3 expected fail (81 files); mock e2e 233 passed.

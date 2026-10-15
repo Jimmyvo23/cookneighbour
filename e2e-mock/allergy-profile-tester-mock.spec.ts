@@ -128,8 +128,6 @@ test("Book another visit button refills from the profile just saved, not the one
 }) => {
   // BUG T67-T1 (LOW): the refill uses the snapshot loaded when the page opened, so after the
   // customer replaced the profile with this booking, the next visit shows the OLD answers.
-  // test.fail turns red when the builder fixes it; then delete the next line.
-  test.fail();
   await signUpCustomer(page);
   await page.goto("/allergies");
   await page.getByRole("checkbox", { name: "Mustard" }).check();
@@ -144,8 +142,8 @@ test("Book another visit button refills from the profile just saved, not the one
   await page
     .getByRole("checkbox", { name: /Replace my saved allergy profile/ })
     .check();
-  // Hold the page on the sent state: block the navigation the way a slow network would.
-  await page.route("**/bookings/**", (r) => r.abort());
+  // Hold the page on the sent state: the navigation request hangs the way a very slow network would.
+  await page.route("**/bookings/**", () => {}); // never answered: the page stays on the sent state
   await sendBooking(page);
   const another = page.getByRole("button", {
     name: "Book another visit with this chef",
