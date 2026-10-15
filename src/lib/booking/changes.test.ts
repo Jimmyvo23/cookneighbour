@@ -538,4 +538,20 @@ describe("customer cancel guard and contact window (T-073)", () => {
     expect(contactOpenText({ kind: "ended" })).toBeNull();
     expect(contactOpenText({ kind: "locked" })).toBeNull();
   });
+
+  it("D-64 DST edges: spring-forward day, fall-back day, and the instant just after midnight", () => {
+    const txt = (until: string) => contactOpenText({ kind: "open", until });
+    // Last day Mar 6 2027 -> cut-off Mar 14 00:00 Toronto = 05:00Z (EST, DST starts 02:00 that day).
+    expect(txt("2027-03-14T05:00:00.000Z")).toContain("end of Sat, Mar 13 ");
+    // Last day Mar 7 -> cut-off Mar 15 00:00 EDT = 04:00Z; Mar 14 is a 23-hour day.
+    expect(txt("2027-03-15T04:00:00.000Z")).toContain("end of Sun, Mar 14 ");
+    // Fall back: Nov 1 2026 is a 25-hour day; cut-off Nov 2 00:00 EST = 05:00Z.
+    expect(txt("2026-11-02T05:00:00.000Z")).toContain("end of Sun, Nov 1 ");
+    // Last day Oct 24 -> cut-off Nov 1 00:00 EDT = 04:00Z -> Sat, Oct 31.
+    expect(txt("2026-11-01T04:00:00.000Z")).toContain("end of Sat, Oct 31 ");
+    // One ms past midnight belongs to the next day (the minus-1-ms rule is exact).
+    expect(txt("2026-10-28T04:00:00.001Z")).toContain("end of Wed, Oct 28 ");
+    // Empty string cut-off: rule only.
+    expect(txt("")).toBe(CONTACT_RULE);
+  });
 });

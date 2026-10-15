@@ -31,3 +31,13 @@ Local results: lint, typecheck, prettier clean; unit 78 files, 1978 passed + 3 e
 
 ## CI
 ci green on head 758bbf7 (run 38754703676), including DB, RLS and API tests. The RLS duplicate-date flake in storage.test.ts did not recur.
+
+## Round 2 (head 6affb93 plus one test commit): PASS
+
+- Local on 6affb93: lint, typecheck clean; unit 1978 passed + 3 expected fail; mock e2e 220 passed.
+- D-63: grep of src, e2e, e2e-mock, docs finds "Chat stays open" only in not.toContain assertions (4). Gone from CONTACT_RULE and CONTACT_LOCKED_TEXT. OK.
+- D-64: `contactOpenText` uses (until - 1 ms) in America/Toronto, weekday/month/day, no clock time. Missing and unreadable `until` fall back to the rule only. OK.
+- Added test (tests only) in `src/lib/booking/changes.test.ts`: spring-forward edge (Mar 2027, 23-hour day), fall-back (25-hour day Nov 1), Oct 31 EDT to Nov 1 cut-off, +1 ms past midnight (next day), empty-string `until`. 36 tests in file pass.
+- N-1: `KITCHEN_ADDRESS_MISSING_MESSAGE` is one constant used by EXTRA_REASONS and the mock server. OK.
+- N-2: `detailRoute(..., now)` now passes `now` to `viewOf`. OK.
+- Findings: none blocking. INFO: a page left open across the cut-off keeps old text until reload (accepted).
