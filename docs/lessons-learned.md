@@ -57,6 +57,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - Never push to `main`, never force-push. Never loosen branch protection to go faster.
 - **Installers that write `.claude/settings.local.json` write to the checkout that runs them.** In a worktree the hook lands in the worktree and the session (which loads the main folder's settings) never sees it. Have the builder put the block in its handoff; the Planner places it in the main folder after merge and Jimmy's OK. *(T-068 Impeccable hook.)*
 - On macOS, `sed -i` needs an empty suffix: `sed -i '' 's/a/b/' file`. *(GNU-style `sed -i` failed during T-040.)*
+- If `gh pr checks <n> --watch` says "no checks reported" right after a push, use `gh run watch` on the new run instead. *(T-073 round 2.)*
 
 ## 5. Supabase and secrets
 
