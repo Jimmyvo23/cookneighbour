@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   SEEDED,
+  dayPlus,
   blockAllStorage,
   editMockState,
   expectNoAxeViolations,
@@ -195,11 +196,15 @@ test.describe("chef reports a customer no-show", () => {
     await expect(page.getByTestId("no-show-unavailable")).toContainText(
       "from the day of a visit",
     );
-    await editMockState(page, (st) => {
-      for (const r of st.chefBookings)
-        if (r.detail.id.endsWith("9101"))
-          r.detail.days[0].date = new Date().toISOString().slice(0, 10);
-    });
+    // Toronto calendar day (not the UTC date: that is tomorrow in the evening).
+    await editMockState(
+      page,
+      (st, today: string) => {
+        for (const r of st.chefBookings)
+          if (r.detail.id.endsWith("9101")) r.detail.days[0].date = today;
+      },
+      dayPlus(0),
+    );
     await page.reload();
     await page
       .getByRole("button", { name: "Report a customer no-show" })
