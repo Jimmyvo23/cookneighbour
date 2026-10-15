@@ -112,8 +112,11 @@ describe("D-36 sweep: idempotent, scoped, neutral", () => {
   it("one sweep completes the cooked booking and flags the uncooked one", async () => {
     const cooker = await setup();
     const idle = await setup();
-    for (const x of [cooker, idle]) await shiftDays(x.id, 5);
+    // The chef marks the day while the booking is not yet due (any route call runs the lazy sweep
+    // first, so a chef who is late is flagged before the mark lands). Then both become due.
+    for (const x of [cooker, idle]) await shiftDays(x.id, 4);
     expect((await cooked(cooker.chef.b, cooker.id, 1)).status).toBe(200);
+    for (const x of [cooker, idle]) await shiftDays(x.id, 2);
     // Neither is due for a customer-scoped sweep of the other, so run both users.
     expect((await sweep(cooker.cust.id)).data).toMatchObject({
       completed: 1,
