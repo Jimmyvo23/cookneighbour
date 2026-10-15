@@ -21,10 +21,13 @@ import { formatDollars } from "@/lib/chef/dishes";
 // ---------------------------------------------------------------------------
 
 /** Extra texts for the reasons that CHANGE_REFUSALS does not word for people. */
+/** D-59: one wording for the UI and the mock server, so the two cannot drift. */
+export const KITCHEN_ADDRESS_MISSING_MESSAGE =
+  "Your kitchen address is missing, so this booking cannot be accepted. Adding a kitchen address switches cooking at your home off until an admin checks it again, so declining this request is the practical choice.";
+
 const EXTRA_REASONS: Record<string, string> = {
   // D-59: accept is refused while chef's home is on but no kitchen address is saved.
-  kitchen_address_missing:
-    "Your kitchen address is missing, so this booking cannot be accepted. Adding a kitchen address switches cooking at your home off until an admin checks it again, so declining this request is the practical choice.",
+  kitchen_address_missing: KITCHEN_ADDRESS_MISSING_MESSAGE,
   chef_home_not_enabled:
     "Cooking at your home was switched off after this request came in, so it cannot be accepted. Decline it instead and say why.",
   kitchen_in_use:
@@ -279,20 +282,36 @@ export function contactWindow(b: BookingDetail): ContactWindow {
 }
 
 export const CONTACT_RULE =
-  "Phone numbers and addresses are hidden 7 days after the last visit day. Chat stays open.";
+  "Phone numbers and addresses are hidden 7 days after the last visit day.";
+
+/**
+ * D-64: the server cut-off is midnight Toronto, so the last visible day is the one containing
+ * (cut-off - 1 ms). Returns e.g. "Wed, Oct 21", or null when the value is missing or invalid.
+ */
+function lastVisibleDay(untilIso: string): string | null {
+  const t = new Date(untilIso).getTime();
+  if (Number.isNaN(t)) return null;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(t - 1));
+}
 
 /** The sentence under the contact details while they are visible. Null when nothing is shown. */
 export function contactOpenText(w: ContactWindow): string | null {
   if (w.kind !== "open") return null;
-  return w.until
-    ? `Visible until ${formatWhen(w.until)} (Toronto time). ${CONTACT_RULE}`
+  const day = w.until ? lastVisibleDay(w.until) : null;
+  return day
+    ? `Visible until the end of ${day} (Toronto time). ${CONTACT_RULE}`
     : CONTACT_RULE;
 }
 
 /** The sentence that replaces hidden contact details, for the ended and cancelled cases. */
 export const CONTACT_ENDED_TEXT = `Contact details are hidden now. ${CONTACT_RULE}`;
 export const CONTACT_LOCKED_TEXT =
-  "Phone numbers and addresses are locked when a booking is cancelled. Chat stays open.";
+  "Phone numbers and addresses are locked when a booking is cancelled.";
 
 /**
  * The visit a customer no-show can be reported for: the earliest day whose date has come and that

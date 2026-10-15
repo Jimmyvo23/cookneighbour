@@ -99,7 +99,8 @@ describe.each(["customer", "chef"] as const)("%s page", (role) => {
     expect(note).toContain("Visible until");
     expect(note).toContain("Toronto time");
     expect(note).toContain(RULE);
-    expect(note).toContain("Chat stays open");
+    expect(note).not.toContain("Chat stays open");
+    expect(note).toContain("Visible until the end of");
     expect(h.q("contact")).not.toBeNull();
     expect(h.q("contact-later")).toBeNull();
   });
