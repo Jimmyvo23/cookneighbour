@@ -272,6 +272,9 @@ describe("cancel an accepted booking", () => {
     await open(accepted(3, (b) => ({ ...b, locationType: "chef_home" })));
     await h.click(h.button("Cancel this booking"));
     expect(h.q("end-booking")?.textContent).toContain("your kitchen address");
+    expect(h.q("end-booking")?.textContent).toContain(
+      "you can no longer see their phone number",
+    );
     h.cleanup();
     h = harness();
     await open(accepted(3));

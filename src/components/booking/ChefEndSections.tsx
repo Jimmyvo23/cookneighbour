@@ -41,7 +41,7 @@ import {
 type OnChange = (b: BookingDetail, message?: string) => void;
 
 /** One confirm step: opens on a button, takes focus on its heading, returns focus on "go back". */
-function useConfirm() {
+function useConfirm(onShow?: () => void) {
   const [open, setOpen] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -58,7 +58,10 @@ function useConfirm() {
     open,
     opener,
     heading,
-    show: () => setOpen(true),
+    show: () => {
+      onShow?.();
+      setOpen(true);
+    },
     back: () => {
       goingBack.current = true;
       setOpen(false);
@@ -98,7 +101,7 @@ function CancelBooking({
 }) {
   const sec = useSection();
   const scope = useId();
-  const { open, opener, heading, show, back } = useConfirm();
+  const { open, opener, heading, show, back } = useConfirm(sec.clear);
   const [reason, setReason] = useState("");
   const today = torontoToday();
   const possible = canChefCancel(b, today);
@@ -148,8 +151,9 @@ function CancelBooking({
       <h3 className="text-base font-semibold">Cancel this booking</h3>
       {!possible ? (
         <p data-testid="cancel-unavailable" className={hintCls}>
-          There is nothing left to cancel: every visit is either cooked or in
-          the past. When you have finished, press Visit done.
+          There is nothing left to cancel: every visit is cooked or its date has
+          passed. Mark the days you cooked, then press Visit done. If the
+          customer did not show up, report it below.
         </p>
       ) : !open ? (
         <>
@@ -188,7 +192,7 @@ function CancelBooking({
               <li>
                 The customer is told, and the days are free for other bookings.
                 {home
-                  ? " They can no longer see your kitchen address for this booking."
+                  ? " They can no longer see your kitchen address, and you can no longer see their phone number."
                   : " You can no longer see their address and phone number."}
               </li>
               {trial && (
@@ -244,7 +248,7 @@ function ReportNoShow({
   onChange: OnChange;
 }) {
   const sec = useSection();
-  const { open, opener, heading, show, back } = useConfirm();
+  const { open, opener, heading, show, back } = useConfirm(sec.clear);
   const today = torontoToday();
   const due = noShowDay(b, today);
   const next = [...b.days]
