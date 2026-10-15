@@ -34,3 +34,15 @@ Results here: lint, typecheck, prettier clean; unit 77 files, 1971 passed + 3 ex
 ## Open questions
 1. Do you want "Visible until" to read "end of <day>" instead of "12:00 a.m." (see risks)?
 2. Is a "hidden now" text enough for declined and expired bookings? They keep the old "not shown for this booking" line (the window does not apply).
+
+## Round 2
+
+Reviewer asked for changes (R-1, R-2, N-1, N-2). Jimmy's decisions D-63 and D-64.
+
+- R-1 (D-63): "Chat stays open." removed from CONTACT_RULE and CONTACT_LOCKED_TEXT in `src/lib/booking/changes.ts`. No other copies (grep of src, e2e-mock, e2e, docs). Tests in `ContactWindow.test.tsx`, `changes.test.ts` and `e2e-mock/t073-contact-window-mock.spec.ts` now assert the sentence is absent. The Planner adds the T-047 note (PLAN.md not touched).
+- R-2 (D-64): `contactOpenText` now reads "Visible until the end of <Tue, Oct 27> (Toronto time). ...". The day is taken from (contactVisibleUntil - 1 ms) in America/Toronto, weekday/month/day, no time. Server value is the only source. Tests: summer (04:00Z), November after DST (Nov 2 05:00Z -> "Sun, Nov 1"), missing `until` and an unreadable `until` (rule only).
+- N-1: `KITCHEN_ADDRESS_MISSING_MESSAGE` exported from `src/lib/booking/changes.ts`, used by EXTRA_REASONS and by the mock server.
+- N-2: `detailRoute` in `src/lib/mocks/mock-bookings.ts` takes `now` and passes it to `viewOf`.
+- Impeccable helper agents skipped (D-44); copy-only change, no layout edits.
+
+Checks: lint, tsc, prettier clean; unit 1978 passed + 3 expected fail; mock e2e 220 passed.
