@@ -89,7 +89,14 @@ export function useSection() {
     }
   }
 
-  return { error, notice, fieldErrors, busy, alertId, run, fail };
+  /** Forget an old error or notice (for example when a confirm step reopens). */
+  function clear() {
+    setError(null);
+    setNotice(null);
+    setFieldErrors({});
+  }
+
+  return { error, notice, fieldErrors, busy, alertId, run, fail, clear };
 }
 
 export function Alert({ id, message }: { id: string; message: string | null }) {

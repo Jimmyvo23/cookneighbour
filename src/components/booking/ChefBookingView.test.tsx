@@ -383,6 +383,7 @@ describe("pickups and a missed pickup", () => {
     const missed: BookingDetail = {
       ...b,
       status: "no_show_customer",
+      isFreeTrial: true,
       noShow: {
         reportedAt: new Date().toISOString(),
         dayNumber: 1,
@@ -403,6 +404,9 @@ describe("pickups and a missed pickup", () => {
     expect(callsTo(h.fetchMock, "/pickup/missed")).toHaveLength(1);
     expect(h.q("status")?.textContent).toContain("customer no-show");
     expect(h.q("no-show")?.textContent).toContain("pickup as missed");
+    expect(h.q("no-show")?.textContent).toContain(
+      "free first booking counts as used",
+    );
   });
 
   it("explains a refusal because the window is still open", async () => {
@@ -466,7 +470,7 @@ describe("wording on finished bookings (round 3, M1)", () => {
     await open(as(9103, "completed"));
     const n = h.q("kitchen-note")?.textContent ?? "";
     expect(n).toContain("can still see your kitchen address");
-    expect(n).toContain("no longer locked");
+    expect(n).toContain("no longer locks your kitchen address");
     expect(h.text()).not.toMatch(never);
   });
   it("a customer no-show keeps the same wording", async () => {
@@ -485,7 +489,7 @@ describe("wording on finished bookings (round 3, M1)", () => {
     await open(as(9103, "cancelled"));
     const n = h.q("kitchen-note")?.textContent ?? "";
     expect(n).toContain("cannot see your kitchen address");
-    expect(n).toContain("no longer locked");
+    expect(n).toContain("no longer locks your kitchen address");
   });
   it("only a waiting request says 'once you accept'", async () => {
     await open(as(9101, "requested"));
