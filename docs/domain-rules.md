@@ -41,6 +41,6 @@ Pure rules: `src/lib/domain/freeTrial.ts`. Server functions: `src/lib/server/fre
 
 ## Flagged bookings (T-064)
 
-- **D-53 freeze.** A booking with an open admin flag other than `no_day_cooked` (today `chef_rejected`, D-22) is frozen until an admin decides: no completion (manual or automatic), no chef action (cooked, no-show, pickup answers, receipts, cancel), and the neutral notice for the customer (`BookingDetail.frozen`). No refund or rebooking flow exists (payments are MOCK). Interim: the customer's cancel, no-show report and pickup proposal are refused too (question for Jimmy).
+- **D-53 freeze.** A booking with an open admin flag other than `no_day_cooked` (today `chef_rejected`, D-22) is frozen until an admin decides: no completion (manual or automatic), no chef action (cooked, no-show, pickup answers, receipts, cancel), and the neutral notice for the customer (`BookingDetail.frozen`). No refund or rebooking flow exists (payments are MOCK). D-65: the customer's cancel, no-show report and pickup proposal are refused too; D-66: the customer's receipt answers stay allowed; D-67: nothing unfreezes until T-048; D-68: rejecting the chef turns an open `no_day_cooked` flag into `chef_rejected`, so the booking freezes.
 - **D-57.** A `no_day_cooked` flag (D-36) does not freeze. Completing the booking resolves it; if it stays open the admin picks the final status (T-048, D-54).
 - **Order.** `booking_flags` rows are inserted in booking id order, in the sweep and in `admin_reject_chef`, so two of them cannot deadlock (T-066 review LOW-2).

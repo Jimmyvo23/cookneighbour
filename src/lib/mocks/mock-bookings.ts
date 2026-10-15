@@ -869,7 +869,7 @@ function cancelRoute(
     reason = t;
   }
   const d = r.detail;
-  // T-064 (D-53, interim): a frozen booking takes no cancel either, same text as the real route.
+  // T-064 (D-53, D-65): a frozen booking takes no cancel either, same text as the real route.
   if (d.frozen)
     return fail(409, "INVALID_STATE", CHANGE_REFUSALS.frozen, {
       reason: "frozen",

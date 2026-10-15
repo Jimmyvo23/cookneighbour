@@ -10,7 +10,7 @@
 --     invalid_state / reason `frozen` (completion by the chef, cooked, no-show, pickup, cancel);
 --     the sweep never auto-completes a frozen booking; submit_receipt (chef) and the receipt
 --     storage policy refuse it. Customer receipt answers, chat and reads are unchanged.
---     INTERIM (question for Jimmy): the customer cannot cancel a frozen booking either.
+--     D-65: the customer cannot cancel a frozen booking either (D-66 receipt answers stay allowed).
 --   * get_booking_frozen(booking): the only read of the flag a browser has. Parties only; it says
 --     nothing about the flag's reason or about admin notes.
 --   * admin_reject_chef: if the booking already has an open `no_day_cooked` flag, it is upgraded to
