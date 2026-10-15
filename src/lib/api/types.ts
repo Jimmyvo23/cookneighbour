@@ -731,6 +731,15 @@ export interface BookingDetail {
    * the last visit day + 8). null whenever `contact` is null. Optional so older mocks still type-check.
    */
   contactVisibleUntil?: string | null;
+  /**
+   * T-064 (D-53): true while an admin flag other than `no_day_cooked` (today: the chef's
+   * application was rejected, D-22) is open on this booking. A frozen booking cannot be completed
+   * (by the chef or automatically) and takes no action from either party until an admin decides;
+   * every change route answers 409 `INVALID_STATE` with `reason: "frozen"`. Show a neutral notice
+   * and hide the chef's action buttons. A `no_day_cooked` flag (D-36) does NOT set this (D-57).
+   * Never says why: the flag's reason and the admin's notes stay admin-only.
+   */
+  frozen: boolean;
   /** MOCK: nothing is ever charged. */
   payment: { mock: true; collected: false };
 }

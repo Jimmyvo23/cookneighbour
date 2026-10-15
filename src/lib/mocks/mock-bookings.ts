@@ -14,6 +14,8 @@
 //                                            409 DOUBLE_BOOKED (the page may still list them);
 //       hooks.trialRaceOnce = true           the next create that asks for the free first booking
 //                                            answers 409 FREE_TRIAL_USED (a lost race).
+//       hooks.frozenSeeded = [ids]           those made-up bookings start frozen (D-53, T-064):
+//                                            `frozen: true`, every change answers 409 `frozen`.
 //   - a row whose status is edited to `accepted` shows the cookingPlace and contact like the real
 //     view does (hidden before acceptance, CLAUDE.md 6.8).
 import type {
@@ -49,6 +51,7 @@ import {
   cancellationTiming,
   torontoStartOfDay,
 } from "@/lib/domain/cancellation";
+import { CHANGE_REFUSALS } from "@/lib/domain/bookingChanges";
 import { MAX_OPEN_REQUESTS } from "@/lib/domain/config";
 import { findContactDetails } from "@/lib/domain/contactDetails";
 import { estimateBooking, type Estimate } from "@/lib/domain/pricing";
@@ -85,6 +88,11 @@ export interface MockHooks {
   kitchenAddressMissing?: boolean;
   /** T-045: a signed-in customer gets the same made-up bookings, seen from their side (once). */
   seedCustomer?: boolean;
+  /**
+   * T-064 (D-53): ids of made-up bookings (SEEDED in e2e-mock/helpers.ts) that start frozen, as if
+   * an admin flag were open. Read when the made-up bookings are brought in, so set it first.
+   */
+  frozenSeeded?: string[];
 }
 
 /** A MOCK receipt as saved: the API view plus the path the chef "uploaded" (never returned). */
@@ -486,7 +494,7 @@ export function bookingRoutes(
   let base = s;
   let seeded: BookingRouteResult["next"];
   if (role === "chef" && !s.chefSeeded) {
-    const rows = seedChefBookings(s.profile!, now);
+    const rows = seedChefBookings(s.profile!, now, s.hooks.frozenSeeded);
     base = {
       ...s,
       chefBookings: rows.rows,
@@ -501,7 +509,7 @@ export function bookingRoutes(
   }
 
   if (role === "customer" && s.hooks.seedCustomer && !s.customerSeeded) {
-    const made = seedCustomerBookings(s.profile!, now);
+    const made = seedCustomerBookings(s.profile!, now, s.hooks.frozenSeeded);
     base = {
       ...s,
       bookings: [...made.rows, ...s.bookings],
@@ -684,6 +692,7 @@ function createRoute(
     cancelReason: null,
     completedAt: null,
     noShow: null,
+    frozen: false,
     chef: { id: chef.id, displayName: chef.displayName, photoPath: null },
     customer: { id: s.profile!.id, displayName: s.profile!.displayName },
     days: ev.resolved.map((d, i) => ({
@@ -860,6 +869,11 @@ function cancelRoute(
     reason = t;
   }
   const d = r.detail;
+  // T-064 (D-53, D-65): a frozen booking takes no cancel either, same text as the real route.
+  if (d.frozen)
+    return fail(409, "INVALID_STATE", CHANGE_REFUSALS.frozen, {
+      reason: "frozen",
+    });
   if (d.status !== "requested" && d.status !== "accepted")
     return fail(
       409,

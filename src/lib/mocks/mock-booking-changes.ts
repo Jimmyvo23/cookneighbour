@@ -128,6 +128,8 @@ interface SeedOptions {
   allergies?: string;
   dietary?: string;
   free?: boolean;
+  /** T-064 (D-53): an open admin flag; the booking is on hold. */
+  frozen?: boolean;
   pickups?: Record<number, BookingDetail["days"][number]["pickups"]>;
   expiresInHours?: number;
   chef: MeProfile;
@@ -192,6 +194,7 @@ function seedRow(o: SeedOptions): MockBookingRow {
     cancelReason: null,
     completedAt: null,
     noShow: null,
+    frozen: o.frozen ?? false,
     chef: { id: o.chef.id, displayName: o.chef.displayName, photoPath: null },
     customer: { id: uid(o.n + 500), displayName: o.customer },
     days: o.days.map((d, i) => {
@@ -280,6 +283,7 @@ export type SeededReceipts = Record<string, MockReceipt[]>;
 export function seedChefBookings(
   chef: MeProfile,
   now: Date,
+  frozenIds: readonly string[] = [],
 ): { rows: MockBookingRow[]; receipts: SeededReceipts } {
   const today = torontoToday(now);
   const base = { chef, now };
@@ -371,6 +375,10 @@ export function seedChefBookings(
       days: [{ offset: -1, dishes: [D.satay, D.buncha], cooked: true }],
     }),
   ];
+  // T-064 (D-53): the test hook `frozenSeeded` freezes the listed bookings.
+  for (const r of rows)
+    if (frozenIds.includes(r.detail.id))
+      r.detail = { ...r.detail, frozen: true };
   const a06 = rows[5].detail;
   return {
     rows,
@@ -388,6 +396,7 @@ export function seedChefBookings(
 export function seedCustomerBookings(
   customer: MeProfile,
   now: Date,
+  frozenIds: readonly string[] = [],
 ): { rows: MockBookingRow[]; receipts: SeededReceipts } {
   const chef: MeProfile = {
     id: uid(1001),
@@ -397,7 +406,7 @@ export function seedCustomerBookings(
     currency: "CAD",
     language: "en",
   };
-  const made = seedChefBookings(chef, now);
+  const made = seedChefBookings(chef, now, frozenIds);
   return {
     rows: made.rows.map((r) => ({
       ...r,
@@ -608,6 +617,7 @@ export function changeRoute(
           "Do not put phone numbers, emails or links in the reason.",
           { fields: { reason: "Remove the contact details." } },
         );
+      if (d.frozen) return invalid("frozen");
       if (d.status !== "requested" && d.status !== "accepted")
         return invalid("wrong_status");
       if (d.status !== "accepted") return invalid("chef_use_decline");
@@ -628,6 +638,7 @@ export function changeRoute(
       });
     }
     case "no-show": {
+      if (d.frozen) return invalid("frozen");
       if (d.status !== "accepted") return invalid("wrong_status");
       const due = [...d.days]
         .sort((x, y) => x.dayNumber - y.dayNumber)
@@ -647,6 +658,7 @@ export function changeRoute(
       const n = parseDayNumber(day![2]);
       const target = n ? d.days.find((x) => x.dayNumber === n) : undefined;
       if (!target) return notFound();
+      if (d.frozen) return invalid("frozen");
       if (d.status !== "accepted") return invalid("wrong_status");
       if (target.date > today) return invalid("too_early");
       if (target.cookedAt) return save(d); // repeating keeps the first time
@@ -658,6 +670,7 @@ export function changeRoute(
       });
     }
     case "complete": {
+      if (d.frozen) return invalid("frozen");
       if (d.status !== "accepted") return invalid("wrong_status");
       if (!d.days.every((x) => x.cookedAt)) return invalid("days_not_cooked");
       return save({
@@ -675,6 +688,7 @@ export function changeRoute(
       if (!target) return notFound();
       const t = parseProposedAt(obj.proposedAt);
       if ("error" in t) return badFields({ proposedAt: t.error });
+      if (d.frozen) return invalid("frozen");
       if (d.locationType !== "chef_home") return invalid("not_chef_home");
       if (d.status !== "accepted") return invalid("wrong_status");
       if (!target.cookedAt) return invalid("day_not_cooked");
@@ -724,6 +738,7 @@ export function changeRoute(
       if (!target) return notFound();
       const a = parsePickupAccept(obj);
       if ("error" in a) return badFields({ accept: a.error });
+      if (d.frozen) return invalid("frozen");
       if (d.locationType !== "chef_home") return invalid("not_chef_home");
       if (d.status !== "accepted") return invalid("wrong_status");
       const open = target.pickups.find((p) => p.status === "proposed");
@@ -753,6 +768,7 @@ export function changeRoute(
       });
     }
     case "pickup-missed": {
+      if (d.frozen) return invalid("frozen");
       if (d.locationType !== "chef_home") return invalid("not_chef_home");
       if (d.status !== "accepted") return invalid("wrong_status");
       const over = d.days.find(
@@ -828,6 +844,7 @@ export function changeRoute(
       if (d.groceryOption !== "chef_shops") return invalid("not_chef_shops");
       if (d.status !== "accepted" && d.status !== "completed")
         return invalid("wrong_status");
+      if (d.frozen) return invalid("frozen"); // D-53: a chef action
       const all = s.receipts?.[d.id] ?? [];
       const current = all.find((r) => r.status !== "superseded");
       if (current?.status === "waiting") return invalid("receipt_waiting");

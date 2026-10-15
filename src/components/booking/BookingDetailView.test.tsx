@@ -38,6 +38,7 @@ function booking(over: Partial<BookingDetail> = {}): BookingDetail {
     cancelReason: null,
     completedAt: null,
     noShow: null,
+    frozen: false,
     chef: { id: "c1", displayName: "Mai", photoPath: null },
     customer: { id: "u1", displayName: "Sam" },
     days: [

@@ -119,6 +119,9 @@ export const CHANGE_REFUSALS: Record<string, string> = {
   days_not_cooked: "Mark each visit as cooked before closing the booking.",
   problem_reported:
     "A problem was reported for this booking. An admin will look at it first.",
+  // T-064 (D-53): neutral on purpose, it does not say why.
+  frozen:
+    "This booking is on hold while an admin looks at it. Nothing can be changed until they decide.",
   not_chef_home: "Pickups only exist for bookings at the chef's home.",
   pickup_window_open:
     "The customer can still pick up the meals. Wait until the earliest eat-by date has passed.",

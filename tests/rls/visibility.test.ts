@@ -187,6 +187,8 @@ describe("database-level guarantees", () => {
     "booking_contact_unlocked",
     "can_view_kitchen_photos",
     "get_booking_contact",
+    // T-064 (D-53): "is this booking frozen" for the two parties only; says nothing about the reason.
+    "get_booking_frozen",
     "is_admin",
     "is_booking_chef",
     "is_booking_party",

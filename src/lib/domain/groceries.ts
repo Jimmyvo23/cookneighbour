@@ -190,4 +190,7 @@ export const RECEIPT_REFUSALS: Record<string, string> = {
     "This file was already registered. Upload it again under a new name.",
   already_answered: "This receipt was already answered.",
   receipt_superseded: "This receipt was replaced by a newer one.",
+  // T-064 (D-53): neutral, it does not say why.
+  frozen:
+    "This booking is on hold while an admin looks at it. Nothing can be changed until they decide.",
 };
