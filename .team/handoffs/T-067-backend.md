@@ -29,3 +29,6 @@ Frontend carry-ins:
 - Conflict check still happens at create and needs the one acknowledgement tick (`allergyConflictAcknowledged`) as before (D-38).
 - 422 field keys from PUT are plain (`allergies`, `dietaryNotes`, `allergens`, `allergyNotes`, `noAllergies`, `noDietaryNeeds`), unlike `intake.*` on booking create.
 - Mock mode: the frontend must mock these routes itself in mock-mode specs.
+
+## CI fix (run 38623264680)
+Root cause: PUT returned the JS ISO string (`...481Z`), GET returned Postgres text (`...481+00:00`), so `savedAt` differed. Fix: GET (`shape()` in `src/app/api/me/intake/route.ts`) now normalises with `new Date(x).toISOString()`; contract v1.7 states `savedAt` is always ISO 8601 UTC with ms and `Z`. Test unchanged.

@@ -15,7 +15,9 @@ type Db = {
 
 function shape(row: Db): SavedIntakeResponse {
   const intake = row ? readSavedIntake(row.saved_intake) : null;
-  return { intake, savedAt: intake ? (row?.saved_intake_at ?? null) : null };
+  // Postgres returns "…+00:00"; normalise to the canonical JS ISO form ("…Z") that PUT returns.
+  const at = intake ? row?.saved_intake_at : null;
+  return { intake, savedAt: at ? new Date(at).toISOString() : null };
 }
 
 export function GET() {
