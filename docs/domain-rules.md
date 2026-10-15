@@ -29,3 +29,10 @@ Pure rules: `src/lib/domain/freeTrial.ts`. Server functions: `src/lib/server/fre
 - **Cancellation after a day was cooked (D-26).** `cancelled` releases the claim (A-16), but a cancellation after at least one day was cooked consumes it. The per-day "cooked" marker (`booking_days.cooked_at`) is passed to `freeTrialEffect`. **D-37 (T-066):** a chef no-show works the same way: after at least one cooked day the trial is used up, otherwise it is released. **D-36 (T-066):** automatic completion needs a cooked day; otherwise the booking is flagged for the admin and the claim stays held.
 - **Booking and claim are one transaction (T-042).** `POST /api/bookings` writes the claim inside `create_booking`, so a refused trial leaves no booking. Expiry (D-19) releases the claim through `applyFreeTrialEvent(id, "expired")` after the status is saved; the next expiry sweep repairs a release that crashed in between.
 - **MOCK / Q-1.** The trial waives chef labour in the prototype; nobody pays the chef. Known limits (cheap SIMs, several addresses) are in the README.
+
+## Contact privacy (T-065)
+
+- **D-52 window.** Phone and address are visible from acceptance until 00:00 Toronto on (last visit day + 8), i.e. through the 7th day after the last visit day. Applies to `accepted`, `completed`, `no_show_customer`, `no_show_chef`. Chat is unaffected.
+- **D-56.** A cancelled booking locks contact at once; the window does not apply to it (nor to `requested`, `declined`, `expired`).
+- **Kitchen snapshot.** Accepting a chef's-home booking copies the chef's kitchen address onto the booking, in the same transaction and under the chef row lock. The customer is shown the copy; a later kitchen change never shows a new address to a past customer (review M4).
+- **N3 as one function.** `set_chef_kitchen_address` checks "no accepted chef's-home booking" and writes under one lock (chef row, then `chef_private`), so a concurrent accept cannot slip between check and write (review L4). A change switches chef's home off; an admin enables it again (D-21).

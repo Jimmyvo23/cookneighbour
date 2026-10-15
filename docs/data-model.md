@@ -66,7 +66,9 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 - After a booking is `accepted` (and stays unlocked for `completed`, `no_show_*`), a party calls `get_booking_contact(booking_id)`:
   - Chef gets the customer's display name, phone and, for `customer_home`, the cooking address.
   - Customer gets the chef's display name, phone and, for `chef_home`, the kitchen address.
-  - Before acceptance, for non-parties, for `declined` / `cancelled` / `requested`, it returns **no rows**. Hashes, documents and verification fields are never returned.
+  - Before acceptance, for non-parties, for `declined` / `cancelled` / `expired` / `requested`, it returns **no rows**. Hashes, documents and verification fields are never returned.
+  - **(T-065, D-52)** It also returns no rows from 00:00 Toronto on (last visit day + 8) onward (`booking_contact_ends_at`, `booking_contact_open`); until then it returns `visible_until` (that instant). A cancelled booking is locked at once (D-56). Chat is not affected.
+  - **(T-065)** For `chef_home` the customer gets the kitchen address **copied onto the booking at acceptance** (`booking_kitchen_addresses`), not the chef's current one.
 - The customer always sees their own address. The chef sees the intake form (allergies) before accepting.
 
 ## Policies per table
@@ -94,6 +96,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | `bookings` | party | bookings where self is customer or chef. No client writes |
 | | admin | all |
 | `booking_addresses` | customer of the booking, admin | the chef has no table access (use `get_booking_contact`) |
+| `booking_kitchen_addresses` **(T-065)** | nobody (no grant, no policy) | the kitchen address copied at acceptance; read only by `get_booking_contact` and the server |
 | `booking_days`, `booking_day_dishes`, `intake_forms`, `receipts` | parties, admin | via the booking. No client writes |
 | `messages` | parties, admin | read. Insert: `sender_id` = self, self is a party, booking status is `requested`, `accepted` or `completed` |
 | `notifications` | owner | read own; update own, **`read_at` column only** (column grant) |
