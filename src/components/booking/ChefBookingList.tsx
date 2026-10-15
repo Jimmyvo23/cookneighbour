@@ -7,10 +7,11 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import type { BookingListResponse, BookingSummary } from "@/lib/api/types";
 import { formatWhen } from "@/lib/booking/form";
+import { torontoToday } from "@/lib/domain/dishes";
 import { formatDollars } from "@/lib/chef/dishes";
 import { shortDayLabel } from "@/lib/search/detail";
 import { secondaryButtonCls } from "@/components/chef/parts";
-import { CHEF_STATUS_TEXT } from "@/lib/booking/changes";
+import { CHEF_STATUS_TEXT, summaryAllDatesPast } from "@/lib/booking/changes";
 
 const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
 
@@ -165,6 +166,7 @@ function Group({
   items: BookingSummary[];
 }) {
   const hid = useId();
+  const today = torontoToday();
   return (
     <section aria-labelledby={`${hid}-h`} data-testid={`group-${id}`}>
       <h2 id={`${hid}-h`} className="mb-2 text-lg font-semibold">
@@ -188,6 +190,12 @@ function Group({
               {b.status !== "requested" && (
                 <p className="text-sm font-medium">
                   {CHEF_STATUS_TEXT[b.status]}
+                </p>
+              )}
+              {summaryAllDatesPast(b.status, b.dates, today) && (
+                <p className="text-sm">
+                  All visit days have passed. Open the booking to see what is
+                  next.
                 </p>
               )}
               {b.status === "requested" && b.expiresAt && (

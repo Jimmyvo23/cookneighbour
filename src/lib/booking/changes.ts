@@ -9,7 +9,7 @@ import type {
   BookingStatus,
   ReceiptView,
 } from "@/lib/api/types";
-import { torontoStartOfDay } from "@/lib/domain/cancellation";
+import { freeTrialEffect, torontoStartOfDay } from "@/lib/domain/cancellation";
 import { addDays } from "@/lib/domain/dishes";
 import { CHANGE_REFUSALS } from "@/lib/domain/bookingChanges";
 import { RECEIPT_EXTENSIONS, RECEIPT_REFUSALS } from "@/lib/domain/groceries";
@@ -321,6 +321,57 @@ export function currentReceipt(items: ReceiptView[]): ReceiptView | null {
 
 /** The signed link lasts 10 minutes (contract 7B); refetch a little earlier. */
 export const FILE_URL_REFRESH_MS = 8 * 60 * 1000;
+
+/**
+ * An accepted booking whose visit dates are all before today (Toronto) and none was marked cooked.
+ * The server keeps it for an admin to check (D-36); no field says so, so it is derived from the
+ * days. The page says only that it is waiting for a check (Q-35 and Q-36 are open).
+ */
+export function isWaitingForCheck(b: BookingDetail, today: string): boolean {
+  return (
+    b.status === "accepted" &&
+    b.days.length > 0 &&
+    b.days.every((d) => d.cookedAt === null && d.date < today)
+  );
+}
+
+/** Uncooked days of an accepted booking whose date is before today: the chef should mark them. */
+export function pastUncookedDays(
+  b: BookingDetail,
+  today: string,
+): BookingDayView[] {
+  if (b.status !== "accepted") return [];
+  return [...b.days]
+    .sort((x, y) => x.dayNumber - y.dayNumber)
+    .filter((d) => d.cookedAt === null && d.date < today);
+}
+
+/** List rows only know dates: an accepted booking with every date before today. */
+export function summaryAllDatesPast(
+  status: BookingStatus,
+  dates: string[],
+  today: string,
+): boolean {
+  return (
+    status === "accepted" && dates.length > 0 && dates.every((d) => d < today)
+  );
+}
+
+/**
+ * What a chef no-show means for the customer's free first booking (D-37): used when at least one
+ * day was cooked, released when none was. Null when the booking was not a free first booking.
+ */
+export function chefNoShowTrialText(
+  isFreeTrial: boolean,
+  anyDayCooked: boolean,
+  viewer: "customer" | "chef" = "customer",
+): string | null {
+  if (!isFreeTrial) return null;
+  const who = viewer === "customer" ? "your" : "the customer's";
+  return freeTrialEffect("no_show_chef", { anyDayCooked }) === "consume"
+    ? `A day had already been cooked, so ${who} free first booking counts as used.`
+    : `No day had been cooked, so ${who} free first booking is not used up.`;
+}
 
 /** The chef's words for each booking status (the customer's page has its own). */
 export const CHEF_STATUS_TEXT: Record<BookingStatus, string> = {

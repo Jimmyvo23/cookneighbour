@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import type { BookingListResponse, BookingSummary } from "@/lib/api/types";
 import { formatDollars } from "@/lib/chef/dishes";
+import { summaryAllDatesPast } from "@/lib/booking/changes";
+import { torontoToday } from "@/lib/domain/dishes";
 import { shortDayLabel } from "@/lib/search/detail";
 import { MAX_OPEN_REQUESTS } from "@/lib/domain/config";
 import { hintCls, secondaryButtonCls } from "@/components/chef/parts";
@@ -21,6 +23,7 @@ type State =
 export function BookingList() {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [more, setMore] = useState(false);
+  const today = torontoToday();
   const seq = useRef(0);
 
   const load = useCallback(async (cursor: string | null) => {
@@ -128,6 +131,12 @@ export function BookingList() {
                     </Link>
                   </p>
                   <p className="text-sm">{STATUS_TEXT[b.status]}</p>
+                  {summaryAllDatesPast(b.status, b.dates, today) && (
+                    <p className="text-sm">
+                      All visit days have passed. Open the booking to see what
+                      is next.
+                    </p>
+                  )}
                   <p className="text-sm">
                     {b.dates.map((d) => shortDayLabel(d, true)).join(", ")}
                   </p>

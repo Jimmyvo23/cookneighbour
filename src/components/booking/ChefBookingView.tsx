@@ -21,7 +21,10 @@ import {
   CHEF_STATUS_TEXT,
   allDaysCooked,
   changeErrorText,
+  chefNoShowTrialText,
   dayIsDue,
+  isWaitingForCheck,
+  pastUncookedDays,
 } from "@/lib/booking/changes";
 import { formatWhen } from "@/lib/booking/form";
 import { freeTrialEffect } from "@/lib/domain/cancellation";
@@ -228,8 +231,37 @@ function Ready({
 }
 
 function StatusNotes({ b }: { b: BookingDetail }) {
+  const today = torontoToday();
+  const noShowTrial = chefNoShowTrialText(
+    b.isFreeTrial,
+    b.days.some((d) => d.cookedAt !== null),
+    "chef",
+  );
+  const missed = pastUncookedDays(b, today);
   return (
     <div className="flex flex-col gap-2">
+      {missed.length > 0 && (
+        <div data-testid="mark-cooked-prompt" className={warnBoxCls}>
+          <p>
+            {missed.length === 1
+              ? `Day ${missed[0].dayNumber} has passed and is not marked as cooked.`
+              : `Days ${missed
+                  .map((d) => d.dayNumber)
+                  .join(", ")
+                  .replace(
+                    /, (\d+)$/,
+                    " and $1",
+                  )} have passed and are not marked as cooked.`}{" "}
+            Did you cook? Mark it as cooked in &quot;Days and dishes&quot;
+            below.
+          </p>
+          {isWaitingForCheck(b, today) && (
+            <p data-testid="waiting-check">
+              This booking is waiting for a check.
+            </p>
+          )}
+        </div>
+      )}
       {b.status === "declined" && (
         <p data-testid="declined" className={infoBoxCls}>
           You declined this request
@@ -269,7 +301,7 @@ function StatusNotes({ b }: { b: BookingDetail }) {
             ? b.noShow.pickupMissed
               ? `You marked the pickup as missed. This is a customer no-show for the whole booking${b.isFreeTrial ? ", so the customer's free first booking counts as used" : ""}.`
               : `You reported a customer no-show${b.isFreeTrial ? ". The customer's free first booking counts as used" : ""}.`
-            : "A chef no-show was reported."}
+            : `A chef no-show was reported.${noShowTrial ? ` ${noShowTrial}` : ""}`}
         </p>
       )}
       {b.status === "completed" && b.completedAt && (

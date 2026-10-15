@@ -553,3 +553,57 @@ describe("states", () => {
     expect(b.days[1].date).toBe(addDays(torontoToday(), 1));
   });
 });
+
+describe("T-072: past days that are not cooked", () => {
+  const withDays = (offsets: number[], cooked: boolean[] = []) =>
+    seededBooking(9104, "chef", (b) => ({
+      ...b,
+      days: offsets.map((o, i) => ({
+        ...b.days[0],
+        dayNumber: i + 1,
+        date: addDays(torontoToday(), o),
+        cookedAt: cooked[i] ? new Date().toISOString() : null,
+      })),
+    }));
+
+  it("asks the chef to mark a past uncooked day, with a working button", async () => {
+    await open(withDays([-1, 1]));
+    const note = h.q("mark-cooked-prompt")?.textContent ?? "";
+    expect(note).toContain("Day 1");
+    expect(note).toContain("Mark it as cooked");
+    expect(h.button("Mark day 1 as cooked")).not.toBeNull();
+    expect(h.q("waiting-check")).toBeNull();
+  });
+
+  it("no prompt for today's day, a cooked day or an upcoming one", async () => {
+    await open(withDays([0, 1]));
+    expect(h.q("mark-cooked-prompt")).toBeNull();
+  });
+
+  it("when every day is past and none cooked it also says the booking is waiting for a check", async () => {
+    await open(withDays([-2, -1]));
+    expect(h.q("mark-cooked-prompt")?.textContent).toContain("Days 1 and 2");
+    const w = h.q("waiting-check")?.textContent ?? "";
+    expect(w).toContain("waiting for a check");
+    expect(w).not.toMatch(/refund|cancelled|no-show/i);
+  });
+
+  it("a chef no-show says whether the free first booking is used (D-37)", async () => {
+    const b = seededBooking(9104, "chef", (x) => ({
+      ...x,
+      status: "no_show_chef",
+      isFreeTrial: true,
+      noShow: {
+        reportedAt: new Date().toISOString(),
+        dayNumber: 2,
+        pickupMissed: false,
+      },
+      days: x.days.map((d, i) => ({
+        ...d,
+        cookedAt: i === 0 ? new Date().toISOString() : null,
+      })),
+    }));
+    await open(b);
+    expect(h.q("no-show")?.textContent).toContain("counts as used");
+  });
+});

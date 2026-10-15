@@ -9,6 +9,10 @@ import {
   canChefCancel,
   cancelBookingErrorText,
   noShowDay,
+  isWaitingForCheck,
+  pastUncookedDays,
+  summaryAllDatesPast,
+  chefNoShowTrialText,
   noShowErrorText,
   canMarkPickupMissed,
   canPropose,
@@ -359,5 +363,65 @@ describe("chef cancel and no-show (T-070)", () => {
     expect(
       noShowErrorText(new ApiClientError(403, "FORBIDDEN", "Only the chef.")),
     ).toBe("Only the chef.");
+  });
+});
+
+describe("waiting for a check and past uncooked days (T-072)", () => {
+  const book = (
+    status: BookingDetail["status"],
+    days: Partial<BookingDayView>[],
+  ) =>
+    ({
+      status,
+      days: days.map((d, i) => day({ dayNumber: i + 1, ...d })),
+    }) as BookingDetail;
+  const T = "2026-10-20";
+
+  it("waits for a check only when accepted, every date is before today and no day is cooked", () => {
+    const past = [
+      { date: "2026-10-17", cookedAt: null },
+      { date: "2026-10-18", cookedAt: null },
+    ];
+    expect(isWaitingForCheck(book("accepted", past), T)).toBe(true);
+    expect(isWaitingForCheck(book("completed", past), T)).toBe(false);
+    expect(
+      isWaitingForCheck(
+        book("accepted", [past[0], { date: T, cookedAt: null }]),
+        T,
+      ),
+    ).toBe(false);
+    expect(
+      isWaitingForCheck(
+        book("accepted", [past[0], { date: "2026-10-18", cookedAt: "x" }]),
+        T,
+      ),
+    ).toBe(false);
+    expect(isWaitingForCheck(book("accepted", []), T)).toBe(false);
+  });
+
+  it("lists the uncooked days whose date is before today, in order", () => {
+    const b = book("accepted", [
+      { date: "2026-10-18", cookedAt: "x" },
+      { date: "2026-10-19", cookedAt: null },
+      { date: T, cookedAt: null },
+    ]);
+    expect(pastUncookedDays(b, T).map((d) => d.dayNumber)).toEqual([2]);
+    expect(pastUncookedDays(book("cancelled", b.days), T)).toEqual([]);
+  });
+
+  it("a list row has all dates past only for an accepted booking", () => {
+    expect(
+      summaryAllDatesPast("accepted", ["2026-10-18", "2026-10-19"], T),
+    ).toBe(true);
+    expect(summaryAllDatesPast("accepted", ["2026-10-19", T], T)).toBe(false);
+    expect(summaryAllDatesPast("completed", ["2026-10-18"], T)).toBe(false);
+    expect(summaryAllDatesPast("accepted", [], T)).toBe(false);
+  });
+
+  it("chef no-show trial words follow D-37", () => {
+    expect(chefNoShowTrialText(true, true)).toMatch(/counts as used/);
+    expect(chefNoShowTrialText(true, false)).toMatch(/not used up/);
+    expect(chefNoShowTrialText(false, true)).toBeNull();
+    expect(chefNoShowTrialText(false, false)).toBeNull();
   });
 });

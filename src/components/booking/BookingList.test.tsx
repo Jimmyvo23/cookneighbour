@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { addDays, torontoToday } from "@/lib/domain/dishes";
 import { BookingList } from "@/components/booking/BookingList";
 
 (
@@ -66,5 +67,39 @@ describe("BookingList waiting count", () => {
       ),
     ).toBe(true);
     expect(host.textContent).toContain("Waiting now: 3");
+  });
+});
+
+describe("BookingList accepted booking with every date past (T-072)", () => {
+  it("does not call it upcoming; it points to the booking page", async () => {
+    const past = {
+      ...item(1, "accepted"),
+      dates: [addDays(torontoToday(), -2)],
+    };
+    const future = {
+      ...item(2, "accepted"),
+      dates: [addDays(torontoToday(), 2)],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ items: [past, future], nextCursor: null }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        ),
+      ),
+    );
+    await act(async () => {
+      root.render(<BookingList />);
+    });
+    await act(async () => {});
+    const rows = host.querySelectorAll('[data-testid="booking-item"]');
+    expect(rows[0].textContent).toContain("All visit days have passed");
+    expect(rows[1].textContent).not.toContain("All visit days have passed");
   });
 });
