@@ -126,6 +126,15 @@ describe("saved allergy profile /api/me/intake (T-067)", () => {
       await person("chef")
     ).b.call(clearIntake, { method: "DELETE", contentType: "text/plain" });
     expect(chef.status).toBe(403);
+    // Tester (T-067): a customer with the wrong content type gets 400 and nothing is cleared.
+    const cust = await person("customer");
+    await cust.b.call(putIntake, { method: "PUT", body: form });
+    const wrong = await cust.b.call(clearIntake, {
+      method: "DELETE",
+      contentType: "text/plain",
+    });
+    expect(wrong.status).toBe(400);
+    expect((await cust.b.call(getIntake)).body.intake).not.toBeNull();
   });
 
   it("is per user and not part of GET /api/me", async () => {
