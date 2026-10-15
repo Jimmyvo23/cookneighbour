@@ -99,7 +99,7 @@ describe("kitchen address snapshot", () => {
       );
   });
 
-  it("accept refuses when the chef has no kitchen address, and writes nothing", async () => {
+  it("accept without a kitchen address still works (as before) and copies nothing", async () => {
     const chef = await homeChef("cp-noaddr-chef");
     const cust = await makeCustomer(svc, "cp-noaddr-cust");
     const b = await makeBooking(svc, {
@@ -113,9 +113,12 @@ describe("kitchen address snapshot", () => {
       .update({ kitchen_address_line: null })
       .eq("chef_id", chef.id);
     const a = await accept(b.id, chef.id);
-    expect(a.data).toMatchObject({ result: "chef_home_not_enabled" });
-    const row = await svc.from("bookings").select("status").eq("id", b.id);
-    expect(row.data).toEqual([{ status: "requested" }]);
+    expect(a.data).toMatchObject({ result: "ok" });
+    const snap = await svc
+      .from("booking_kitchen_addresses")
+      .select("address_line")
+      .eq("booking_id", b.id);
+    expect(snap.data).toEqual([]);
   });
 });
 

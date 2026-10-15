@@ -174,13 +174,14 @@ begin
     -- set_chef_kitchen_address cannot change it between this read and the accept).
     if b.location_type = 'chef_home' then
       select * into k from public.chef_private where chef_id = p_chef;
-      if not found or k.kitchen_address_line is null or k.kitchen_city is null
-         or k.kitchen_postal_code is null then
-        return jsonb_build_object('result', 'chef_home_not_enabled');
-      end if;
+      -- A chef with chef's home enabled always has an address (an admin approves the kitchen);
+      -- if data says otherwise the accept still works as before and nothing is copied.
+      if found and k.kitchen_address_line is not null and k.kitchen_city is not null
+         and k.kitchen_postal_code is not null then
       insert into public.booking_kitchen_addresses (booking_id, address_line, city, postal_code)
       values (b.id, k.kitchen_address_line, k.kitchen_city, k.kitchen_postal_code)
       on conflict (booking_id) do nothing;
+      end if;
     end if;
     -- T-065 end
     update public.bookings set status = 'accepted', responded_at = now() where id = b.id;

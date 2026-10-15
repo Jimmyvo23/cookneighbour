@@ -20,6 +20,7 @@ From: backend  To: tester
 - CI runs the RLS and API suites against local Supabase. New cases: snapshot survives a kitchen move; window to the second (DST-safe); each of the four statuses and both parties at last day +7 / +8; requested/declined/expired/cancelled never show contact; set_chef_kitchen_address server-only, conflict, kitchen_in_use, and a 4-round concurrent accept-vs-change race.
 
 ## Known gaps or risks
+- Behaviour change: a PATCH with a changed kitchen address that gives up or is refused now saves nothing (before, the other `chefs` columns and the chef's-home switch-off were saved first). One test (tester F2 in `tests/api/chef-documents.test.ts`) and two contract lines were updated.
 - Backfilled snapshots use the chef's address as of the migration.
 - `can_view_kitchen_photos` still uses status only (no 7-day cut-off): see open question 1.
 - The race test cannot force the interleaving; it checks the invariant over 4 rounds.
@@ -36,5 +37,5 @@ From: backend  To: tester
 
 ## Open questions
 1. Kitchen photos (`can_view_kitchen_photos`) are not contact details in D-52; should they also stop after 7 days?
-2. Snapshot is the chef's address at accept time; if a chef's-home booking is accepted with chef_private address missing, accept answers `chef_home_not_enabled`. Fine?
+2. If a chef with chef's home enabled has no kitchen address (only possible in test fixtures), accept still works as before and copies nothing. Fine?
 3. Does the 7-day window need a notification when contact hides? Not built.
