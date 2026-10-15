@@ -6,6 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BookingDetail } from "@/lib/api/types";
+import { addDays, torontoToday } from "@/lib/domain/dishes";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
@@ -298,5 +299,94 @@ describe("BookingDetailView", () => {
     );
     await mount();
     expect(q("load-error")).not.toBeNull();
+  });
+
+  describe("T-072: waiting for a check and chef no-show wording", () => {
+    const accepted = (dayOffsets: number[], cooked: boolean[] = []) => {
+      const base = booking({ status: "accepted" });
+      return booking({
+        status: "accepted",
+        days: dayOffsets.map((o, i) => ({
+          ...base.days[0],
+          dayNumber: i + 1,
+          date: addDays(torontoToday(), o),
+          cookedAt: cooked[i] ? "2030-01-20T18:00:00Z" : null,
+        })),
+      });
+    };
+
+    it("shows a neutral 'waiting for a check' when every day is past and none is cooked", async () => {
+      fetchMock.mockImplementation(reply(200, accepted([-3, -2])));
+      await mount();
+      const note = q("waiting-check")?.textContent ?? "";
+      expect(note).toContain("waiting for a check");
+      expect(note).not.toMatch(/refund|cancel|no-show|admin|free first/i);
+    });
+
+    it("does not show it for an upcoming, current or partly cooked booking", async () => {
+      for (const b of [
+        accepted([1, 2]),
+        accepted([-1, 0]),
+        accepted([-2, -1], [true, false]),
+      ]) {
+        fetchMock.mockImplementation(reply(200, b));
+        await mount();
+        expect(q("waiting-check")).toBeNull();
+      }
+    });
+
+    it("a chef no-show after a cooked day says the free first booking counts as used", async () => {
+      fetchMock.mockImplementation(
+        reply(
+          200,
+          booking({
+            ...accepted([-2, -1], [true, false]),
+            status: "no_show_chef",
+            noShow: {
+              reportedAt: "2030-01-21T10:00:00Z",
+              dayNumber: 2,
+              pickupMissed: false,
+            },
+          }),
+        ),
+      );
+      await mount();
+      expect(q("trial-after-no-show")?.textContent).toContain("counts as used");
+    });
+
+    it("a chef no-show with no cooked day says the free first booking is not used up", async () => {
+      fetchMock.mockImplementation(
+        reply(
+          200,
+          booking({
+            ...accepted([-1]),
+            status: "no_show_chef",
+            noShow: {
+              reportedAt: "2030-01-21T10:00:00Z",
+              dayNumber: 1,
+              pickupMissed: false,
+            },
+          }),
+        ),
+      );
+      await mount();
+      expect(q("trial-after-no-show")?.textContent).toContain("not used up");
+      expect(text()).not.toMatch(/always|given back/i);
+    });
+
+    it("says nothing about the free booking for a chef no-show on a paid booking", async () => {
+      fetchMock.mockImplementation(
+        reply(
+          200,
+          booking({
+            ...accepted([-1]),
+            isFreeTrial: false,
+            status: "no_show_chef",
+          }),
+        ),
+      );
+      await mount();
+      expect(q("trial-after-no-show")).toBeNull();
+    });
   });
 });

@@ -16,7 +16,9 @@ import {
   isInsideLateWindow,
   type FieldErrors,
 } from "@/lib/booking/form";
+import { chefNoShowTrialText, isWaitingForCheck } from "@/lib/booking/changes";
 import { freeTrialEffect } from "@/lib/domain/cancellation";
+import { torontoToday } from "@/lib/domain/dishes";
 import { formatMinutes } from "@/lib/chef/dishes";
 import { allergenText, shortDayLabel } from "@/lib/search/detail";
 import { MockBadge } from "@/components/MockBadge";
@@ -375,6 +377,10 @@ function StatusNotes({
     b.isFreeTrial && b.status === "cancelled"
       ? freeTrialEffect("cancelled", { anyDayCooked: anyCooked })
       : null;
+  const trialAfterNoShow =
+    b.status === "no_show_chef"
+      ? chefNoShowTrialText(b.isFreeTrial, anyCooked)
+      : null;
   return (
     <div className="flex flex-col gap-2">
       {b.status === "requested" && b.expiresAt && (
@@ -383,6 +389,12 @@ function StatusNotes({
           <span className="font-medium">{formatWhen(b.expiresAt)}</span> to
           answer. After that the request expires on its own, the days are freed
           {b.isFreeTrial ? " and your free first booking is kept" : ""}.
+        </p>
+      )}
+      {isWaitingForCheck(b, torontoToday()) && (
+        <p data-testid="waiting-check" className={infoBoxCls}>
+          All visit days have passed and none is marked as cooked. This booking
+          is waiting for a check. This page will show what happens next.
         </p>
       )}
       {b.status === "accepted" && (
@@ -441,6 +453,11 @@ function StatusNotes({
         <p className={warnBoxCls}>
           A no-show was reported
           {b.noShow.pickupMissed ? " (meals not picked up)" : ""}.
+        </p>
+      )}
+      {trialAfterNoShow && (
+        <p data-testid="trial-after-no-show" className={infoBoxCls}>
+          {trialAfterNoShow}
         </p>
       )}
     </div>
