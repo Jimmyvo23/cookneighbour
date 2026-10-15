@@ -172,7 +172,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-070 | Chef dashboard follow-ups: chef cancels an accepted booking and reports a customer no-show (routes exist; Jimmy 2026-10-14); kitchen note wording "This booking no longer locks your kitchen address" (T-045 Reviewer N1); customer booking page says details "shared once the chef accepts" also on declined, expired and cancelled bookings (T-045 Tester round 3, from T-043) | frontend | T-045 | done |
 | T-071 | D-55 customer confirms "I picked up my meals" on a chef's-home booking; after that the chef cannot mark the pickup missed (API + UI) | backend, frontend | T-066 | todo |
 | T-072 | UI follow-ups from T-066: show "waiting for a check" on an accepted booking whose days are all past and uncooked; chef no-show trial wording follows D-37 (`BookingDetailView.tsx`, `changes.ts`); prompt the chef to mark past days cooked | frontend | T-066, T-070 | done |
-| T-073 | UI follow-ups from T-065 and T-072: booking pages explain D-52 (phone and address hidden 7 days after the last visit day; chat stays) and show `contactVisibleUntil` in Toronto time; "Contact details are hidden now" after the cut-off (T-065 review L3); hide the customer's Cancel button when every visit is past (T-072 L-B); plural "Mark them as cooked" (T-072 NIT); hide the mark-cooked prompt on D-53 frozen bookings once T-064 adds a flag field | frontend | T-065, T-072 | todo |
+| T-073 | UI follow-ups from T-065 and T-072: booking pages explain D-52 (phone and address hidden 7 days after the last visit day; chat stays) and show `contactVisibleUntil` in Toronto time; "Contact details are hidden now" after the cut-off (T-065 review L3); hide the customer's Cancel button when every visit is past (T-072 L-B); plural "Mark them as cooked" (T-072 NIT); hide the mark-cooked prompt on D-53 frozen bookings once T-064 adds a flag field (that item waits for T-064); Tester L-A ("waiting for a check" shows up to 2 days before the server flag) waits on Q-35 | frontend | T-065, T-072 (T-064 for the freeze item) | todo |
 | T-074 | Backend follow-ups from T-065: D-58 kitchen photos follow the D-52 window; D-59 refuse accept when chef's home is enabled but no kitchen address is saved; review L1 (kitchen RPC and `chefs` columns in one transaction) and N1-N5 (lock mode, explicit table revoke, `privColumns` assert, indentation, snapshot retention note) | backend | T-065 | todo |
 
 ### Phase 5 — Engagement (WO-5)
@@ -180,7 +180,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 |---|---|---|---|---|
 | T-046 | Messaging backend: Realtime, RLS, contact details hidden until accepted | backend | T-042 | todo |
 | T-047 | Chat UI | frontend | T-046 | todo |
-| T-048 | Reviews (completed bookings only) and report-a-problem API; admin lists of bookings, reports, free-trial blocks; D-54: resolving a report, the admin picks the booking's final status (completed, cancelled, chef no-show, customer no-show) with a note; the free trial follows the existing rule for that status.; D-57: an unresolved `no_day_cooked` flag is resolved the same way (admin picks the final status) | backend | T-042 | todo |
+| T-048 | Reviews (completed bookings only) and report-a-problem API; admin lists of bookings, reports, free-trial blocks; D-54: resolving a report, the admin picks the booking's final status (completed, cancelled, chef no-show, customer no-show) with a note; the free trial follows the existing rule for that status; D-57: an unresolved `no_day_cooked` flag is resolved the same way (admin picks the final status) | backend | T-042 | todo |
 | T-049 | Reviews, report button, admin lists UI | frontend | T-048 | todo |
 
 ### Phase 6 — Hardening (WO-6, deploy has its own WO-7)
@@ -255,11 +255,11 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-55 | 2026-10-14 | On a chef's-home booking the customer can confirm "I picked up my meals"; after that the chef cannot mark the pickup missed (was Q-26; T-071) | Jimmy |
 | D-56 | 2026-10-14 | D-52's 7-day contact window does not cover cancelled bookings: contact details (phone and address) lock both ways as soon as a booking is cancelled, as built today (was Q-37; T-070 copy stays; T-065 keeps it) | Jimmy |
 | D-57 | 2026-10-15 | A booking flagged `no_day_cooked` (D-36) is not frozen: the chef may still mark past days cooked; completing the booking resolves the flag automatically; if it stays unresolved the admin picks the final status as in D-54 (was Q-36; T-064, T-048) | Jimmy |
-| D-58 | 2026-10-15 | Kitchen photos follow the same window as D-52: hidden 7 days after the last visit day (T-065 review L4; T-074) | Jimmy |
+| D-58 | 2026-10-15 | Kitchen photos follow the same window as D-52: hidden 7 days after the last visit day (T-065 backend Q-1, review L4; T-074) | Jimmy |
 | D-59 | 2026-10-15 | A chef with chef's home enabled but no saved kitchen address cannot accept a chef's-home booking; the refusal is worded (T-065 backend Q-2; T-074) | Jimmy |
 | D-60 | 2026-10-15 | No notification when contact details hide; the booking page states when they hide (T-065 backend Q-3) | Jimmy |
-| D-61 | 2026-10-15 | Keep `contactVisibleUntil` on `BookingDetail` (contract v1.9; T-065 backend Q-4, review L2) | Jimmy |
-| D-62 | 2026-10-15 | Kitchen-address snapshots backfilled for bookings accepted before T-065 use the chef's address at migration time (prototype data only; T-065 backend Q-5) | Jimmy |
+| D-61 | 2026-10-15 | Keep `contactVisibleUntil` on `BookingDetail` (contract v1.9; T-065 backend assumption 2, review L2) | Jimmy |
+| D-62 | 2026-10-15 | Kitchen-address snapshots backfilled for bookings accepted before T-065 use the chef's address at migration time (prototype data only; T-065 backend known gap) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -586,8 +586,8 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 
 ### T-065 — Contact privacy (done 2026-10-15, PR #124 merged a5a846b; migration 20261015100000 pushed to hosted 2026-10-15 with Jimmy's OK)
 - Migration `20261015100000_contact_privacy.sql`: table `booking_kitchen_addresses` (RLS on, no client access); `answer_booking` copies the chef's kitchen address on accept in the same transaction (T-063 review M4); backfill for already-accepted chef's-home bookings (D-62); `set_chef_kitchen_address` locks chef then chef_private and refuses `kitchen_in_use` (N3 / L4); `booking_contact_ends_at` = 00:00 Toronto on last visit day + 8 (D-52), for accepted, completed and both no-shows; cancelled, declined, expired and requested never show contact (D-56). `get_booking_contact` returns the snapshot and `visible_until`, revoked from anon. Contract v1.9 adds `contactVisibleUntil` (D-61). A refused kitchen-address PATCH now saves nothing.
-- Backend fixed two of its own CI failures (Supabase default execute grant on a new function; RLS fixtures). Tester PASS, no bugs (added DST, multi-day, no-days, stranger and grant tests). Reviewer APPROVE: L1 two transactions in `mutate` (safe state), L3 UI copy -> T-073, L4 kitchen photos -> D-58, NITs -> T-074. See `.team/handoffs/T-065-{backend,tester,reviewer}.md`.
+- Backend fixed two of its own CI failures (Supabase default execute grant on a new function; RLS fixtures). Tester PASS, no bugs (added DST, multi-day, no-days, stranger and grant tests). Reviewer APPROVE: L1 two transactions in `mutate` (safe state) -> T-074, L2 `contactVisibleUntil` -> D-61, L3 UI copy -> T-073, L4 kitchen photos -> D-58, NITs -> T-074. See `.team/handoffs/T-065-{backend,tester,reviewer}.md`.
 
 ### T-072 — UI follow-ups from T-066 (done 2026-10-15, PR #125 merged 1f59aaa; no migration, no API change)
 - Neutral "waiting for a check" on accepted bookings whose days are all past and uncooked (customer and chef pages, derived from days); list line "All visit days have passed..."; chef no-show trial wording via `freeTrialEffect("no_show_chef", { anyDayCooked })` (D-37); mark-cooked prompt for past uncooked days (matches D-57).
-- Tester PASS (L-A wording shows up to 2 days before the server flag; L-B customer Cancel shown on a waiting booking, refusal worded). Reviewer APPROVE (same LOWs, freeze-awareness LOW, plural NIT) -> T-073. Unit 1949 + 3 expected fails, mock e2e 215. See `.team/handoffs/T-072-{frontend,tester,reviewer}.md`.
+- Tester PASS (L-A wording shows up to 2 days before the server flag; L-B customer Cancel shown on a waiting booking, refusal worded). Reviewer APPROVE (same LOWs, freeze-awareness LOW, plural NIT) -> T-073 (L-A waits on Q-35). Unit 1949 + 3 expected fails, mock e2e 215. See `.team/handoffs/T-072-{frontend,tester,reviewer}.md`.
