@@ -32,12 +32,23 @@ describe("freeTrialEffect with the D-26 cooked marker", () => {
       "declined",
       "expired",
       "completed",
-      "no_show_chef",
       "no_show_customer",
     ] as const)
       expect(freeTrialEffect(e, { anyDayCooked: true })).toBe(
         freeTrialEffect(e),
       );
+  });
+  it("D-37: a chef no-show after a cooked day consumes the trial, otherwise it releases", () => {
+    expect(freeTrialEffect("no_show_chef")).toBe("release");
+    expect(freeTrialEffect("no_show_chef", { anyDayCooked: false })).toBe(
+      "release",
+    );
+    expect(freeTrialEffect("no_show_chef", { anyDayCooked: true })).toBe(
+      "consume",
+    );
+    expect(
+      transitionFreeTrial("held", "no_show_chef", { anyDayCooked: true }),
+    ).toEqual({ kind: "change", from: "held", to: "consumed" });
   });
   it("transitionFreeTrial passes the marker on", () => {
     expect(
