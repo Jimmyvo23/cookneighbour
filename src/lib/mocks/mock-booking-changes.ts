@@ -31,11 +31,13 @@ import type {
 import {
   CHANGE_REFUSALS,
   PICKUP_RANGE_MESSAGES,
+  parseCancelReason,
   parseDayNumber,
   parsePickupAccept,
   parseProposedAt,
   pickupDeadline,
 } from "@/lib/domain/bookingChanges";
+import { cancellationTiming } from "@/lib/domain/cancellation";
 import { findContactDetails } from "@/lib/domain/contactDetails";
 import { addDays, torontoToday } from "@/lib/domain/dishes";
 import { estimateBooking } from "@/lib/domain/pricing";
@@ -413,6 +415,7 @@ export function seedCustomerBookings(
 // ---------------------------------------------------------------------------
 const CHEF_ONLY = new Set([
   "accept",
+  "cancel",
   "decline",
   "cooked",
   "complete",
@@ -493,7 +496,7 @@ export function changeRoute(
   now: Date,
 ): BookingRouteResult | null {
   const m =
-    /^\/api\/bookings\/([^/]+)\/(accept|decline|complete|shopping-list|receipts|pickup\/missed)$/.exec(
+    /^\/api\/bookings\/([^/]+)\/(accept|decline|cancel|no-show|complete|shopping-list|receipts|pickup\/missed)$/.exec(
       path,
     );
   const day =
@@ -582,6 +585,55 @@ export function changeRoute(
         status: "declined",
         respondedAt: now.toISOString(),
         declineReason: reason.value,
+      });
+    }
+    case "cancel": {
+      // Only the chef reaches this (the customer's cancel is `cancelRoute` in mock-bookings.ts).
+      const obj = asObject(body);
+      const extra = unknownKeys(obj, ["reason"]);
+      if (extra) return extra;
+      const parsed = parseCancelReason(obj);
+      if ("error" in parsed) return badFields({ reason: parsed.error });
+      if ("contact" in parsed)
+        return fail(
+          422,
+          "CONTACT_DETAILS_NOT_ALLOWED",
+          "Do not put phone numbers, emails or links in the reason.",
+          { fields: { reason: "Remove the contact details." } },
+        );
+      if (d.status !== "requested" && d.status !== "accepted")
+        return invalid("wrong_status");
+      if (d.status !== "accepted") return invalid("chef_use_decline");
+      if (!d.days.some((x) => !x.cookedAt && x.date >= today))
+        return invalid("nothing_left");
+      const first = d.days.map((x) => x.date).sort()[0];
+      return save({
+        ...d,
+        status: "cancelled",
+        cancelledBy: "chef",
+        cancelledAt: now.toISOString(),
+        cancellationTiming: cancellationTiming({
+          now,
+          firstVisitDate: first,
+          cancelledBy: "chef",
+        }).timing,
+        cancelReason: parsed.value,
+      });
+    }
+    case "no-show": {
+      if (d.status !== "accepted") return invalid("wrong_status");
+      const due = [...d.days]
+        .sort((x, y) => x.dayNumber - y.dayNumber)
+        .find((x) => !x.cookedAt && x.date <= today);
+      if (!due) return invalid("no_visit_due");
+      return save({
+        ...d,
+        status: role === "chef" ? "no_show_customer" : "no_show_chef",
+        noShow: {
+          reportedAt: now.toISOString(),
+          dayNumber: due.dayNumber,
+          pickupMissed: false,
+        },
       });
     }
     case "cooked": {

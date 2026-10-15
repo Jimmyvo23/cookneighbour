@@ -50,6 +50,32 @@ export function changeErrorText(err: unknown): string {
   return err.message;
 }
 
+/**
+ * Words for a refused chef cancel (contract 7A, `POST .../cancel`). `wrong_status` and the contact
+ * guard are worded for this action; the other reasons use the shared words.
+ */
+export function cancelBookingErrorText(err: unknown): string {
+  if (err instanceof ApiClientError) {
+    if (err.code === "INVALID_STATE" && err.reason === "wrong_status")
+      return "This booking is not accepted any more, so it cannot be cancelled. Reload the page to see its status.";
+    if (err.code === "CONTACT_DETAILS_NOT_ALLOWED")
+      return "Please leave phone numbers, emails and links out of the reason. The customer reads it, and these are shared only after a booking is accepted.";
+    if (err.status === 422 && err.fields.reason) return err.fields.reason;
+  }
+  return changeErrorText(err);
+}
+
+/** Words for a refused customer no-show report (contract 7A, `POST .../no-show`). */
+export function noShowErrorText(err: unknown): string {
+  if (
+    err instanceof ApiClientError &&
+    err.code === "INVALID_STATE" &&
+    err.reason === "wrong_status"
+  )
+    return "This booking is not accepted any more, so a no-show cannot be reported. Reload the page to see its status.";
+  return changeErrorText(err);
+}
+
 /** Words for a refused pickup proposal; `latest` is the first instant that is too late. */
 export function proposalErrorText(err: unknown): string {
   if (
@@ -195,6 +221,34 @@ export function allDaysCooked(b: BookingDetail): boolean {
 /** The visit date has come (Toronto): a day can be marked cooked from this date on (409 too_early). */
 export function dayIsDue(day: BookingDayView, today: string): boolean {
   return day.date <= today;
+}
+
+/**
+ * The chef can cancel an accepted booking while a visit is left: not cooked and today or later
+ * (Toronto). The server decides (409 `nothing_left`); this only avoids a button that cannot work.
+ */
+export function canChefCancel(b: BookingDetail, today: string): boolean {
+  return (
+    b.status === "accepted" &&
+    b.days.some((d) => d.cookedAt === null && d.date >= today)
+  );
+}
+
+/**
+ * The visit a customer no-show can be reported for: the earliest day whose date has come and that
+ * was not marked cooked (contract 7A: reportable from the visit date, an ASSUMPTION there). Null
+ * when none is due.
+ */
+export function noShowDay(
+  b: BookingDetail,
+  today: string,
+): BookingDayView | null {
+  if (b.status !== "accepted") return null;
+  return (
+    [...b.days]
+      .sort((x, y) => x.dayNumber - y.dayNumber)
+      .find((d) => d.cookedAt === null && d.date <= today) ?? null
+  );
 }
 
 // ---------------------------------------------------------------------------
