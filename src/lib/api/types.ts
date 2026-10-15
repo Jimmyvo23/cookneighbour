@@ -724,8 +724,13 @@ export interface BookingDetail {
   allergyConflicts: AllergyConflictView[];
   /** null until accepted, except the customer's own cooking address (customer_home, customer view). */
   cookingPlace: { line: string; city: string; postalCode: string } | null;
-  /** The other party's phone, null until accepted. */
+  /** The other party's phone, null until accepted and again after the D-52 window (T-065). */
   contact: { displayName: string; phone: string | null } | null;
+  /**
+   * T-065 (D-52): the instant the phone and the other party's address hide again (00:00 Toronto on
+   * the last visit day + 8). null whenever `contact` is null. Optional so older mocks still type-check.
+   */
+  contactVisibleUntil?: string | null;
   /** MOCK: nothing is ever charged. */
   payment: { mock: true; collected: false };
 }

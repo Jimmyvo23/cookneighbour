@@ -273,6 +273,34 @@ async function mutate(
     const step = build(s);
     if (hooks?.afterRead) await hooks.afterRead();
 
+    // A kitchen-address change is one locked database function (N3, T-065): the "no accepted
+    // chef's-home booking" check and the write cannot be separated by a concurrent accept.
+    const kitchen = step.privColumns?.kitchen_address_line !== undefined;
+    if (kitchen) {
+      const pc = step.privColumns!;
+      const r = await chef.admin.rpc("set_chef_kitchen_address", {
+        p_chef: chef.userId,
+        p_expected_updated_at: s.priv.updated_at as string,
+        p_line: pc.kitchen_address_line,
+        p_city: pc.kitchen_city,
+        p_postal: pc.kitchen_postal_code,
+        p_kitchen_status: (pc.kitchen_status as string | undefined) ?? null,
+        p_allergen_ack_at: (pc.allergen_ack_at as string | undefined) ?? null,
+        p_hygiene_ack_at:
+          (pc.kitchen_hygiene_ack_at as string | undefined) ?? null,
+      });
+      if (r.error)
+        throw new Error(`set_chef_kitchen_address failed: ${r.error.message}`);
+      const result = (r.data as { result: string }).result;
+      if (result === "conflict") continue; // someone else changed the row: read again
+      if (result === "kitchen_in_use")
+        throw new ApiFailure(
+          "INVALID_STATE",
+          "You have an accepted booking at your home. Customers were given this kitchen address, so it cannot change until that booking is finished or cancelled.",
+          { reason: "kitchen_in_use" },
+        );
+      if (result !== "ok") throw new Error("chef rows disappeared");
+    }
     if (!isEmpty(step.chefColumns)) {
       const r = await chef.admin
         .from("chefs")
@@ -280,7 +308,7 @@ async function mutate(
         .eq("profile_id", chef.userId);
       if (r.error) throw new Error(`chefs update failed: ${r.error.message}`);
     }
-    if (!isEmpty(step.privColumns)) {
+    if (!kitchen && !isEmpty(step.privColumns)) {
       const r = await chef.admin
         .from("chef_private")
         .update(step.privColumns!)
@@ -378,21 +406,10 @@ export async function checkedUpdate(
  * re-enables it). Photos and other fields can still change. Finished bookings are brought up to
  * date first (lazy auto-completion).
  */
-async function assertKitchenAddressFree(chef: ChefCaller): Promise<void> {
+async function sweepFinishedBookings(chef: ChefCaller): Promise<void> {
+  // The check itself is inside set_chef_kitchen_address (T-065); this only brings finished
+  // bookings up to date first, so an overdue one no longer blocks the change.
   await sweepExpired(chef.admin, chef.userId);
-  const r = await chef.admin
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("chef_id", chef.userId)
-    .eq("location_type", "chef_home")
-    .eq("status", "accepted");
-  if (r.error) throw new Error(`kitchen booking lookup failed`);
-  if ((r.count ?? 0) > 0)
-    throw new ApiFailure(
-      "INVALID_STATE",
-      "You have an accepted booking at your home. Customers were given this kitchen address, so it cannot change until that booking is finished or cancelled.",
-      { reason: "kitchen_in_use" },
-    );
 }
 
 export async function patchApplication(
@@ -407,7 +424,7 @@ export async function patchApplication(
         kitchenAddress: u.kitchenAddress,
       }).columns
   )
-    await assertKitchenAddressFree(chef);
+    await sweepFinishedBookings(chef);
   const now = new Date().toISOString(); // server clock, never from the client
   return mutate(
     chef,

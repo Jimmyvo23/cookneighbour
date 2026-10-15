@@ -43,7 +43,7 @@ function fail(what: string): Error {
   return new Error(`bookings read failed: ${what}`);
 }
 
-/** The statuses whose contact details stay visible (get_booking_contact, booking_contact_unlocked). */
+/** The statuses whose contact details stay visible (get_booking_contact, booking_contact_unlocked), and only until the D-52 window ends. */
 const UNLOCKED: readonly string[] = [
   "accepted",
   "completed",
@@ -223,6 +223,10 @@ export async function loadBookingDetail(
         phone: (contactRow.phone_e164 as string | null) ?? null,
       }
     : null;
+  const contactVisibleUntil =
+    contactRow && contactRow.visible_until
+      ? iso(contactRow.visible_until)
+      : null;
 
   let cookingPlace: BookingDetail["cookingPlace"] = null;
   if (b.location_type === "customer_home") {
@@ -307,6 +311,7 @@ export async function loadBookingDetail(
     allergyConflicts,
     cookingPlace,
     contact,
+    contactVisibleUntil,
     payment: { mock: true, collected: false },
   };
 }

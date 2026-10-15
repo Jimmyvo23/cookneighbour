@@ -952,7 +952,7 @@ describe("lost-race handling (optimistic lock on chef_private)", () => {
     },
   });
 
-  it("PATCH gives up the same way (409 INVALID_STATE): chef_private fields are not saved, but chefs fields of the same request already are (tester F2)", async () => {
+  it("PATCH with a kitchen change gives up the same way (409 INVALID_STATE) and saves nothing at all (tester F2, changed by T-065: the kitchen write is first)", async () => {
     const chef = await newChef();
     await setChef(chef.id, {
       location_options: BOTH,
@@ -987,11 +987,11 @@ describe("lost-race handling (optimistic lock on chef_private)", () => {
     expect(priv.kitchen_address_line).toBe("1 Old St");
     expect(priv.allergen_ack_at).toBeNull();
     expect(priv.kitchen_status).toBe("verified");
-    // chefs: written first, so these are already saved, including the safe switch-off of chef's home
+    // chefs: T-065 writes the kitchen address first (one locked function), so a request that gives
+    // up leaves the chefs row untouched, chef's home included.
     const row = await chefRow(chef.id);
-    expect(row.bio).toBe("saved anyway");
-    expect(row.hourly_rate_cents).toBe(4100);
-    expect(row.chef_home_enabled).toBe(false);
+    expect(row.bio).toBe("old bio");
+    expect(row.chef_home_enabled).toBe(true);
   });
 
   it("removing a kitchen photo gives up the same way and keeps the photo and its object", async () => {
