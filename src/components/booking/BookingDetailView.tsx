@@ -16,7 +16,15 @@ import {
   isInsideLateWindow,
   type FieldErrors,
 } from "@/lib/booking/form";
-import { chefNoShowTrialText, isWaitingForCheck } from "@/lib/booking/changes";
+import {
+  CONTACT_ENDED_TEXT,
+  CONTACT_LOCKED_TEXT,
+  canCustomerCancel,
+  chefNoShowTrialText,
+  contactOpenText,
+  contactWindow,
+  isWaitingForCheck,
+} from "@/lib/booking/changes";
 import { freeTrialEffect } from "@/lib/domain/cancellation";
 import { torontoToday } from "@/lib/domain/dishes";
 import { formatMinutes } from "@/lib/chef/dishes";
@@ -178,7 +186,9 @@ function Ready({
     onChange(next);
     if (message) announce(message);
   };
-  const canCancel = b.status === "requested" || b.status === "accepted";
+  const canCancel = canCustomerCancel(b, torontoToday());
+  const win = contactWindow(b);
+  const windowText = contactOpenText(win);
   const firstDay = b.days[0]?.date;
   const anyCooked = b.days.some((d) => d.cookedAt !== null);
   return (
@@ -290,7 +300,9 @@ function Ready({
             {b.locationType === "chef_home"
               ? b.status === "requested"
                 ? "The chef's kitchen address is shared with you once the chef accepts this booking."
-                : "The chef's kitchen address is not shown for this booking."
+                : win.kind === "ended"
+                  ? "The chef's kitchen address is hidden now."
+                  : "The chef's kitchen address is not shown for this booking."
               : "Your cooking address is not available on this page."}
           </p>
         )}
@@ -305,7 +317,16 @@ function Ready({
           <p data-testid="contact-later" className={hintCls}>
             {b.status === "requested"
               ? "Phone numbers are shared only after the chef accepts."
-              : "The chef's phone number is not shown for this booking."}
+              : win.kind === "ended"
+                ? CONTACT_ENDED_TEXT
+                : win.kind === "locked"
+                  ? `The chef's phone number is not shown for this booking. ${CONTACT_LOCKED_TEXT}`
+                  : "The chef's phone number is not shown for this booking."}
+          </p>
+        )}
+        {windowText && (
+          <p data-testid="contact-window" className={hintCls}>
+            {windowText}
           </p>
         )}
       </section>

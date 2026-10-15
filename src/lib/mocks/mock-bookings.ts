@@ -45,7 +45,10 @@ import {
   type BookableDish,
   type BookingChef,
 } from "@/lib/domain/bookingValidation";
-import { cancellationTiming } from "@/lib/domain/cancellation";
+import {
+  cancellationTiming,
+  torontoStartOfDay,
+} from "@/lib/domain/cancellation";
 import { MAX_OPEN_REQUESTS } from "@/lib/domain/config";
 import { findContactDetails } from "@/lib/domain/contactDetails";
 import { estimateBooking, type Estimate } from "@/lib/domain/pricing";
@@ -78,6 +81,8 @@ export interface MockHooks {
   trialRaceOnce?: boolean;
   /** T-045: the chef's kitchen was switched off, so accepting a chef's-home request answers 409. */
   chefHomeOff?: boolean;
+  /** T-073 (D-59): chef's home is on but no kitchen address is saved, so accepting answers 409. */
+  kitchenAddressMissing?: boolean;
   /** T-045: a signed-in customer gets the same made-up bookings, seen from their side (once). */
   seedCustomer?: boolean;
 }
@@ -192,13 +197,22 @@ export function sweepMock(
 export function viewOf(
   r: MockBookingRow,
   role: "customer" | "chef" = "customer",
+  now: Date = new Date(),
 ): BookingDetail {
   const d = r.detail;
-  const shows = SHOWS_CONTACT.includes(d.status);
+  // D-52 (T-065): contact is hidden again at 00:00 Toronto on the last visit day + 8 (this mirrors
+  // `booking_contact_ends_at`). `contactVisibleUntil` is null whenever contact is hidden.
+  const last = d.days.map((x) => x.date).sort()[d.days.length - 1];
+  const endsAt = last ? torontoStartOfDay(addDays(last, 8)) : null;
+  const shows =
+    SHOWS_CONTACT.includes(d.status) &&
+    (!endsAt || now.getTime() < endsAt.getTime());
+  const contactVisibleUntil = shows && endsAt ? endsAt.toISOString() : null;
   if (role === "chef")
     return {
       ...d,
       viewerRole: "chef",
+      contactVisibleUntil,
       cookingPlace:
         shows && d.locationType === "customer_home" ? r.place : null,
       contact: shows
@@ -211,6 +225,7 @@ export function viewOf(
   const own = d.locationType === "customer_home"; // the customer's own cooking address
   return {
     ...d,
+    contactVisibleUntil,
     cookingPlace: own || shows ? r.place : null,
     contact: shows
       ? { displayName: d.chef.displayName, phone: r.chefPhone }
@@ -518,7 +533,7 @@ export function bookingRoutes(
     if (p === "/api/bookings" && method === "GET")
       return carry(listRoute(url, state, "chef"));
     if (one && method === "GET")
-      return carry(detailRoute(one[1], state, "chef"));
+      return carry(detailRoute(one[1], state, "chef", now));
     const changed = changeRoute(method, p, body, state, "chef", now);
     if (changed) return carry(changed);
     return carry(fail(403, "FORBIDDEN", "Only customers can use this."));
@@ -531,7 +546,7 @@ export function bookingRoutes(
   if (p === "/api/bookings" && method === "GET")
     return carry(listRoute(url, state, "customer"));
   if (one && method === "GET")
-    return carry(detailRoute(one[1], state, "customer"));
+    return carry(detailRoute(one[1], state, "customer", now));
   if (cancel && method === "POST")
     return carry(cancelRoute(cancel[1], body, state, now));
   const changed = changeRoute(method, p, body, state, "customer", now);
@@ -796,10 +811,11 @@ function detailRoute(
   id: string,
   s: BookingMockState,
   role: "customer" | "chef",
+  now: Date = new Date(),
 ): BookingRouteResult {
   const rows = role === "chef" ? (s.chefBookings ?? []) : s.bookings;
   const r = UUID.test(id) ? rows.find((x) => x.detail.id === id) : undefined;
-  return r ? { res: json(200, viewOf(r, role)) } : notFound();
+  return r ? { res: json(200, viewOf(r, role, now)) } : notFound();
 }
 
 function cancelRoute(

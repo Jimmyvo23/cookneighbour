@@ -7,6 +7,11 @@ import type {
 } from "@/lib/api/types";
 import {
   canChefCancel,
+  canCustomerCancel,
+  CONTACT_LOCKED_TEXT,
+  CONTACT_RULE,
+  contactOpenText,
+  contactWindow,
   cancelBookingErrorText,
   noShowDay,
   isWaitingForCheck,
@@ -147,6 +152,9 @@ describe("error words", () => {
   it("words the T-063 reasons for people", () => {
     expect(changeErrorText(inv("too_early"))).toMatch(/not arrived/);
     expect(changeErrorText(inv("days_not_cooked"))).toMatch(/Mark each visit/);
+    expect(changeErrorText(inv("kitchen_address_missing"))).toMatch(
+      /kitchen address is missing.*declining/,
+    );
     expect(changeErrorText(inv("pickup_window_open"))).toMatch(
       /can still pick up/,
     );
@@ -452,5 +460,98 @@ describe("waiting for a check around Toronto midnight (T-072 tester)", () => {
     // 2026-11-02 04:59Z is 23:59 EST on 1 Nov; 05:00Z is midnight on 2 Nov.
     expect(waitingAt("2026-11-02T04:59:00Z", "2026-11-01")).toBe(false);
     expect(waitingAt("2026-11-02T05:00:00Z", "2026-11-01")).toBe(true);
+  });
+});
+
+describe("customer cancel guard and contact window (T-073)", () => {
+  const book = (over: Partial<BookingDetail>, dates: string[] = []) =>
+    ({
+      status: "accepted",
+      contact: null,
+      days: dates.map((date, i) => day({ dayNumber: i + 1, date })),
+      ...over,
+    }) as BookingDetail;
+  const T = "2026-10-20";
+
+  it("customer can cancel while a visit is today or later, or while only requested", () => {
+    expect(canCustomerCancel(book({}, [T]), T)).toBe(true);
+    expect(canCustomerCancel(book({}, ["2026-10-19", "2026-10-21"]), T)).toBe(
+      true,
+    );
+    expect(
+      canCustomerCancel(book({ status: "requested" }, ["2026-10-19"]), T),
+    ).toBe(true);
+  });
+  it("customer cannot cancel when every visit is past, or the status is final", () => {
+    expect(canCustomerCancel(book({}, ["2026-10-18", "2026-10-19"]), T)).toBe(
+      false,
+    );
+    for (const status of [
+      "completed",
+      "cancelled",
+      "declined",
+      "expired",
+    ] as const)
+      expect(canCustomerCancel(book({ status }, [T]), T)).toBe(false);
+  });
+
+  it("classifies the contact window from the status and what the server sent", () => {
+    const contact = { displayName: "A", phone: "+14165550100" };
+    expect(contactWindow(book({ status: "requested" })).kind).toBe("later");
+    expect(contactWindow(book({ status: "cancelled" })).kind).toBe("locked");
+    expect(contactWindow(book({ status: "declined" })).kind).toBe("never");
+    expect(contactWindow(book({ status: "expired" })).kind).toBe("never");
+    for (const status of [
+      "accepted",
+      "completed",
+      "no_show_customer",
+      "no_show_chef",
+    ] as const) {
+      expect(contactWindow(book({ status })).kind).toBe("ended");
+      expect(contactWindow(book({ status, contact })).kind).toBe("open");
+    }
+  });
+
+  it("words the cut-off in Toronto time (DST-safe) and says nothing when not open", () => {
+    // D-64: the day comes from (cut-off - 1 ms) in Toronto, with no clock time.
+    // 00:00 Toronto on 2026-10-28 is 04:00Z (EDT), so the last visible day is Tue, Oct 27.
+    const summer = contactOpenText({
+      kind: "open",
+      until: "2026-10-28T04:00:00.000Z",
+    });
+    expect(summer).toContain(
+      "Visible until the end of Tue, Oct 27 (Toronto time)",
+    );
+    expect(summer).not.toContain("12:00");
+    expect(summer).not.toContain("Chat stays open");
+    // Last day Oct 25 -> cut-off Nov 2 00:00 Toronto = 05:00Z (EST, after the DST change).
+    expect(
+      contactOpenText({ kind: "open", until: "2026-11-02T05:00:00.000Z" }),
+    ).toContain("the end of Sun, Nov 1 (Toronto time)");
+    // Missing or unreadable cut-off: only the rule.
+    expect(contactOpenText({ kind: "open", until: null })).toBe(CONTACT_RULE);
+    expect(contactOpenText({ kind: "open", until: "nonsense" })).toBe(
+      CONTACT_RULE,
+    );
+    expect(CONTACT_RULE).toContain("7 days after the last visit day");
+    expect(CONTACT_LOCKED_TEXT).not.toContain("Chat stays open");
+    expect(contactOpenText({ kind: "ended" })).toBeNull();
+    expect(contactOpenText({ kind: "locked" })).toBeNull();
+  });
+
+  it("D-64 DST edges: spring-forward day, fall-back day, and the instant just after midnight", () => {
+    const txt = (until: string) => contactOpenText({ kind: "open", until });
+    // Last day Mar 6 2027 -> cut-off Mar 14 00:00 Toronto = 05:00Z (EST, DST starts 02:00 that day).
+    expect(txt("2027-03-14T05:00:00.000Z")).toContain("end of Sat, Mar 13 ");
+    // Last day Mar 7 -> cut-off Mar 15 00:00 EDT = 04:00Z; Mar 14 is a 23-hour day.
+    expect(txt("2027-03-15T04:00:00.000Z")).toContain("end of Sun, Mar 14 ");
+    // Fall back: Nov 1 2026 is a 25-hour day; cut-off Nov 2 00:00 EST = 05:00Z.
+    expect(txt("2026-11-02T05:00:00.000Z")).toContain("end of Sun, Nov 1 ");
+    // Last day Oct 24 -> cut-off Nov 1 00:00 EDT = 04:00Z -> Sat, Oct 31.
+    expect(txt("2026-11-01T04:00:00.000Z")).toContain("end of Sat, Oct 31 ");
+    // One ms past midnight belongs to the next day (the minus-1-ms rule is exact).
+    expect(txt("2026-10-28T04:00:00.001Z")).toContain("end of Wed, Oct 28 ");
+    // Empty string cut-off: rule only.
+    expect(txt("")).toBe(CONTACT_RULE);
   });
 });

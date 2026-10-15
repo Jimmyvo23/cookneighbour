@@ -37,6 +37,7 @@ import {
   parseProposedAt,
   pickupDeadline,
 } from "@/lib/domain/bookingChanges";
+import { KITCHEN_ADDRESS_MISSING_MESSAGE } from "@/lib/booking/changes";
 import { cancellationTiming } from "@/lib/domain/cancellation";
 import { findContactDetails } from "@/lib/domain/contactDetails";
 import { addDays, torontoToday } from "@/lib/domain/dishes";
@@ -565,6 +566,12 @@ export function changeRoute(
         );
       if (d.locationType === "chef_home" && s.hooks.chefHomeOff)
         return invalid("chef_home_not_enabled");
+      // D-59 (contract v1.10): reason kitchen_address_missing with a ready message.
+      if (d.locationType === "chef_home" && s.hooks.kitchenAddressMissing)
+        return invalid(
+          "kitchen_address_missing",
+          KITCHEN_ADDRESS_MISSING_MESSAGE,
+        );
       return save({ ...d, status: "accepted", respondedAt: now.toISOString() });
     }
     case "decline": {

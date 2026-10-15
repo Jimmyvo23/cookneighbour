@@ -163,6 +163,24 @@ test.describe("a waiting request", () => {
     );
   });
 
+  test("a chef's-home request with no kitchen address cannot be accepted: the words point to Decline (D-59)", async ({
+    page,
+  }) => {
+    await openPage(page, "/chef/bookings");
+    await setMockHooks(page, { kitchenAddressMissing: true });
+    await openBooking(page, SEEDED.A02);
+    await page.getByRole("button", { name: "Accept this request" }).click();
+    const alert = page
+      .getByRole("alert")
+      .filter({ hasText: "kitchen address is missing" });
+    await expect(alert).toBeVisible();
+    await expect(alert).toContainText("declining this request");
+    await expect(alert).toBeFocused();
+    await expect(
+      page.getByRole("button", { name: "Decline this request" }),
+    ).toBeVisible();
+  });
+
   test("decline needs a reason (D-34): the field is marked and focused, nothing is sent", async ({
     page,
   }) => {

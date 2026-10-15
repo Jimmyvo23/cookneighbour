@@ -96,7 +96,24 @@ const click = async (el: Element | undefined | null) => {
 };
 
 describe("T-072 tester: customer Cancel on a waiting booking", () => {
-  it("shows a worded refusal for nothing_left and keeps the waiting note", async () => {
+  it("hides the Cancel button when every visit day is past (T-073)", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(json(200, waiting)));
+    await act(async () => {
+      root.render(<BookingDetailView id={waiting.id} />);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(host.querySelector('[data-testid="waiting-check"]')).not.toBeNull();
+    const open = [...host.querySelectorAll("button")].find(
+      (b) => b.textContent === "Cancel this booking",
+    );
+    expect(open).toBeUndefined();
+  });
+
+  // The page can stay open past midnight, so the server may still refuse: the refusal stays worded.
+  it("shows a worded refusal for nothing_left (stale page)", async () => {
+    const stale = { ...waiting, days: [day(1, 1)] };
     fetchMock.mockImplementation((url: string, init?: RequestInit) =>
       Promise.resolve(
         init?.method === "POST" && /cancel/.test(url)
@@ -109,7 +126,7 @@ describe("T-072 tester: customer Cancel on a waiting booking", () => {
             })
           : /receipts|groceries/.test(url)
             ? json(200, { items: [] })
-            : json(200, waiting),
+            : json(200, stale),
       ),
     );
     await act(async () => {
@@ -118,8 +135,6 @@ describe("T-072 tester: customer Cancel on a waiting booking", () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(host.querySelector('[data-testid="waiting-check"]')).not.toBeNull();
-
     const open = [...host.querySelectorAll("button")].find(
       (b) => b.textContent === "Cancel this booking",
     );
@@ -133,6 +148,5 @@ describe("T-072 tester: customer Cancel on a waiting booking", () => {
     );
     expect(alerts).toContain("There is no visit left to cancel.");
     expect(host.textContent).not.toContain("raw server text");
-    expect(host.querySelector('[data-testid="waiting-check"]')).not.toBeNull();
   });
 });
