@@ -163,6 +163,20 @@ export interface AddressResponse {
   address: NonNullable<MePrivate["address"]>;
 }
 
+/** Saved allergy profile (T-067). Same shape as `BookingIntakeRequest`, every field present. */
+export interface SavedIntake {
+  noAllergies: boolean;
+  allergens: string[];
+  allergyNotes: string;
+  noDietaryNeeds: boolean;
+  dietaryNotes: string;
+}
+export interface SavedIntakeResponse {
+  intake: SavedIntake | null;
+  /** ISO time of the last save; null when nothing is saved. */
+  savedAt: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Chef application (own)
 // ---------------------------------------------------------------------------
