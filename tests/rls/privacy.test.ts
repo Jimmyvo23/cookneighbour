@@ -408,6 +408,7 @@ describe("get_booking_contact (CLAUDE.md 6.8)", () => {
       "display_name",
       "phone_e164",
       "postal_code",
+      "visible_until",
     ]);
     const text = JSON.stringify(res.data);
     expect(text).not.toContain(fx.hashes.c1Phone);

@@ -132,12 +132,18 @@ describe("D-52 window and D-56", () => {
     return { chef, cust, id: b.id };
   }
   const setLastDay = async (id: string, date: string) => {
-    const r = await svc
-      .from("booking_days")
-      .update({ visit_date: date })
-      .eq("booking_id", id)
-      .eq("day_number", 2);
-    expect(r.error).toBeNull();
+    // Day 1 is the day before, so the last visit day is `date`.
+    for (const [n, d] of [
+      [1, dayPlus(date, -1)],
+      [2, date],
+    ] as const) {
+      const r = await svc
+        .from("booking_days")
+        .update({ visit_date: d })
+        .eq("booking_id", id)
+        .eq("day_number", n);
+      expect(r.error).toBeNull();
+    }
   };
 
   it("ends at 00:00 Toronto on last day + 8, to the second", async () => {

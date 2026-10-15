@@ -108,6 +108,16 @@ export default async function setup(project: TestProject) {
     status: "accepted",
     location: "chef_home",
   });
+  // T-065: acceptance copies the kitchen address onto the booking (the fixture skips answer_booking).
+  check(
+    await svc.from("booking_kitchen_addresses").insert({
+      booking_id: acceptedChefHomeC1H1.id,
+      address_line: addresses.kitchen,
+      city: "Mississauga",
+      postal_code: "L5B1A1",
+    }),
+    "kitchen snapshot",
+  );
   const requestedC2H2 = await makeBooking(svc, {
     customer: c2,
     chef: h2,

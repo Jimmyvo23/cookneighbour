@@ -121,6 +121,8 @@ begin
   end if;
 end;
 $$;
+-- Supabase's own default privileges give new functions to anon: take that away explicitly.
+revoke execute on function public.get_booking_contact(uuid) from public, anon;
 grant execute on function public.get_booking_contact(uuid) to authenticated;
 
 -- ---------------------------------------------------------------------------
