@@ -116,10 +116,10 @@ export function CustomerPickups({
         Picking up your meals
       </h2>
       <p>
-        You pick up the finished meals at the chef&apos;s home. Agree a pickup
-        time with the chef here: you propose a time and the chef accepts or
-        declines. If it does not work, you can propose another time until the
-        end of the last pickup day below.
+        You pick up the finished meals at the chef&apos;s home.{" "}
+        {b.frozen
+          ? PICKUPS_PAUSED
+          : "Agree a pickup time with the chef here: you propose a time and the chef accepts or declines. If it does not work, you can propose another time until the end of the last pickup day below."}
       </p>
       {open && (
         <p className={warnBoxCls} data-testid="pickup-missed-warning">
@@ -142,9 +142,11 @@ export function CustomerPickups({
             </p>
             {!d.cookedAt ? (
               <p className={hintCls}>
-                {live
-                  ? "The chef has not marked this day as cooked yet. You can propose a pickup time after that."
-                  : "This day was not cooked."}
+                {b.frozen
+                  ? PICKUPS_PAUSED
+                  : live
+                    ? "The chef has not marked this day as cooked yet. You can propose a pickup time after that."
+                    : "This day was not cooked."}
               </p>
             ) : (
               <>
@@ -190,6 +192,8 @@ export function CustomerPickups({
     </section>
   );
 }
+
+const PICKUPS_PAUSED = "Pickups are paused while this booking is on hold.";
 
 function ProposeForm({
   booking: b,
@@ -298,10 +302,10 @@ export function ChefPickups({
         Pickup times
       </h2>
       <p>
-        The customer picks up the finished meals at your home. After you mark a
-        day as cooked, the customer proposes a pickup time and you accept or
-        decline it. They may propose again until the end of that day&apos;s
-        pickup deadline.
+        The customer picks up the finished meals at your home.{" "}
+        {b.frozen
+          ? PICKUPS_PAUSED
+          : "After you mark a day as cooked, the customer proposes a pickup time and you accept or decline it. They may propose again until the end of that day's pickup deadline."}
       </p>
       <ul className="flex flex-col divide-y divide-zinc-300 dark:divide-zinc-700">
         {b.days.map((d) => (
@@ -316,9 +320,11 @@ export function ChefPickups({
             </p>
             {!d.cookedAt ? (
               <p className={hintCls}>
-                {live
-                  ? "Mark this day as cooked first. Then the customer can propose a pickup time."
-                  : "This day was not cooked."}
+                {b.frozen
+                  ? PICKUPS_PAUSED
+                  : live
+                    ? "Mark this day as cooked first. Then the customer can propose a pickup time."
+                    : "This day was not cooked."}
               </p>
             ) : (
               <>
@@ -360,7 +366,7 @@ export function ChefPickups({
           </li>
         ))}
       </ul>
-      {canMarkPickupMissed(b, now) && (
+      {!b.frozen && canMarkPickupMissed(b, now) && (
         <MissedPickup booking={b} onChange={onChange} />
       )}
     </section>

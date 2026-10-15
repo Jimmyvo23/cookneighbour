@@ -29,3 +29,13 @@ From: frontend  To: tester
 ## What the next agent needs
 - Tester: try a stale page (loaded unfrozen, then frozen) acting: expect the neutral 409 text in the alert. Try 375 px and dark mode on the frozen pages (axe and no sideways scroll are covered for the chef A04 and customer A04 pages only).
 - No question for Jimmy.
+
+## Round 2
+
+Fixes for the Reviewer's REQUEST CHANGES (head c4a592b):
+- MEDIUM-1: `ChefPickups` now renders `<MissedPickup>` only when `!b.frozen && canMarkPickupMissed(b, now)` (function left unchanged). Test in FrozenBooking.test.tsx uses seed 9105 (window passed): button shows when not frozen, absent when frozen.
+- INFO-1: `cancelErrorText` returns `FROZEN_TEXT` for `reason: "frozen"`.
+- N1: frozen pickup intro and uncooked-day hints (customer and chef) say "Pickups are paused while this booking is on hold." instead of inviting a proposal. Tests for both roles.
+- N2: a frozen chef with a disputed current receipt sees "A receipt cannot be added while this booking is on hold." (`no-receipt-frozen`). Test added.
+- Impeccable helper agents skipped (D-44), as in round 1.
+- Local: lint, typecheck, prettier clean; vitest 2025 passed, 3 expected fail; mock e2e 243 passed.

@@ -120,6 +120,54 @@ describe("chef side", () => {
     expect(h.button(/Accept this time|Decline this time/)).toBeNull();
   });
 
+  it("missed pickup: shows after the window when not frozen, absent when frozen", async () => {
+    await open(
+      seededBooking(9105, "chef", (x) => ({ ...x, frozen: false })),
+      "chef",
+    );
+    expect(h.q("missed-pickup")).not.toBeNull();
+    h.cleanup();
+    h = harness();
+    await open(
+      seededBooking(9105, "chef", (x) => ({ ...x, frozen: true })),
+      "chef",
+    );
+    expect(h.q("frozen-notice")).not.toBeNull();
+    expect(h.q("missed-pickup")).toBeNull();
+  });
+
+  it("frozen chef's-home: the pickup intro does not invite a proposal", async () => {
+    await open(
+      seededBooking(9103, "chef", (x) => ({ ...x, frozen: true })),
+      "chef",
+    );
+    expect(h.q("pickups")?.textContent).toContain("Pickups are paused");
+    expect(h.q("pickups")?.textContent).not.toMatch(/proposes a pickup time/);
+    h.cleanup();
+    h = harness();
+    await open(seededBooking(9103, "chef", pastUncooked(true)), "chef");
+    expect(h.q("frozen-notice")).not.toBeNull();
+  });
+
+  it("frozen chef with a disputed receipt is told one cannot be added", async () => {
+    const b = seededBooking(9106, "chef", (x) => ({ ...x, frozen: true }));
+    const items = (seededReceipts()[b.id] ?? []).map((r) => ({
+      ...r,
+      status: "disputed" as const,
+    }));
+    await open(b, "chef", {
+      [`GET /api/bookings/${b.id}/receipts`]: json(200, {
+        bookingId: b.id,
+        groceryOption: b.groceryOption,
+        estimatedIngredientsCents: b.estimate.ingredientsCents,
+        currency: "CAD",
+        items,
+      }),
+    });
+    expect(h.q("receipt-form")).toBeNull();
+    expect(h.q("no-receipt-frozen")?.textContent).toContain("on hold");
+  });
+
   it("a stale page that marks a day cooked shows the neutral words from a 409 frozen", async () => {
     const b = seededBooking(9104, "chef", pastUncooked(false));
     await open(b, "chef", {
@@ -171,6 +219,9 @@ describe("customer side", () => {
     expect(h.q("frozen-notice")).not.toBeNull();
     expect(h.q("propose-form")).toBeNull();
     expect(h.button(/Propose/)).toBeNull();
+    const t = h.q("pickups")?.textContent ?? "";
+    expect(t).toContain("Pickups are paused while this booking is on hold.");
+    expect(t).not.toMatch(/you propose a time|You can propose/);
   });
 
   it("frozen: receipt confirm and dispute stay available (D-66)", async () => {

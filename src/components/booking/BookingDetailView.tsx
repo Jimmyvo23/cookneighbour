@@ -79,6 +79,7 @@ function cancelErrorText(err: unknown): string {
       if (err.reason === "nothing_left")
         return "There is no visit left to cancel.";
     }
+    if (err.reason === "frozen") return FROZEN_TEXT;
     return err.message;
   }
   return "Something went wrong. Please try again.";

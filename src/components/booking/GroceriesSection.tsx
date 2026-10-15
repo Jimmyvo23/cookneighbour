@@ -227,6 +227,16 @@ export function GroceriesSection({
                 : "The chef has not added a receipt yet. You will see it here, and you reimburse the groceries at cost once you confirm it."}
             </p>
           )}
+          {current &&
+            viewer === "chef" &&
+            b.frozen &&
+            optionB &&
+            open &&
+            current.status === "disputed" && (
+              <p data-testid="no-receipt-frozen">
+                A receipt cannot be added while this booking is on hold.
+              </p>
+            )}
           {canUpload && (
             <ReceiptUploadForm
               bookingId={b.id}
