@@ -829,6 +829,13 @@ export async function answerBooking(
         "Chef's home is not enabled for your kitchen right now, so you cannot accept this booking. Decline it, or ask an admin to review your kitchen.",
         { reason: "chef_home_not_enabled" },
       );
+    case "kitchen_address_missing":
+      // D-59 (T-074): chef's home is on but no kitchen address is saved.
+      throw new ApiFailure(
+        "INVALID_STATE",
+        "You have no kitchen address saved, so you cannot accept a chef's-home booking. Decline this request, or add your kitchen address to your application first (an admin then checks your kitchen again).",
+        { reason: "kitchen_address_missing" },
+      );
     default:
       throw new Error("answer_booking returned an unknown result");
   }

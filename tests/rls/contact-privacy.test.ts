@@ -99,7 +99,7 @@ describe("kitchen address snapshot", () => {
       );
   });
 
-  it("accept without a kitchen address still works (as before) and copies nothing", async () => {
+  it("accept without a kitchen address is refused (D-59, T-074) and copies nothing", async () => {
     const chef = await homeChef("cp-noaddr-chef");
     const cust = await makeCustomer(svc, "cp-noaddr-cust");
     const b = await makeBooking(svc, {
@@ -113,7 +113,7 @@ describe("kitchen address snapshot", () => {
       .update({ kitchen_address_line: null })
       .eq("chef_id", chef.id);
     const a = await accept(b.id, chef.id);
-    expect(a.data).toMatchObject({ result: "ok" });
+    expect(a.data).toEqual({ result: "kitchen_address_missing" });
     const snap = await svc
       .from("booking_kitchen_addresses")
       .select("address_line")
