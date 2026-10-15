@@ -456,5 +456,28 @@ describe("saved allergy profile (T-067)", () => {
         .eq("profile_id", fx.c1.id)
         .select(),
     );
+    // No client insert or delete either (a forged row, or wiping another's profile).
+    for (const who of [c1, c2]) {
+      expectDenied(
+        await who
+          .from("profile_private")
+          .delete()
+          .eq("profile_id", fx.c1.id)
+          .select(),
+      );
+    }
+    expectDenied(
+      await c2
+        .from("profile_private")
+        .update({ saved_intake: { forged: true } })
+        .eq("profile_id", fx.c1.id)
+        .select(),
+    );
+    const still = await svc
+      .from("profile_private")
+      .select("saved_intake")
+      .eq("profile_id", fx.c1.id)
+      .single();
+    expect(still.data?.saved_intake).toEqual({ noAllergies: true });
   });
 });
