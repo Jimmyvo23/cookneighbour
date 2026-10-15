@@ -274,7 +274,8 @@ describe("T-066: no_day_cooked flags", () => {
     const b = await makeBooking(svc, {
       customer: cust,
       chef,
-      dates: [far(5)],
+      // far(90): booking-api.test.ts asserts exactly which chefs are booked on far(5) in the shared database.
+      dates: [far(90)],
       status: "accepted",
     });
     const bad = await svc
