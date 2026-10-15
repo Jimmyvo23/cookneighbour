@@ -131,8 +131,13 @@ describe("SavedIntakeView", () => {
     await h.mount(<SavedIntakeView />);
     await h.click(h.button("Delete saved profile"));
     expect(callsTo(h.fetchMock, "/api/me/intake")).toHaveLength(1);
+    // T-076: the button that opened the question is gone, so focus moves to the question.
+    expect(document.activeElement).toBe(h.q("confirm-delete"));
     await h.click(h.button("Yes, delete it"));
     expect(callsTo(h.fetchMock, "/api/me/intake")[1][1]).toBe("DELETE");
+    // T-076: the question and its buttons are gone; focus must not fall to <body>.
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(h.q("saved-state"));
     expect(h.q("profile-status")?.textContent).toContain("deleted");
     expect(h.text()).toContain("Nothing is saved yet");
     expect(box("Peanuts").checked).toBe(false);

@@ -100,6 +100,27 @@ test("the page fits a phone and says nothing about who else can read it (MOCK)",
   expect(text).not.toMatch(/admin|private|secret|confidential/i);
 });
 
+test("T-076: the replace box un-ticks itself when the answers match the profile again (MOCK)", async ({
+  page,
+}) => {
+  await signUpCustomer(page);
+  await saveProfile(page);
+  await page.goto(`/chefs/${MAI}/book`);
+  await hideOverlay(page);
+  await expect(page.getByTestId("prefilled-note")).toBeVisible();
+  const notes = page.getByLabel("Other allergies or details");
+  await notes.fill("Mustard, severe");
+  const box = page.getByRole("checkbox", {
+    name: /Replace my saved allergy profile/,
+  });
+  await box.check();
+  // Back to the saved answers: the box hides, and must not stay ticked behind the scenes.
+  await notes.fill("Carries an EpiPen");
+  await expect(page.getByTestId("save-to-profile")).toHaveCount(0);
+  await notes.fill("Mustard, severe");
+  await expect(box).not.toBeChecked();
+});
+
 test("a saved profile prefills the booking, edits stay per booking, and can replace the profile (MOCK)", async ({
   page,
 }) => {
