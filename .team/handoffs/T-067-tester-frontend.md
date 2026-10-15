@@ -1,8 +1,8 @@
 # Handoff: T-067 Saved allergy profile, frontend part (Tester)
 
-From: tester  To: frontend (one LOW bug to fix; everything else passes)
+From: tester  To: reviewer
 
-## Result: PASS with one LOW bug (not blocking in my view; the Planner decides)
+## FINAL RESULT (round 2): PASS. T67-T1 is fixed and verified.
 
 Head tested: ffeb014 plus my test-only commit (SHA in the report and PR).
 
@@ -29,3 +29,11 @@ Head tested: ffeb014 plus my test-only commit (SHA in the report and PR).
 ## Tests added
 - `e2e-mock/allergy-profile-tester-mock.spec.ts` (8 tests): failed-save notice, new booking after an unsaved edit, Book another visit (test.fail, finding 1), control-character refusal, blank refusal, forgotten on log out, admin redirect, 375px with saved profile and delete confirmation.
 - `tests/api/saved-intake.test.ts`: customer + wrong content type = 400 and profile kept.
+
+
+## Round 2 (final)
+Head tested: 596c6b7 plus my test-only commit (see PR for the final SHA).
+- T67-T1 confirmed fixed. With `BookingFlow.tsx` temporarily reverted to 596c6b7^ (not committed), the "Book another visit" test fails (shows the old profile, not "Sesame too"); with the fix it passes. The spec now holds the sent state with a never-answered route and no `test.fail()`.
+- Click-timing: new test "Book another visit still works when the profile save fails" (failed PUT, forced with the test-only script): the button shows the form again within 5 s and refills from the old profile. A failed PUT does not block it.
+- INFO, not a bug I can show in MOCK: `apiFetch` has no timeout, so a PUT that never answers would make the button (and the `router.push`) wait until the browser fails the request, which then rejects and is caught. Before the change the button worked at once in that case; now it waits. Real network hangs end with a browser error, so I rate this INFO. Could not simulate a hang in MOCK mode (the adapter does not use the network).
+- All earlier coverage (list in "Verified" above) stays green on this head. Lint, typecheck, prettier clean; unit 81 files, 2002 pass + 3 expected fail; mock e2e 234 pass (port 3101 free this time). API test needs Docker: CI only.

@@ -158,6 +158,65 @@ test("Book another visit button refills from the profile just saved, not the one
   await expect(page.getByTestId("save-to-profile")).toHaveCount(0);
 });
 
+test("Book another visit still works when the profile save fails, and refills from the old profile (MOCK)", async ({
+  page,
+}) => {
+  // Click-timing regression check: the button awaits the PUT; a failed PUT must not block it.
+  await page.addInitScript((key) => {
+    const w = window as unknown as { __break?: boolean };
+    const get = Storage.prototype.getItem;
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k === key && this === window.sessionStorage) {
+        try {
+          if ((JSON.parse(v).bookings ?? []).length > 0) w.__break = true;
+        } catch {
+          /* ignore */
+        }
+      }
+      return set.call(this, k, v);
+    };
+    Storage.prototype.getItem = function (k: string) {
+      const raw = get.call(this, k);
+      if (k === key && this === window.sessionStorage && w.__break && raw) {
+        w.__break = false;
+        const s = JSON.parse(raw);
+        s.profile.role = "chef";
+        return JSON.stringify(s);
+      }
+      return raw;
+    };
+  }, KEY);
+  await signUpCustomer(page);
+  await page.goto("/allergies");
+  await page.getByRole("checkbox", { name: "Mustard" }).check();
+  await page.getByRole("checkbox", { name: "I have no dietary needs" }).check();
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByTestId("profile-status")).toContainText("Saved");
+
+  await page.goto(`/chefs/${MAI}/book`);
+  await hideOverlay(page);
+  await fillRest(page, 5);
+  await page.getByLabel("Other allergies or details").fill("Sesame too");
+  await page
+    .getByRole("checkbox", { name: /Replace my saved allergy profile/ })
+    .check();
+  await page.route("**/bookings/**", () => {});
+  await sendBooking(page);
+  const another = page.getByRole("button", {
+    name: "Book another visit with this chef",
+  });
+  await expect(another).toBeVisible();
+  await another.click();
+  // The form is back (the free-first-booking check may still be running in this synthetic setup).
+  await expect(page.getByTestId("review-heading")).toHaveCount(0);
+  // The save failed, so the profile is still the old one (Mustard, no note).
+  await expect(page.getByRole("checkbox", { name: "Mustard" })).toBeChecked({
+    timeout: 5000,
+  });
+  await expect(page.getByLabel("Other allergies or details")).toHaveValue("");
+});
+
 test("a note with a control character is refused next to the field and the profile is not saved (MOCK)", async ({
   page,
 }) => {
