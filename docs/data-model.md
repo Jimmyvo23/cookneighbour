@@ -96,7 +96,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | `bookings` | party | bookings where self is customer or chef. No client writes |
 | | admin | all |
 | `booking_addresses` | customer of the booking, admin | the chef has no table access (use `get_booking_contact`) |
-| `booking_kitchen_addresses` **(T-065)** | nobody (no grant, no policy) | the kitchen address copied at acceptance; read only by `get_booking_contact` and the server |
+| `booking_kitchen_addresses` **(T-065)** | nobody (no grant, no policy) | the kitchen address copied at acceptance; read only by `get_booking_contact` and the server. **(T-074, N5)** Rows are kept after the D-52 window ends or the booking is cancelled (no client can read them, and `get_booking_contact` stops returning them); they are deleted only with the booking. A retention job is a later decision |
 | `booking_days`, `booking_day_dishes`, `intake_forms`, `receipts` | parties, admin | via the booking. No client writes |
 | `messages` | parties, admin | read. Insert: `sender_id` = self, self is a party, booking status is `requested`, `accepted` or `completed` |
 | `notifications` | owner | read own; update own, **`read_at` column only** (column grant) |
@@ -114,7 +114,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | Bucket | Public | Policies |
 |---|---|---|
 | `chef-documents` (ID, food handler; MOCK verification) | no | users with role `chef` may insert into folder `<own uid>/`; only admin can read or delete |
-| `kitchen-photos` | **no** (decision D-10) | role `chef` may only **insert new objects** in `<own uid>/` (no update, no delete: migration `20261008150000_kitchen_photos_insert_only`, T-031 tester finding F3); the owner reads own; admin reads and deletes; the customer of an `accepted`/`completed`/no-show `chef_home` booking with that chef reads (`can_view_kitchen_photos`). The chef routes delete a removed photo with the service role |
+| `kitchen-photos` | **no** (decision D-10) | role `chef` may only **insert new objects** in `<own uid>/` (no update, no delete: migration `20261008150000_kitchen_photos_insert_only`, T-031 tester finding F3); the owner reads own; admin reads and deletes; the customer of an `accepted`/`completed`/no-show `chef_home` booking with that chef reads until the D-52 cut-off, 00:00 Toronto on last visit day + 8 (`can_view_kitchen_photos` calls `booking_contact_open`; T-074, D-58). The chef routes delete a removed photo with the service role |
 | `profile-photos` | public URLs work, **no listing** | any signed-in user inserts, updates, deletes in `<own uid>/`; only the folder owner and admin can select through the API |
 | `dish-photos` | public URLs work, **no listing** | same as profile photos, but only users with role `chef` may write; owner and admin can select |
 | `receipts` | no | path `<booking id>/<file>`: the booking's chef may insert; both parties and admin may read |

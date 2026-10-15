@@ -33,6 +33,8 @@ Pure rules: `src/lib/domain/freeTrial.ts`. Server functions: `src/lib/server/fre
 ## Contact privacy (T-065)
 
 - **D-52 window.** Phone and address are visible from acceptance until 00:00 Toronto on (last visit day + 8), i.e. through the 7th day after the last visit day. Applies to `accepted`, `completed`, `no_show_customer`, `no_show_chef`. Chat is unaffected.
+- **Kitchen photos (D-58, T-074).** They follow the same window: the customer of a chef's-home booking sees them from acceptance until the same cut-off; never for a cancelled booking.
+- **No kitchen address, no accept (D-59, T-074).** A chef with chef's home enabled but no complete kitchen address saved cannot accept a chef's-home booking (409, `reason: kitchen_address_missing`); declining is still possible.
 - **D-56.** A cancelled booking locks contact at once; the window does not apply to it (nor to `requested`, `declined`, `expired`).
 - **Kitchen snapshot.** Accepting a chef's-home booking copies the chef's kitchen address onto the booking, in the same transaction and under the chef row lock. The customer is shown the copy; a later kitchen change never shows a new address to a past customer (review M4).
 - **N3 as one function.** `set_chef_kitchen_address` checks "no accepted chef's-home booking" and writes under one lock (chef row, then `chef_private`), so a concurrent accept cannot slip between check and write (review L4). A change switches chef's home off; an admin enables it again (D-21).

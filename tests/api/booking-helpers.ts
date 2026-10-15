@@ -28,6 +28,7 @@ import {
   newCustomer,
   phone as phoneRoute,
   setChef,
+  setPriv,
   svc,
   uniquePhone,
   verify as verifyRoute,
@@ -49,6 +50,8 @@ export interface ChefOpts {
   name?: string;
   options?: string[];
   homeEnabled?: boolean;
+  /** D-59: leave the kitchen address empty although chef's home is on (default: an address is saved). */
+  noKitchenAddress?: boolean;
   radius?: number;
   rate?: number;
   /** Cuisine of the chef (default: a random unique tag); a shared tag lets a search find several chefs. */
@@ -87,6 +90,14 @@ export async function bookableChef(o: ChefOpts = {}): Promise<TestChef> {
     location_options: o.options ?? ["customer_home"],
     chef_home_enabled: o.homeEnabled ?? false,
   });
+  // D-59: a chef with chef's home on has a saved kitchen address, or accepting is refused.
+  if (o.homeEnabled && !o.noKitchenAddress) {
+    await setPriv(chef.id, {
+      kitchen_address_line: "12 Fixture Lane",
+      kitchen_city: "Mississauga",
+      kitchen_postal_code: "L5B1A1",
+    });
+  }
   // The chef's phone number is shown to the customer once a booking is accepted.
   const ph = await svc
     .from("profile_private")

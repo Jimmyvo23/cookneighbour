@@ -247,6 +247,16 @@ export interface MutateHooks {
   afterRead?: () => Promise<void>;
 }
 
+/** The chef_private columns set_chef_kitchen_address writes (keep in step with the function). */
+const KITCHEN_RPC_PRIV_COLUMNS = [
+  "kitchen_address_line",
+  "kitchen_city",
+  "kitchen_postal_code",
+  "kitchen_status",
+  "allergen_ack_at",
+  "kitchen_hygiene_ack_at",
+];
+
 const isEmpty = (o: Record<string, unknown> | undefined) =>
   !o || Object.keys(o).length === 0;
 
@@ -259,7 +269,8 @@ const isEmpty = (o: Record<string, unknown> | undefined) =>
  * chef adds a new one would leave a changed kitchen marked verified. On a lost race the state is
  * read again and the plan (including the N1 reset) is rebuilt from the new values.
  * The chefs write happens first and only ever switches chef's home OFF, so a failure in between
- * leaves the safe state. After MAX_ATTEMPTS lost races the request is a 409 INVALID_STATE.
+ * leaves the safe state. A kitchen-address change is the exception: the chefs columns travel into
+ * `set_chef_kitchen_address`, so both tables change in one transaction (T-074, T-065 review L1). After MAX_ATTEMPTS lost races the request is a 409 INVALID_STATE.
  */
 async function mutate(
   chef: ChefCaller,
@@ -278,6 +289,15 @@ async function mutate(
     const kitchen = step.privColumns?.kitchen_address_line !== undefined;
     if (kitchen) {
       const pc = step.privColumns!;
+      // The function writes only these six chef_private columns. Anything else in the plan would
+      // be silently dropped (the generic write is skipped below), so refuse loudly (T-065 N3).
+      const extra = Object.keys(pc).filter(
+        (k) => !KITCHEN_RPC_PRIV_COLUMNS.includes(k),
+      );
+      if (extra.length > 0)
+        throw new Error(
+          `set_chef_kitchen_address cannot write: ${extra.join(", ")}`,
+        );
       const r = await chef.admin.rpc("set_chef_kitchen_address", {
         p_chef: chef.userId,
         p_expected_updated_at: s.priv.updated_at as string,
@@ -288,6 +308,13 @@ async function mutate(
         p_allergen_ack_at: (pc.allergen_ack_at as string | undefined) ?? null,
         p_hygiene_ack_at:
           (pc.kitchen_hygiene_ack_at as string | undefined) ?? null,
+        // T-074 (review L1): the chefs columns go in the same transaction.
+        // chef_home_enabled is not passed: the function always switches it off.
+        p_chef_columns: Object.fromEntries(
+          Object.entries(step.chefColumns ?? {}).filter(
+            ([k]) => k !== "chef_home_enabled",
+          ),
+        ),
       });
       if (r.error)
         throw new Error(`set_chef_kitchen_address failed: ${r.error.message}`);
@@ -301,7 +328,7 @@ async function mutate(
         );
       if (result !== "ok") throw new Error("chef rows disappeared");
     }
-    if (!isEmpty(step.chefColumns)) {
+    if (!kitchen && !isEmpty(step.chefColumns)) {
       const r = await chef.admin
         .from("chefs")
         .update(step.chefColumns!)
