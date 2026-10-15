@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-14 (T-068).
+Last updated: 2026-10-14 (T-066, T-070).
 
 ## 1. Office status (Planner and every agent)
 
