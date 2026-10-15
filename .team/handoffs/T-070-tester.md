@@ -24,3 +24,15 @@ From: tester  To: reviewer
 ## What the next agent needs
 - Open questions still Jimmy's: Q-24 (cancel after cooked day uses trial), clock time for no-show, reason required on chef cancel.
 - Real-mode routes not run locally (no Docker); covered by T-063 API tests.
+
+## Round 2 (re-check of d6f4bd1)
+
+Verdict: **PASS**. No bugs.
+
+- **M1:** the spec now passes `dayPlus(0)` (Toronto) as the `editMockState` argument. Proof of the evening window: with a faked clock of 21:30 EDT on 13 Oct, `new Date().toISOString().slice(0, 10)` gives 2026-10-14 (wrong) and the Toronto formatter used by `dayPlus` and `torontoToday` gives 2026-10-13. Running the whole Playwright spec under a faked clock was not practical (no faketime); the logic is identical to the app rule. The other `toISOString().slice(0, 10)` uses the frontend listed only add days to a given YYYY-MM-DD at noon UTC (checked `helpers.ts:128`, `calendar.ts`, `dishes.ts`), so they are safe.
+- **M2:** chef's-home cancel text names the phone. `booking_contact_unlocked` unlocks only accepted, completed and both no-show statuses, so after a cancel both sides lose contact. The text is correct. Component assertion present.
+- **L1:** `cancel-unavailable` now says to mark cooked days then press Visit done, and to report a no-show below. Server `complete` refuses with `days_not_cooked` when an active day is uncooked, and the no-show button is still shown (tester test asserts it).
+- **L2:** `useSection.clear()` is new and additive (returned object gains one key); only `useConfirm(sec.clear)` calls it. Other `useSection` users in `src/components/chef/` (AvailabilityView, ChefApplicationView, DishesView, etc.) are unchanged and their tests pass. Flipped tester test expects no alert after cancel failure then reopen; no-show reopen shares the same hook.
+- **N1:** missed-pickup text adds "so the customer's free first booking counts as used" only for free-trial bookings; matches contract 7A ("trial consumed").
+- Not checked: L3 (Q-37, waiting on Jimmy), L4 (skipped).
+- Suite: `npm run lint`, `typecheck` clean; `npm test` 1923 passed, 3 expected fail; `npm run test:e2e:mock` 211 passed.
