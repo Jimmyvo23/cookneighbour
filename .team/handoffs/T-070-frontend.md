@@ -35,3 +35,15 @@ From: frontend  To: tester
 - Used: `SKILL.md`, `impeccable context` (PRODUCT.md), `reference/craft-floor.md` before editing, `reference/operate.md`, `reference/clarify.md` (confirm wording: name the action on both heading and button, say what cannot be undone, plain short sentences), `reference/harden.md` (error and empty states). Not run: `critique`, `audit`, `polish`, `typeset`, `shape` as separate commands.
 - `impeccable detect src/components/booking` after the change: exit 0, no findings. `detect src e2e-mock`: one finding, `src/app/globals.css` Arial (not mine; T-069 owns fonts).
 - What it changed: destructive actions sit in their own quiet card at the bottom, secondary-style buttons (not the primary green) so they are not the first thing a chef presses; a confirm step lists consequences as a short list; no new colours, fonts or icons; the unavailable states explain why and when instead of a disabled button. The detector is static, so the real checks were axe (light, dark), 375 px and the keyboard run. Helper agents (finish-reviewer, documenter) skipped per D-44.
+
+## Round 2 (Reviewer REQUEST CHANGES on 22920ee)
+
+- **M1 fixed.** `e2e-mock/chef-end-booking-mock.spec.ts` now passes `dayPlus(0)` (Toronto) into `editMockState` as the argument (the callback runs in the page, so it cannot call `dayPlus` itself). Lessons-learned line added (section 3).
+- Grep of other `toISOString().slice(0, 10)` uses: `search-t040-tester-mock.spec.ts:54`, `mock-adapter.test.ts:418,436,465`, `e2e/booking-real.spec.ts:80`, `e2e/search-real.spec.ts:325`, `src/lib/chef/calendar.ts:16`, `src/lib/domain/dishes.ts:222,228`, `e2e-mock/helpers.ts:128`. All only add days to an existing YYYY-MM-DD string (or the server's Toronto `today`) at noon UTC, so none is a "today from the UTC clock" bug. No change.
+- **M2 fixed.** Chef's-home cancel confirm: "They can no longer see your kitchen address, and you can no longer see their phone number." Assertion added in `ChefEndSections.test.tsx`.
+- **L1 fixed.** `cancel-unavailable` uses the Reviewer's wording; the tester test is now a normal test (no REPRODUCES).
+- **L2 fixed (small).** `useSection` gets `clear()` (`parts.tsx`); `useConfirm(onShow)` calls it on open for both cancel and no-show. Tester test flipped to expect no alert.
+- **N1 done.** Contract 7A (pickup/missed) says trial consumed, so the missed-pickup note now adds "so the customer's free first booking counts as used" for free-trial bookings. Test added in `ChefBookingView.test.tsx`.
+- **Not touched:** L3 (waiting on Jimmy, Q-37), L4 (skipped as told).
+- Impeccable finish-reviewer step skipped (D-44). No API, migration or contract change.
+- Results: lint, typecheck, prettier clean; `npm test` 1923 passed, 3 expected fail; `test:e2e:mock` 211 passed.
