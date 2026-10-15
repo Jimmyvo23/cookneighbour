@@ -81,6 +81,8 @@ export interface MockHooks {
   trialRaceOnce?: boolean;
   /** T-045: the chef's kitchen was switched off, so accepting a chef's-home request answers 409. */
   chefHomeOff?: boolean;
+  /** T-073 (D-59): chef's home is on but no kitchen address is saved, so accepting answers 409. */
+  kitchenAddressMissing?: boolean;
   /** T-045: a signed-in customer gets the same made-up bookings, seen from their side (once). */
   seedCustomer?: boolean;
 }

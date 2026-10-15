@@ -11,9 +11,13 @@ From: frontend  To: tester
 - `src/lib/mocks/mock-bookings.ts`: `viewOf` mirrors the server (`booking_contact_ends_at` = 00:00 Toronto on last day + 8): hides contact after that and sends `contactVisibleUntil`. Takes an optional `now` (default `new Date()`).
 - Tests: `src/components/booking/ContactWindow.test.tsx` (new, 16), `src/lib/booking/changes.test.ts` (+4), `e2e-mock/t073-contact-window-mock.spec.ts` (new, 4). `T072Tester.test.tsx` changed: the "Cancel on a waiting booking" test now asserts the button is hidden, and the worded `nothing_left` refusal is tested on a stale page (a visit day left on load).
 
+## Added by Planner mid-task (T-074 shape, built against contract v1.10 text, backend branch not merged in)
+- D-59: `changeErrorText` knows reason `kitchen_address_missing` (wording: adding a kitchen address switches chef's home off until an admin checks it again, so declining is the practical choice). The existing focused alert in "Your answer" sits right above Decline and shows it. Mock adapter: hook `kitchenAddressMissing` makes accepting a chef's-home request answer 409 with that reason. Tests: unit (changes, mock adapter) and `chef-bookings-mock.spec.ts`. I used my own wording, not the server's "ready message", because the mock cannot know it; if the real server message differs, the UI still shows the UI wording (QUESTION: should the UI prefer `error.message`?).
+- D-58: there is NO kitchen photos block on the customer or chef booking pages (`grep` finds kitchen photos only in the chef application, admin review and the public chef page, where the public page shows none). So nothing to hide; no change made. Needs the Planner's decision if a block was expected somewhere.
+
 ## How to verify
 `npm run lint && npm run typecheck && npx prettier --check . && npm test && npm run test:e2e:mock`
-Results here: lint, typecheck, prettier clean; unit 77 files, 1970 passed + 3 expected fail (was 1949); mock e2e 219 passed (was 215). Impeccable `detect` on the two pages: no findings. DB tests not run locally (CI only); no backend change.
+Results here: lint, typecheck, prettier clean; unit 77 files, 1971 passed + 3 expected fail (was 1949); mock e2e 220 passed (was 215). Impeccable `detect` on the two pages: no findings. DB tests not run locally (CI only); no backend change.
 
 ## Known gaps or risks
 - The cut-off sentence says "Visible until Thu, Oct 22, 12:00 a.m. (Toronto time)": the exact instant from the server (midnight). Honest, but "12:00 a.m." can read as ambiguous; a Planner or Jimmy call if a friendlier "end of Wed, Oct 21" is wanted.

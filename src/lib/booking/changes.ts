@@ -22,6 +22,9 @@ import { formatDollars } from "@/lib/chef/dishes";
 
 /** Extra texts for the reasons that CHANGE_REFUSALS does not word for people. */
 const EXTRA_REASONS: Record<string, string> = {
+  // D-59: accept is refused while chef's home is on but no kitchen address is saved.
+  kitchen_address_missing:
+    "Your kitchen address is missing, so this booking cannot be accepted. Adding a kitchen address switches cooking at your home off until an admin checks it again, so declining this request is the practical choice.",
   chef_home_not_enabled:
     "Cooking at your home was switched off after this request came in, so it cannot be accepted. Decline it instead and say why.",
   kitchen_in_use:

@@ -565,6 +565,12 @@ export function changeRoute(
         );
       if (d.locationType === "chef_home" && s.hooks.chefHomeOff)
         return invalid("chef_home_not_enabled");
+      // D-59 (contract v1.10): reason kitchen_address_missing with a ready message.
+      if (d.locationType === "chef_home" && s.hooks.kitchenAddressMissing)
+        return invalid(
+          "kitchen_address_missing",
+          "Your kitchen address is missing, so this booking cannot be accepted. Adding a kitchen address switches cooking at your home off until an admin checks it again, so declining this request is the practical choice.",
+        );
       return save({ ...d, status: "accepted", respondedAt: now.toISOString() });
     }
     case "decline": {

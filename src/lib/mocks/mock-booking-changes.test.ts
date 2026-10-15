@@ -161,6 +161,15 @@ describe("accept and decline", () => {
       200,
     );
   });
+  it("accepting a chef's-home request with no kitchen address is refused with its reason (D-59)", async () => {
+    const c = new Session(chef({ hooks: { kitchenAddressMissing: true } }));
+    const r = await c.call("POST", `/api/bookings/${A02}/accept`);
+    expect(r.status).toBe(409);
+    expect(r.error.reason).toBe("kitchen_address_missing");
+    expect((await c.call("POST", `/api/bookings/${A01}/accept`)).status).toBe(
+      200,
+    );
+  });
   it("decline needs a reason of 3 to 500 characters (D-34)", async () => {
     const c = asChef();
     for (const body of [

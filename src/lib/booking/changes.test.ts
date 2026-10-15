@@ -150,6 +150,9 @@ describe("error words", () => {
   it("words the T-063 reasons for people", () => {
     expect(changeErrorText(inv("too_early"))).toMatch(/not arrived/);
     expect(changeErrorText(inv("days_not_cooked"))).toMatch(/Mark each visit/);
+    expect(changeErrorText(inv("kitchen_address_missing"))).toMatch(
+      /kitchen address is missing.*declining/,
+    );
     expect(changeErrorText(inv("pickup_window_open"))).toMatch(
       /can still pick up/,
     );
