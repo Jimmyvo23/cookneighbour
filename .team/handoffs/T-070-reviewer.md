@@ -21,3 +21,14 @@ D-37 (not yet on main; no T-070 text contradicts it; T-072 owns the wording), se
 
 ## Needed to approve
 M1, M2, L1 fixed; full `npm run test:e2e:mock` green; CI green on new head; short Tester re-check of changed copy.
+
+## Round 2 (head d6f4bd1): APPROVE
+PR comment: https://github.com/Jimmyvo23/cookneighbour/pull/117#issuecomment-6182201759
+- M1 fixed: no-show e2e passes `dayPlus(0)` (Toronto day) as the `editMockState` arg; CI mock e2e ran at 21:14 EDT (old failure window): 211 passed. Lessons-learned line added.
+- M2 fixed: chef's-home cancel says "They can no longer see your kitchen address, and you can no longer see their phone number." with a component assertion.
+- L1 fixed: `cancel-unavailable` says mark cooked days before Visit done and points to the no-show report (matches `days_not_cooked`).
+- L2 correct: `useSection.clear()` resets error, notice, field errors; `useConfirm(onShow)` calls it for cancel and no-show; focus effect fires only on `fail()`.
+- N1 correct: missed pickup on a free-trial booking also says the free first booking counts as used; unit test added.
+- Verified: lint, tsc, vitest 1923 pass + 3 expected fail; CI on d6f4bd1 pass (real e2e 43, mock e2e 211).
+- Nit (optional): new lessons-learned entry is a bullet after the section 3 table, not a table row.
+- Not blockers: L3 deferred to Jimmy (Q-37); L4 skipped (mock only).
