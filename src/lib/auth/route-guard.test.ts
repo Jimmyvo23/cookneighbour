@@ -132,6 +132,7 @@ describe("customer pages (T-043; the server guard is the real one)", () => {
   const pages = [
     "/bookings",
     "/bookings/abc",
+    "/allergies",
     "/chefs/00000000-0000-4000-8000-000000001001/book",
   ];
   it("sends visitors to /login", () => {

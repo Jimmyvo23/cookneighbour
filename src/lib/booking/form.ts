@@ -159,6 +159,37 @@ export function buildRequest(
   return body;
 }
 
+/** The two intake answers the browser can check (shared with the saved allergy profile, T-067). */
+export function intakeProblems(
+  d: Pick<
+    BookingDraft,
+    | "noAllergies"
+    | "allergens"
+    | "allergyNotes"
+    | "noDietaryNeeds"
+    | "dietaryNotes"
+  >,
+): FieldErrors {
+  const e: FieldErrors = {};
+  if (!d.noAllergies && d.allergens.length === 0 && !d.allergyNotes.trim())
+    e["intake.allergies"] =
+      'Pick your allergies, write them below, or tick "I have no allergies".';
+  else if (d.allergyNotes.length > INTAKE_ALLERGY_NOTES_MAX)
+    e["intake.allergies"] =
+      `Use ${INTAKE_ALLERGY_NOTES_MAX} characters or fewer for allergy notes.`;
+  else if (hasUnsafeText(d.allergyNotes, true))
+    e["intake.allergies"] = "Remove control or invalid characters.";
+  if (!d.noDietaryNeeds && !d.dietaryNotes.trim())
+    e["intake.dietaryNotes"] =
+      'Describe your dietary needs, or tick "I have no dietary needs".';
+  else if (d.dietaryNotes.length > INTAKE_DIETARY_NOTES_MAX)
+    e["intake.dietaryNotes"] =
+      `Use ${INTAKE_DIETARY_NOTES_MAX} characters or fewer for dietary notes.`;
+  else if (hasUnsafeText(d.dietaryNotes, true))
+    e["intake.dietaryNotes"] = "Remove control or invalid characters.";
+  return e;
+}
+
 /** Field problems the browser can find without the server. Keys are the contract's dotted keys. */
 export function localProblems(
   d: BookingDraft,
@@ -201,22 +232,7 @@ export function localProblems(
   }
   if (!d.groceryOption) e.groceryOption = "Choose who buys the groceries.";
 
-  if (!d.noAllergies && d.allergens.length === 0 && !d.allergyNotes.trim())
-    e["intake.allergies"] =
-      'Pick your allergies, write them below, or tick "I have no allergies".';
-  else if (d.allergyNotes.length > INTAKE_ALLERGY_NOTES_MAX)
-    e["intake.allergies"] =
-      `Use ${INTAKE_ALLERGY_NOTES_MAX} characters or fewer for allergy notes.`;
-  else if (hasUnsafeText(d.allergyNotes, true))
-    e["intake.allergies"] = "Remove control or invalid characters.";
-  if (!d.noDietaryNeeds && !d.dietaryNotes.trim())
-    e["intake.dietaryNotes"] =
-      'Describe your dietary needs, or tick "I have no dietary needs".';
-  else if (d.dietaryNotes.length > INTAKE_DIETARY_NOTES_MAX)
-    e["intake.dietaryNotes"] =
-      `Use ${INTAKE_DIETARY_NOTES_MAX} characters or fewer for dietary notes.`;
-  else if (hasUnsafeText(d.dietaryNotes, true))
-    e["intake.dietaryNotes"] = "Remove control or invalid characters.";
+  Object.assign(e, intakeProblems(d));
 
   if (localConflicts(d, dishes).length > 0 && !d.conflictAcknowledged)
     e.allergyConflictAcknowledged =

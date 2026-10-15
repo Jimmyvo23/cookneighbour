@@ -37,6 +37,8 @@ import type {
   PhoneVerifyResponse,
   SignUpRequest,
   SignUpResponse,
+  SavedIntake,
+  SavedIntakeResponse,
 } from "@/lib/api/types";
 import type {
   AvailabilityResponse,
@@ -85,6 +87,7 @@ import {
   type MockHooks,
   type MockReceipt,
 } from "@/lib/mocks/mock-bookings";
+import { parseSavedIntake } from "@/lib/domain/savedIntake";
 import { searchRoutes } from "@/lib/mocks/mock-search";
 import {
   displayNameProblem,
@@ -119,6 +122,9 @@ interface MockState {
   customerSeeded: boolean;
   /** MOCK receipts by booking id (T-045). */
   receipts: Record<string, MockReceipt[]>;
+  /** MOCK saved allergy profile of the signed-in customer (T-067). */
+  savedIntake: SavedIntake | null;
+  savedIntakeAt: string | null;
 }
 
 const KEY = "cookneighbour-mock-api-state";
@@ -137,6 +143,8 @@ const EMPTY: MockState = {
   chefSeeded: false,
   customerSeeded: false,
   receipts: {},
+  savedIntake: null,
+  savedIntakeAt: null,
 };
 let memory: MockState = { ...EMPTY };
 
@@ -490,6 +498,34 @@ export async function mockFetch(
   }
 
   if (route === "GET /api/me") return json(200, me(s));
+
+  // Saved allergy profile (T-067, contract 4A). Customers only; same validation as the real route.
+  if (path === "/api/me/intake") {
+    if (s.profile.role !== "customer")
+      return fail(403, "FORBIDDEN", "Only customers have a saved profile.");
+    if (method === "GET")
+      return json(200, {
+        intake: s.savedIntake,
+        savedAt: s.savedIntakeAt,
+      } satisfies SavedIntakeResponse);
+    if (method === "PUT") {
+      const parsed = parseSavedIntake(body);
+      if (!parsed.ok) return validation(parsed.fields);
+      const savedAt = new Date().toISOString();
+      save({ ...s, savedIntake: parsed.form, savedIntakeAt: savedAt });
+      return json(200, {
+        intake: parsed.form,
+        savedAt,
+      } satisfies SavedIntakeResponse);
+    }
+    if (method === "DELETE") {
+      save({ ...s, savedIntake: null, savedIntakeAt: null });
+      return json(200, {
+        intake: null,
+        savedAt: null,
+      } satisfies SavedIntakeResponse);
+    }
+  }
 
   if (route === "POST /api/me/phone") {
     const b = body as PhoneSubmitRequest;
