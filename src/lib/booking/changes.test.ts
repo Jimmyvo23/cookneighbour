@@ -30,6 +30,7 @@ import {
   validateReceiptFile,
 } from "@/lib/booking/changes";
 import { receiptPathError } from "@/lib/domain/groceries";
+import { torontoToday } from "@/lib/domain/dishes";
 
 const day = (over: Partial<BookingDayView> = {}): BookingDayView => ({
   dayNumber: 1,
@@ -423,5 +424,33 @@ describe("waiting for a check and past uncooked days (T-072)", () => {
     expect(chefNoShowTrialText(true, false)).toMatch(/not used up/);
     expect(chefNoShowTrialText(false, true)).toBeNull();
     expect(chefNoShowTrialText(false, false)).toBeNull();
+  });
+});
+
+describe("waiting for a check around Toronto midnight (T-072 tester)", () => {
+  const b = (date: string) =>
+    ({
+      status: "accepted",
+      days: [day({ dayNumber: 1, date, cookedAt: null })],
+    }) as BookingDetail;
+  const waitingAt = (iso: string, date: string) =>
+    isWaitingForCheck(b(date), torontoToday(new Date(iso)));
+
+  it("a last day of yesterday waits; a last day of today does not, using the Toronto date", () => {
+    // 2026-10-14 23:30Z is 19:30 EDT: Toronto is still on the 14th (UTC is also the 14th).
+    expect(waitingAt("2026-10-14T23:30:00Z", "2026-10-13")).toBe(true);
+    expect(waitingAt("2026-10-14T23:30:00Z", "2026-10-14")).toBe(false);
+    // 2026-10-15 03:59Z is 23:59 EDT on the 14th, though UTC says the 15th: the 14th is not past.
+    expect(waitingAt("2026-10-15T03:59:00Z", "2026-10-14")).toBe(false);
+    expect(waitingAt("2026-10-15T03:59:00Z", "2026-10-13")).toBe(true);
+    // 04:00Z is Toronto midnight: the 14th is now yesterday.
+    expect(waitingAt("2026-10-15T04:00:00Z", "2026-10-14")).toBe(true);
+    expect(waitingAt("2026-10-15T04:00:00Z", "2026-10-15")).toBe(false);
+  });
+
+  it("holds across the November changeover (EST, UTC-5)", () => {
+    // 2026-11-02 04:59Z is 23:59 EST on 1 Nov; 05:00Z is midnight on 2 Nov.
+    expect(waitingAt("2026-11-02T04:59:00Z", "2026-11-01")).toBe(false);
+    expect(waitingAt("2026-11-02T05:00:00Z", "2026-11-01")).toBe(true);
   });
 });
