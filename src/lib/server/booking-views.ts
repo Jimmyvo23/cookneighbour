@@ -77,6 +77,7 @@ export async function loadBookingDetail(
     addrRes,
     contactRes,
     pickupRes,
+    frozenRes,
   ] = await Promise.all([
     db
       .from("booking_days")
@@ -115,6 +116,8 @@ export async function loadBookingDetail(
           .order("created_at")
           .order("id")
       : Promise.resolve({ data: [] as Row[], error: null }),
+    // T-064 (D-53): the only thing a browser may learn about an admin flag. Parties only.
+    db.rpc("get_booking_frozen", { p_booking: id }),
   ]);
   if (
     daysRes.error ||
@@ -123,7 +126,8 @@ export async function loadBookingDetail(
     chefRes.error ||
     addrRes.error ||
     contactRes.error ||
-    pickupRes.error
+    pickupRes.error ||
+    frozenRes.error
   )
     throw fail("detail parts");
 
@@ -312,6 +316,7 @@ export async function loadBookingDetail(
     cookingPlace,
     contact,
     contactVisibleUntil,
+    frozen: frozenRes.data === true,
     payment: { mock: true, collected: false },
   };
 }

@@ -38,3 +38,9 @@ Pure rules: `src/lib/domain/freeTrial.ts`. Server functions: `src/lib/server/fre
 - **D-56.** A cancelled booking locks contact at once; the window does not apply to it (nor to `requested`, `declined`, `expired`).
 - **Kitchen snapshot.** Accepting a chef's-home booking copies the chef's kitchen address onto the booking, in the same transaction and under the chef row lock. The customer is shown the copy; a later kitchen change never shows a new address to a past customer (review M4).
 - **N3 as one function.** `set_chef_kitchen_address` checks "no accepted chef's-home booking" and writes under one lock (chef row, then `chef_private`), so a concurrent accept cannot slip between check and write (review L4). A change switches chef's home off; an admin enables it again (D-21).
+
+## Flagged bookings (T-064)
+
+- **D-53 freeze.** A booking with an open admin flag other than `no_day_cooked` (today `chef_rejected`, D-22) is frozen until an admin decides: no completion (manual or automatic), no chef action (cooked, no-show, pickup answers, receipts, cancel), and the neutral notice for the customer (`BookingDetail.frozen`). No refund or rebooking flow exists (payments are MOCK). Interim: the customer's cancel, no-show report and pickup proposal are refused too (question for Jimmy).
+- **D-57.** A `no_day_cooked` flag (D-36) does not freeze. Completing the booking resolves it; if it stays open the admin picks the final status (T-048, D-54).
+- **Order.** `booking_flags` rows are inserted in booking id order, in the sweep and in `admin_reject_chef`, so two of them cannot deadlock (T-066 review LOW-2).
