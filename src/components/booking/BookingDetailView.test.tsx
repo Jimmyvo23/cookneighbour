@@ -156,6 +156,29 @@ describe("BookingDetailView", () => {
     expect(text()).not.toMatch(/\+1\d{10}/);
   });
 
+  it.each(["declined", "expired", "cancelled"] as const)(
+    "a %s booking never promises an address or phone 'once the chef accepts'",
+    async (status) => {
+      fetchMock.mockImplementation(reply(200, booking({ status })));
+      await mount();
+      expect(q("kitchen-later")?.textContent).toContain(
+        "not shown for this booking",
+      );
+      expect(q("contact-later")?.textContent).toContain(
+        "not shown for this booking",
+      );
+      expect(text()).not.toMatch(/once the chef accepts|only after the chef/);
+    },
+  );
+
+  it("still says the phone is shared after the chef accepts while the request waits", async () => {
+    fetchMock.mockImplementation(reply(200, booking()));
+    await mount();
+    expect(q("contact-later")?.textContent).toContain(
+      "shared only after the chef accepts",
+    );
+  });
+
   it("does not talk about the chef's kitchen for a booking at the customer's home", async () => {
     fetchMock.mockImplementation(
       reply(
