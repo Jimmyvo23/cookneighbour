@@ -428,6 +428,7 @@ describe("T-074 review L1: a blank kitchen address part counts as missing", () =
     ["spaces in the line", { kitchen_address_line: "   " }],
     ["spaces in the city", { kitchen_city: "  " }],
     ["empty city", { kitchen_city: "" }],
+    ["empty line", { kitchen_address_line: "" }],
   ])(
     "%s: accept is refused, the booking stays requested",
     async (_label, patch) => {
