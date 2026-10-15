@@ -117,7 +117,7 @@ describe("D-53: a booking of a rejected chef is frozen", () => {
 });
 
 describe("D-57: no_day_cooked does not freeze", () => {
-  it("frozen stays false, the chef marks the day and completes, and the flag is resolved", async () => {
+  it("frozen stays false, the chef marks the day, and the next call completes it and resolves the flag", async () => {
     const { chef, cust, id } = await setup();
     await shiftDays(id, 5);
     const first = await getBooking(cust.b, id); // lazy sweep flags it
@@ -126,12 +126,14 @@ describe("D-57: no_day_cooked does not freeze", () => {
     expect((await flagOf(id))?.reason).toBe("no_day_cooked");
 
     expect((await cooked(chef.b, id, 1)).status).toBe(200);
-    const done = await complete(chef.b, id);
-    expect(done.status, done.text).toBe(200);
+    // Every visit is long over, so the next lazy sweep completes the booking (D-33) and resolves the flag.
+    const done = await getBooking(cust.b, id);
     expect(done.body.status).toBe("completed");
     const f = await flagOf(id);
     expect(f?.reason).toBe("no_day_cooked");
     expect(f?.resolved_at).not.toBeNull();
+    // ...and a manual "visit done" after that is simply refused: it is completed already.
+    expect((await complete(chef.b, id)).status).toBe(409);
   });
 
   it("rejecting the chef afterwards freezes the flagged booking", async () => {
