@@ -30,4 +30,4 @@ Local results: lint, typecheck, prettier clean; unit 78 files, 1978 passed + 3 e
 - RLS duplicate-date flake in `tests/rls/storage.test.ts`: not seen locally (DB tests run only in CI); see CI below.
 
 ## CI
-See PR #130 `ci` result for the final head (recorded in the final report).
+ci green on head 758bbf7 (run 38754703676), including DB, RLS and API tests. The RLS duplicate-date flake in storage.test.ts did not recur.
