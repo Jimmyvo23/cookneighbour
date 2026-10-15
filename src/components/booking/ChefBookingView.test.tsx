@@ -383,6 +383,7 @@ describe("pickups and a missed pickup", () => {
     const missed: BookingDetail = {
       ...b,
       status: "no_show_customer",
+      isFreeTrial: true,
       noShow: {
         reportedAt: new Date().toISOString(),
         dayNumber: 1,
@@ -403,6 +404,9 @@ describe("pickups and a missed pickup", () => {
     expect(callsTo(h.fetchMock, "/pickup/missed")).toHaveLength(1);
     expect(h.q("status")?.textContent).toContain("customer no-show");
     expect(h.q("no-show")?.textContent).toContain("pickup as missed");
+    expect(h.q("no-show")?.textContent).toContain(
+      "free first booking counts as used",
+    );
   });
 
   it("explains a refusal because the window is still open", async () => {

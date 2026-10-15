@@ -267,7 +267,7 @@ function StatusNotes({ b }: { b: BookingDetail }) {
         <p data-testid="no-show" className={warnBoxCls}>
           {b.status === "no_show_customer"
             ? b.noShow.pickupMissed
-              ? "You marked the pickup as missed. This is a customer no-show for the whole booking."
+              ? `You marked the pickup as missed. This is a customer no-show for the whole booking${b.isFreeTrial ? ", so the customer's free first booking counts as used" : ""}.`
               : `You reported a customer no-show${b.isFreeTrial ? ". The customer's free first booking counts as used" : ""}.`
             : "A chef no-show was reported."}
         </p>
