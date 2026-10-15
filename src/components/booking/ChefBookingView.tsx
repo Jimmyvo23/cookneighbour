@@ -21,6 +21,7 @@ import {
   CHEF_STATUS_TEXT,
   CONTACT_ENDED_TEXT,
   CONTACT_LOCKED_TEXT,
+  FROZEN_TEXT,
   allDaysCooked,
   changeErrorText,
   chefNoShowTrialText,
@@ -48,6 +49,7 @@ import {
 import {
   EstimateLines,
   FieldScopeProvider,
+  FrozenNotice,
   TextArea,
   infoBoxCls,
   warnBoxCls,
@@ -173,6 +175,7 @@ function Ready({
           {CHEF_STATUS_TEXT[b.status]}
         </p>
         {notice("notice", NOTICE_BOX_CLS)}
+        {b.frozen && <FrozenNotice text={FROZEN_TEXT} />}
         {b.isFreeTrial && (
           <p data-testid="trial-label">
             <span className="rounded-md border-2 border-emerald-800 px-2 py-0.5 text-sm font-bold text-emerald-900 dark:text-emerald-200">
@@ -225,9 +228,11 @@ function Ready({
         </p>
       </section>
 
-      {b.status === "accepted" && <Finish b={b} onChange={changed} />}
+      {b.status === "accepted" && !b.frozen && (
+        <Finish b={b} onChange={changed} />
+      )}
 
-      {b.status === "accepted" && (
+      {b.status === "accepted" && !b.frozen && (
         <ChefEndSections booking={b} onChange={changed} />
       )}
     </>
@@ -244,7 +249,7 @@ function StatusNotes({ b }: { b: BookingDetail }) {
   const missed = pastUncookedDays(b, today);
   return (
     <div className="flex flex-col gap-2">
-      {missed.length > 0 && (
+      {missed.length > 0 && !b.frozen && (
         <div data-testid="mark-cooked-prompt" className={warnBoxCls}>
           <p>
             {missed.length === 1
@@ -417,7 +422,7 @@ function Days({
                 </li>
               ))}
             </ul>
-            {b.status === "accepted" && (
+            {b.status === "accepted" && !b.frozen && (
               <Cooked
                 b={b}
                 day={d}
@@ -425,7 +430,7 @@ function Days({
                 onChange={onChange}
               />
             )}
-            {b.status !== "accepted" && d.cookedAt && (
+            {(b.status !== "accepted" || b.frozen) && d.cookedAt && (
               <p className={hintCls}>Cooked on {formatWhen(d.cookedAt)}.</p>
             )}
           </li>

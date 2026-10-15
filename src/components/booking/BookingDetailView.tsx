@@ -20,6 +20,7 @@ import {
   CONTACT_ENDED_TEXT,
   CONTACT_LOCKED_TEXT,
   canCustomerCancel,
+  FROZEN_TEXT,
   chefNoShowTrialText,
   contactOpenText,
   contactWindow,
@@ -41,6 +42,7 @@ import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { CustomerPickups } from "@/components/booking/PickupSections";
 import {
   FieldScopeProvider,
+  FrozenNotice,
   EstimateLines,
   MockPayment,
   TextArea,
@@ -186,7 +188,7 @@ function Ready({
     onChange(next);
     if (message) announce(message);
   };
-  const canCancel = canCustomerCancel(b, torontoToday());
+  const canCancel = !b.frozen && canCustomerCancel(b, torontoToday());
   const win = contactWindow(b);
   const windowText = contactOpenText(win);
   const firstDay = b.days[0]?.date;
@@ -224,6 +226,8 @@ function Ready({
       </header>
 
       {notice("notice", NOTICE_BOX_CLS)}
+
+      {b.frozen && <FrozenNotice text={FROZEN_TEXT} />}
 
       <StatusNotes b={b} anyCooked={anyCooked} />
 

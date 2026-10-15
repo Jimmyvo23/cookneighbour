@@ -103,7 +103,9 @@ export function CustomerPickups({
   if (b.locationType !== "chef_home") return null;
   if (b.status !== "accepted" && !hasHistory) return null;
   const now = new Date();
-  const open = b.status === "accepted";
+  // T-077 (D-53, D-65): a frozen booking offers no pickup action; `live` is only for the wording.
+  const live = b.status === "accepted";
+  const open = live && !b.frozen;
   return (
     <section
       aria-labelledby={`${hid}-h`}
@@ -140,7 +142,7 @@ export function CustomerPickups({
             </p>
             {!d.cookedAt ? (
               <p className={hintCls}>
-                {open
+                {live
                   ? "The chef has not marked this day as cooked yet. You can propose a pickup time after that."
                   : "This day was not cooked."}
               </p>
@@ -283,7 +285,9 @@ export function ChefPickups({
   const hasHistory = b.days.some((d) => d.pickups.length > 0);
   if (b.status !== "accepted" && !hasHistory) return null;
   const now = new Date();
-  const open = b.status === "accepted";
+  // T-077 (D-53, D-65): a frozen booking offers no pickup action; `live` is only for the wording.
+  const live = b.status === "accepted";
+  const open = live && !b.frozen;
   return (
     <section
       aria-labelledby={`${hid}-h`}
@@ -312,7 +316,7 @@ export function ChefPickups({
             </p>
             {!d.cookedAt ? (
               <p className={hintCls}>
-                {open
+                {live
                   ? "Mark this day as cooked first. Then the customer can propose a pickup time."
                   : "This day was not cooked."}
               </p>

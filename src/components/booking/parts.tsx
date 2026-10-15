@@ -451,3 +451,12 @@ export function MockPayment() {
     </section>
   );
 }
+
+/** T-077 (D-53): neutral notice for a frozen booking. Says nothing about why. */
+export function FrozenNotice({ text }: { text: string }) {
+  return (
+    <p data-testid="frozen-notice" className={infoBoxCls}>
+      <span className="font-semibold">On hold.</span> {text}
+    </p>
+  );
+}
