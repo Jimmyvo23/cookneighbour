@@ -127,7 +127,7 @@ Type `SavedIntake` (`src/lib/api/types.ts`) has the **same fields and rules as `
 - **Does:** replaces the saved form (last write wins). It never changes an existing booking.
 
 ### DELETE /api/me/intake
-- **Who:** signed-in customer. Needs the JSON content-type header (same CSRF rule as other state-changing routes); body ignored. **Response 200:** `{ intake: null, savedAt: null }`. Clears the saved form (minimum data).
+- **Who:** signed-in customer. Needs the JSON content-type header (same CSRF rule as other state-changing routes); body ignored. **Order of checks (all three handlers): session (401), role (403), then content type (400).** **Response 200:** `{ intake: null, savedAt: null }`. Clears the saved form (minimum data).
 
 ### Booking create and the profile (decision)
 `POST /api/bookings` is **unchanged**: the booking keeps its own copy of the intake (`intake_forms`) exactly as before, and it does not read or write the saved profile. A "save to my profile" tick is done by the frontend with a separate `PUT /api/me/intake` after a successful create (or whenever the customer edits it). Reason: keeps `create_booking` untouched and atomic, and a failed save never blocks a booking.

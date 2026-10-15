@@ -57,8 +57,9 @@ export function PUT(request: Request) {
 
 export function DELETE(request: Request) {
   return handle(async () => {
-    requireJson(request); // same CSRF content-type rule as every state-changing route
+    // Order of checks: session (401), role (403), then content type (400).
     const caller = await requireCustomer();
+    requireJson(request); // same CSRF content-type rule as every state-changing route
     const up = await createAdminClient()
       .from("profile_private")
       .update({ saved_intake: null, saved_intake_at: null })

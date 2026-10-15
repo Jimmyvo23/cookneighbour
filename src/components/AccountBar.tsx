@@ -72,6 +72,11 @@ export function AccountBar() {
               My bookings
             </Link>
           )}
+          {me.profile.role === "customer" && (
+            <Link className={cls} href="/allergies">
+              Allergy profile
+            </Link>
+          )}
           {me.profile.role === "chef" && (
             <>
               <Link className={cls} href="/chef/bookings">

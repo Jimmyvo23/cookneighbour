@@ -84,7 +84,10 @@ function cancelErrorText(err: unknown): string {
 
 export function BookingDetailView({ id }: { id: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
-  const sent = useSearchParams().get("sent") === "1";
+  const params = useSearchParams();
+  const sent = params.get("sent") === "1";
+  // T-067: the booking was sent but saving the answers to the profile failed.
+  const profileNotSaved = params.get("profile") === "notsaved";
 
   const seq = useRef(0);
   const load = useCallback(async () => {
@@ -162,6 +165,7 @@ export function BookingDetailView({ id }: { id: string }) {
         <Ready
           booking={state.booking}
           sent={sent}
+          profileNotSaved={profileNotSaved}
           onChange={(b) => setState({ kind: "ready", booking: b })}
         />
       )}
@@ -172,10 +176,12 @@ export function BookingDetailView({ id }: { id: string }) {
 function Ready({
   booking: b,
   sent,
+  profileNotSaved,
   onChange,
 }: {
   booking: BookingDetail;
   sent: boolean;
+  profileNotSaved: boolean;
   onChange: (b: BookingDetail) => void;
 }) {
   const hid = useId();
@@ -201,6 +207,20 @@ function Ready({
             className="rounded-md border-2 border-emerald-800 bg-emerald-50 p-3 font-semibold text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50"
           >
             Your request was sent to {b.chef.displayName}. Nothing was charged.
+          </p>
+        )}
+        {sent && profileNotSaved && (
+          <p
+            role="status"
+            data-testid="profile-not-saved"
+            className={warnBoxCls}
+          >
+            Your request was sent, but your allergy profile could not be saved.
+            You can save it later from{" "}
+            <Link href="/allergies" className={linkCls}>
+              your allergy profile
+            </Link>
+            .
           </p>
         )}
         <h1 className="text-2xl font-semibold tracking-tight">

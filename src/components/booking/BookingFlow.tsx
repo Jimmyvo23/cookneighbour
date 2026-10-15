@@ -20,6 +20,7 @@ import {
 } from "react";
 import { ApiClientError, apiFetch } from "@/lib/api/client";
 import type {
+  SavedIntakeResponse,
   BookingDetail,
   BookingEstimate,
   BookingEstimateResponse,
@@ -50,11 +51,12 @@ import {
   type FieldErrors,
 } from "@/lib/booking/form";
 import {
-  ALLERGEN_CHOICES,
-  eatByText,
-  formatDollars,
-  formatMinutes,
-} from "@/lib/chef/dishes";
+  draftFromSaved,
+  intakeFromDraft,
+  intakeIsUntouched,
+  sameIntake,
+} from "@/lib/booking/savedIntake";
+import { eatByText, formatDollars, formatMinutes } from "@/lib/chef/dishes";
 import {
   MAX_BOOKING_DAYS,
   MAX_DISH_QUANTITY,
@@ -73,6 +75,7 @@ import {
   hintCls,
   secondaryButtonCls,
 } from "@/components/chef/parts";
+import { IntakeFields } from "@/components/booking/IntakeFields";
 import {
   Choice,
   ErrorSummary,
@@ -80,7 +83,6 @@ import {
   Input,
   MockPayment,
   Question,
-  TextArea,
   dangerBoxCls,
   FieldScopeProvider,
   errCls,
@@ -184,6 +186,11 @@ export function BookingFlow({ chefId }: { chefId: string }) {
   const addressPrefilled = useRef(false);
   // D-40: how many requests wait for an answer, so the customer is warned before filling the form.
   const [openCount, setOpenCount] = useState<number | null>(null);
+  // T-067 (D-38): the saved allergy profile. It prefills the intake answers; the customer can
+  // still change them for this booking and chooses whether the changes go back to the profile.
+  const [saved, setSaved] = useState<SavedIntakeResponse | null>(null);
+  const [saveToProfile, setSaveToProfile] = useState(false);
+  const savedRef = useRef<SavedIntakeResponse | null>(null);
 
   // The newest chef request wins.
   const seq = useRef(0);
@@ -272,6 +279,28 @@ export function BookingFlow({ chefId }: { chefId: string }) {
       current = false;
     };
   }, [role, phase]);
+
+  // T-067: load the saved profile once, and fill the intake answers only if nothing is typed yet.
+  useEffect(() => {
+    if (role !== "customer") return;
+    let current = true;
+    apiFetch<SavedIntakeResponse>("/api/me/intake").then(
+      (r) => {
+        if (!current) return;
+        savedRef.current = r;
+        setSaved(r);
+        const fill = r.intake;
+        if (fill)
+          setDraft((d) =>
+            intakeIsUntouched(d) ? { ...d, ...draftFromSaved(fill) } : d,
+          );
+      },
+      () => {}, // no profile is not an error for the booking: the customer just fills the form
+    );
+    return () => {
+      current = false;
+    };
+  }, [role]);
 
   useEffect(() => {
     document.title =
@@ -498,7 +527,21 @@ export function BookingFlow({ chefId }: { chefId: string }) {
       setSentId(created.id);
       setPhase("sent");
       setReview(null);
-      router.push(`/bookings/${encodeURIComponent(created.id)}?sent=1`);
+      // T-067: a failed profile save never fails the booking; the next page says so.
+      let profileFailed = false;
+      if (saveToProfile) {
+        try {
+          await apiFetch<SavedIntakeResponse>("/api/me/intake", {
+            method: "PUT",
+            body: intakeFromDraft(draft),
+          });
+        } catch {
+          profileFailed = true;
+        }
+      }
+      router.push(
+        `/bookings/${encodeURIComponent(created.id)}?sent=1${profileFailed ? "&profile=notsaved" : ""}`,
+      );
     } catch (err) {
       handleFailure(err);
       setBusy(false);
@@ -609,10 +652,13 @@ export function BookingFlow({ chefId }: { chefId: string }) {
                     type="button"
                     className={secondaryButtonCls}
                     onClick={() => {
+                      const fill = savedRef.current?.intake;
                       setDraft((d) => ({
                         ...emptyDraft(),
                         address: d.address,
+                        ...(fill ? draftFromSaved(fill) : {}),
                       }));
+                      setSaveToProfile(false);
                       setPhase("form");
                       setSentId(null);
                       void loadChef(true);
@@ -669,6 +715,9 @@ export function BookingFlow({ chefId }: { chefId: string }) {
                 patchDay={patchDay}
                 setDraft={setDraft}
                 setErrors={setErrors}
+                saved={saved}
+                saveToProfile={saveToProfile}
+                setSaveToProfile={setSaveToProfile}
               />
             )}
             {phase === "review" && review && (
@@ -692,6 +741,64 @@ export function BookingFlow({ chefId }: { chefId: string }) {
   );
 }
 
+/** Tells the customer where prefilled answers came from (T-067). */
+function SavedProfileNote({ saved }: { saved: SavedIntakeResponse | null }) {
+  if (!saved?.intake) return null;
+  return (
+    <p data-testid="prefilled-note" className={hintCls}>
+      Filled in from your saved allergy profile
+      {saved.savedAt ? ` (saved ${savedOn(saved.savedAt)})` : ""}. You can
+      change anything for this booking. Your saved profile stays as it is unless
+      you choose to update it below.{" "}
+      <Link href="/allergies" className={linkCls}>
+        Open your allergy profile
+      </Link>
+    </p>
+  );
+}
+
+/** The choice to save this form's answers back to the profile (T-067). */
+function SaveToProfile({
+  draft,
+  saved,
+  checked,
+  onChange,
+}: {
+  draft: BookingDraft;
+  saved: SavedIntakeResponse | null;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  const id = useDomId("save-to-profile");
+  if (saved === null) return null; // still loading, or the profile is unavailable
+  const current = intakeFromDraft(draft);
+  // Nothing to offer while the answers already equal the saved profile.
+  if (saved.intake && sameIntake(saved.intake, current)) return null;
+  return (
+    <div data-testid="save-to-profile" className="flex flex-col gap-1">
+      <Choice
+        type="checkbox"
+        id={id}
+        label={
+          saved.intake
+            ? "Replace my saved allergy profile with these answers"
+            : "Save these answers to my allergy profile for next time"
+        }
+        description="This is saved after your request is sent. A chef only sees the answers you send with a request, never your profile."
+        checked={checked}
+        onChange={onChange}
+      />
+    </div>
+  );
+}
+
+function savedOn(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-CA", {
+    timeZone: "America/Toronto",
+    dateStyle: "medium",
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Step 1: the form
 // ---------------------------------------------------------------------------
@@ -706,7 +813,13 @@ function FormStep({
   patchDay,
   setDraft,
   setErrors,
+  saved,
+  saveToProfile,
+  setSaveToProfile,
 }: {
+  saved: SavedIntakeResponse | null;
+  saveToProfile: boolean;
+  setSaveToProfile: (v: boolean) => void;
   chef: PublicChefDetail;
   draft: BookingDraft;
   errors: FieldErrors;
@@ -724,9 +837,7 @@ function FormStep({
     [draft, chef.dishes],
   );
   const dayCountId = useDomId("day-count");
-  const noAllergiesId = useDomId("intake.allergies-none");
   const ackId = useDomId("allergyConflictAcknowledged");
-  const noDietId = useDomId("intake.dietaryNotes-none");
   const offered = chef.locationOptions;
   const labels = Object.fromEntries(
     offered.map((o, i) => [o, locationLabels(offered)[i]]),
@@ -933,141 +1044,63 @@ function FormStep({
           allergens, but only the chef&apos;s list and your own care make a meal
           safe.
         </p>
-        <Question
-          legend="Allergies"
-          errorKey="intake.allergies"
-          error={errors["intake.allergies"]}
-        >
-          <Choice
-            type="checkbox"
-            label="I have no allergies"
-            checked={draft.noAllergies}
-            onChange={(c) =>
-              patch(
-                c
-                  ? {
-                      noAllergies: true,
-                      allergens: [],
-                      allergyNotes: "",
-                      conflictAcknowledged: false,
+        <SavedProfileNote saved={saved} />
+        <IntakeFields
+          draft={draft}
+          errors={errors}
+          patch={patch}
+          afterAllergies={
+            conflicts.length > 0 && (
+              <div
+                role="alert"
+                data-testid="allergy-conflict"
+                className={warnBoxCls}
+              >
+                <p className="font-semibold">
+                  <span aria-hidden="true">&#9888; </span>
+                  Allergy warning
+                </p>
+                <ul className="mt-1 list-disc pl-5">
+                  {conflicts.map((c) => (
+                    <li key={c.dishId}>
+                      {c.dishName} contains {c.allergens.join(", ")}, which
+                      matches what you wrote.
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1">
+                  Remove the dish, or confirm that you understand and still want
+                  it.
+                </p>
+                <div className="mt-2">
+                  <Choice
+                    type="checkbox"
+                    id={ackId}
+                    label="I understand and want to keep these dishes"
+                    checked={draft.conflictAcknowledged}
+                    invalid={Boolean(errors.allergyConflictAcknowledged)}
+                    onChange={(c) =>
+                      patch({ conflictAcknowledged: c }, [
+                        "allergyConflictAcknowledged",
+                      ])
                     }
-                  : { noAllergies: false },
-                ["intake.allergies", "allergyConflictAcknowledged"],
-              )
-            }
-            id={noAllergiesId}
-          />
-          <div
-            role="group"
-            aria-label="Allergens"
-            className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-          >
-            {ALLERGEN_CHOICES.map((a) => (
-              <Choice
-                key={a.value}
-                type="checkbox"
-                label={a.label}
-                disabled={draft.noAllergies}
-                checked={draft.allergens.includes(a.value)}
-                onChange={(c) =>
-                  patch(
-                    {
-                      allergens: c
-                        ? [...draft.allergens, a.value]
-                        : draft.allergens.filter((x) => x !== a.value),
-                    },
-                    ["intake.allergies", "allergyConflictAcknowledged"],
-                  )
-                }
-              />
-            ))}
-          </div>
-          <TextArea
-            label="Other allergies or details (optional)"
-            errorKey="intake.allergies"
-            maxLength={300}
-            disabled={draft.noAllergies}
-            value={draft.allergyNotes}
-            onChange={(e) =>
-              patch({ allergyNotes: e.target.value }, [
-                "intake.allergies",
-                "allergyConflictAcknowledged",
-              ])
-            }
-          />
-        </Question>
-
-        {conflicts.length > 0 && (
-          <div
-            role="alert"
-            data-testid="allergy-conflict"
-            className={warnBoxCls}
-          >
-            <p className="font-semibold">
-              <span aria-hidden="true">&#9888; </span>
-              Allergy warning
-            </p>
-            <ul className="mt-1 list-disc pl-5">
-              {conflicts.map((c) => (
-                <li key={c.dishId}>
-                  {c.dishName} contains {c.allergens.join(", ")}, which matches
-                  what you wrote.
-                </li>
-              ))}
-            </ul>
-            <p className="mt-1">
-              Remove the dish, or confirm that you understand and still want it.
-            </p>
-            <div className="mt-2">
-              <Choice
-                type="checkbox"
-                id={ackId}
-                label="I understand and want to keep these dishes"
-                checked={draft.conflictAcknowledged}
-                invalid={Boolean(errors.allergyConflictAcknowledged)}
-                onChange={(c) =>
-                  patch({ conflictAcknowledged: c }, [
-                    "allergyConflictAcknowledged",
-                  ])
-                }
-              />
-              {errors.allergyConflictAcknowledged && (
-                <p className={errCls}>{errors.allergyConflictAcknowledged}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        <Question
-          legend="Dietary needs"
-          errorKey="intake.dietaryNotes"
-          error={errors["intake.dietaryNotes"]}
-        >
-          <Choice
-            type="checkbox"
-            label="I have no dietary needs"
-            checked={draft.noDietaryNeeds}
-            onChange={(c) =>
-              patch(
-                c
-                  ? { noDietaryNeeds: true, dietaryNotes: "" }
-                  : { noDietaryNeeds: false },
-                ["intake.dietaryNotes"],
-              )
-            }
-            id={noDietId}
-          />
-          <TextArea
-            label="Dietary needs (for example halal, vegetarian, low salt)"
-            errorKey="intake.dietaryNotes"
-            maxLength={500}
-            disabled={draft.noDietaryNeeds}
-            value={draft.dietaryNotes}
-            onChange={(e) =>
-              patch({ dietaryNotes: e.target.value }, ["intake.dietaryNotes"])
-            }
-          />
-        </Question>
+                  />
+                  {errors.allergyConflictAcknowledged && (
+                    <p className={errCls}>
+                      {errors.allergyConflictAcknowledged}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          }
+        />
+        <SaveToProfile
+          draft={draft}
+          saved={saved}
+          checked={saveToProfile}
+          onChange={setSaveToProfile}
+        />
       </section>
 
       <section aria-labelledby={`${hid}-trial-h`} className={cardCls}>
