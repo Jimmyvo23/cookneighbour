@@ -30,10 +30,11 @@ function isAdminPage(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
-/** Customer pages (T-043): the booking flow /chefs/<id>/book and /bookings. Server guard is authoritative. */
+/** Customer pages (T-043, T-067): the booking flow /chefs/<id>/book, /bookings and the allergy profile /allergies. Server guard is authoritative. */
 export function isCustomerPage(pathname: string): boolean {
   return (
     pathname === "/bookings" ||
+    pathname === "/allergies" ||
     pathname.startsWith("/bookings/") ||
     /^\/chefs\/[^/]+\/book\/?$/.test(pathname)
   );

@@ -115,6 +115,28 @@ describe("saved allergy profile /api/me/intake (T-067)", () => {
     }
   });
 
+  it("DELETE checks the session (401), then the role (403), then the content type (400)", async () => {
+    // T-067 review LOW: a wrong content type must not hide a missing session or a wrong role.
+    const anon = await new Browser().call(clearIntake, {
+      method: "DELETE",
+      contentType: "text/plain",
+    });
+    expect(anon.status).toBe(401);
+    const chef = await (
+      await person("chef")
+    ).b.call(clearIntake, { method: "DELETE", contentType: "text/plain" });
+    expect(chef.status).toBe(403);
+    // Tester (T-067): a customer with the wrong content type gets 400 and nothing is cleared.
+    const cust = await person("customer");
+    await cust.b.call(putIntake, { method: "PUT", body: form });
+    const wrong = await cust.b.call(clearIntake, {
+      method: "DELETE",
+      contentType: "text/plain",
+    });
+    expect(wrong.status).toBe(400);
+    expect((await cust.b.call(getIntake)).body.intake).not.toBeNull();
+  });
+
   it("is per user and not part of GET /api/me", async () => {
     const a = await person("customer");
     const c = await person("customer");
