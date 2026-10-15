@@ -261,7 +261,7 @@ describe("tester: no-show date rules", () => {
 });
 
 describe("tester: known issue, an old error shows again after reopening", () => {
-  it("REPRODUCES: after a failure, 'Keep the booking' and reopen shows the old alert", async () => {
+  it("after a failure, 'Keep the booking' and reopen shows no old alert", async () => {
     const b = accepted(3);
     await open(b, {
       [`POST /api/bookings/${b.id}/cancel`]: apiError(
@@ -276,8 +276,8 @@ describe("tester: known issue, an old error shows again after reopening", () => 
     await h.click(h.button("Keep the booking"));
     await h.click(h.button("Cancel this booking"));
     const alert = h.host.querySelector('[role="alert"]:not(.sr-only)');
-    // Documents today's behaviour (stale text). Flip to toBeNull when fixed.
-    expect(alert?.textContent ?? "").toMatch(/not accepted any more/);
+    // Fixed in T-070 round 2: reopening starts clean.
+    expect(alert).toBeNull();
   });
 });
 
@@ -313,12 +313,12 @@ describe("tester: kitchen wording per chef's-home status", () => {
 });
 
 describe("tester: nothing-left hint when a past visit was never cooked", () => {
-  it("REPRODUCES (low): the hint says 'press Visit done' though Visit done is refused (days_not_cooked) for an uncooked past visit", async () => {
+  it("the hint tells the chef to mark cooked days first and points to the no-show report", async () => {
     await open(accepted(-2));
     const t = h.q("cancel-unavailable")?.textContent ?? "";
-    expect(t).toContain("press Visit done");
-    // The server (change_booking 'complete') refuses while an active day is not cooked, so the
-    // no-show button is the real way out. Flip these when the wording is fixed.
+    expect(t).toContain("Mark the days you cooked, then press Visit done");
+    expect(t).toContain("If the customer did not show up, report it below");
+    expect(t).not.toContain("either cooked or in the past");
     expect(h.button("Report a customer no-show")).not.toBeNull();
   });
 });
