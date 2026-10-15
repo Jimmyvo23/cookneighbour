@@ -106,7 +106,9 @@ export const requireBookingParty = () =>
  *  - D-19: stale `requested` bookings become `expired` (expire_stale_bookings, one conditional
  *    UPDATE);
  *  - D-33: `accepted` bookings whose last day ended more than 24 hours ago become `completed`
- *    (sweep_booking_changes, one conditional UPDATE), unless a problem report is open.
+ *    (sweep_booking_changes), but only if at least one day was cooked (D-36; otherwise the booking
+ *    stays `accepted` and gets a `no_day_cooked` admin flag), no problem report is open, and no
+ *    admin flag freezes it (D-53, T-064). Completing resolves a `no_day_cooked` flag (D-57).
  * Then the free-trial claim of every finished booking that still holds one is brought in line
  * with its status (applyFreeTrialEvent, after the status is saved; D-26 decides a cancellation
  * with the cooked marker). A failure of that follow-up is logged and left for the next sweep: the
