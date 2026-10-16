@@ -18,6 +18,7 @@ import { POST as completeRoute } from "@/app/api/bookings/[id]/complete/route";
 import { POST as cookedRoute } from "@/app/api/bookings/[id]/days/[dayNumber]/cooked/route";
 import { POST as proposeRoute } from "@/app/api/bookings/[id]/days/[dayNumber]/pickup/propose/route";
 import { POST as respondRoute } from "@/app/api/bookings/[id]/days/[dayNumber]/pickup/respond/route";
+import { POST as confirmRoute } from "@/app/api/bookings/[id]/days/[dayNumber]/pickup/confirm/route";
 import { POST as missedRoute } from "@/app/api/bookings/[id]/pickup/missed/route";
 import { GET as chefDetailRoute } from "@/app/api/chefs/[id]/route";
 import { GET as searchRoute } from "@/app/api/chefs/route";
@@ -257,6 +258,12 @@ export const respond = (
   body: unknown,
 ): Promise<Reply> =>
   b.call((r) => respondRoute(r, withDay(id, String(dayNumber))), { body });
+export const confirmPickup = (
+  b: Browser,
+  id: string,
+  dayNumber: string | number,
+): Promise<Reply> =>
+  b.call((r) => confirmRoute(r, withDay(id, String(dayNumber))));
 export const missed = (b: Browser, id: string): Promise<Reply> =>
   b.call((r) => missedRoute(r, withId(id)));
 

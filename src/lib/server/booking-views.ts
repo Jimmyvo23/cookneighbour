@@ -81,7 +81,9 @@ export async function loadBookingDetail(
   ] = await Promise.all([
     db
       .from("booking_days")
-      .select("id, day_number, visit_date, total_cook_minutes, cooked_at")
+      .select(
+        "id, day_number, visit_date, total_cook_minutes, cooked_at, picked_up_at",
+      )
       .eq("booking_id", id)
       .order("day_number"),
     db
@@ -161,6 +163,7 @@ export async function loadBookingDetail(
       date: d.visit_date as string,
       cookMinutes: d.total_cook_minutes as number,
       cookedAt: d.cooked_at ? iso(d.cooked_at) : null,
+      pickedUpAt: d.picked_up_at ? iso(d.picked_up_at) : null,
       pickupDeadlineDate:
         b.location_type === "chef_home" ? (eatBys[0] ?? null) : null,
       pickups: pickupRows

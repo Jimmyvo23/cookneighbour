@@ -47,7 +47,8 @@ type Action =
   | "complete"
   | "pickup_propose"
   | "pickup_respond"
-  | "pickup_missed";
+  | "pickup_missed"
+  | "pickup_confirm";
 
 const notFound = () => new ApiFailure("NOT_FOUND", "Booking not found.");
 
@@ -252,4 +253,17 @@ export async function markPickupMissed(
 ): Promise<BookingDetail> {
   await requireOwn(caller, id, "chef");
   return run(caller, id, "pickup_missed", {});
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/bookings/:id/days/:dayNumber/pickup/confirm   (customer, T-071, D-55)
+// "I picked up my meals". No body. After this the chef cannot mark the pickup missed.
+// ---------------------------------------------------------------------------
+export async function confirmPickup(
+  caller: BookingCaller,
+  id: string,
+  dayNumber: string,
+): Promise<BookingDetail> {
+  await requireOwn(caller, id, "customer");
+  return run(caller, id, "pickup_confirm", { day_number: dayOr404(dayNumber) });
 }
