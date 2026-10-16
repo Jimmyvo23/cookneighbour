@@ -100,3 +100,24 @@ test("customer: a frozen chef's-home booking offers no pickup proposal", async (
   await expect(page.getByTestId("frozen-notice")).toBeVisible();
   await expect(page.getByTestId("propose-form")).toHaveCount(0);
 });
+
+// A05's pickup window is already over in the made-up data, so no clock hook is needed to show
+// that the chef's "pickup missed" button is offered when not frozen and hidden when frozen.
+test("chef: missed pickup is offered after the window when not frozen (control)", async ({
+  page,
+}) => {
+  await loginChef(page);
+  await openPage(page, `/chef/bookings/${SEEDED.A05}`);
+  await expect(page.getByTestId("frozen-notice")).toHaveCount(0);
+  await expect(page.getByTestId("missed-pickup")).toBeVisible();
+});
+
+test("chef: missed pickup is hidden on a frozen booking whose window is over", async ({
+  page,
+}) => {
+  await loginChef(page);
+  await setMockHooks(page, { frozenSeeded: [SEEDED.A05] });
+  await openPage(page, `/chef/bookings/${SEEDED.A05}`);
+  await expect(page.getByTestId("frozen-notice")).toBeVisible();
+  await expect(page.getByTestId("missed-pickup")).toHaveCount(0);
+});
