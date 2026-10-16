@@ -31,6 +31,10 @@ const todayTo = new Intl.DateTimeFormat("en-CA", {
 }).format(new Date());
 const far = (n: number) => dayPlus(todayTo, 10 + n);
 const outside = (n: number) => dayPlus(todayTo, n);
+// chefs_booked_on lists every approved chef booked that day, and other test files (some with fixed
+// calendar dates such as 2026-10-31) book chefs too. Assert on this file's own chef only (T-079).
+type Rpc = { data: unknown };
+const ids = (r: Rpc) => (r.data ?? []) as string[];
 const BOOKING_FUNCTIONS = [
   "create_booking",
   "answer_booking",
@@ -146,9 +150,9 @@ describe("the public date helpers return dates and chef ids only", () => {
     expect(JSON.stringify(dates.data)).not.toContain(a.id);
     const taken = await anon.rpc("chefs_booked_on", { p_day: far(10) });
     expect(taken.error).toBeNull();
-    expect(taken.data).toEqual([chef.id]);
+    expect(ids(taken)).toContain(chef.id);
     const free = await anon.rpc("chefs_booked_on", { p_day: far(12) });
-    expect(free.data).toEqual([]);
+    expect(ids(free)).not.toContain(chef.id);
     // A signed-in customer gets the same answer.
     const asCustomer = await (
       await clientFor(fx.c2)
@@ -188,8 +192,8 @@ describe("the public date helpers return dates and chef ids only", () => {
       });
       expect(one.data, d).toEqual([]);
     }
-    expect((await anon.rpc("chefs_booked_on", { p_day: far(5) })).data).toEqual(
-      [chef.id],
+    expect(ids(await anon.rpc("chefs_booked_on", { p_day: far(5) }))).toContain(
+      chef.id,
     );
 
     // The same booking is invisible once the chef is rejected or pending.
@@ -202,9 +206,9 @@ describe("the public date helpers return dates and chef ids only", () => {
       });
       expect(r.data, status).toEqual([]);
       expect(
-        (await anon.rpc("chefs_booked_on", { p_day: far(5) })).data,
+        ids(await anon.rpc("chefs_booked_on", { p_day: far(5) })),
         status,
-      ).toEqual([]);
+      ).not.toContain(chef.id);
     }
   });
 
@@ -213,13 +217,13 @@ describe("the public date helpers return dates and chef ids only", () => {
     const a = await makeCustomer(svc, "pub-stale-a");
     const b = await makeBooking(svc, { customer: a, chef, dates: [far(20)] });
     const open = await anonClient().rpc("chefs_booked_on", { p_day: far(20) });
-    expect(open.data).toEqual([chef.id]);
+    expect(ids(open)).toContain(chef.id);
     await svc
       .from("bookings")
       .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
       .eq("id", b.id);
     const stale = await anonClient().rpc("chefs_booked_on", { p_day: far(20) });
-    expect(stale.data).toEqual([]);
+    expect(ids(stale)).not.toContain(chef.id);
     const dates = await anonClient().rpc("chef_booked_dates", {
       p_chef: chef.id,
       p_from: far(20),

@@ -154,7 +154,10 @@ describe("no markup, MOCK", () => {
     // The booking total is not changed by a receipt.
     const after = await svc.from("bookings").select("*").eq("id", id).single();
     expect(after.data).toEqual(b.data);
-    expect(JSON.stringify(ok.body)).not.toMatch(/markup|fee/i);
+    // fileUrl is a signed URL with a random token, which can contain "fee" by chance (T-079).
+    const { fileUrl: _signed, ...noUrl } = ok.body;
+    void _signed;
+    expect(JSON.stringify(noUrl)).not.toMatch(/markup|fee/i);
   });
 
   it("a disputed receipt reimburses nothing", async () => {
