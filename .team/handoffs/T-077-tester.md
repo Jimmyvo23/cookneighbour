@@ -29,3 +29,13 @@ Result: PASS
 
 ## What the next agent needs
 - Reviewer: nothing blocking. Check D-65 to D-68 wording in PLAN.md vs the notice text if desired.
+
+## Round 2
+
+Head checked: ce61efe (round-2 fix 04fcc83, main merged). Result: PASS.
+
+- MEDIUM-1 (MissedPickup hidden when frozen): verified by the unit test in FrozenBooking.test.tsx (seed 9105: button shown when not frozen, absent when frozen; a real positive control). Mock e2e `t077-frozen-booking-mock.spec.ts` also asserts `missed-pickup` count 0 on a frozen chef's-home booking, but the mock seeds have no passed pickup window, so that e2e is only a weak check. A stronger e2e would need a clock hook; not added (INFO).
+- INFO-1 (cancel reason "frozen"): my round-1 stale-cancel test (FrozenBooking.tester.test.tsx) still passes and shows the neutral words with no reject/flag/report text.
+- N1 / N2: unit tests for both roles and the disputed-receipt hint pass; code diff read, wording matches.
+- Local: lint clean, tsc clean, prettier clean, vitest 2025 passed + 3 expected fail (85 files), mock e2e 243 passed.
+- No new test commits this round. No new findings.
