@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-14 (T-066, T-070).
+Last updated: 2026-10-16 (T-075, T-079).
 
 ## 1. Office status (Planner and every agent)
 
@@ -49,6 +49,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Exact lists on a shared date | (T-066) A new RLS test booked a chef on `far(5)`, and another file running in parallel on the same database expects exactly one chef on that date | A test that asserts an exact list on a date must use a date no other test file uses |
 | Fixed calendar dates inside the public window | (T-079) `booking-changes.test.ts` books 3 chefs on the literal date 2026-10-31 = Toronto today + 15 on 2026-10-16, so `chefs_booked_on(far(5))` returned 4 chefs, not 1. Any literal date or random offset can land on a relative date some day. | Assert on a public list (`chefs_booked_on`, search) only with this test's own ids (`toContain` / `not.toContain` after checking `error` is null), never `toEqual([...])`. |
 | Short word regex over random values | (T-079) `not.toMatch(/markup|fee/i)` on a response flaked about 1% of runs: a hex UUID or a signed-URL token contained "fee" by chance. | Do not regex a response that holds random ids or tokens for a short word; drop those fields first, then match the plain word. Do not use `\b`: JSON keys are camelCase (`platformFeeCents`), so a whole-word match misses them. |
+| Fake clock jumps past the API timeout | (T-075) With the 20 s `apiFetch` timeout, a large Playwright `clock.fastForward` can fire the timeout before the mock adapter answers, so a retry lands one step later | In mock e2e, move the fake clock in steps shorter than `API_TIMEOUT_MS` while a call is in flight, or allow one extra retry step |
 
 ## 4. Git and GitHub
 
