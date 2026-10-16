@@ -307,3 +307,6 @@ begin
   return jsonb_build_object('result', 'ok', 'status', 'accepted', 'cooked', v_cooked);
 end;
 $$;
+
+revoke execute on function public.change_booking(uuid, uuid, text, jsonb) from public, anon, authenticated;
+grant execute on function public.change_booking(uuid, uuid, text, jsonb) to service_role;
