@@ -653,7 +653,7 @@ export interface PickupProposalView {
   id: string;
   /** ISO timestamp of the proposed pickup. */
   proposedAt: string;
-  /** `void` = the booking ended (cancelled, no-show, completed) before an answer. */
+  /** `void` = closed without an answer: the booking ended (cancelled, no-show, completed), or the customer confirmed the pickup (T-071). */
   status: "proposed" | "accepted" | "declined" | "void";
   createdAt: string;
   respondedAt: string | null;

@@ -110,8 +110,9 @@ export function CustomerPickups({
 }) {
   const hid = useId();
   const hasHistory = b.days.some((d) => d.pickups.length > 0);
+  const hasPickedUp = b.days.some((d) => d.pickedUpAt !== null);
   if (b.locationType !== "chef_home") return null;
-  if (b.status !== "accepted" && !hasHistory) return null;
+  if (b.status !== "accepted" && !hasHistory && !hasPickedUp) return null;
   const now = new Date();
   // T-077 (D-53, D-65): a frozen booking offers no pickup action; `live` is only for the wording.
   const live = b.status === "accepted";
@@ -129,7 +130,7 @@ export function CustomerPickups({
         You pick up the finished meals at the chef&apos;s home.{" "}
         {b.frozen
           ? PICKUPS_PAUSED
-          : "Agree a pickup time with the chef here: you propose a time and the chef accepts or declines. If it does not work, you can propose another time until the end of the last pickup day below."}
+          : "Agree a pickup time with the chef here: you propose a time and the chef accepts or declines. If it does not work, you can propose another time until the end of the last pickup day below. Once you have the meals, press the button for that day to tell the chef you picked them up."}
       </p>
       {open && !b.days.every((d) => d.cookedAt && d.pickedUpAt) && (
         <p className={warnBoxCls} data-testid="pickup-missed-warning">
@@ -430,7 +431,8 @@ export function ChefPickups({
   const hid = useId();
   if (b.locationType !== "chef_home") return null;
   const hasHistory = b.days.some((d) => d.pickups.length > 0);
-  if (b.status !== "accepted" && !hasHistory) return null;
+  const hasPickedUp = b.days.some((d) => d.pickedUpAt !== null);
+  if (b.status !== "accepted" && !hasHistory && !hasPickedUp) return null;
   const now = new Date();
   // T-077 (D-53, D-65): a frozen booking offers no pickup action; `live` is only for the wording.
   const live = b.status === "accepted";
@@ -448,7 +450,7 @@ export function ChefPickups({
         The customer picks up the finished meals at your home.{" "}
         {b.frozen
           ? PICKUPS_PAUSED
-          : "After you mark a day as cooked, the customer proposes a pickup time and you accept or decline it. They may propose again until the end of that day's pickup deadline."}
+          : "After you mark a day as cooked, the customer proposes a pickup time and you accept or decline it. They may propose again until the end of that day's pickup deadline. The customer can also confirm that they picked the meals up; after that you cannot mark that pickup as missed."}
       </p>
       <ul className="flex flex-col divide-y divide-zinc-300 dark:divide-zinc-700">
         {b.days.map((d) => (

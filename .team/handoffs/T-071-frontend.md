@@ -27,3 +27,14 @@ From: frontend  To: tester
 ## What the next agent needs
 - Tester: try a stale page (chef page open, customer confirms elsewhere, chef presses "Yes, mark pickup missed": expect the `pickup_confirmed` text in the alert with focus). Try two days (one confirmed, one not) and 375 px / dark mode. Real API tests of the route belong to Backend's PR.
 - No question for Jimmy.
+
+## Round 2
+
+Fixes for the Reviewer's APPROVE notes (`T-071-reviewer-frontend.md`):
+- LOW: both `CustomerPickups` and `ChefPickups` now also render when any day has `pickedUpAt`, so a "Picked up on" line is not lost once the booking is completed. Unit tests: completed + confirmed with no proposals, customer and chef (plus a control: nothing confirmed, no proposals, still no section).
+- NIT: intros mention the confirm action ("...press the button for that day to tell the chef you picked them up"; chef: "the customer can also confirm that they picked the meals up; after that you cannot mark that pickup as missed"). Unit test pins both.
+- NIT: `PickupProposalView.status` comment in `types.ts` now says `void` also covers a pickup confirmed by the customer.
+- NIT: mock confirm keeps an existing `respondedAt` (`p.respondedAt ?? now`).
+- NIT: removed the unused `days[].pickedUp` seed option; the hook `pickedUpSeeded` is the only way.
+- Not done on purpose: stale-409 refetch (separate follow-up).
+- Local: lint, typecheck, prettier clean; vitest 2080 passed + 3 expected fail; mock e2e t071, chef-bookings and customer-changes specs 55 passed.

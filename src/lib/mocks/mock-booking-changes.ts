@@ -128,8 +128,6 @@ interface SeedOptions {
     offset: number;
     dishes: SeedDish[];
     cooked?: boolean;
-    /** T-071: the customer already confirmed the pickup (test hook `pickedUpSeeded`). */
-    pickedUp?: boolean;
   }[];
   allergies?: string;
   dietary?: string;
@@ -213,10 +211,7 @@ function seedRow(o: SeedOptions): MockBookingRow {
         cookedAt: d.cooked
           ? new Date(`${date}T16:00:00.000Z`).toISOString()
           : null,
-        pickedUpAt:
-          d.pickedUp && d.cooked
-            ? new Date(`${date}T20:00:00.000Z`).toISOString()
-            : null,
+        pickedUpAt: null, // the test hook `pickedUpSeeded` sets it (T-071)
         pickupDeadlineDate:
           o.locationType === "chef_home" ? addDays(date, earliest) : null,
         pickups: o.pickups?.[i + 1] ?? [],
@@ -819,7 +814,7 @@ export function changeRoute(
                     ? {
                         ...p,
                         status: "void" as const,
-                        respondedAt: now.toISOString(),
+                        respondedAt: p.respondedAt ?? now.toISOString(),
                       }
                     : p,
                 ),

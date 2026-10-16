@@ -291,3 +291,40 @@ describe("chef: a confirmed pickup", () => {
     expect(document.activeElement).toBe(alert);
   });
 });
+
+describe("a finished booking keeps the picked-up line (round 2)", () => {
+  const done = (role: "customer" | "chef") =>
+    picked(
+      noPickups(
+        seededBooking(9103, role, (x) => ({ ...x, status: "completed" })),
+      ),
+    );
+  it("customer: completed + confirmed with no proposals still shows it, with no button", async () => {
+    await h.mount(<Page start={done("customer")} />);
+    expect(h.q("pickups")).not.toBeNull();
+    expect(h.q("picked-up")?.textContent).toContain("Picked up on");
+    expect(h.button(/I picked up/)).toBeNull();
+  });
+  it("chef: completed + confirmed with no proposals still shows it", async () => {
+    await h.mount(<Page start={done("chef")} chef />);
+    expect(h.q("pickups")).not.toBeNull();
+    expect(h.q("picked-up")?.textContent).toContain(
+      "confirmed by the customer",
+    );
+  });
+  it("a completed booking with nothing confirmed and no proposals still shows no section", async () => {
+    const b = noPickups(
+      seededBooking(9103, "customer", (x) => ({ ...x, status: "completed" })),
+    );
+    await h.mount(<Page start={b} />);
+    expect(h.q("pickups")).toBeNull();
+  });
+  it("the intros mention the confirm action", async () => {
+    await h.mount(<Page start={seededBooking(9103, "customer")} />);
+    expect(h.q("pickups")?.textContent).toContain("tell the chef you picked");
+    h.cleanup();
+    h = harness();
+    await h.mount(<Page start={seededBooking(9103, "chef")} chef />);
+    expect(h.q("pickups")?.textContent).toContain("can also confirm");
+  });
+});
