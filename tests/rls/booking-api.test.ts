@@ -33,8 +33,11 @@ const far = (n: number) => dayPlus(todayTo, 10 + n);
 const outside = (n: number) => dayPlus(todayTo, n);
 // chefs_booked_on lists every approved chef booked that day, and other test files (some with fixed
 // calendar dates such as 2026-10-31) book chefs too. Assert on this file's own chef only (T-079).
-type Rpc = { data: unknown };
-const ids = (r: Rpc) => (r.data ?? []) as string[];
+type Rpc = { data: unknown; error: unknown };
+const ids = (r: Rpc) => {
+  expect(r.error).toBeNull(); // an RPC error must not look like an empty list
+  return (r.data ?? []) as string[];
+};
 const BOOKING_FUNCTIONS = [
   "create_booking",
   "answer_booking",

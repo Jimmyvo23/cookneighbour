@@ -26,3 +26,8 @@ Other exact-list asserts on non-public data were not changed (they use their own
 
 ## What the next agent needs
 Lessons-learned section 3 has a new row.
+
+## Round 2 (Reviewer changes on 7ed92c9)
+- MED groceries-tester: `fileUrl`, `id` and `bookingId` are dropped before the check (hex UUIDs can contain "fee"), and the regex is now whole-word `/\b(markup|fees?)\b/i`. Both applied; every user-visible field is still checked.
+- LOW booking-api: `ids()` now asserts `r.error` is null, so `not.toContain` cannot pass on a failed RPC.
+- NIT lessons-learned: the date row is shorter; the random-value regex lesson is its own row and mentions random ids.
