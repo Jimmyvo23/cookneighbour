@@ -20,6 +20,12 @@ import { formatDollars } from "@/lib/chef/dishes";
 // Error words
 // ---------------------------------------------------------------------------
 
+/**
+ * T-077 (D-53): the one neutral sentence both parties see on a frozen booking. It is the server's
+ * own refusal text, so the notice and a stale-page 409 read the same. It does not say why.
+ */
+export const FROZEN_TEXT = CHANGE_REFUSALS.frozen;
+
 /** D-59: one wording for the UI and the mock server, so the two cannot drift. */
 export const KITCHEN_ADDRESS_MISSING_MESSAGE =
   "Your kitchen address is missing, so this booking cannot be accepted. Adding a kitchen address switches cooking at your home off until an admin checks it again, so declining this request is the practical choice.";

@@ -156,6 +156,7 @@ export function GroceriesSection({
     viewer === "chef" &&
     optionB &&
     open &&
+    !b.frozen &&
     receipts !== null &&
     (!current || current.status === "disputed");
   const done = (message: string) => {
@@ -218,12 +219,24 @@ export function GroceriesSection({
           ) : (
             <p data-testid="no-receipt">
               {viewer === "chef"
-                ? open
-                  ? "You have not added a receipt yet. After you shop, upload the receipt and enter what you paid."
-                  : "A receipt can be added once the booking is accepted."
+                ? b.frozen
+                  ? "A receipt cannot be added while this booking is on hold."
+                  : open
+                    ? "You have not added a receipt yet. After you shop, upload the receipt and enter what you paid."
+                    : "A receipt can be added once the booking is accepted."
                 : "The chef has not added a receipt yet. You will see it here, and you reimburse the groceries at cost once you confirm it."}
             </p>
           )}
+          {current &&
+            viewer === "chef" &&
+            b.frozen &&
+            optionB &&
+            open &&
+            current.status === "disputed" && (
+              <p data-testid="no-receipt-frozen">
+                A receipt cannot be added while this booking is on hold.
+              </p>
+            )}
           {canUpload && (
             <ReceiptUploadForm
               bookingId={b.id}

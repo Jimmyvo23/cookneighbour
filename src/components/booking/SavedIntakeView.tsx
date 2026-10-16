@@ -57,6 +57,9 @@ export function SavedIntakeView() {
   const summaryRef = useRef<HTMLDivElement>(null);
   const failureRef = useRef<HTMLDivElement>(null);
   const deleteRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLParagraphElement>(null);
+  const savedStateRef = useRef<HTMLParagraphElement>(null);
+  const afterDelete = useRef(false);
   const wasConfirming = useRef(false);
   const { announce, notice } = useAnnounce();
   const seq = useRef(0);
@@ -93,9 +96,17 @@ export function SavedIntakeView() {
     (failureRef.current ?? summaryRef.current)?.focus();
   }, [focusTick]);
 
-  // Cancelling the delete question puts focus back on the button that opened it.
+  // The Delete button leaves the page while the question is open, so focus moves to the question
+  // (T-076). Cancelling puts focus back on the button that opened it. After a successful delete the
+  // saved-state line takes focus (the button and the question are gone).
   useEffect(() => {
-    if (wasConfirming.current && !confirming) deleteRef.current?.focus();
+    if (confirming) confirmRef.current?.focus();
+    else if (wasConfirming.current) {
+      if (afterDelete.current) {
+        afterDelete.current = false;
+        savedStateRef.current?.focus();
+      } else deleteRef.current?.focus();
+    }
     wasConfirming.current = confirming;
   }, [confirming]);
 
@@ -162,6 +173,7 @@ export function SavedIntakeView() {
       const r = await apiFetch<SavedIntakeResponse>("/api/me/intake", {
         method: "DELETE",
       });
+      afterDelete.current = true;
       setConfirming(false);
       setErrors({});
       setDraft(emptyDraft());
@@ -241,7 +253,12 @@ export function SavedIntakeView() {
               <h2 id={`${scope}-h`} className="text-lg font-semibold">
                 Allergies and dietary needs
               </h2>
-              <p data-testid="saved-state" className={hintCls}>
+              <p
+                data-testid="saved-state"
+                ref={savedStateRef}
+                tabIndex={-1}
+                className={hintCls}
+              >
                 {saved.intake
                   ? `Saved on ${new Date(saved.savedAt ?? "").toLocaleDateString("en-CA", { timeZone: "America/Toronto", dateStyle: "medium" })}.`
                   : "Nothing is saved yet."}
@@ -270,7 +287,7 @@ export function SavedIntakeView() {
                 aria-label="Confirm delete"
                 className="flex flex-col gap-3 rounded-md border-2 border-red-700 p-3"
               >
-                <p>
+                <p ref={confirmRef} tabIndex={-1} data-testid="confirm-delete">
                   Delete your saved allergy profile? The booking form will be
                   empty next time. Requests you already sent keep their answers.
                 </p>

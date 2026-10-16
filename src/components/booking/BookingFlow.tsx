@@ -778,10 +778,17 @@ function SaveToProfile({
   onChange: (v: boolean) => void;
 }) {
   const id = useDomId("save-to-profile");
-  if (saved === null) return null; // still loading, or the profile is unavailable
   const current = intakeFromDraft(draft);
   // Nothing to offer while the answers already equal the saved profile.
-  if (saved.intake && sameIntake(saved.intake, current)) return null;
+  const hidden =
+    saved === null ||
+    (saved.intake !== null && sameIntake(saved.intake, current));
+  // T-076: when the box hides (answers match the profile again) it must not stay ticked, or an
+  // identical PUT would run after the booking is sent.
+  useEffect(() => {
+    if (hidden && checked) onChange(false);
+  }, [hidden, checked, onChange]);
+  if (saved === null || hidden) return null; // still loading / unavailable, or nothing to save
   return (
     <div data-testid="save-to-profile" className="flex flex-col gap-1">
       <Choice
