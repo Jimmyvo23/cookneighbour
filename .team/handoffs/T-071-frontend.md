@@ -44,3 +44,9 @@ Fixes for the Reviewer's APPROVE notes (`T-071-reviewer-frontend.md`):
 - Merged `origin/feature/T-071-pickup-confirm-backend` (e5eca44) with a merge commit, no conflicts. `changes.ts` keeps Backend's `picked_up` text (it comes from `CHANGE_REFUSALS`, so `changeErrorText` and `proposalErrorText` already show "You already confirmed that you picked up these meals.").
 - Mock: `pickup/propose` on a day with `pickedUpAt` gives 409 `picked_up` after the deadline check (contract order) and stores nothing. Tests: `mock-pickup-confirm.test.ts` (+1), `changes.test.ts` (+1 assert).
 - Local: lint, typecheck, prettier clean; vitest 2081 passed + 3 expected fail; full mock e2e 254 passed.
+
+## Round 4
+
+- Mock `pickup/propose` check order now matches the server: `day_not_cooked`, `picked_up`, `deadline_passed`, then `proposal_open`, `pickup_agreed`. The Tester's `.fails` marker is removed and the test passes.
+- Tests that pinned the `pickup_confirmed` wording now read it from `CHANGE_REFUSALS.pickup_confirmed` (PickupConfirm, PickupConfirmTester, changes, mock-pickup-confirm tests), so Backend's rewording needs no frontend change.
+- Local: lint, typecheck, prettier clean; vitest 2088 passed + 3 expected fail; t071 mock specs 11 passed.

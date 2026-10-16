@@ -1,4 +1,5 @@
 // T-071 (D-55, contract v1.12): the mock adapter's pickup confirmation behaves like the server.
+import { CHANGE_REFUSALS } from "@/lib/domain/bookingChanges";
 import { describe, expect, it } from "vitest";
 import type { ApiError, BookingDetail } from "@/lib/api/types";
 import {
@@ -149,7 +150,7 @@ describe("mock: pickup missed after a confirmation (A-29)", () => {
     const r = await call(chef, "POST", `/api/bookings/${A05}/pickup/missed`);
     expect(r.status).toBe(409);
     expect(r.error.reason).toBe("pickup_confirmed");
-    expect(r.error.message).toMatch(/confirmed they picked up/);
+    expect(r.error.message).toBe(CHANGE_REFUSALS.pickup_confirmed);
   });
   it("keeps pickup_window_open when no cooked day is past its deadline", async () => {
     const r = await call(
@@ -178,20 +179,17 @@ describe("mock: pickup missed after a confirmation (A-29)", () => {
 
 describe("mock: check order on propose for a confirmed day (tester, round 3)", () => {
   // The server checks picked_up before deadline_passed (migration pickup_propose branch); the mock
-  // checks the deadline first. Expected fail until the mock is reordered; then remove `.fails`.
-  it.fails(
-    "a confirmed day past its deadline answers picked_up, like the server",
-    async () => {
-      const s = customer([A05]);
-      const r = bookingRoutes(
-        "POST",
-        `/api/bookings/${A05}/days/1/pickup/propose`,
-        { proposedAt: new Date(NOW.getTime() + 3600_000).toISOString() },
-        s,
-        NOW,
-      )!;
-      expect(r.res.status).toBe(409);
-      expect(((await r.res.json()) as ApiError).error.reason).toBe("picked_up");
-    },
-  );
+  // checks the deadline first.
+  it("a confirmed day past its deadline answers picked_up, like the server", async () => {
+    const s = customer([A05]);
+    const r = bookingRoutes(
+      "POST",
+      `/api/bookings/${A05}/days/1/pickup/propose`,
+      { proposedAt: new Date(NOW.getTime() + 3600_000).toISOString() },
+      s,
+      NOW,
+    )!;
+    expect(r.res.status).toBe(409);
+    expect(((await r.res.json()) as ApiError).error.reason).toBe("picked_up");
+  });
 });

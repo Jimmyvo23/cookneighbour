@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CHANGE_REFUSALS } from "@/lib/domain/bookingChanges";
 import { ApiClientError } from "@/lib/api/client";
 import type {
   BookingDayView,
@@ -179,8 +180,8 @@ describe("error words", () => {
       /kitchen address is missing.*declining/,
     );
     expect(changeErrorText(inv("picked_up"))).toMatch(/already confirmed/);
-    expect(changeErrorText(inv("pickup_confirmed"))).toMatch(
-      /confirmed they picked up/,
+    expect(changeErrorText(inv("pickup_confirmed"))).toBe(
+      CHANGE_REFUSALS.pickup_confirmed,
     );
     expect(changeErrorText(inv("pickup_window_open"))).toMatch(
       /can still pick up/,

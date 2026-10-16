@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // T-071 tester gaps: several days with one confirmed, the "Not yet" focus, a double press, the
 // deadline passing with one day confirmed, and a stale chef page after a customer confirm.
+import { CHANGE_REFUSALS } from "@/lib/domain/bookingChanges";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { BookingDetail } from "@/lib/api/types";
@@ -158,7 +159,7 @@ describe("chef, two days", () => {
     const alert = h
       .q("missed-pickup")!
       .querySelector('[role="alert"]') as HTMLElement;
-    expect(alert.textContent).toMatch(/confirmed they picked up/);
+    expect(alert.textContent).toBe(CHANGE_REFUSALS.pickup_confirmed);
     expect(document.activeElement).toBe(alert);
     expect(
       callsTo(h.fetchMock, `/api/bookings/${b.id}/pickup/missed`),
@@ -246,6 +247,6 @@ describe("stale pickup_confirmed with another day still inside its window", () =
     expect(document.activeElement).toBe(alert);
     // Honesty: the text must not claim the whole booking can never be marked missed.
     expect(alert.textContent).not.toMatch(/never|ever again|booking is safe/i);
-    expect(alert.textContent).toContain("confirmed they picked up");
+    expect(alert.textContent).toContain(CHANGE_REFUSALS.pickup_confirmed);
   });
 });

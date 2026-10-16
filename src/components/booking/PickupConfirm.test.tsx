@@ -2,6 +2,7 @@
 // T-071 (D-55): the customer confirms "I picked up my meals" per cooked day of a chef's-home
 // booking; the chef then sees it and cannot mark the pickup missed. The server is the judge: these
 // tests check the wording, the confirm step, focus and what is hidden. MOCK data comes from the seed.
+import { CHANGE_REFUSALS } from "@/lib/domain/bookingChanges";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { BookingDetail } from "@/lib/api/types";
@@ -287,7 +288,7 @@ describe("chef: a confirmed pickup", () => {
     await h.click(h.button("Mark pickup missed"));
     await h.click(h.button("Yes, mark pickup missed"));
     const alert = h.host.querySelector('[role="alert"]') as HTMLElement;
-    expect(alert.textContent).toContain("confirmed they picked up");
+    expect(alert.textContent).toContain(CHANGE_REFUSALS.pickup_confirmed);
     expect(document.activeElement).toBe(alert);
   });
 });
