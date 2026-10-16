@@ -430,3 +430,64 @@ describe("the SQL completion and pickup rules equal the TypeScript ones (L5)", (
     }
   });
 });
+
+describe("T-071: booking_days.picked_up_at (D-55)", () => {
+  it("parties and admin read it; strangers do not; no browser can set it", async () => {
+    const chef = await makeChef(svc, "pc-chef", {
+      options: ["customer_home", "chef_home"],
+      chefHomeEnabled: true,
+    });
+    const cust = await makeCustomer(svc, "pc-cust");
+    const b = await makeBooking(svc, {
+      customer: cust,
+      chef,
+      dates: [far(3)],
+      status: "accepted",
+      location: "chef_home",
+    });
+    const set = await svc
+      .from("booking_days")
+      .update({ picked_up_at: new Date().toISOString() })
+      .eq("id", b.dayIds[0]);
+    expect(set.error).toBeNull();
+
+    const asCust = await clientFor(cust);
+    const asChef = await clientFor(chef);
+    const asAdmin = await clientFor(fx.admin);
+    for (const c of [asCust, asChef, asAdmin])
+      expectRows(
+        await c
+          .from("booking_days")
+          .select("picked_up_at")
+          .eq("id", b.dayIds[0])
+          .not("picked_up_at", "is", null),
+        1,
+      );
+    for (const c of [
+      await clientFor(fx.c1),
+      await clientFor(fx.h1),
+      anonClient(),
+    ])
+      expectNoRows(
+        await c
+          .from("booking_days")
+          .select("picked_up_at")
+          .eq("id", b.dayIds[0]),
+      );
+    // Nobody confirms or clears it from a browser.
+    for (const c of [asCust, asChef, asAdmin, await clientFor(fx.c1)])
+      expectDenied(
+        await c
+          .from("booking_days")
+          .update({ picked_up_at: null })
+          .eq("id", b.dayIds[0])
+          .select("id"),
+      );
+    const row = await svc
+      .from("booking_days")
+      .select("picked_up_at")
+      .eq("id", b.dayIds[0])
+      .single();
+    expect(row.data?.picked_up_at).not.toBeNull();
+  });
+});
