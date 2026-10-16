@@ -158,7 +158,7 @@ describe("no markup, MOCK", () => {
     // Every field a user reads (amount, currency, status, reimbursement...) is still checked.
     const { fileUrl: _u, id: _i, bookingId: _b, ...visible } = ok.body;
     void [_u, _i, _b];
-    expect(JSON.stringify(visible)).not.toMatch(/\b(markup|fees?)\b/i);
+    expect(JSON.stringify(visible)).not.toMatch(/markup|fee/i);
   });
 
   it("a disputed receipt reimburses nothing", async () => {

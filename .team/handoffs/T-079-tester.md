@@ -31,3 +31,7 @@ Lessons-learned section 3 has a new row.
 - MED groceries-tester: `fileUrl`, `id` and `bookingId` are dropped before the check (hex UUIDs can contain "fee"), and the regex is now whole-word `/\b(markup|fees?)\b/i`. Both applied; every user-visible field is still checked.
 - LOW booking-api: `ids()` now asserts `r.error` is null, so `not.toContain` cannot pass on a failed RPC.
 - NIT lessons-learned: the date row is shorter; the random-value regex lesson is its own row and mentions random ids.
+
+## Round 3 (D-72)
+- groceries-tester: kept the destructuring that drops `fileUrl`, `id` and `bookingId`, and went back to the plain `/markup|fee/i`. The `\b` regex missed camelCase keys such as `platformFeeCents`.
+- lessons-learned: the "Short word regex over random values" row now says to drop the random fields and match the plain word, with no `\b`.
