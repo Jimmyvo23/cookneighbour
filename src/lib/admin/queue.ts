@@ -152,6 +152,7 @@ export function describeAdminError(
       return first ? `${err.message} ${first}` : err.message;
     }
     case "NETWORK":
+    case "TIMEOUT":
       return err.message;
     default:
       return err.message;

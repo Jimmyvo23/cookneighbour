@@ -306,6 +306,10 @@ test("the link retry runs every 30 s while failing, never stacks, and stops once
   await expect(tid(page, "links-stale")).toBeVisible();
   // Recovery: the next retry works and the notice goes.
   await editMockState(page, `s.adminQueue = s.saved;`);
+  // The fake clock can run ahead of the mock's real async work, so a failing call may end by the
+  // 20 s API timeout (T-075) instead of the mock's 404; that moves the next retry out by one more
+  // 30 s step. fastForward fires each due timer once, so jump twice.
+  await page.clock.fastForward("00:31");
   await page.clock.fastForward("00:31");
   await expect(tid(page, "links-stale")).toHaveCount(0);
   // Settled: for 3 minutes (less than the normal 240 s renewal) no further call is made.

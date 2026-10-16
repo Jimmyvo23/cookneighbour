@@ -120,7 +120,7 @@ function Field({
 function describeSearchError(err: unknown): string {
   if (err instanceof ApiClientError) {
     if (err.status === 422) return "Check the highlighted search fields.";
-    if (err.code === "NETWORK") return err.message;
+    if (err.code === "NETWORK" || err.code === "TIMEOUT") return err.message;
     if (err.status >= 500)
       return "The search is not working right now. Try again in a moment.";
     return err.message;

@@ -8,7 +8,7 @@ export function isMockEnabled(): boolean {
 
 export class ApiClientError extends Error {
   readonly status: number;
-  readonly code: ApiErrorCode | "NETWORK" | "UNKNOWN";
+  readonly code: ApiErrorCode | "NETWORK" | "TIMEOUT" | "UNKNOWN";
   readonly fields: Record<string, string>;
   readonly retryAfterSeconds?: number;
   readonly missing?: string[];
@@ -49,6 +49,14 @@ export class ApiClientError extends Error {
   }
 }
 
+/** One timeout for every call through `apiFetch`: waiting for the answer and reading its body. */
+export const API_TIMEOUT_MS = 20_000;
+
+const TIMEOUT_READ = "The server took too long to answer. Please try again.";
+/** A write may have reached the server before the wait ran out, so do not promise either way. */
+const TIMEOUT_WRITE =
+  "The server took too long to answer. Your change may or may not have gone through. Check before you try again.";
+
 export interface ApiFetchOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
@@ -73,28 +81,56 @@ export async function apiFetch<T>(
   if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
 
   const useMock = opts.mock ?? isMockEnabled();
-  let res: Response;
-  try {
-    if (useMock) {
-      // Loaded only in the mock branch, so the adapter is not part of a normal run.
-      const { mockFetch } = await import("@/lib/mocks/mock-adapter");
-      res = await mockFetch(path, init);
-    } else {
-      res = await (opts.fetchImpl ?? fetch)(path, init);
+  const controller = new AbortController();
+  init.signal = controller.signal;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        new ApiClientError(
+          0,
+          "TIMEOUT",
+          method === "GET" ? TIMEOUT_READ : TIMEOUT_WRITE,
+        ),
+      );
+      controller.abort(); // after reject, so the abort's own failure cannot win the race
+    }, API_TIMEOUT_MS);
+  });
+  // The timer covers the whole exchange, body included; the real fetch also aborts through the
+  // signal. The race stands in for fetch implementations (tests, mock adapter) that ignore it.
+  const exchange = async (): Promise<{ res: Response; data: unknown }> => {
+    let res: Response;
+    try {
+      if (useMock) {
+        // Loaded only in the mock branch, so the adapter is not part of a normal run.
+        const { mockFetch } = await import("@/lib/mocks/mock-adapter");
+        res = await mockFetch(path, init);
+      } else {
+        res = await (opts.fetchImpl ?? fetch)(path, init);
+      }
+    } catch {
+      throw new ApiClientError(
+        0,
+        "NETWORK",
+        "Could not reach the server. Check your connection and try again.",
+      );
     }
-  } catch {
-    throw new ApiClientError(
-      0,
-      "NETWORK",
-      "Could not reach the server. Check your connection and try again.",
-    );
-  }
-
-  let data: unknown = null;
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+    return { res, data };
+  };
+  let res: Response;
+  let data: unknown;
   try {
-    data = await res.json();
-  } catch {
-    data = null;
+    const work = exchange();
+    work.catch(() => {}); // a late failure after the timeout is already handled
+    ({ res, data } = await Promise.race([work, timedOut]));
+  } finally {
+    clearTimeout(timer);
   }
 
   if (res.ok) return data as T;

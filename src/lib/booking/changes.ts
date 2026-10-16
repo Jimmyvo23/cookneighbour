@@ -58,7 +58,7 @@ export function changeErrorText(err: unknown): string {
   if (err.code === "INVALID_STATE")
     return "That is not possible in this booking's current state. Reload the page to see its status.";
   if (err.code === "NOT_FOUND") return "This booking could not be found.";
-  if (err.code === "NETWORK") return err.message;
+  if (err.code === "NETWORK" || err.code === "TIMEOUT") return err.message;
   return err.message;
 }
 

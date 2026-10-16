@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ApiClientError,
   apiFetch,
+  API_TIMEOUT_MS,
   formatRetry,
   isMockEnabled,
 } from "@/lib/api/client";
@@ -154,5 +155,109 @@ describe("isMockEnabled", () => {
     }
     process.env.NEXT_PUBLIC_API_MOCK = "1";
     expect(isMockEnabled()).toBe(true);
+  });
+});
+
+describe("apiFetch timeout (T-075)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const hang = () => new Promise<Response>(() => {});
+
+  it("exports a default of 15 to 20 seconds", () => {
+    expect(API_TIMEOUT_MS).toBeGreaterThanOrEqual(15_000);
+    expect(API_TIMEOUT_MS).toBeLessThanOrEqual(20_000);
+  });
+
+  it("a GET that never answers fails with TIMEOUT and a plain retry message", async () => {
+    vi.useFakeTimers();
+    const p = caught(apiFetch("/x", { mock: false, fetchImpl: hang }));
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+    const e = await p;
+    expect(e.code).toBe("TIMEOUT");
+    expect(e.status).toBe(0);
+    expect(e.message).toMatch(/took too long/i);
+    expect(e.message).not.toMatch(/may or may not/i);
+  });
+
+  it.each(["POST", "PUT", "PATCH", "DELETE"] as const)(
+    "a %s timeout says it may or may not have gone through",
+    async (method) => {
+      vi.useFakeTimers();
+      const p = caught(
+        apiFetch("/x", { method, mock: false, fetchImpl: hang }),
+      );
+      await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+      const e = await p;
+      expect(e.code).toBe("TIMEOUT");
+      expect(e.message).toMatch(/may or may not/i);
+      expect(e.message).toMatch(/check/i);
+      expect(e.message).not.toMatch(/nothing was saved|not saved/i);
+    },
+  );
+
+  it("passes an abort signal that fires at the timeout", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | null | undefined;
+    const fetchImpl = vi.fn((_u: unknown, init?: RequestInit) => {
+      signal = init?.signal;
+      return hang();
+    }) as unknown as typeof fetch;
+    const p = caught(apiFetch("/x", { mock: false, fetchImpl }));
+    expect(signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+    await p;
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("a hung response body also times out", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: new Headers(),
+          json: () => new Promise(() => {}),
+        }) as unknown as Response,
+    );
+    const p = caught(apiFetch("/x", { mock: false, fetchImpl }));
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+    expect((await p).code).toBe("TIMEOUT");
+  });
+
+  it("the mock path times out too", async () => {
+    vi.useFakeTimers();
+    vi.doMock("@/lib/mocks/mock-adapter", () => ({ mockFetch: hang }));
+    const p = caught(apiFetch("/x", { mock: true }));
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+    expect((await p).code).toBe("TIMEOUT");
+    vi.doUnmock("@/lib/mocks/mock-adapter");
+  });
+
+  it("clears the timer after success and after a network error", async () => {
+    vi.useFakeTimers();
+    await apiFetch("/x", { mock: false, fetchImpl: async () => res(200, {}) });
+    expect(vi.getTimerCount()).toBe(0);
+    await caught(
+      apiFetch("/x", {
+        mock: false,
+        fetchImpl: async () => {
+          throw new TypeError("fail");
+        },
+      }),
+    );
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("a fast answer is not turned into a timeout later", async () => {
+    vi.useFakeTimers();
+    const out = await apiFetch<{ a: number }>("/x", {
+      mock: false,
+      fetchImpl: async () => res(200, { a: 1 }),
+    });
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS * 2);
+    expect(out).toEqual({ a: 1 });
   });
 });
