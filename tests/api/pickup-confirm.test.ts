@@ -68,7 +68,7 @@ async function rejectChef(chef: TestChef) {
 describe("POST /api/bookings/:id/days/:dayNumber/pickup/confirm", () => {
   it("confirms a cooked day, notifies the chef once, is idempotent, and blocks 'missed'", async () => {
     const { chef, cust, id } = await setup({ offsets: [3, 4] });
-    await shiftDays(id, 3);
+    await shiftDays(id, 4); // day 1 was yesterday, day 2 is today: both can be cooked
     await setEatBy(id, 5);
     // Before cooking: refused.
     let r = await confirmPickup(cust.b, id, 1);
