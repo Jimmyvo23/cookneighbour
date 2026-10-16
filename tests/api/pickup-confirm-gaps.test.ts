@@ -1,6 +1,7 @@
 // T-071 Tester round: gaps around the pickup confirmation (D-55, A-26..A-29).
 // Runs against the LOCAL Supabase (CI). Every chef and customer is new; asserts are id-scoped.
 import { beforeEach, describe, expect, it } from "vitest";
+import { CHANGE_REFUSALS } from "@/lib/domain/bookingChanges";
 import { Browser, freshLimits } from "./harness";
 import {
   accept,
@@ -160,6 +161,9 @@ describe("T-071 tester gaps: pickup confirm", () => {
     expect(r.status, r.text).toBe(409);
     // No unconfirmed day is past its deadline; a confirmed one is (contract: pickup_confirmed).
     expect(r.body.error.reason).toBe("pickup_confirmed");
+    // Round 2: the text must stay true when another day is still inside its window.
+    expect(r.body.error.message).toBe(CHANGE_REFUSALS.pickup_confirmed);
+    expect(r.body.error.message).toMatch(/no missed pickup to report now/);
     const row = await svc
       .from("bookings")
       .select("status")
