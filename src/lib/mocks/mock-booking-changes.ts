@@ -463,12 +463,6 @@ const CUSTOMER_ONLY = new Set([
   "receipt-answer",
 ]);
 
-/** T-071 (D-55): words for the 409 reasons the pickup confirmation adds (contract v1.12). */
-export const PICKUP_CONFIRM_REFUSALS: Record<string, string> = {
-  pickup_confirmed:
-    "The customer has confirmed they picked up their meals, so the pickup cannot be marked as missed.",
-};
-
 function strip(r: MockReceipt): ReceiptView {
   const { filePath: _p, ...view } = r;
   void _p;
@@ -486,7 +480,6 @@ function invalid(reason: string, message?: string) {
     "INVALID_STATE",
     message ??
       CHANGE_REFUSALS[reason] ??
-      PICKUP_CONFIRM_REFUSALS[reason] ??
       RECEIPT_REFUSALS[reason] ??
       "Not possible now.",
     { reason },

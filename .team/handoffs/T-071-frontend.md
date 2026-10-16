@@ -13,15 +13,14 @@ From: frontend  To: tester
 
 ## How to verify
 - `npm run lint`, `npx prettier --check .`: clean. `npm test`: 87 files, 2068 passed + 3 expected fail. `npm run test:e2e:mock`: 250 passed (incl. 7 new). Spec blocks hosted storage.
-- `npm run typecheck`: one error, `src/lib/server/booking-views.ts` is missing `pickedUpAt` in the day it builds. That file is Backend's (`src/lib/server/**`, I may not edit it). It goes away when the backend PR merges (Backend adds `pickedUpAt: d.picked_up_at ...` there). Merge order: backend first, then update this branch, then `ci` is green.
+- `npm run typecheck`: clean, but only with Backend's code. The first push failed `ci` typecheck because `src/lib/server/booking-views.ts` (Backend's file) lacked `pickedUpAt`. Backend's code landed (4cd32c5, c0d36e2), so this branch merges `feature/T-071-pickup-confirm-backend` (merge commit, no edits to Backend files). Merge the backend PR first; this PR's diff then shrinks to the frontend files.
 - `impeccable detect src/components/booking/PickupSections.tsx`: no findings. Impeccable helper agents skipped (D-44).
 - Manual: mock mode, hooks `seedCustomer: true`, open `/bookings/<A05>` and press the button; chef side with `pickedUpSeeded: [A05]` at `/chef/bookings/<A05>`.
 
 ## Known gaps or risks
 - Written code first, then tests (not strict TDD); tests cover every rule above.
 - In mock mode the customer's and the chef's made-up bookings are separate copies, so "customer confirms, then the chef cannot mark missed" is proven in two halves (customer click; chef with `pickedUpSeeded`) plus the mock route test for `pickup_confirmed`.
-- Types vs Backend's contract (branch `feature/T-071-pickup-confirm-backend`, commit 3b3c8ec, contract only so far; no server code yet). Differences found: none in shape. Notes: contract names the chef-home-only reason `not_chef_home` (mock uses it). A cancelled day gives 409 `wrong_status` in the contract; the mock has no cancelled days so it does not model it. Contract says a wrong party gets 404 and the role check is 403 (mock: 403 for the chef, 404 for a stranger/unknown day/booking, like the other routes). The contract adds a `pickup_confirmed` notification type; the UI does not show notifications yet (T-047).
-- The `pickup_confirmed` text is in `EXTRA_REASONS` (frontend) and the mock's `PICKUP_CONFIRM_REFUSALS`; the server's own message for the reason may differ in wording (the UI uses its own text by reason, so users see one wording).
+- Types and mock vs Backend's branch (contract 3b3c8ec plus code 4cd32c5): shape identical (`days[].pickedUpAt: ISO|null`, route path, no body, reasons `day_not_cooked`, `wrong_status`, `frozen`, `not_chef_home`, `pickup_confirmed`). The 409 text for `pickup_confirmed` comes from Backend's `CHANGE_REFUSALS` (I removed my own copy after the merge). Differences: a cancelled day gives 409 `wrong_status` in the contract; the mock has no cancelled days so it does not model it. Role check is 403 (mock too); a stranger or unknown day is 404 (mock too). The `pickup_confirmed` notification type is not shown in the UI yet (T-047).
 - Auto-completion for confirmed bookings is unchanged (contract A-29 follow-up), nothing in the UI.
 - A-26..A-29 are Planner assumptions, not yet confirmed by Jimmy.
 

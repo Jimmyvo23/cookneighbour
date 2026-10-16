@@ -38,9 +38,6 @@ const EXTRA_REASONS: Record<string, string> = {
     "Cooking at your home was switched off after this request came in, so it cannot be accepted. Decline it instead and say why.",
   kitchen_in_use:
     "You have an accepted booking at your home, so your kitchen address is locked until it is finished.",
-  // T-071 (D-55): the customer confirmed the pickup, so the chef cannot mark it missed.
-  pickup_confirmed:
-    "The customer has confirmed they picked up their meals, so the pickup cannot be marked as missed.",
 };
 
 /**
