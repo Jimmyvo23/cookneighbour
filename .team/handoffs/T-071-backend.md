@@ -19,6 +19,7 @@ From: backend  To: tester
 - Behaviour follows the Planner assumptions A-26..A-29, not yet confirmed by Jimmy.
 - Auto-completion unchanged (follow-up): a chef's-home booking still waits for every day's pickup deadline before auto-completing, even when all days are confirmed.
 - Reason for a customer_home booking: reused `not_chef_home`. Order of checks: party 404, frozen, status (`wrong_status`, so a `no_show_customer` booking after missed gives `wrong_status`), `not_chef_home`, day missing 404, inactive day `wrong_status`, uncooked `day_not_cooked`.
+- Review fix: `pickup_propose` on a confirmed day is 409 `picked_up` (new reason, in the contract, text in CHANGE_REFUSALS, one API test).
 - Confirm voids that day's open or agreed pickup proposals (decision of mine, noted in the contract). The chef is notified once (`pickup_confirmed`), not on a repeat.
 - The race test accepts either winner and asserts the booking is consistent.
 
