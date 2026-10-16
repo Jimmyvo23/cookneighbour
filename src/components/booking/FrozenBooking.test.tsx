@@ -149,6 +149,19 @@ describe("chef side", () => {
     expect(h.q("frozen-notice")).not.toBeNull();
   });
 
+  it("frozen chef's-home: an uncooked day says pickups are paused, not 'mark it cooked first'", async () => {
+    await open(seededBooking(9103, "chef", pastUncooked(true)), "chef");
+    const t = h.q("pickups")?.textContent ?? "";
+    expect(t).toContain("Pickups are paused while this booking is on hold.");
+    expect(t).not.toContain("Mark this day as cooked first");
+    h.cleanup();
+    h = harness();
+    await open(seededBooking(9103, "chef", pastUncooked(false)), "chef");
+    expect(h.q("pickups")?.textContent).toContain(
+      "Mark this day as cooked first",
+    );
+  });
+
   it("frozen chef with a disputed receipt is told one cannot be added", async () => {
     const b = seededBooking(9106, "chef", (x) => ({ ...x, frozen: true }));
     const items = (seededReceipts()[b.id] ?? []).map((r) => ({
