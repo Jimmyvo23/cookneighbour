@@ -26,3 +26,10 @@ From: backend  To: tester
 ## What the next agent needs
 - Shape: `BookingDetail.days[].pickedUpAt: "ISO|null"` (always present). `POST /api/bookings/:id/days/:dayNumber/pickup/confirm` returns the full `BookingDetail` (200). 409 `INVALID_STATE` reasons: `frozen`, `wrong_status`, `not_chef_home`, `day_not_cooked`; missed pickup adds `pickup_confirmed`.
 - Test ideas: confirm on a past-deadline day; confirm then missed; missed with a mix of confirmed and unconfirmed past-deadline days; stranger 404; chef 403.
+
+## Round 2 (Reviewer REQUEST CHANGES, MED-1 and follow-ups)
+- MED-1 (option a, SQL untouched): `pickup_confirmed` text now says "...for every visit whose pickup deadline has passed, so there is no missed pickup to report now." The contract's missed row says the same and warns a UI not to hide the action for good. Reason code unchanged. No test pinned the old text (tests use `CHANGE_REFUSALS.pickup_confirmed`).
+- LOW-1: contract check order now matches the SQL: range 1..3 (404), `expired`, `frozen`, status, `not_chef_home`, day not in booking (404), inactive day, `day_not_cooked`.
+- LOW-2: migration ends with the revoke/grant block for `change_booking` (signature unchanged).
+- NIT-1: status line "v1.12 (T-071), covers ..."; v1.12 summary mentions `picked_up`.
+- INFO-3: voiding proposals on confirm is marked as the builder's decision, to be confirmed with A-26..A-29 (still "not yet confirmed").
