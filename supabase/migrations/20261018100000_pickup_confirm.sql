@@ -11,6 +11,7 @@
 --       - pickup_missed ignores confirmed days (A-29). With no unconfirmed cooked day past its deadline
 --         it answers pickup_confirmed when a confirmed one exists past its deadline, else
 --         pickup_window_open as before.
+--       - pickup_propose refuses a confirmed day (reason picked_up).
 --     Confirm and missed both run under the booking's FOR UPDATE lock, so only the first one wins.
 -- Lock order is unchanged: chefs, chef_private, then bookings (by id when several), then the day row.
 -- MOCK: nothing here moves money.
@@ -246,6 +247,10 @@ begin
   if p_action = 'pickup_propose' then
     if d.cooked_at is null then
       return jsonb_build_object('result', 'invalid_state', 'reason', 'day_not_cooked');
+    end if;
+    -- T-071 review: nothing to arrange once the customer has said they picked the meals up.
+    if d.picked_up_at is not null then
+      return jsonb_build_object('result', 'invalid_state', 'reason', 'picked_up');
     end if;
     select min(x.eat_by_date) into v_eat from public.booking_day_dishes x where x.booking_day_id = d.id;
     if v_eat is null then
