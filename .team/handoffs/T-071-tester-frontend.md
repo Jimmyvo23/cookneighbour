@@ -29,3 +29,19 @@ Head tested: bfbcaaa plus my test files. Branch `feature/T-071-pickup-confirm-fr
 3. Mock chef and customer copies are separate, so "customer confirms then chef cannot mark missed" is only proven in halves (declared).
 4. Backend files: I did not run or touch `tests/api` / `tests/rls` (need the database). Nothing found in them by reading the diff of the route and contract; contract text matches the frontend's assumptions.
 5. A-26..A-29 are still unconfirmed assumptions.
+
+## Re-check (head 2069322, rounds 2 and 3)
+
+Result: PASS (one LOW mock finding, documented with an expected-fail test).
+
+Ran: lint, typecheck, prettier clean; `npm test` 88 files, 2087 passed + 4 expected fail; `npm run test:e2e:mock` 254 passed.
+
+Verified:
+- Completed + confirmed + no proposals: the pickup section renders on both sides with the "Picked up" line and no actions (no button, no propose form, no missed button, no warning). Completed + nothing confirmed + no proposals: no section (control). Both tested for customer and chef.
+- Intro texts mention the confirm (customer and chef).
+- Mock propose on a confirmed day: 409 `picked_up`, nothing stored (builder test), message "You already confirmed ...". `respondedAt` kept on void (code read).
+- `pickup_confirmed` alert when another day is still in its window (Backend Tester finding 2): the text is "The customer confirmed they picked up the meals, so the pickup cannot be marked as missed." It is true at that moment but reads as final. With a second day still inside its window, "pickup missed" can come back after that day's deadline. NOT blocking (no false claim, alert focused). LOW suggestion for the text (it lives in `src/lib/domain/bookingChanges.ts`, Backend's shared text): "Every day past its pickup deadline has been confirmed by the customer, so there is nothing to mark as missed yet." My test asserts focus and no "never" wording.
+
+Finding (LOW, mock only): check order on `pickup/propose` differs from the server. Migration order: `day_not_cooked`, `picked_up`, `deadline_passed`, then proposal_open/pickup_agreed. Mock: proposal checks, `deadline_passed`, then `picked_up`. A confirmed day past its deadline answers `deadline_passed` in the mock but `picked_up` on the server. No UI path hits it (the form is hidden). Recorded as `it.fails` in `src/lib/mocks/mock-pickup-confirm.test.ts`; when the mock is reordered, remove `.fails`.
+
+Tests added: 4 in `PickupConfirmTester.test.tsx` (+1 stale-window case) and 1 expected-fail mock test.

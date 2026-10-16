@@ -175,3 +175,23 @@ describe("mock: pickup missed after a confirmation (A-29)", () => {
     expect(by(A03).days[0].pickedUpAt).toBeNull();
   });
 });
+
+describe("mock: check order on propose for a confirmed day (tester, round 3)", () => {
+  // The server checks picked_up before deadline_passed (migration pickup_propose branch); the mock
+  // checks the deadline first. Expected fail until the mock is reordered; then remove `.fails`.
+  it.fails(
+    "a confirmed day past its deadline answers picked_up, like the server",
+    async () => {
+      const s = customer([A05]);
+      const r = bookingRoutes(
+        "POST",
+        `/api/bookings/${A05}/days/1/pickup/propose`,
+        { proposedAt: new Date(NOW.getTime() + 3600_000).toISOString() },
+        s,
+        NOW,
+      )!;
+      expect(r.res.status).toBe(409);
+      expect(((await r.res.json()) as ApiError).error.reason).toBe("picked_up");
+    },
+  );
+});
