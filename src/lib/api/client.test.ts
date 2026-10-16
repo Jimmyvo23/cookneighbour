@@ -260,4 +260,78 @@ describe("apiFetch timeout (T-075)", () => {
     await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS * 2);
     expect(out).toEqual({ a: 1 });
   });
+  it("a real-style fetch that rejects with AbortError on abort still reports TIMEOUT, not NETWORK", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = ((_u: unknown, init?: RequestInit) =>
+      new Promise<Response>((_, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new DOMException("aborted", "AbortError")),
+        );
+      })) as unknown as typeof fetch;
+    const p = caught(apiFetch("/x", { mock: false, fetchImpl }));
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+    expect((await p).code).toBe("TIMEOUT");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not time out just before the limit", async () => {
+    vi.useFakeTimers();
+    let settled = false;
+    const p = caught(apiFetch("/x", { mock: false, fetchImpl: hang })).then(
+      (e) => {
+        settled = true;
+        return e;
+      },
+    );
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect((await p).code).toBe("TIMEOUT");
+  });
+
+  it("a late answer after the timeout raises no unhandled rejection", async () => {
+    vi.useFakeTimers();
+    const unhandled: unknown[] = [];
+    const on = (r: unknown) => unhandled.push(r);
+    process.on("unhandledRejection", on);
+    try {
+      let late!: (r: Response) => void;
+      let lateFail!: (e: unknown) => void;
+      const first = new Promise<Response>((r) => (late = r));
+      const second = new Promise<Response>((_, r) => (lateFail = r));
+      const p1 = caught(
+        apiFetch("/x", { mock: false, fetchImpl: () => first }),
+      );
+      const p2 = caught(
+        apiFetch("/x", { mock: false, fetchImpl: () => second }),
+      );
+      await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+      expect((await p1).code).toBe("TIMEOUT");
+      expect((await p2).code).toBe("TIMEOUT");
+      late(res(200, { a: 1 }));
+      lateFail(new TypeError("late network failure"));
+      vi.useRealTimers();
+      await new Promise((r) => setTimeout(r, 20));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", on);
+    }
+  });
+
+  it("clears the timer when the server answers with an error status", async () => {
+    vi.useFakeTimers();
+    const e = await caught(
+      apiFetch("/x", {
+        mock: false,
+        fetchImpl: async () =>
+          res(500, { error: { code: "INTERNAL", message: "boom" } }),
+      }),
+    );
+    expect(e.status).toBe(500);
+    expect(vi.getTimerCount()).toBe(0);
+    await caught(
+      apiFetch("/x", { mock: false, fetchImpl: async () => res(502, "bad") }),
+    );
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
