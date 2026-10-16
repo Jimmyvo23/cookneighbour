@@ -47,6 +47,7 @@ function booking(over: Partial<BookingDetail> = {}): BookingDetail {
         date: "2030-01-20",
         cookMinutes: 180,
         cookedAt: null,
+        pickedUpAt: null,
         pickupDeadlineDate: "2030-01-22",
         pickups: [],
         dishes: [

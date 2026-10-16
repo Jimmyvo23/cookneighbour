@@ -124,7 +124,11 @@ interface SeedOptions {
   locationType: BookingDetail["locationType"];
   groceryOption: BookingDetail["groceryOption"];
   /** Day offsets from today, with the dishes for each day. */
-  days: { offset: number; dishes: SeedDish[]; cooked?: boolean }[];
+  days: {
+    offset: number;
+    dishes: SeedDish[];
+    cooked?: boolean;
+  }[];
   allergies?: string;
   dietary?: string;
   free?: boolean;
@@ -207,6 +211,7 @@ function seedRow(o: SeedOptions): MockBookingRow {
         cookedAt: d.cooked
           ? new Date(`${date}T16:00:00.000Z`).toISOString()
           : null,
+        pickedUpAt: null, // the test hook `pickedUpSeeded` sets it (T-071)
         pickupDeadlineDate:
           o.locationType === "chef_home" ? addDays(date, earliest) : null,
         pickups: o.pickups?.[i + 1] ?? [],
@@ -284,6 +289,7 @@ export function seedChefBookings(
   chef: MeProfile,
   now: Date,
   frozenIds: readonly string[] = [],
+  pickedUpIds: readonly string[] = [],
 ): { rows: MockBookingRow[]; receipts: SeededReceipts } {
   const today = torontoToday(now);
   const base = { chef, now };
@@ -379,6 +385,18 @@ export function seedChefBookings(
   for (const r of rows)
     if (frozenIds.includes(r.detail.id))
       r.detail = { ...r.detail, frozen: true };
+  // T-071 (D-55): the test hook `pickedUpSeeded` marks the cooked days of the listed bookings as
+  // picked up (the customer already confirmed), as if the customer had pressed the button.
+  for (const r of rows)
+    if (pickedUpIds.includes(r.detail.id))
+      r.detail = {
+        ...r.detail,
+        days: r.detail.days.map((x) =>
+          x.cookedAt && x.pickupDeadlineDate
+            ? { ...x, pickedUpAt: x.cookedAt }
+            : x,
+        ),
+      };
   const a06 = rows[5].detail;
   return {
     rows,
@@ -397,6 +415,7 @@ export function seedCustomerBookings(
   customer: MeProfile,
   now: Date,
   frozenIds: readonly string[] = [],
+  pickedUpIds: readonly string[] = [],
 ): { rows: MockBookingRow[]; receipts: SeededReceipts } {
   const chef: MeProfile = {
     id: uid(1001),
@@ -406,7 +425,7 @@ export function seedCustomerBookings(
     currency: "CAD",
     language: "en",
   };
-  const made = seedChefBookings(chef, now, frozenIds);
+  const made = seedChefBookings(chef, now, frozenIds, pickedUpIds);
   return {
     rows: made.rows.map((r) => ({
       ...r,
@@ -433,7 +452,11 @@ const CHEF_ONLY = new Set([
   "pickup-missed",
   "receipt-add",
 ]);
-const CUSTOMER_ONLY = new Set(["pickup-propose", "receipt-answer"]);
+const CUSTOMER_ONLY = new Set([
+  "pickup-propose",
+  "pickup-confirm",
+  "receipt-answer",
+]);
 
 function strip(r: MockReceipt): ReceiptView {
   const { filePath: _p, ...view } = r;
@@ -510,7 +533,7 @@ export function changeRoute(
       path,
     );
   const day =
-    /^\/api\/bookings\/([^/]+)\/days\/([^/]+)\/(cooked|pickup\/propose|pickup\/respond)$/.exec(
+    /^\/api\/bookings\/([^/]+)\/days\/([^/]+)\/(cooked|pickup\/propose|pickup\/respond|pickup\/confirm)$/.exec(
       path,
     );
   const ans = /^\/api\/bookings\/([^/]+)\/receipts\/([^/]+)\/respond$/.exec(
@@ -529,6 +552,7 @@ export function changeRoute(
       cooked: "cooked",
       "pickup/propose": "pickup-propose",
       "pickup/respond": "pickup-respond",
+      "pickup/confirm": "pickup-confirm",
     }[day[3]]!;
   } else {
     id = m![1];
@@ -692,12 +716,14 @@ export function changeRoute(
       if (d.locationType !== "chef_home") return invalid("not_chef_home");
       if (d.status !== "accepted") return invalid("wrong_status");
       if (!target.cookedAt) return invalid("day_not_cooked");
+      // T-071 (contract v1.12): same order as the server: cooked, picked up, deadline, proposals.
+      if (target.pickedUpAt) return invalid("picked_up");
+      const end = pickupDeadline(target.pickupDeadlineDate!);
+      if (now.getTime() >= end.getTime()) return invalid("deadline_passed");
       if (target.pickups.some((p) => p.status === "proposed"))
         return invalid("proposal_open");
       if (target.pickups.some((p) => p.status === "accepted"))
         return invalid("pickup_agreed");
-      const end = pickupDeadline(target.pickupDeadlineDate!);
-      if (now.getTime() >= end.getTime()) return invalid("deadline_passed");
       if (t.value.getTime() <= now.getTime())
         return fail(422, "VALIDATION_FAILED", "Check the highlighted fields.", {
           fields: { proposedAt: PICKUP_RANGE_MESSAGES.not_future },
@@ -767,17 +793,52 @@ export function changeRoute(
         ),
       });
     }
+    case "pickup-confirm": {
+      // T-071 (D-55, contract v1.12): the order of checks is the server's.
+      const n = parseDayNumber(day![2]);
+      const target = n ? d.days.find((x) => x.dayNumber === n) : undefined;
+      if (!target) return notFound();
+      if (d.frozen) return invalid("frozen");
+      if (d.status !== "accepted") return invalid("wrong_status");
+      if (d.locationType !== "chef_home") return invalid("not_chef_home");
+      if (!target.cookedAt) return invalid("day_not_cooked");
+      if (target.pickedUpAt) return save(d); // repeating keeps the first time
+      return save({
+        ...d,
+        days: d.days.map((x) =>
+          x.dayNumber === n
+            ? {
+                ...x,
+                pickedUpAt: now.toISOString(),
+                // The server voids the proposals of a confirmed day.
+                pickups: x.pickups.map((p) =>
+                  p.status === "proposed" || p.status === "accepted"
+                    ? {
+                        ...p,
+                        status: "void" as const,
+                        respondedAt: p.respondedAt ?? now.toISOString(),
+                      }
+                    : p,
+                ),
+              }
+            : x,
+        ),
+      });
+    }
     case "pickup-missed": {
       if (d.frozen) return invalid("frozen");
       if (d.locationType !== "chef_home") return invalid("not_chef_home");
       if (d.status !== "accepted") return invalid("wrong_status");
-      const over = d.days.find(
+      const pastDeadline = d.days.filter(
         (x) =>
           x.cookedAt &&
           x.pickupDeadlineDate &&
           now.getTime() >= pickupDeadline(x.pickupDeadlineDate).getTime(),
       );
-      if (!over) return invalid("pickup_window_open");
+      if (pastDeadline.length === 0) return invalid("pickup_window_open");
+      // T-071 (A-29): a day the customer confirmed cannot be missed.
+      const over = pastDeadline.find((x) => !x.pickedUpAt);
+      if (!over) return invalid("pickup_confirmed");
       return save({
         ...d,
         status: "no_show_customer",
