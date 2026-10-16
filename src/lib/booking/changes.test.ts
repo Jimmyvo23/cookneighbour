@@ -19,6 +19,7 @@ import {
   summaryAllDatesPast,
   chefNoShowTrialText,
   noShowErrorText,
+  canConfirmPickup,
   canMarkPickupMissed,
   canPropose,
   changeErrorText,
@@ -43,6 +44,7 @@ const day = (over: Partial<BookingDayView> = {}): BookingDayView => ({
   cookMinutes: 60,
   dishes: [],
   cookedAt: "2026-10-20T15:00:00.000Z",
+  pickedUpAt: null,
   pickupDeadlineDate: "2026-10-22",
   pickups: [],
   ...over,
@@ -146,6 +148,27 @@ describe("pickups", () => {
     ).toBe(false);
     expect(pickupWindowPassed(day({ cookedAt: null }), late)).toBe(false);
   });
+  it("canMarkPickupMissed ignores days the customer confirmed (T-071)", () => {
+    const late = new Date("2026-10-23T04:00:00Z");
+    const mk = (days: BookingDayView[]) =>
+      ({ status: "accepted", locationType: "chef_home", days }) as never;
+    const confirmed = day({ pickedUpAt: "2026-10-21T15:00:00.000Z" });
+    expect(canMarkPickupMissed(mk([confirmed]), late)).toBe(false);
+    expect(
+      canMarkPickupMissed(mk([confirmed, day({ dayNumber: 2 })]), late),
+    ).toBe(true);
+  });
+  it("canConfirmPickup needs a cooked, unconfirmed day on an accepted, unfrozen chef's-home booking", () => {
+    const b = { status: "accepted", locationType: "chef_home", frozen: false };
+    const ok = (over: object, d = day()) =>
+      canConfirmPickup({ ...b, ...over } as never, d);
+    expect(ok({})).toBe(true);
+    expect(ok({ frozen: true })).toBe(false);
+    expect(ok({ status: "no_show_customer" })).toBe(false);
+    expect(ok({ locationType: "customer_home" })).toBe(false);
+    expect(ok({}, day({ cookedAt: null }))).toBe(false);
+    expect(ok({}, day({ pickedUpAt: "2026-10-21T15:00:00.000Z" }))).toBe(false);
+  });
 });
 
 describe("error words", () => {
@@ -154,6 +177,9 @@ describe("error words", () => {
     expect(changeErrorText(inv("days_not_cooked"))).toMatch(/Mark each visit/);
     expect(changeErrorText(inv("kitchen_address_missing"))).toMatch(
       /kitchen address is missing.*declining/,
+    );
+    expect(changeErrorText(inv("pickup_confirmed"))).toMatch(
+      /confirmed they picked up/,
     );
     expect(changeErrorText(inv("pickup_window_open"))).toMatch(
       /can still pick up/,

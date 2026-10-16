@@ -13,6 +13,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import type { BookingDayView, BookingDetail } from "@/lib/api/types";
 import {
+  canConfirmPickup,
   canMarkPickupMissed,
   canPropose,
   changeErrorText,
@@ -57,6 +58,12 @@ const PROPOSAL_WORDS: Record<
   },
 };
 
+/** T-071: a proposal the server closed because the customer confirmed the pickup. */
+const CONFIRMED_VOID = {
+  customer: "closed because you picked up the meals",
+  chef: "closed because the customer picked up the meals",
+};
+
 function History({
   day,
   viewer,
@@ -76,7 +83,10 @@ function History({
           {viewer === "customer" ? "You proposed " : "Proposed: "}
           <span className="font-medium">{formatWhen(p.proposedAt)}</span>
           {" (Toronto time): "}
-          {PROPOSAL_WORDS[p.status][viewer]}.
+          {p.status === "void" && day.pickedUpAt
+            ? CONFIRMED_VOID[viewer]
+            : PROPOSAL_WORDS[p.status][viewer]}
+          .
         </li>
       ))}
     </ul>
@@ -121,7 +131,7 @@ export function CustomerPickups({
           ? PICKUPS_PAUSED
           : "Agree a pickup time with the chef here: you propose a time and the chef accepts or declines. If it does not work, you can propose another time until the end of the last pickup day below."}
       </p>
-      {open && (
+      {open && !b.days.every((d) => d.cookedAt && d.pickedUpAt) && (
         <p className={warnBoxCls} data-testid="pickup-missed-warning">
           <span className="font-semibold">If the meals are not picked up</span>{" "}
           by the end of that day, the chef can mark the pickup as missed. That
@@ -150,7 +160,7 @@ export function CustomerPickups({
               </p>
             ) : (
               <>
-                {d.pickupDeadlineDate && (
+                {d.pickupDeadlineDate && !d.pickedUpAt && (
                   <p className={hintCls}>
                     Pick these meals up by the end of{" "}
                     <time dateTime={d.pickupDeadlineDate}>
@@ -169,27 +179,160 @@ export function CustomerPickups({
                     (Toronto time).
                   </p>
                 )}
-                {open && liveProposal(d)?.status === "proposed" && (
-                  <p className={hintCls}>
-                    Waiting for the chef. You can propose another time after
-                    they answer.
-                  </p>
-                )}
-                {open && canPropose(d, now) && (
+                {open &&
+                  !d.pickedUpAt &&
+                  liveProposal(d)?.status === "proposed" && (
+                    <p className={hintCls}>
+                      Waiting for the chef. You can propose another time after
+                      they answer.
+                    </p>
+                  )}
+                {open && !d.pickedUpAt && canPropose(d, now) && (
                   <ProposeForm booking={b} day={d} onChange={onChange} />
                 )}
-                {open && !agreed(d) && pickupWindowPassed(d, now) && (
-                  <p className={warnBoxCls} data-testid="pickup-window-over">
-                    The pickup time for this day has passed and no pickup was
-                    agreed. You can no longer propose a time for it.
-                  </p>
-                )}
+                <ConfirmPickup booking={b} day={d} onChange={onChange} />
+                {open &&
+                  !d.pickedUpAt &&
+                  !agreed(d) &&
+                  pickupWindowPassed(d, now) && (
+                    <p className={warnBoxCls} data-testid="pickup-window-over">
+                      The pickup time for this day has passed and no pickup was
+                      agreed. You can no longer propose a time for it.
+                    </p>
+                  )}
               </>
             )}
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * T-071 (D-55): "I picked up my meals" for one cooked day of a chef's-home booking. Pressing the
+ * button opens a confirm step ("this can't be undone"); the server then sets `pickedUpAt`, which
+ * the chef sees and which stops them marking the pickup as missed. The customer can still see
+ * the line afterwards, but no button: there is no undo (A-28). The line takes focus after a
+ * successful confirm (this component stays mounted, so it is the one focus owner; the page is
+ * not given a message to announce).
+ */
+function ConfirmPickup({
+  booking: b,
+  day,
+  onChange,
+}: {
+  booking: BookingDetail;
+  day: BookingDayView;
+  onChange: OnChange;
+}) {
+  const sec = useSection();
+  const [confirming, setConfirming] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+  const goingBack = useRef(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const lineRef = useRef<HTMLParagraphElement>(null);
+  const wasPickedUp = useRef(day.pickedUpAt !== null);
+  const picked = day.pickedUpAt !== null;
+  useEffect(() => {
+    // The confirm step and its button are replaced by the line: focus the line (not on first mount).
+    if (picked && !wasPickedUp.current) lineRef.current?.focus();
+    wasPickedUp.current = picked;
+  }, [picked]);
+  useEffect(() => {
+    if (confirming) headingRef.current?.focus();
+    else if (goingBack.current) {
+      goingBack.current = false;
+      opener.current?.focus();
+    }
+  }, [confirming]);
+
+  if (day.pickedUpAt) {
+    return (
+      <p
+        ref={lineRef}
+        tabIndex={-1}
+        className={infoBoxCls}
+        data-testid="picked-up"
+      >
+        Picked up on{" "}
+        <span className="font-medium">{formatWhen(day.pickedUpAt)}</span>{" "}
+        (Toronto time). You told the chef you collected these meals.
+      </p>
+    );
+  }
+  if (!canConfirmPickup(b, day)) return null;
+
+  const several = b.days.length > 1;
+  const what = several ? `day ${day.dayNumber}'s meals` : "your meals";
+  const label = several
+    ? `I picked up day ${day.dayNumber}'s meals`
+    : "I picked up my meals";
+  function confirm() {
+    if (sec.busy) return;
+    void sec.run(
+      async () => {
+        const next = await apiFetch<BookingDetail>(
+          `/api/bookings/${encodeURIComponent(b.id)}/days/${day.dayNumber}/pickup/confirm`,
+          { method: "POST" },
+        );
+        onChange(next);
+      },
+      "",
+      { describe: changeErrorText },
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3" data-testid="pickup-confirm">
+      <Alert id={sec.alertId} message={sec.error} />
+      {!confirming ? (
+        <p>
+          <button
+            type="button"
+            ref={opener}
+            onClick={() => setConfirming(true)}
+            className={secondaryButtonCls}
+          >
+            {label}
+          </button>
+        </p>
+      ) : (
+        <div className={warnBoxCls}>
+          <h3
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-base font-semibold"
+          >
+            Confirm that you picked up {what}?
+          </h3>
+          <p className="mt-1">
+            This can&apos;t be undone. The chef is told, and they can no longer
+            mark this pickup as missed. Only confirm if you have the meals.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={sec.busy}
+              onClick={confirm}
+              className={buttonCls}
+            >
+              {sec.busy ? "Sending..." : "Yes, I picked them up"}
+            </button>
+            <button
+              type="button"
+              disabled={sec.busy}
+              onClick={() => {
+                goingBack.current = true;
+                setConfirming(false);
+              }}
+              className={secondaryButtonCls}
+            >
+              Not yet
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -328,7 +471,7 @@ export function ChefPickups({
               </p>
             ) : (
               <>
-                {d.pickupDeadlineDate && (
+                {d.pickupDeadlineDate && !d.pickedUpAt && (
                   <p className={hintCls}>
                     Pickup deadline: the end of{" "}
                     <time dateTime={d.pickupDeadlineDate}>
@@ -347,20 +490,37 @@ export function ChefPickups({
                     (Toronto time).
                   </p>
                 )}
-                {open && liveProposal(d)?.status === "proposed" && (
-                  <RespondButtons booking={b} day={d} onChange={onChange} />
-                )}
-                {open && !liveProposal(d) && !pickupWindowPassed(d, now) && (
-                  <p className={hintCls}>
-                    Waiting for the customer to propose a pickup time.
+                {d.pickedUpAt && (
+                  <p className={infoBoxCls} data-testid="picked-up">
+                    Picked up (confirmed by the customer) on{" "}
+                    <span className="font-medium">
+                      {formatWhen(d.pickedUpAt)}
+                    </span>{" "}
+                    (Toronto time).
                   </p>
                 )}
-                {open && !agreed(d) && pickupWindowPassed(d, now) && (
-                  <p className={warnBoxCls} data-testid="pickup-window-over">
-                    The pickup deadline for this day has passed and no pickup
-                    was agreed.
-                  </p>
-                )}
+                {open &&
+                  !d.pickedUpAt &&
+                  liveProposal(d)?.status === "proposed" && (
+                    <RespondButtons booking={b} day={d} onChange={onChange} />
+                  )}
+                {open &&
+                  !d.pickedUpAt &&
+                  !liveProposal(d) &&
+                  !pickupWindowPassed(d, now) && (
+                    <p className={hintCls}>
+                      Waiting for the customer to propose a pickup time.
+                    </p>
+                  )}
+                {open &&
+                  !d.pickedUpAt &&
+                  !agreed(d) &&
+                  pickupWindowPassed(d, now) && (
+                    <p className={warnBoxCls} data-testid="pickup-window-over">
+                      The pickup deadline for this day has passed and no pickup
+                      was agreed.
+                    </p>
+                  )}
               </>
             )}
           </li>

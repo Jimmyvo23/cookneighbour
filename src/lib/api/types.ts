@@ -667,6 +667,11 @@ export interface BookingDayView {
   /** When the chef marked this day as cooked (D-26), else null. */
   cookedAt: string | null;
   /**
+   * T-071 (D-55): when the customer confirmed "I picked up my meals" for this day, else null.
+   * Always present; always null for a customer's-home booking.
+   */
+  pickedUpAt: string | null;
+  /**
    * Chef's-home bookings only, else null: the earliest eat-by date of this day's meals. A pickup
    * can be arranged up to the end of this date, Toronto time (D-29).
    */

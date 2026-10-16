@@ -16,6 +16,8 @@
 //                                            answers 409 FREE_TRIAL_USED (a lost race).
 //       hooks.frozenSeeded = [ids]           those made-up bookings start frozen (D-53, T-064):
 //                                            `frozen: true`, every change answers 409 `frozen`.
+//       hooks.pickedUpSeeded = [ids]         the cooked days of those made-up bookings start as
+//                                            picked up (T-071, D-55): `pickedUpAt` is set.
 //   - a row whose status is edited to `accepted` shows the cookingPlace and contact like the real
 //     view does (hidden before acceptance, CLAUDE.md 6.8).
 import type {
@@ -93,6 +95,11 @@ export interface MockHooks {
    * an admin flag were open. Read when the made-up bookings are brought in, so set it first.
    */
   frozenSeeded?: string[];
+  /**
+   * T-071 (D-55): ids of made-up bookings whose cooked days start as picked up (the customer
+   * already confirmed). Read when the made-up bookings are brought in, so set it first.
+   */
+  pickedUpSeeded?: string[];
 }
 
 /** A MOCK receipt as saved: the API view plus the path the chef "uploaded" (never returned). */
@@ -494,7 +501,12 @@ export function bookingRoutes(
   let base = s;
   let seeded: BookingRouteResult["next"];
   if (role === "chef" && !s.chefSeeded) {
-    const rows = seedChefBookings(s.profile!, now, s.hooks.frozenSeeded);
+    const rows = seedChefBookings(
+      s.profile!,
+      now,
+      s.hooks.frozenSeeded,
+      s.hooks.pickedUpSeeded,
+    );
     base = {
       ...s,
       chefBookings: rows.rows,
@@ -509,7 +521,12 @@ export function bookingRoutes(
   }
 
   if (role === "customer" && s.hooks.seedCustomer && !s.customerSeeded) {
-    const made = seedCustomerBookings(s.profile!, now, s.hooks.frozenSeeded);
+    const made = seedCustomerBookings(
+      s.profile!,
+      now,
+      s.hooks.frozenSeeded,
+      s.hooks.pickedUpSeeded,
+    );
     base = {
       ...s,
       bookings: [...made.rows, ...s.bookings],
@@ -700,6 +717,7 @@ function createRoute(
       date: d.date,
       cookMinutes: e.days[i].cookMinutes,
       cookedAt: null,
+      pickedUpAt: null,
       pickupDeadlineDate:
         req.locationType === "chef_home"
           ? addDays(d.date, Math.min(...d.dishes.map((x) => x.shelfLifeDays)))

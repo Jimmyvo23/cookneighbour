@@ -38,6 +38,9 @@ const EXTRA_REASONS: Record<string, string> = {
     "Cooking at your home was switched off after this request came in, so it cannot be accepted. Decline it instead and say why.",
   kitchen_in_use:
     "You have an accepted booking at your home, so your kitchen address is locked until it is finished.",
+  // T-071 (D-55): the customer confirmed the pickup, so the chef cannot mark it missed.
+  pickup_confirmed:
+    "The customer has confirmed they picked up their meals, so the pickup cannot be marked as missed.",
 };
 
 /**
@@ -217,11 +220,32 @@ export function pickupWindowPassed(day: BookingDayView, now: Date): boolean {
   return now.getTime() >= pickupEnd(day.pickupDeadlineDate).getTime();
 }
 
+/**
+ * T-071 (D-55, A-29): "pickup missed" needs a cooked day that is past its deadline and that the
+ * customer has not confirmed as picked up. The server answers 409 `pickup_confirmed` otherwise.
+ */
 export function canMarkPickupMissed(b: BookingDetail, now: Date): boolean {
   return (
     b.status === "accepted" &&
     b.locationType === "chef_home" &&
-    b.days.some((d) => pickupWindowPassed(d, now))
+    b.days.some((d) => !d.pickedUpAt && pickupWindowPassed(d, now))
+  );
+}
+
+/**
+ * T-071 (D-55, A-27): the customer may confirm a pickup for a cooked day of an accepted chef's-home
+ * booking that is not on hold and not confirmed yet. The deadline passing does not block it.
+ */
+export function canConfirmPickup(
+  b: BookingDetail,
+  day: BookingDayView,
+): boolean {
+  return (
+    b.locationType === "chef_home" &&
+    b.status === "accepted" &&
+    !b.frozen &&
+    day.cookedAt !== null &&
+    day.pickedUpAt === null
   );
 }
 
