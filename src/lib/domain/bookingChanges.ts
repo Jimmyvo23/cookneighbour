@@ -125,6 +125,9 @@ export const CHANGE_REFUSALS: Record<string, string> = {
   not_chef_home: "Pickups only exist for bookings at the chef's home.",
   pickup_window_open:
     "The customer can still pick up the meals. Wait until the earliest eat-by date has passed.",
+  // T-071 (D-55, A-29): the customer already said they picked the meals up.
+  pickup_confirmed:
+    "The customer confirmed they picked up the meals, so the pickup cannot be marked as missed.",
   day_not_cooked: "The chef has not marked that visit as cooked yet.",
   deadline_passed:
     "The meals from that visit have passed their eat-by date, so a new pickup cannot be arranged.",
