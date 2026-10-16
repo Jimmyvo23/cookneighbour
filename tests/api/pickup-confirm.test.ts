@@ -271,4 +271,20 @@ describe("POST /api/bookings/:id/days/:dayNumber/pickup/confirm", () => {
       r.body.days[0].pickups.map((p: { status: string }) => p.status),
     ).toEqual(["void"]);
   });
+
+  it("a confirmed day refuses a new pickup proposal (409 picked_up)", async () => {
+    const { chef, cust, id } = await setup();
+    await shiftDays(id, 3);
+    await setEatBy(id, 5);
+    await cooked(chef.b, id, 1);
+    expect((await confirmPickup(cust.b, id, 1)).status).toBe(200);
+    const r = await propose(cust.b, id, 1, { proposedAt: later(1) });
+    expect(r.status, r.text).toBe(409);
+    expect(r.body.error.reason).toBe("picked_up");
+    const p = await svc
+      .from("pickup_proposals")
+      .select("id")
+      .eq("booking_id", id);
+    expect(p.data).toEqual([]);
+  });
 });

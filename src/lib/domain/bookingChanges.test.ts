@@ -182,6 +182,7 @@ describe("refusal texts", () => {
       "not_chef_home",
       "pickup_window_open",
       "pickup_confirmed", // T-071 (D-55)
+      "picked_up", // T-071 review
       "day_not_cooked",
       "deadline_passed",
       "proposal_open",
