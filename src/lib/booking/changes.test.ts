@@ -178,6 +178,7 @@ describe("error words", () => {
     expect(changeErrorText(inv("kitchen_address_missing"))).toMatch(
       /kitchen address is missing.*declining/,
     );
+    expect(changeErrorText(inv("picked_up"))).toMatch(/already confirmed/);
     expect(changeErrorText(inv("pickup_confirmed"))).toMatch(
       /confirmed they picked up/,
     );

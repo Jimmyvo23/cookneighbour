@@ -38,3 +38,9 @@ Fixes for the Reviewer's APPROVE notes (`T-071-reviewer-frontend.md`):
 - NIT: removed the unused `days[].pickedUp` seed option; the hook `pickedUpSeeded` is the only way.
 - Not done on purpose: stale-409 refetch (separate follow-up).
 - Local: lint, typecheck, prettier clean; vitest 2080 passed + 3 expected fail; mock e2e t071, chef-bookings and customer-changes specs 55 passed.
+
+## Round 3
+
+- Merged `origin/feature/T-071-pickup-confirm-backend` (e5eca44) with a merge commit, no conflicts. `changes.ts` keeps Backend's `picked_up` text (it comes from `CHANGE_REFUSALS`, so `changeErrorText` and `proposalErrorText` already show "You already confirmed that you picked up these meals.").
+- Mock: `pickup/propose` on a day with `pickedUpAt` gives 409 `picked_up` after the deadline check (contract order) and stores nothing. Tests: `mock-pickup-confirm.test.ts` (+1), `changes.test.ts` (+1 assert).
+- Local: lint, typecheck, prettier clean; vitest 2081 passed + 3 expected fail; full mock e2e 254 passed.

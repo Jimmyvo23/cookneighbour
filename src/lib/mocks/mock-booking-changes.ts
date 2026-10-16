@@ -722,6 +722,8 @@ export function changeRoute(
         return invalid("pickup_agreed");
       const end = pickupDeadline(target.pickupDeadlineDate!);
       if (now.getTime() >= end.getTime()) return invalid("deadline_passed");
+      // T-071 (contract v1.12): a day the customer confirmed as picked up takes no new proposal.
+      if (target.pickedUpAt) return invalid("picked_up");
       if (t.value.getTime() <= now.getTime())
         return fail(422, "VALIDATION_FAILED", "Check the highlighted fields.", {
           fields: { proposedAt: PICKUP_RANGE_MESSAGES.not_future },

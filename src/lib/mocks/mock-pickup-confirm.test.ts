@@ -119,6 +119,30 @@ describe("mock: POST .../pickup/confirm", () => {
   });
 });
 
+describe("mock: propose on a confirmed day (contract v1.12)", () => {
+  it("is 409 picked_up and stores nothing", async () => {
+    const soon = new Date(NOW.getTime() + 3600_000).toISOString();
+    const s = customer();
+    const c = await call(s, "POST", url(A03));
+    const r = bookingRoutes(
+      "POST",
+      `/api/bookings/${A03}/days/1/pickup/propose`,
+      { proposedAt: soon },
+      c.next,
+      NOW,
+    )!;
+    expect(r.res.status).toBe(409);
+    const j = (await r.res.json()) as ApiError;
+    expect(j.error.reason).toBe("picked_up");
+    expect(j.error.message).toMatch(/already confirmed/);
+    expect(r.next).toBeUndefined();
+    const d = await call(c.next, "GET", `/api/bookings/${A03}`);
+    expect(
+      (d.json as BookingDetail).days[0].pickups.map((p) => p.status),
+    ).not.toContain("proposed");
+  });
+});
+
 describe("mock: pickup missed after a confirmation (A-29)", () => {
   it("is refused with pickup_confirmed when every past-deadline day is confirmed", async () => {
     const chef = chefOf(customer([A05]));
