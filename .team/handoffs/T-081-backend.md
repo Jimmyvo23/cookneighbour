@@ -46,3 +46,9 @@ An inactive (`is_active = false`) day is ignored (not a day to cook), but at lea
 - `no_day_cooked` flagged booking where the chef marks a late day cooked and the customer then confirms.
 - Customer's-home booking with `picked_up_at` forced in the DB must not complete.
 - Free trial claim state `consumed` after the confirm; a second trial attempt blocked.
+
+## Round 2 (Reviewer LOW-1, LOW-2; Tester LOW-1)
+- LOW-1: the mock hook `pickedUpSeeded` now marks only the FIRST cooked day as picked up, and a one-day booking (A05) gets an uncooked, unconfirmed day 2 added by the hook (copy of day 1, tomorrow, deadline +2 days), so it never seeds a state the server cannot produce. Docs updated in `mock-bookings.ts`. `t080-reload-after-409-mock.spec.ts` edit now sets day 1 picked up and adds an open day 2 (its stale `pickup_confirmed` 409 is then reachable on the real server too). `t071-pickup-confirm-mock` and `t071-tester-mock` specs needed no change and pass. New unit test for the hook in `mock-pickup-confirm.test.ts`.
+- LOW-2: contract line now says a repeat confirm of an already confirmed day returns 200 on ANY completed booking (completed by the confirm or later by the sweep); a completed booking whose day was not confirmed is still 409 `wrong_status`. No behaviour change.
+- NIT-1 left alone (not trivial enough to touch the migration again).
+- Checks: lint, typecheck clean; vitest 92 files, 2127 passed + 3 expected fail; full mock e2e 270 passed.

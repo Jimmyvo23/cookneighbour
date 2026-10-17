@@ -273,3 +273,15 @@ describe("mock: the last confirmed day completes the booking (T-081, D-81, D-83)
     expect(m.status).toBe(409);
   });
 });
+
+describe("mock hook pickedUpSeeded (T-081)", () => {
+  it("never seeds an accepted booking with every day picked up: the one-day booking gets an open day 2", () => {
+    const row = customer([A05]).bookings.find((r) => r.detail.id === A05)!;
+    const days = row.detail.days;
+    expect(days.length).toBe(2);
+    expect(days[0].pickedUpAt).toEqual(expect.any(String));
+    expect(days[1].cookedAt).toBeNull();
+    expect(days[1].pickedUpAt).toBeNull();
+    expect(row.detail.status).toBe("accepted");
+  });
+});

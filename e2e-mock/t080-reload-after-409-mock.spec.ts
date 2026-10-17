@@ -56,7 +56,9 @@ test("chef: stale 'Mark pickup missed' -> 409 -> button gone, alert focused", as
     page,
     "chefBookings",
     SEEDED.A05,
-    "d.days = d.days.map((x) => (x.cookedAt ? { ...x, pickedUpAt: x.cookedAt } : x));",
+    // T-081: the server completes a booking once every day is picked up, so a stale-page 409
+    // pickup_confirmed needs another open day: day 1 is confirmed, a day 2 is still to cook.
+    "const f = d.days[0]; d.days = [{ ...f, pickedUpAt: f.cookedAt }, { ...f, dayNumber: 2, cookedAt: null, pickedUpAt: null, pickups: [] }];",
   );
   await page.getByRole("button", { name: "Yes, mark pickup missed" }).click();
 

@@ -386,18 +386,40 @@ export function seedChefBookings(
   for (const r of rows)
     if (frozenIds.includes(r.detail.id))
       r.detail = { ...r.detail, frozen: true };
-  // T-071 (D-55): the test hook `pickedUpSeeded` marks the cooked days of the listed bookings as
-  // picked up (the customer already confirmed), as if the customer had pressed the button.
+  // T-071 (D-55): the test hook `pickedUpSeeded` marks the FIRST cooked day of the listed bookings as
+  // picked up (the customer already confirmed it). T-081 (D-81): the server completes a booking once
+  // every day is picked up, so an accepted booking with a confirmed day must still have another open
+  // day. If the booking has only that one day, the hook adds an uncooked, unconfirmed day 2 (a copy
+  // of day 1, one day after today) so the seeded state is one the server can really produce.
   for (const r of rows)
-    if (pickedUpIds.includes(r.detail.id))
+    if (pickedUpIds.includes(r.detail.id)) {
+      const first = r.detail.days.find(
+        (x) => x.cookedAt && x.pickupDeadlineDate,
+      );
+      if (!first) continue;
+      const days = r.detail.days.map((x) =>
+        x === first ? { ...x, pickedUpAt: x.cookedAt } : x,
+      );
+      const hasOpen = days.some((x) => !x.pickedUpAt);
+      const date2 = addDays(today, 1);
       r.detail = {
         ...r.detail,
-        days: r.detail.days.map((x) =>
-          x.cookedAt && x.pickupDeadlineDate
-            ? { ...x, pickedUpAt: x.cookedAt }
-            : x,
-        ),
+        days: hasOpen
+          ? days
+          : [
+              ...days,
+              {
+                ...first,
+                dayNumber: days.length + 1,
+                date: date2,
+                cookedAt: null,
+                pickedUpAt: null,
+                pickupDeadlineDate: addDays(date2, 2),
+                pickups: [],
+              },
+            ],
       };
+    }
   const a06 = rows[5].detail;
   return {
     rows,

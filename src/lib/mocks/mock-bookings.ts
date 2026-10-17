@@ -16,8 +16,11 @@
 //                                            answers 409 FREE_TRIAL_USED (a lost race).
 //       hooks.frozenSeeded = [ids]           those made-up bookings start frozen (D-53, T-064):
 //                                            `frozen: true`, every change answers 409 `frozen`.
-//       hooks.pickedUpSeeded = [ids]         the cooked days of those made-up bookings start as
-//                                            picked up (T-071, D-55): `pickedUpAt` is set.
+//       hooks.pickedUpSeeded = [ids]         the first cooked day of those made-up bookings starts
+//                                            as picked up (T-071, D-55): `pickedUpAt` is set. A
+//                                            one-day booking also gets an open, uncooked day 2,
+//                                            because the server completes a booking once every day
+//                                            is picked up (T-081, D-81).
 //   - a row whose status is edited to `accepted` shows the cookingPlace and contact like the real
 //     view does (hidden before acceptance, CLAUDE.md 6.8).
 import type {
