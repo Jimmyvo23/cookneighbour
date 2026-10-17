@@ -9,6 +9,7 @@ import {
   bookableChef,
   bookingBody,
   bookingCustomer,
+  bookingRow,
   complete,
   confirmPickup,
   cooked,
@@ -172,7 +173,7 @@ describe("T-071 tester gaps: pickup confirm", () => {
     expect(row.data?.status).toBe("accepted");
   });
 
-  it("missed with two past-deadline days both confirmed: pickup_confirmed", async () => {
+  it("missed with two past-deadline days both confirmed: the booking is completed (T-081), so wrong_status", async () => {
     const { chef, cust, id } = await setup([3, 4]);
     await shiftDays(id, 4);
     await setEatBy(id, -1);
@@ -182,7 +183,8 @@ describe("T-071 tester gaps: pickup confirm", () => {
     await confirmPickup(cust.b, id, 2);
     const r = await missed(chef.b, id);
     expect(r.status).toBe(409);
-    expect(r.body.error.reason).toBe("pickup_confirmed");
+    expect(r.body.error.reason).toBe("wrong_status");
+    expect((await bookingRow(id)).status).toBe("completed");
   });
 
   it("missed before any deadline with an unconfirmed day: pickup_window_open", async () => {
