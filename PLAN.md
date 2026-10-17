@@ -67,10 +67,10 @@ Everything in CLAUDE.md §3, §6, §10, §11 and §12. Highlights the plan is bu
 - A-23 **Rounding:** labour, travel and platform fee are each rounded half up to whole cents once per visit day; the total is the sum of the rounded lines.
 - A-24 **Allergy matching:** a dish allergen conflicts with the intake when the intake contains its words in order, or when any intake word (ignoring filler such as "allergy", "severe") equals any allergen word; lower case, punctuation stripped, a trailing "s" ignored on words longer than 3 letters. Over-warning is accepted; a conflict is a warning the customer acknowledges. *Changed by D-24:* a small fixed synonym and spelling map is applied (T-061). (Separately, a dish's raw allergen input is capped at 50 entries before de-duplication.)
 - A-25 **Search without a location** returns approved chefs ordered by rating, then name; no distance. An absent `locationType` behaves like customer's home (A-18).
-- A-26 **Pickup confirmation per day** (T-071, D-55): the customer confirms "I picked up my meals" for each cooked day of a chef's-home booking (`POST /api/bookings/:id/days/:n/pickup/confirm`). *Planner default, Jimmy to confirm.*
-- A-27 **When it is allowed:** once that day is cooked, while the booking is `accepted` and the pickup has not been marked missed; the deadline passing does not block it; confirm and missed lock the same booking row, so the first one wins. *Planner default, Jimmy to confirm.*
-- A-28 **No undo; refused while frozen** (D-65). Confirming also voids that day's open or agreed pickup proposals, and proposing on a confirmed day is 409 `picked_up` (builder's choice). *Planner default, Jimmy to confirm.*
-- A-29 **Missed pickup** needs a cooked day that is past its deadline and not confirmed: 409 `pickup_confirmed` when every cooked day past its deadline is confirmed; `pickup_window_open` when none is past yet. Auto-completion is unchanged: a chef's-home booking still waits for every pickup deadline even when every day is confirmed (follow-up T-081). *Planner default, Jimmy to confirm.*
+- A-26 **Pickup confirmation per day** (T-071, D-55): the customer confirms "I picked up my meals" for each cooked day of a chef's-home booking (`POST /api/bookings/:id/days/:n/pickup/confirm`). *Planner default, confirmed by Jimmy (D-77).*
+- A-27 **When it is allowed:** once that day is cooked, while the booking is `accepted` and the pickup has not been marked missed; the deadline passing does not block it; confirm and missed lock the same booking row, so the first one wins. *Planner default, confirmed by Jimmy (D-77).*
+- A-28 **No undo; refused while frozen** (D-65). Confirming also voids that day's open or agreed pickup proposals, and proposing on a confirmed day is 409 `picked_up` (builder's choice). *Planner default, confirmed by Jimmy (D-77).*
+- A-29 **Missed pickup** needs a cooked day that is past its deadline and not confirmed: 409 `pickup_confirmed` when every cooked day past its deadline is confirmed; `pickup_window_open` when none is past yet. Auto-completion is unchanged: a chef's-home booking still waits for every pickup deadline even when every day is confirmed (follow-up T-081). *Planner default, confirmed by Jimmy (D-77).*
 
 ### Recommendations (Planner's, accepted with this plan unless Jimmy objects)
 - Rec-1 Business rules as pure functions in `src/lib/domain/`, written test-first with Vitest. They hold the risk (pricing, free trial, limits) and are cheap to test.
@@ -286,6 +286,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-74 | 2026-10-16 | "Finish the current one and stop for now": finish T-071, then stop | Jimmy |
 | D-75 | 2026-10-16 | "Continue as planner and complete the current or next task": start and finish T-078 (next in the D-69 order) | Jimmy |
 | D-76 | 2026-10-16 | The "On hold" marker on the booking lists needs a new `BookingSummary.frozen` field, so it moves to a new task T-082; T-078 merges with its two test items only | Jimmy |
+| D-77 | 2026-10-16 | Jimmy confirms the T-071 pickup-confirmation defaults A-26 to A-29 (set by the Planner under D-73) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
