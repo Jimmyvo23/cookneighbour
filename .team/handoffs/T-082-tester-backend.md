@@ -25,3 +25,7 @@ From: tester  To: reviewer
 
 ## What the next agent needs
 Verdict PASS if CI `ci` is green on the final head.
+
+## CI finding (fixed by Tester)
+- The first CI run failed in `tests/rls/visibility.test.ts` ("function execute privileges ... match the snapshot exactly", 17 vs 16): the new `get_bookings_frozen` was not in the snapshot. That is a test file, so Tester added it. The migration is correct (authenticated only). Final head 5a962f9: CI `ci` green.
+- Result: PASS.
