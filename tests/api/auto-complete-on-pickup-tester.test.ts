@@ -76,11 +76,11 @@ describe("T-081 tester: parallel confirms", () => {
       confirmPickup(cust.b, id, 2),
     ]);
     expect([a.status, b.status], `${a.text} ${b.text}`).toEqual([200, 200]);
-    // The booking lock serialises them: one sees "accepted", the other completes.
-    expect([a.body.status, b.body.status].sort()).toEqual([
-      "accepted",
-      "completed",
-    ]);
+    // The booking lock serialises them. Each answer is the booking as loaded AFTER its own change,
+    // so the first one may already show the other's completion: at least one says completed.
+    for (const x of [a, b])
+      expect(["accepted", "completed"]).toContain(x.body.status);
+    expect([a.body.status, b.body.status]).toContain("completed");
     expect((await bookingRow(id)).status).toBe("completed");
     expect((await notesFor(cust.id, "booking_completed")).length).toBe(1);
     expect((await notesFor(chef.id, "booking_completed")).length).toBe(1);
@@ -211,7 +211,8 @@ describe("T-081 tester: the sweep path", () => {
   it("a flagged no_day_cooked booking: the chef marks the late day cooked, the customer confirms, it completes and the flag is resolved", async () => {
     const { chef, cust, id } = await setup();
     await shiftDays(id, 6);
-    await getBooking(cust.b, id); // the sweep raises the flag (D-36)
+    await setEatBy(id, -3); // every pickup deadline is past, so the booking is due (D-36)
+    await getBooking(cust.b, id); // the sweep raises the flag
     const f0 = await svc
       .from("booking_flags")
       .select("resolved_at")
