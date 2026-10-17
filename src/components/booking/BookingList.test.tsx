@@ -103,3 +103,43 @@ describe("BookingList accepted booking with every date past (T-072)", () => {
     expect(rows[1].textContent).not.toContain("All visit days have passed");
   });
 });
+
+describe("BookingList On hold marker (T-082)", () => {
+  it("marks a frozen row and only that row", async () => {
+    const t = torontoToday();
+    const held = {
+      ...item(1, "accepted"),
+      dates: [addDays(t, 2)],
+      frozen: true,
+    };
+    const free = {
+      ...item(2, "accepted"),
+      dates: [addDays(t, 3)],
+      frozen: false,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ items: [held, free], nextCursor: null }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        ),
+      ),
+    );
+    await act(async () => {
+      root.render(<BookingList />);
+    });
+    await act(async () => {});
+    const rows = host.querySelectorAll('[data-testid="booking-item"]');
+    expect(rows).toHaveLength(2);
+    const marker = rows[0].querySelector('[data-testid="on-hold"]');
+    expect(marker?.textContent).toBe("On hold");
+    expect(rows[1].querySelector('[data-testid="on-hold"]')).toBeNull();
+    expect(rows[1].textContent).not.toContain("On hold");
+  });
+});

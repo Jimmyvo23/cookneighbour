@@ -151,9 +151,12 @@ describe("chef side", () => {
 
   it("frozen chef's-home: an uncooked day says pickups are paused, not 'mark it cooked first'", async () => {
     await open(seededBooking(9103, "chef", pastUncooked(true)), "chef");
-    const t = h.q("pickups")?.textContent ?? "";
-    expect(t).toContain("Pickups are paused while this booking is on hold.");
-    expect(t).not.toContain("Mark this day as cooked first");
+    // T-082 (T-078 review NIT-1): check the first day's own hint, not the intro paragraph that
+    // says the same sentence.
+    const day =
+      h.host.querySelector('[data-testid="pickup-day"]')?.textContent ?? "";
+    expect(day).toContain("Pickups are paused while this booking is on hold.");
+    expect(day).not.toContain("Mark this day as cooked first");
     h.cleanup();
     h = harness();
     await open(seededBooking(9103, "chef", pastUncooked(false)), "chef");
