@@ -36,7 +36,7 @@ An inactive (`is_active = false`) day is ignored (not a day to cook), but at lea
 - API and RLS tests run in CI only: new `tests/api/auto-complete-on-pickup.test.ts` (9 tests), updated pickup-confirm tests, and a new RLS test comparing SQL `booking_all_picked_up` with TS `completesOnPickup` (7 cases) plus `booking_all_picked_up` in the server-only list. No new browser-callable function, so the privileges snapshot in `visibility.test.ts` is unchanged.
 
 ## Known gaps or risks
-- API/RLS tests were not run locally (no Docker); CI is the first run.
+- API/RLS tests were not run locally (no Docker). CI first run failed on one stale test (missed after both days confirmed), fixed; second run green.
 - Mock has no problem-report concept, so the open-report guard is not mirrored there.
 
 ## What the next agent needs (Tester ideas)
