@@ -2,6 +2,7 @@
 // Small building blocks for the chef application page (T-033).
 import { useEffect, useId, useState } from "react";
 import { ApiClientError } from "@/lib/api/client";
+import { isStateRefusal, useReportRefusal } from "@/components/refusal";
 import { describeError, type FieldErrors } from "@/lib/chef/form";
 
 export const cardCls =
@@ -42,6 +43,8 @@ export function useSection() {
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
   const alertId = useId();
+  // T-080: on a booking page a 409 goes to the page (one alert, one focus owner, one reload).
+  const reportRefusal = useReportRefusal();
 
   useEffect(() => {
     if (!tick) return;
@@ -79,6 +82,10 @@ export function useSection() {
       await action();
       setNotice(success);
     } catch (err) {
+      if (reportRefusal && isStateRefusal(err)) {
+        reportRefusal((opts.describe ?? describeError)(err));
+        return;
+      }
       const raw = err instanceof ApiClientError ? err.fields : {};
       fail(
         (opts.describe ?? describeError)(err),

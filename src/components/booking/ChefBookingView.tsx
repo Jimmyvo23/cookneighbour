@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiClientError, apiFetch } from "@/lib/api/client";
+import { RefusalProvider, useBookingRefusals } from "@/components/refusal";
 import type {
   BookingDayView,
   BookingDetail,
@@ -92,6 +93,23 @@ export function ChefBookingView({ id }: { id: string }) {
     void load(); // eslint-disable-line react-hooks/set-state-in-effect -- loads from the API after mount
   }, [load]);
 
+  // T-080: after a 409 the booking is refetched quietly (the page stays on screen, no "loading").
+  // A failed refetch is ignored: the old page and the refusal message stay. A newer load or
+  // change wins over an older refetch through `seq`.
+  const refresh = useCallback(async () => {
+    const mine = ++seq.current;
+    try {
+      const booking = await apiFetch<BookingDetail>(
+        `/api/bookings/${encodeURIComponent(id)}`,
+      );
+      if (mine !== seq.current) return;
+      setState({ kind: "ready", booking });
+    } catch {
+      /* keep what is on screen */
+    }
+  }, [id]);
+  const { report, alert, clear } = useBookingRefusals(refresh);
+
   useEffect(() => {
     document.title =
       state.kind === "ready"
@@ -140,11 +158,18 @@ export function ChefBookingView({ id }: { id: string }) {
           </p>
         </div>
       )}
+      {alert}
       {state.kind === "ready" && (
-        <Ready
-          booking={state.booking}
-          onChange={(b) => setState({ kind: "ready", booking: b })}
-        />
+        <RefusalProvider value={report}>
+          <Ready
+            booking={state.booking}
+            onChange={(b) => {
+              seq.current++;
+              clear(); // a new successful change replaces an old refusal message
+              setState({ kind: "ready", booking: b });
+            }}
+          />
+        </RefusalProvider>
       )}
     </main>
   );
