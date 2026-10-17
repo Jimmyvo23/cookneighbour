@@ -438,7 +438,7 @@ export async function listBookings(
       page.map((r) => (role === "chef" ? r.customer_id : r.chef_id) as string),
     ),
   ];
-  const [daysRes, peopleRes] = await Promise.all([
+  const [daysRes, peopleRes, frozenRes] = await Promise.all([
     ids.length
       ? db
           .from("booking_days")
@@ -448,8 +448,14 @@ export async function listBookings(
     otherIds.length
       ? db.from("profiles").select("id, display_name").in("id", otherIds)
       : Promise.resolve({ data: [] as Row[], error: null }),
+    // T-082: one call for the whole page (parties only; the batch twin of get_booking_frozen).
+    ids.length
+      ? db.rpc("get_bookings_frozen", { p_bookings: ids })
+      : Promise.resolve({ data: [] as string[], error: null }),
   ]);
-  if (daysRes.error || peopleRes.error) throw fail("list parts");
+  if (daysRes.error || peopleRes.error || frozenRes.error)
+    throw fail("list parts");
+  const frozenIds = new Set((frozenRes.data ?? []) as string[]);
   const days = (daysRes.data ?? []) as Row[];
   const people = (peopleRes.data ?? []) as Row[];
 
@@ -477,6 +483,7 @@ export async function listBookings(
           (people.find((p) => p.id === other)?.display_name as
             string | undefined) ?? (role === "chef" ? "Customer" : "Chef"),
       },
+      frozen: frozenIds.has(r.id as string),
     };
   });
   const last = page[page.length - 1];

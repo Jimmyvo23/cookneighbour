@@ -763,6 +763,8 @@ export interface BookingSummary {
   currency: string;
   /** The chef for a customer, the customer for a chef. */
   counterparty: BookingPerson;
+  /** T-082: same meaning as `BookingDetail.frozen` (T-064, D-53). Never says why. */
+  frozen: boolean;
 }
 export type BookingListResponse = Page<BookingSummary>;
 

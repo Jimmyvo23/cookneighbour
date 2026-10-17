@@ -121,3 +121,32 @@ test("chef: missed pickup is hidden on a frozen booking whose window is over", a
   await expect(page.getByTestId("frozen-notice")).toBeVisible();
   await expect(page.getByTestId("missed-pickup")).toHaveCount(0);
 });
+
+// T-082 (D-76), MOCK mode: the list rows agree with the detail page about "On hold".
+test("customer list: a frozen booking shows On hold, an unfrozen one does not", async ({
+  page,
+}) => {
+  await loginCustomer(page);
+  await setMockHooks(page, { seedCustomer: true, frozenSeeded: [SEEDED.A04] });
+  await openPage(page, "/bookings");
+  const rows = page.getByTestId("booking-item");
+  await expect(rows.first()).toBeVisible();
+  await expect(page.getByTestId("on-hold")).toHaveCount(1);
+  await expect(rows.filter({ has: page.getByTestId("on-hold") })).toHaveCount(
+    1,
+  );
+  await expect(page.getByTestId("on-hold")).toHaveText("On hold");
+  await expectNoAxeViolations(page);
+});
+
+test("chef list: a frozen booking shows On hold, an unfrozen one does not", async ({
+  page,
+}) => {
+  await loginChef(page);
+  await setMockHooks(page, { frozenSeeded: [SEEDED.A04] });
+  await openPage(page, "/chef/bookings");
+  await expect(page.getByTestId("booking-item").first()).toBeVisible();
+  await expect(page.getByTestId("on-hold")).toHaveCount(1);
+  await expect(page.getByTestId("on-hold")).toHaveText("On hold");
+  await expectNoAxeViolations(page);
+});

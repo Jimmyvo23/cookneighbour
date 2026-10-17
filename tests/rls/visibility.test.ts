@@ -189,6 +189,8 @@ describe("database-level guarantees", () => {
     "get_booking_contact",
     // T-064 (D-53): "is this booking frozen" for the two parties only; says nothing about the reason.
     "get_booking_frozen",
+    // T-082: the batch twin for the booking lists; parties only, ids of frozen bookings only.
+    "get_bookings_frozen",
     "is_admin",
     "is_booking_chef",
     "is_booking_party",

@@ -344,6 +344,34 @@ describe("get_booking_frozen and booking_is_frozen", () => {
     );
   });
 
+  it("T-082: get_bookings_frozen returns only the frozen bookings of the caller, for a batch", async () => {
+    const a = await accepted("ff-batch-a", { daysAgo: 1 });
+    const b = await accepted("ff-batch-b", { daysAgo: 1 });
+    await flag(a.id, "chef_rejected");
+    const ask = async (c: ReturnType<typeof anonClient>, ids: string[]) =>
+      c.rpc("get_bookings_frozen", { p_bookings: ids });
+    // The customer of a asks about a and b: only a is theirs, and frozen.
+    const mine = await ask(await clientFor(a.cust), [a.id, b.id]);
+    expect(mine.error).toBeNull();
+    expect(mine.data).toEqual([a.id]);
+    // The chef of a sees it too; the chef of b sees nothing about a.
+    expect((await ask(await clientFor(a.chef), [a.id])).data).toEqual([a.id]);
+    expect((await ask(await clientFor(b.chef), [a.id, b.id])).data).toEqual([]);
+    // A stranger and an admin get an empty set, not an error.
+    const stranger = await makeCustomer(svc, "ff-batch-stranger");
+    for (const c of [await clientFor(stranger), await clientFor(fx.admin)]) {
+      const r = await ask(c, [a.id]);
+      expect(r.error).toBeNull();
+      expect(r.data).toEqual([]);
+    }
+    // An empty batch is fine; a signed-out caller is refused.
+    expect((await ask(await clientFor(a.cust), [])).data).toEqual([]);
+    expectDenied(await ask(anonClient(), [a.id]));
+    // no_day_cooked does not freeze (D-57).
+    await flag(b.id, "no_day_cooked");
+    expect((await ask(await clientFor(b.cust), [b.id])).data).toEqual([]);
+  });
+
   it("booking_is_frozen is server-only", async () => {
     const s = await accepted("ff-fn3", { daysAgo: 1 });
     for (const c of [

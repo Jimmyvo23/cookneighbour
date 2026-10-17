@@ -11,6 +11,7 @@ import { torontoToday } from "@/lib/domain/dishes";
 import { formatDollars } from "@/lib/chef/dishes";
 import { shortDayLabel } from "@/lib/search/detail";
 import { secondaryButtonCls } from "@/components/chef/parts";
+import { OnHoldMarker } from "@/components/booking/parts";
 import { CHEF_STATUS_TEXT, summaryAllDatesPast } from "@/lib/booking/changes";
 
 const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
@@ -184,7 +185,9 @@ function Group({
                   className={linkCls}
                 >
                   {b.counterparty.displayName}
-                  <span className="sr-only">, booking</span>
+                  <span className="sr-only">
+                    , booking{b.frozen ? ", on hold" : ""}
+                  </span>
                 </Link>
               </p>
               {b.status !== "requested" && (
@@ -192,6 +195,7 @@ function Group({
                   {CHEF_STATUS_TEXT[b.status]}
                 </p>
               )}
+              {b.frozen && <OnHoldMarker />}
               {summaryAllDatesPast(b.status, b.dates, today) && (
                 <p className="text-sm">
                   All visit days have passed. Open the booking to see what is

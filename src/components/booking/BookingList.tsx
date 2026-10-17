@@ -12,6 +12,7 @@ import { shortDayLabel } from "@/lib/search/detail";
 import { MAX_OPEN_REQUESTS } from "@/lib/domain/config";
 import { hintCls, secondaryButtonCls } from "@/components/chef/parts";
 import { STATUS_TEXT } from "@/components/booking/BookingDetailView";
+import { OnHoldMarker } from "@/components/booking/parts";
 
 const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
 
@@ -127,10 +128,13 @@ export function BookingList() {
                       className={linkCls}
                     >
                       {b.counterparty.displayName}
-                      <span className="sr-only">, booking</span>
+                      <span className="sr-only">
+                        , booking{b.frozen ? ", on hold" : ""}
+                      </span>
                     </Link>
                   </p>
                   <p className="text-sm">{STATUS_TEXT[b.status]}</p>
+                  {b.frozen && <OnHoldMarker />}
                   {summaryAllDatesPast(b.status, b.dates, today) && (
                     <p className="text-sm">
                       All visit days have passed. Open the booking to see what

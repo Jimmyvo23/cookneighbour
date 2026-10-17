@@ -794,6 +794,8 @@ function summaryOf(
       role === "chef"
         ? { id: d.customer.id, displayName: d.customer.displayName }
         : { id: d.chef.id, displayName: d.chef.displayName },
+    // T-082: the list reads the same state as the detail, so they always agree.
+    frozen: d.frozen,
   };
 }
 

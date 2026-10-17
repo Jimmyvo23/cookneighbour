@@ -16,6 +16,7 @@ import {
   cooked,
   day,
   getBooking,
+  listBookings,
   noShow,
   shiftDays,
   svc,
@@ -113,6 +114,100 @@ describe("D-53: a booking of a rejected chef is frozen", () => {
     expect(got.body.frozen).toBe(true);
     expect((await bookingRow(id)).status).toBe("accepted");
     expect((await flagOf(id))?.reason).toBe("chef_rejected");
+  });
+});
+
+describe("T-082: the booking lists say which bookings are frozen", () => {
+  const frozenOf = (
+    r: { body: { items: { id: string; frozen: boolean }[] } },
+    id: string,
+  ) => r.body.items.find((i) => i.id === id)?.frozen;
+
+  it("a frozen booking shows frozen: true in both lists, an unflagged one false, and a stranger never sees the row", async () => {
+    const a = await setup(); // will be frozen
+    const b = await setup(); // untouched
+    await reject(a.chef.id);
+    const custList = await listBookings(a.cust.b);
+    const chefList = await listBookings(a.chef.b);
+    expect(custList.status, custList.text).toBe(200);
+    expect(chefList.status, chefList.text).toBe(200);
+    expect(frozenOf(custList, a.id)).toBe(true);
+    expect(frozenOf(chefList, a.id)).toBe(true);
+    const other = await listBookings(b.cust.b);
+    expect(frozenOf(other, b.id)).toBe(false);
+    expect(frozenOf(await listBookings(b.chef.b), b.id)).toBe(false);
+    // The stranger's list does not hold the row at all.
+    const stranger = await bookingCustomer();
+    const sl = await listBookings(stranger.b);
+    expect(sl.status).toBe(200);
+    expect(sl.body.items.map((i: { id: string }) => i.id)).not.toContain(a.id);
+    // Only the neutral flag: nothing about why (no reason, no notes) in the list.
+    const row = custList.body.items.find((i: { id: string }) => i.id === a.id);
+    expect(Object.keys(row)).not.toContain("flag");
+    expect(Object.keys(row)).not.toContain("reason");
+    expect(Object.keys(row)).not.toContain("notes");
+  });
+
+  it("no_day_cooked does not freeze the list row (D-57)", async () => {
+    const { chef, cust, id } = await setup();
+    await shiftDays(id, 5);
+    await getBooking(cust.b, id); // lazy sweep raises the no_day_cooked flag
+    expect((await flagOf(id))?.reason).toBe("no_day_cooked");
+    expect(frozenOf(await listBookings(cust.b), id)).toBe(false);
+    expect(frozenOf(await listBookings(chef.b), id)).toBe(false);
+  });
+
+  it("one customer page mixes frozen and unfrozen rows, and the flag follows each row across a page boundary", async () => {
+    const cust = await bookingCustomer();
+    const frozenChef = await bookableChef({
+      dishes: [{ key: "pho", shelf: 2 }],
+    });
+    const okChef = await bookableChef({ dishes: [{ key: "pho", shelf: 2 }] });
+    const one = await bookOk(
+      cust,
+      bookingBody(frozenChef, { days: [dayBody(frozenChef, 3)] }),
+    );
+    expect((await accept(frozenChef.b, one.id)).status).toBe(200);
+    const two = await bookOk(
+      cust,
+      bookingBody(okChef, { days: [dayBody(okChef, 4)] }),
+    );
+    expect((await accept(okChef.b, two.id)).status).toBe(200);
+    await reject(frozenChef.id);
+    // Both on one page.
+    const all = await listBookings(cust.b, "limit=50");
+    expect(all.status, all.text).toBe(200);
+    expect(frozenOf(all, one.id)).toBe(true);
+    expect(frozenOf(all, two.id)).toBe(false);
+    // One row per page: each page carries its own row's flag.
+    const p1 = await listBookings(cust.b, "limit=1");
+    expect(p1.body.items).toHaveLength(1);
+    expect(p1.body.nextCursor).toBeTruthy();
+    const p2 = await listBookings(
+      cust.b,
+      `limit=1&cursor=${encodeURIComponent(p1.body.nextCursor)}`,
+    );
+    expect(p2.body.items).toHaveLength(1);
+    const seen = [...p1.body.items, ...p2.body.items] as {
+      id: string;
+      frozen: boolean;
+    }[];
+    expect(seen.map((i) => i.id).sort()).toEqual([one.id, two.id].sort());
+    for (const i of seen) expect(i.frozen).toBe(i.id === one.id);
+  });
+
+  it("the status filter keeps the flag: a frozen accepted booking under status=open", async () => {
+    const { chef, cust, id } = await setup();
+    await reject(chef.id);
+    const r = await listBookings(cust.b, "status=open");
+    expect(frozenOf(r, id)).toBe(true);
+  });
+
+  it("an empty list still answers 200", async () => {
+    const lonely = await bookingCustomer();
+    const r = await listBookings(lonely.b);
+    expect(r.status).toBe(200);
+    expect(r.body.items).toEqual([]);
   });
 });
 
