@@ -135,7 +135,7 @@ describe("T-071 tester gaps: pickup confirm", () => {
     expect(r.status, r.text).toBe(200);
   });
 
-  it("two parallel confirms: both 200, one notification, one time", async () => {
+  it("two parallel confirms (the first completes the booking, T-081): both 200, one notification, one time", async () => {
     const { chef, cust, id } = await setup([3]);
     await shiftDays(id, 3);
     await cooked(chef.b, id, 1);
@@ -241,16 +241,18 @@ describe("T-071 tester gaps: pickup confirm", () => {
     ).toBe("wrong_status");
   });
 
-  it("confirming keeps the booking able to complete, and pickedUpAt survives completion", async () => {
+  it("confirming the only day completes the booking, and pickedUpAt survives completion", async () => {
     const { chef, cust, id } = await setup([3]);
     await shiftDays(id, 3);
     await cooked(chef.b, id, 1);
     const c = await confirmPickup(cust.b, id, 1);
     expect(c.status).toBe(200);
+    // T-081: confirming the only day already completed the booking; "visit done" is now refused.
+    expect(c.body.status).toBe("completed");
     const done = await complete(chef.b, id);
-    expect(done.status, done.text).toBe(200);
-    expect(done.body.status).toBe("completed");
-    expect(done.body.days[0].pickedUpAt).toBe(c.body.days[0].pickedUpAt);
-    expect((await notesFor(cust.id, "booking_completed")).length).toBe(1);
+    expect(done.status, done.text).toBe(409);
+    const after = await getBooking(cust.b, id);
+    expect(after.body.status).toBe("completed");
+    expect(after.body.days[0].pickedUpAt).toBe(c.body.days[0].pickedUpAt);
   });
 });

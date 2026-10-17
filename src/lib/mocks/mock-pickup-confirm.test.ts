@@ -57,6 +57,32 @@ async function call(s: BookingMockState, method: string, path: string) {
     next: r.next ? ({ ...s, ...r.next } as BookingMockState) : s,
   };
 }
+/** Adds an uncooked, unconfirmed second day to a made-up booking (T-081: one day completes it). */
+function withSecondDay(s: BookingMockState, id: string): BookingMockState {
+  return {
+    ...s,
+    bookings: s.bookings.map((r) =>
+      r.detail.id === id
+        ? {
+            ...r,
+            detail: {
+              ...r.detail,
+              days: [
+                ...r.detail.days,
+                {
+                  ...r.detail.days[0],
+                  dayNumber: 2,
+                  cookedAt: null,
+                  pickedUpAt: null,
+                  pickups: [],
+                },
+              ],
+            },
+          }
+        : r,
+    ),
+  };
+}
 const url = (id: string, n = 1) =>
   `/api/bookings/${id}/days/${n}/pickup/confirm`;
 
@@ -123,8 +149,9 @@ describe("mock: POST .../pickup/confirm", () => {
 describe("mock: propose on a confirmed day (contract v1.12)", () => {
   it("is 409 picked_up and stores nothing", async () => {
     const soon = new Date(NOW.getTime() + 3600_000).toISOString();
-    const s = customer();
+    const s = withSecondDay(customer(), A03);
     const c = await call(s, "POST", url(A03));
+    expect((c.json as BookingDetail).status).toBe("accepted");
     const r = bookingRoutes(
       "POST",
       `/api/bookings/${A03}/days/1/pickup/propose`,
@@ -191,5 +218,58 @@ describe("mock: check order on propose for a confirmed day (tester, round 3)", (
     )!;
     expect(r.res.status).toBe(409);
     expect(((await r.res.json()) as ApiError).error.reason).toBe("picked_up");
+  });
+});
+
+describe("mock: the last confirmed day completes the booking (T-081, D-81, D-83)", () => {
+  it("a one-day booking is completed by the confirm; open proposals are voided; pickedUpAt is kept", async () => {
+    const r = await call(customer(), "POST", url(A03));
+    const d = r.json as BookingDetail;
+    expect(d.status).toBe("completed");
+    expect(d.completedAt).toEqual(expect.any(String));
+    expect(d.days[0].pickedUpAt).toEqual(expect.any(String));
+    expect(d.days[0].pickups.every((p) => p.status !== "proposed")).toBe(true);
+    // The stored booking is completed too, and a repeat is a harmless 200.
+    const again = await call(r.next, "POST", url(A03));
+    expect(again.status).toBe(200);
+    expect((again.json as BookingDetail).status).toBe("completed");
+    expect((again.json as BookingDetail).days[0].pickedUpAt).toBe(
+      d.days[0].pickedUpAt,
+    );
+  });
+  it("two days: day 1 confirmed and day 2 not cooked stays accepted; day 2 cooked and confirmed completes", async () => {
+    const first = await call(withSecondDay(customer(), A03), "POST", url(A03));
+    expect((first.json as BookingDetail).status).toBe("accepted");
+    const s = {
+      ...first.next,
+      bookings: first.next.bookings.map((r) =>
+        r.detail.id === A03
+          ? {
+              ...r,
+              detail: {
+                ...r.detail,
+                days: r.detail.days.map((x) => ({
+                  ...x,
+                  cookedAt: x.cookedAt ?? NOW.toISOString(),
+                })),
+              },
+            }
+          : r,
+      ),
+    } as BookingMockState;
+    const second = await call(s, "POST", url(A03, 2));
+    expect((second.json as BookingDetail).status).toBe("completed");
+  });
+  it("a frozen booking still refuses the confirm and does not complete", async () => {
+    const f = await call(customer([], [A03]), "POST", url(A03));
+    expect(f.error.reason).toBe("frozen");
+    const d = await call(customer([], [A03]), "GET", `/api/bookings/${A03}`);
+    expect((d.json as BookingDetail).status).toBe("accepted");
+  });
+  it("a chef's-home booking completed by the confirm refuses 'pickup missed' with wrong_status", async () => {
+    const r = await call(customer(), "POST", url(A03));
+    const chef = chefOf(r.next);
+    const m = await call(chef, "POST", `/api/bookings/${A03}/pickup/missed`);
+    expect(m.status).toBe(409);
   });
 });

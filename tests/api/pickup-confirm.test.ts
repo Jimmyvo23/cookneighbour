@@ -136,7 +136,8 @@ describe("POST /api/bookings/:id/days/:dayNumber/pickup/confirm", () => {
   });
 
   it("with no cooked day past its deadline, missed keeps pickup_window_open", async () => {
-    const { chef, cust, id } = await setup();
+    // T-081: with a single day, confirming it would complete the booking; day 2 stays uncooked.
+    const { chef, cust, id } = await setup({ offsets: [3, 4] });
     await shiftDays(id, 3);
     await setEatBy(id, 5);
     await cooked(chef.b, id, 1);
@@ -251,9 +252,11 @@ describe("POST /api/bookings/:id/days/:dayNumber/pickup/confirm", () => {
       expect(dayRow.data?.picked_up_at).toBeNull();
     } else {
       expect(c.status).toBe(200);
+      // T-081: the confirm picked up the only day, so the booking completed; missed then meets a
+      // completed booking (wrong_status comes before pickup_confirmed).
       expect(m.status).toBe(409);
-      expect(m.body.error.reason).toBe("pickup_confirmed");
-      expect(row.data?.status).toBe("accepted");
+      expect(m.body.error.reason).toBe("wrong_status");
+      expect(row.data?.status).toBe("completed");
       expect(row.data?.pickup_missed_at).toBeNull();
       expect(dayRow.data?.picked_up_at).not.toBeNull();
     }
@@ -273,7 +276,8 @@ describe("POST /api/bookings/:id/days/:dayNumber/pickup/confirm", () => {
   });
 
   it("a confirmed day refuses a new pickup proposal (409 picked_up)", async () => {
-    const { chef, cust, id } = await setup();
+    // Two days so the booking is still accepted after day 1 is confirmed (T-081).
+    const { chef, cust, id } = await setup({ offsets: [3, 4] });
     await shiftDays(id, 3);
     await setEatBy(id, 5);
     await cooked(chef.b, id, 1);

@@ -36,6 +36,7 @@ import {
   parsePickupAccept,
   parseProposedAt,
   pickupDeadline,
+  completesOnPickup,
 } from "@/lib/domain/bookingChanges";
 import { KITCHEN_ADDRESS_MISSING_MESSAGE } from "@/lib/booking/changes";
 import { cancellationTiming } from "@/lib/domain/cancellation";
@@ -799,31 +800,57 @@ export function changeRoute(
       const target = n ? d.days.find((x) => x.dayNumber === n) : undefined;
       if (!target) return notFound();
       if (d.frozen) return invalid("frozen");
+      // T-081: repeating a confirm of a day that is already confirmed stays a harmless repeat even
+      // after that confirm completed the booking (double click, stale page).
+      if (d.status === "completed" && target.pickedUpAt) return save(d);
       if (d.status !== "accepted") return invalid("wrong_status");
       if (d.locationType !== "chef_home") return invalid("not_chef_home");
       if (!target.cookedAt) return invalid("day_not_cooked");
       if (target.pickedUpAt) return save(d); // repeating keeps the first time
-      return save({
-        ...d,
-        days: d.days.map((x) =>
-          x.dayNumber === n
-            ? {
-                ...x,
-                pickedUpAt: now.toISOString(),
-                // The server voids the proposals of a confirmed day.
-                pickups: x.pickups.map((p) =>
-                  p.status === "proposed" || p.status === "accepted"
-                    ? {
-                        ...p,
-                        status: "void" as const,
-                        respondedAt: p.respondedAt ?? now.toISOString(),
-                      }
-                    : p,
-                ),
-              }
-            : x,
-        ),
-      });
+      const confirmed = d.days.map((x) =>
+        x.dayNumber === n
+          ? {
+              ...x,
+              pickedUpAt: now.toISOString(),
+              // The server voids the proposals of a confirmed day.
+              pickups: x.pickups.map((p) =>
+                p.status === "proposed" || p.status === "accepted"
+                  ? {
+                      ...p,
+                      status: "void" as const,
+                      respondedAt: p.respondedAt ?? now.toISOString(),
+                    }
+                  : p,
+              ),
+            }
+          : x,
+      );
+      // T-081 (D-81, D-83): the last day just picked up completes the booking in the same step, as
+      // the server does (every day is active in mock data). MOCK: there are no problem reports here.
+      if (
+        completesOnPickup(
+          d.locationType,
+          confirmed.map((x) => ({ ...x, isActive: true })),
+        )
+      )
+        return save({
+          ...d,
+          status: "completed",
+          completedAt: now.toISOString(),
+          days: confirmed.map((x) => ({
+            ...x,
+            pickups: x.pickups.map((p) =>
+              p.status === "proposed" || p.status === "accepted"
+                ? {
+                    ...p,
+                    status: "void" as const,
+                    respondedAt: p.respondedAt ?? now.toISOString(),
+                  }
+                : p,
+            ),
+          })),
+        });
+      return save({ ...d, days: confirmed });
     }
     case "pickup-missed": {
       if (d.frozen) return invalid("frozen");
