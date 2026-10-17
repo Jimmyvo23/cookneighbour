@@ -32,7 +32,7 @@ test("customer list at 375 px: marker is plain, neutral, in its row, no sideways
     .filter({ has: page.getByTestId("on-hold") });
   await expect(row).toHaveCount(1);
   await expect(row.getByTestId("on-hold")).toBeVisible();
-  await expect(row.getByTestId("on-hold")).not.toContainText(
+  await expect(row).not.toContainText(
     /admin|flag|reject|report|reason|dispute/i,
   );
   expect(await scrollsSideways(page)).toBe(false);

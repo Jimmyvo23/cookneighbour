@@ -128,7 +128,9 @@ export function BookingList() {
                       className={linkCls}
                     >
                       {b.counterparty.displayName}
-                      <span className="sr-only">, booking</span>
+                      <span className="sr-only">
+                        , booking{b.frozen ? ", on hold" : ""}
+                      </span>
                     </Link>
                   </p>
                   <p className="text-sm">{STATUS_TEXT[b.status]}</p>
