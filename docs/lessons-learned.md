@@ -86,4 +86,5 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - Hand over handoff files instead of re-explaining in chat.
 - Batch small review fixes into one round instead of one push per fix.
 - Keep Builder → Tester → Reviewer on every task. Skipping steps has never saved time here; it only moves bugs later.
+- **A new required field on a shared type (T-082).** If Backend and Frontend each add it in their own PR, each PR fails typecheck alone (one lacks the server query, the other the mock). Build both on one branch, or let one PR own the type change and its first fill in both places.
 - **Lock order across database functions (T-063).** When two functions lock a chef row and a booking row, they must take them in the same order (chef first), or an accept and an admin reject can deadlock. Write the order in the migration header.
