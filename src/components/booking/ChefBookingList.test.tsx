@@ -95,5 +95,10 @@ describe("ChefBookingList On hold marker (T-082)", () => {
       "On hold",
     );
     expect(rows[1].querySelector('[data-testid="on-hold"]')).toBeNull();
+    // Link text (what a screen reader hears when browsing links) carries it too.
+    expect(rows[0].querySelector("a")?.textContent).toContain(
+      ", booking, on hold",
+    );
+    expect(rows[1].querySelector("a")?.textContent).not.toContain("on hold");
   });
 });

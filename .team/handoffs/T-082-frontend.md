@@ -15,3 +15,8 @@
 ## Known
 - `npm run typecheck` fails ONLY in `src/lib/server/booking-views.ts` (list query lacks `frozen`). That file is Backend's; it is fixed by Backend's parallel PR. CI on this PR is red until that merges first (or this is updated after it).
 - Did not touch docs/api-contract.md or src/lib/server/.
+
+## Round 2
+- Reviewer NIT-2: the list link's sr-only text is now ", booking, on hold" when `b.frozen` (customer and chef lists); unit tests assert it for a frozen and an unfrozen row.
+- Tester INFO: the no-reason check in `e2e-mock/t082-tester-mock.spec.ts` (customer list) now runs on the whole row.
+- lint, typecheck, prettier clean; unit 2091 passed + 3 expected fail; mock e2e 262 passed.

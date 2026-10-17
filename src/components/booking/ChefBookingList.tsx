@@ -185,7 +185,9 @@ function Group({
                   className={linkCls}
                 >
                   {b.counterparty.displayName}
-                  <span className="sr-only">, booking</span>
+                  <span className="sr-only">
+                    , booking{b.frozen ? ", on hold" : ""}
+                  </span>
                 </Link>
               </p>
               {b.status !== "requested" && (
