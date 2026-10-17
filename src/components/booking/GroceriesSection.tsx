@@ -11,6 +11,7 @@
 // it expires. In MOCK mode no storage URL is ever built (the API gives `fileUrl: null`).
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiClientError, apiFetch, isMockEnabled } from "@/lib/api/client";
+import { useRefusalCount } from "@/components/refusal";
 import type {
   BookingDetail,
   ReceiptList,
@@ -139,6 +140,17 @@ export function GroceriesSection({
   useEffect(() => {
     if (enabled) void load(); // eslint-disable-line react-hooks/set-state-in-effect -- loads from the API after mount
   }, [enabled, load]);
+
+  // T-080: a 409 on a receipt answer or upload may leave the booking status as it was while the
+  // list changed (the other side already answered). The page reports each refusal; reload quietly.
+  // The page's alert keeps focus: this reload draws no alert and moves no focus.
+  const refusals = useRefusalCount();
+  const seenRefusals = useRef(0);
+  useEffect(() => {
+    if (refusals === seenRefusals.current) return;
+    seenRefusals.current = refusals;
+    if (enabled) void load(true); // eslint-disable-line react-hooks/set-state-in-effect -- reloads from the API after a refusal
+  }, [refusals, enabled, load]);
 
   // The signed receipt link lasts 10 minutes: fetch a new one before it runs out.
   useEffect(() => {

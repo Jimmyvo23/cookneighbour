@@ -10,6 +10,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiClientError, apiFetch } from "@/lib/api/client";
+import {
+  RefusalProvider,
+  isStateRefusal,
+  useReportRefusal,
+  useBookingRefusals,
+} from "@/components/refusal";
 import type { BookingDetail, BookingStatus } from "@/lib/api/types";
 import {
   formatWhen,
@@ -116,6 +122,23 @@ export function BookingDetailView({ id }: { id: string }) {
     void load(); // eslint-disable-line react-hooks/set-state-in-effect -- loads from the API after mount
   }, [load]);
 
+  // T-080: after a 409 the booking is refetched quietly (the page stays on screen, no "loading").
+  // A failed refetch is ignored: the old page and the refusal message stay. A newer load or
+  // change wins over an older refetch through `seq`.
+  const refresh = useCallback(async () => {
+    const mine = ++seq.current;
+    try {
+      const booking = await apiFetch<BookingDetail>(
+        `/api/bookings/${encodeURIComponent(id)}`,
+      );
+      if (mine !== seq.current) return;
+      setState({ kind: "ready", booking });
+    } catch {
+      /* keep what is on screen */
+    }
+  }, [id]);
+  const { scope, alert, clear } = useBookingRefusals(refresh);
+
   useEffect(() => {
     document.title =
       state.kind === "ready"
@@ -164,13 +187,20 @@ export function BookingDetailView({ id }: { id: string }) {
           </p>
         </div>
       )}
+      {alert}
       {state.kind === "ready" && (
-        <Ready
-          booking={state.booking}
-          sent={sent}
-          profileNotSaved={profileNotSaved}
-          onChange={(b) => setState({ kind: "ready", booking: b })}
-        />
+        <RefusalProvider value={scope}>
+          <Ready
+            booking={state.booking}
+            sent={sent}
+            profileNotSaved={profileNotSaved}
+            onChange={(b) => {
+              seq.current++;
+              clear(); // a new successful change replaces an old refusal message
+              setState({ kind: "ready", booking: b });
+            }}
+          />
+        </RefusalProvider>
       )}
     </main>
   );
@@ -532,6 +562,7 @@ function CancelSection({
   const confirmRef = useRef<HTMLHeadingElement>(null);
   const alertId = useId();
   const late = isInsideLateWindow(firstDay, new Date());
+  const reportRefusal = useReportRefusal();
 
   useEffect(() => {
     if (!tick) return;
@@ -557,6 +588,11 @@ function CancelSection({
       );
       onChange(next);
     } catch (err) {
+      if (reportRefusal && isStateRefusal(err)) {
+        // T-080: the page shows the message, takes focus and refetches the booking.
+        reportRefusal(cancelErrorText(err));
+        return;
+      }
       setFields(err instanceof ApiClientError ? err.fields : {});
       setError(
         err instanceof ApiClientError &&

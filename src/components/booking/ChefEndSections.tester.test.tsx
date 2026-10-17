@@ -275,8 +275,11 @@ describe("tester: known issue, an old error shows again after reopening", () => 
     await h.click(h.button("Yes, cancel this booking"));
     await h.click(h.button("Keep the booking"));
     await h.click(h.button("Cancel this booking"));
-    const alert = h.host.querySelector('[role="alert"]:not(.sr-only)');
-    // Fixed in T-070 round 2: reopening starts clean.
+    // Fixed in T-070 round 2: reopening starts clean. T-080: a 409 is shown by the page, outside
+    // the section, so the section itself must have no visible alert.
+    const alert = h.host.querySelector(
+      '[role="alert"]:not(.sr-only):not([data-testid="refusal"])',
+    );
     expect(alert).toBeNull();
   });
 });
