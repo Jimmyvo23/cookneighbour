@@ -460,3 +460,15 @@ export function FrozenNotice({ text }: { text: string }) {
     </p>
   );
 }
+
+/**
+ * T-082 (D-53, D-76): the list-row marker for a frozen booking. Plain text inside the row, so a
+ * screen reader hears it with the booking. Same neutral wording as the detail notice: no reason.
+ */
+export function OnHoldMarker() {
+  return (
+    <p data-testid="on-hold" className="text-sm font-semibold">
+      On hold
+    </p>
+  );
+}
