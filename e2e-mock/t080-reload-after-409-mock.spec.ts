@@ -104,3 +104,36 @@ test("customer: stale 'I picked up my meals' after the chef closed the booking -
     1,
   );
 });
+
+test("customer: stale receipt 'Confirm this amount' -> 409 -> receipt list reloads, buttons gone, alert focused", async ({
+  page,
+}) => {
+  await loginCustomer(page);
+  await setMockHooks(page, { seedCustomer: true });
+  await openPage(page, `/bookings/${SEEDED.A06}`);
+  const confirm = page.getByRole("button", { name: "Confirm this amount" });
+  await expect(confirm).toBeVisible();
+  // Meanwhile the receipt was answered elsewhere (a second tab). The booking status is unchanged.
+  await page.evaluate(
+    ([key, id]) => {
+      const s = JSON.parse(sessionStorage.getItem(key)!);
+      s.receipts[id] = s.receipts[id].map((r: { status: string }) => ({
+        ...r,
+        status: "confirmed",
+      }));
+      sessionStorage.setItem(key, JSON.stringify(s));
+    },
+    [KEY, SEEDED.A06],
+  );
+  await confirm.click();
+  const alert = page.getByTestId("refusal");
+  await expect(alert).toBeFocused();
+  await expect(confirm).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Dispute this receipt/ }),
+  ).toHaveCount(0);
+  await expect(alert).toBeFocused();
+  await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(
+    1,
+  );
+});

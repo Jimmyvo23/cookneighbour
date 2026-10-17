@@ -42,3 +42,12 @@ From: frontend  To: tester
 - Customer: stale confirm after chef marked missed; stale cancel after the chef cancelled; chef stale accept after expiry.
 - Offline during a change: section alert, no refetch. Screen reader announces the page alert once. 375 px and dark mode (alert uses the existing red classes).
 - Fast double press of the confirm button (busy guard) gives one POST and one refetch.
+
+## Round 2 (Tester MED-1 and LOW-1)
+- **MED-1 fixed.** Mechanism: the page's context value is now `{ report, count }` (`RefusalScope` in `src/components/refusal.tsx`). `count` goes up by one per refusal and is never reset (`clear()` only hides the alert). `GroceriesSection` reads it with `useRefusalCount()` and, when it changes, calls its existing quiet `load(true)` once (a ref remembers the last handled count, so mounting or re-rendering never reloads, and the reload itself cannot trigger another). The reload draws no alert and moves no focus, so the page alert stays the one focus owner. A failed reload is already swallowed by `load(true)`, so the old list and the page alert stay.
+- Why this and not a callback: no new wiring in the two pages beyond the provider value, no second context, and any future section with its own server data can use the same hook.
+- **LOW-1 fixed.** `report` returns early when the page is unmounted (a `mounted` ref), so no setState or reload after unmount. StrictMode safe: the effect sets the ref true again after its simulated cleanup.
+- Tests (TDD: the flipped Tester test failed first, "expected 1 to be 2" receipts GETs, and fails again with `GroceriesSection.tsx` stashed):
+  - `Refusal409.tester.test.tsx`: MED-1 test flipped (receipts GET +1, buttons gone, alert still focused, no loop after an extra wait; its receipts route is now a function so each GET sees current state); NEW test: failed receipts reload keeps old list and the page alert. 
+  - `e2e-mock/t080-reload-after-409-mock.spec.ts`: NEW stale receipt confirm (receipt marked confirmed in the saved mock state behind the open page; mock answers 409 `already_answered`; list reloads, both buttons gone, alert focused, one visible alert). Now 3 tests.
+- Local: lint clean, typecheck clean, prettier clean, full unit 2113 passed + 3 expected fail (91 files), full mock e2e 267 passed (includes the Tester's 2 specs).

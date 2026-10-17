@@ -14,6 +14,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -21,9 +22,20 @@ import { ApiClientError } from "@/lib/api/client";
 
 export type ReportRefusal = (message: string) => void;
 
-const RefusalContext = createContext<ReportRefusal | null>(null);
+/** `report` sends a refusal to the page; `count` goes up by one per refusal and never goes down. */
+export interface RefusalScope {
+  report: ReportRefusal;
+  count: number;
+}
+const RefusalContext = createContext<RefusalScope | null>(null);
 export const RefusalProvider = RefusalContext.Provider;
-export const useReportRefusal = () => useContext(RefusalContext);
+export const useReportRefusal = () =>
+  useContext(RefusalContext)?.report ?? null;
+/**
+ * For a section that keeps its own server data (the receipts list): reload quietly when this
+ * changes. It is 0 until the first refusal, so a section never reloads just for mounting.
+ */
+export const useRefusalCount = () => useContext(RefusalContext)?.count ?? 0;
 
 /** True for a state refusal: the booking changed under the page (HTTP 409). */
 export function isStateRefusal(err: unknown): boolean {
@@ -32,23 +44,34 @@ export function isStateRefusal(err: unknown): boolean {
 
 /**
  * For the page. `reload` refetches the booking quietly; a failed reload must not throw or hide the
- * message. Render `alert` outside the change sections and wrap them in `<RefusalProvider value={report}>`.
+ * message. Render `alert` outside the change sections and wrap them in `<RefusalProvider value={scope}>`.
  */
 export function useBookingRefusals(reload: () => void | Promise<void>) {
   const [last, setLast] = useState<{ text: string; id: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const alertId = useId();
   const reloadRef = useRef(reload);
+  const mounted = useRef(false);
   useEffect(() => {
     reloadRef.current = reload;
   });
   useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
     if (last) ref.current?.focus();
   }, [last]);
+  const [count, setCount] = useState(0);
   const report = useCallback<ReportRefusal>((text) => {
+    if (!mounted.current) return; // the page is gone: nothing to show or reload
     setLast((p) => ({ text, id: (p?.id ?? 0) + 1 }));
+    setCount((c) => c + 1);
     void Promise.resolve(reloadRef.current()).catch(() => {});
   }, []);
+  const scope = useMemo(() => ({ report, count }), [report, count]);
   // Same look as the sections' Alert (components/chef/parts); it is not imported to avoid a cycle.
   // Rendered only while there is a refusal, so a page with no refusal has no empty alert, and each
   // new refusal is a new element that screen readers announce.
@@ -65,5 +88,5 @@ export function useBookingRefusals(reload: () => void | Promise<void>) {
       {last.text}
     </div>
   ) : null;
-  return { report, alert, clear: () => setLast(null) };
+  return { scope, alert, clear: () => setLast(null) };
 }

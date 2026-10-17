@@ -48,27 +48,32 @@ const gets = (b: BookingDetail, tail = "") =>
     (c) => c[1] === "GET",
   ).length;
 
-describe("T-080 declared gap: receipt 409 with an unchanged booking status", () => {
-  it("shows the one page alert with focus; the receipts list is NOT refetched (known gap, see handoff)", async () => {
+describe("T-080 MED-1: receipt 409 with an unchanged booking status", () => {
+  it("shows the one page alert with focus and reloads the receipts list, so the dead buttons go (MED-1 fixed in round 2)", async () => {
     const b = seededBooking(9106, "customer");
     const { filePath: _f, ...receipt } = seededReceipts()[b.id][0];
     void _f;
+    // After the 409 the server's list shows the receipt as already answered by the other side.
+    const confirmed = { ...receipt, status: "confirmed" as const };
+    let answered = false;
     routes(h.fetchMock, {
       [`GET /api/bookings/${b.id}`]: json(200, b),
       [`GET /api/bookings/${b.id}/shopping-list`]: json(200, listFor(b)),
-      [`GET /api/bookings/${b.id}/receipts`]: json(200, {
-        bookingId: b.id,
-        groceryOption: b.groceryOption,
-        estimatedIngredientsCents: b.estimate.ingredientsCents,
-        currency: "CAD",
-        items: [receipt],
-      }),
-      [`POST /api/bookings/${b.id}/receipts/${receipt.id}/respond`]: apiError(
-        409,
-        "INVALID_STATE",
-        "x",
-        { reason: "receipt_confirmed" },
-      ),
+      // A function, so each GET sees the current state of `answered`.
+      [`GET /api/bookings/${b.id}/receipts`]: () =>
+        json(200, {
+          bookingId: b.id,
+          groceryOption: b.groceryOption,
+          estimatedIngredientsCents: b.estimate.ingredientsCents,
+          currency: "CAD",
+          items: [answered ? confirmed : receipt],
+        })({}),
+      [`POST /api/bookings/${b.id}/receipts/${receipt.id}/respond`]: () => {
+        answered = true;
+        return apiError(409, "INVALID_STATE", "x", {
+          reason: "receipt_confirmed",
+        })({});
+      },
     });
     await h.mount(<BookingDetailView id={b.id} />);
     const receiptGetsBefore = gets(b, "/receipts");
@@ -79,9 +84,52 @@ describe("T-080 declared gap: receipt 409 with an unchanged booking status", () 
     expect(document.activeElement).toBe(alert);
     expect(h.qa("refusal")).toHaveLength(1);
     expect(gets(b)).toBe(2); // the booking itself was refetched once
-    // Gap: status unchanged => GroceriesSection does not reload, the answer buttons stay.
-    expect(gets(b, "/receipts")).toBe(receiptGetsBefore);
+    // Round 2: the groceries section reloads its receipts once, quietly, and the buttons go.
+    expect(gets(b, "/receipts")).toBe(receiptGetsBefore + 1);
+    await h.flush();
+    expect(h.button("Confirm this amount")).toBeNull();
+    expect(h.button(/Dispute this receipt/)).toBeNull();
+    expect(document.activeElement).toBe(alert);
+    await h.flush();
+    expect(gets(b, "/receipts")).toBe(receiptGetsBefore + 1); // no loop
+  });
+});
+
+describe("T-080 MED-1: a failed receipts reload", () => {
+  it("keeps the old list and the page alert, and does not loop", async () => {
+    const b = seededBooking(9106, "customer");
+    const { filePath: _f, ...receipt } = seededReceipts()[b.id][0];
+    void _f;
+    let answered = false;
+    routes(h.fetchMock, {
+      [`GET /api/bookings/${b.id}`]: json(200, b),
+      [`GET /api/bookings/${b.id}/shopping-list`]: json(200, listFor(b)),
+      [`GET /api/bookings/${b.id}/receipts`]: () =>
+        answered
+          ? apiError(500, "INTERNAL", "down")({})
+          : json(200, {
+              bookingId: b.id,
+              groceryOption: b.groceryOption,
+              estimatedIngredientsCents: b.estimate.ingredientsCents,
+              currency: "CAD",
+              items: [receipt],
+            })({}),
+      [`POST /api/bookings/${b.id}/receipts/${receipt.id}/respond`]: () => {
+        answered = true;
+        return apiError(409, "INVALID_STATE", "x", {
+          reason: "receipt_confirmed",
+        })({});
+      },
+    });
+    await h.mount(<BookingDetailView id={b.id} />);
+    const before = gets(b, "/receipts");
+    await h.click(h.button("Confirm this amount"));
+    await h.flush();
+    await h.flush();
+    expect(gets(b, "/receipts")).toBe(before + 1);
     expect(h.button("Confirm this amount")).not.toBeNull();
+    expect(h.q("refusal")?.textContent).toMatch(/already confirmed/i);
+    expect(document.activeElement).toBe(h.q("refusal"));
   });
 });
 

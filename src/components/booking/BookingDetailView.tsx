@@ -137,7 +137,7 @@ export function BookingDetailView({ id }: { id: string }) {
       /* keep what is on screen */
     }
   }, [id]);
-  const { report, alert, clear } = useBookingRefusals(refresh);
+  const { scope, alert, clear } = useBookingRefusals(refresh);
 
   useEffect(() => {
     document.title =
@@ -189,7 +189,7 @@ export function BookingDetailView({ id }: { id: string }) {
       )}
       {alert}
       {state.kind === "ready" && (
-        <RefusalProvider value={report}>
+        <RefusalProvider value={scope}>
           <Ready
             booking={state.booking}
             sent={sent}
