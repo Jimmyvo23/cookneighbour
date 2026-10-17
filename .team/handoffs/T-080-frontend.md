@@ -4,7 +4,7 @@ From: frontend  To: tester
 
 ## What changed
 - Branch: `feature/T-080-reload-after-409`
-- Pull request: see PR "T-080: Reload booking after a 409 from a booking change" (Closes #156)
+- Pull request: #157
 - Files:
   - NEW `src/components/refusal.tsx`: the shared mechanism (context, `useBookingRefusals`, `isStateRefusal`).
   - `src/components/chef/parts.tsx`: `useSection().run` reports a 409 to the page when a page provides the context; otherwise unchanged.
