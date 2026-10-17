@@ -32,3 +32,11 @@ From: tester  To: reviewer
 
 ## What the next agent needs
 - Decide on MED-1 (fix now vs follow-up). Everything else is PASS.
+
+## Re-check (round 2, head 1c33200): PASS
+- MED-1 and LOW-1 fixed as described. Code read: `refusals` count in the context, `GroceriesSection` effect reloads only when the count differs from a ref (`seenRefusals`), so no reload on mount, re-render or from the reload itself; `report` ignores calls after unmount.
+- New tests (`src/components/booking/Refusal409.upload.tester.test.tsx`, 3): receipt UPLOAD 409 reloads receipts exactly once, one page alert, focus stays on it, no loop after extra waits; upload 422 does not reload receipts or the booking and shows no page alert; StrictMode: no reload from mounting, exactly one reload per refusal, one alert focused.
+- Confirmed by existing round-2 tests: answer 409 reload (buttons go, focus stays), failed reload keeps list and alert, no loop.
+- Residual (INFO): a 409 from any other section also triggers one extra quiet receipts GET (harmless).
+- Results: lint clean, typecheck clean, unit 2116 passed + 3 expected fail (92 files), mock e2e 267 passed.
+- CI: see final report.
