@@ -157,6 +157,52 @@ describe("T-082: the booking lists say which bookings are frozen", () => {
     expect(frozenOf(await listBookings(chef.b), id)).toBe(false);
   });
 
+  it("one customer page mixes frozen and unfrozen rows, and the flag follows each row across a page boundary", async () => {
+    const cust = await bookingCustomer();
+    const frozenChef = await bookableChef({
+      dishes: [{ key: "pho", shelf: 2 }],
+    });
+    const okChef = await bookableChef({ dishes: [{ key: "pho", shelf: 2 }] });
+    const one = await bookOk(
+      cust,
+      bookingBody(frozenChef, { days: [dayBody(frozenChef, 3)] }),
+    );
+    expect((await accept(frozenChef.b, one.id)).status).toBe(200);
+    const two = await bookOk(
+      cust,
+      bookingBody(okChef, { days: [dayBody(okChef, 4)] }),
+    );
+    expect((await accept(okChef.b, two.id)).status).toBe(200);
+    await reject(frozenChef.id);
+    // Both on one page.
+    const all = await listBookings(cust.b, "limit=50");
+    expect(all.status, all.text).toBe(200);
+    expect(frozenOf(all, one.id)).toBe(true);
+    expect(frozenOf(all, two.id)).toBe(false);
+    // One row per page: each page carries its own row's flag.
+    const p1 = await listBookings(cust.b, "limit=1");
+    expect(p1.body.items).toHaveLength(1);
+    expect(p1.body.nextCursor).toBeTruthy();
+    const p2 = await listBookings(
+      cust.b,
+      `limit=1&cursor=${encodeURIComponent(p1.body.nextCursor)}`,
+    );
+    expect(p2.body.items).toHaveLength(1);
+    const seen = [...p1.body.items, ...p2.body.items] as {
+      id: string;
+      frozen: boolean;
+    }[];
+    expect(seen.map((i) => i.id).sort()).toEqual([one.id, two.id].sort());
+    for (const i of seen) expect(i.frozen).toBe(i.id === one.id);
+  });
+
+  it("the status filter keeps the flag: a frozen accepted booking under status=open", async () => {
+    const { chef, cust, id } = await setup();
+    await reject(chef.id);
+    const r = await listBookings(cust.b, "status=open");
+    expect(frozenOf(r, id)).toBe(true);
+  });
+
   it("an empty list still answers 200", async () => {
     const lonely = await bookingCustomer();
     const r = await listBookings(lonely.b);
