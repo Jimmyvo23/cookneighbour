@@ -15,3 +15,9 @@ Branch feature/T-082-list-frozen-frontend, builder head 667b0f4 (includes backen
 
 ## Findings
 None blocking. NIT: the marker is a bare paragraph with no `sr-only` context; acceptable since it is read in row order.
+
+## Round 2 (head 340008f) — PASS
+- Link sr-only text is ", booking, on hold" only when frozen, in BookingList and ChefBookingList; unit tests check both ways. The no-reason e2e check is now row-level.
+- lint, typecheck clean; unit 2091 passed + 3 expected fail; mock e2e 262 passed.
+- Mutation: reverting the sr-only text to ", booking" turned 2 unit tests red. Restored, not committed.
+- No findings.
