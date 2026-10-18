@@ -285,6 +285,14 @@ function receipt(
 
 export type SeededReceipts = Record<string, MockReceipt[]>;
 
+/** Whole days from one YYYY-MM-DD date to another (calendar arithmetic in UTC, no clock). */
+function shelfGap(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) /
+      86_400_000,
+  );
+}
+
 /** The made-up requests for a signed-in chef (MOCK). Dates are relative to today. */
 export function seedChefBookings(
   chef: MeProfile,
@@ -414,7 +422,19 @@ export function seedChefBookings(
                 date: date2,
                 cookedAt: null,
                 pickedUpAt: null,
-                pickupDeadlineDate: addDays(date2, 2),
+                // Like seedRow: each dish's eat-by date and the day's deadline (the earliest
+                // eat-by date) follow the day's own date and the dish's shelf life, which is the
+                // gap between day 1's date and that dish's eat-by date.
+                pickupDeadlineDate: addDays(
+                  date2,
+                  shelfGap(first.date, first.pickupDeadlineDate!),
+                ),
+                dishes: first.dishes.map((x) => ({
+                  ...x,
+                  eatByDate: addDays(date2, shelfGap(first.date, x.eatByDate)),
+                })),
+                // The estimate still covers the original single day; the extra day is only a
+                // fixture for the picked-up state and adds no cost lines.
                 pickups: [],
               },
             ],

@@ -6,6 +6,7 @@ import {
   bookingRoutes,
   type BookingMockState,
 } from "@/lib/mocks/mock-bookings";
+import { addDays, torontoToday } from "@/lib/domain/dishes";
 import { seedCustomerBookings } from "@/lib/mocks/mock-booking-changes";
 
 const NOW = new Date();
@@ -282,6 +283,28 @@ describe("mock hook pickedUpSeeded (T-081)", () => {
     expect(days[0].pickedUpAt).toEqual(expect.any(String));
     expect(days[1].cookedAt).toBeNull();
     expect(days[1].pickedUpAt).toBeNull();
+    // Day 2 has its own, later date; its dishes' eat-by dates and its deadline follow that date
+    // (a booking cannot have two days on one date).
+    const today = torontoToday(NOW);
+    expect(days[1].date).toBe(addDays(today, 1));
+    expect(days[1].date).not.toBe(days[0].date);
+    expect(days[1].dishes.length).toBe(days[0].dishes.length);
+    days[1].dishes.forEach((d, i) => {
+      expect(d.eatByDate >= days[1].date).toBe(true);
+      expect(d.eatByDate).toBe(
+        addDays(
+          days[1].date,
+          Math.round(
+            (Date.parse(`${days[0].dishes[i].eatByDate}T12:00:00Z`) -
+              Date.parse(`${days[0].date}T12:00:00Z`)) /
+              86_400_000,
+          ),
+        ),
+      );
+    });
+    expect(days[1].pickupDeadlineDate).toBe(
+      days[1].dishes.map((d) => d.eatByDate).sort()[0],
+    );
     expect(row.detail.status).toBe("accepted");
   });
 });

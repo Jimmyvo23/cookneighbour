@@ -52,3 +52,8 @@ An inactive (`is_active = false`) day is ignored (not a day to cook), but at lea
 - LOW-2: contract line now says a repeat confirm of an already confirmed day returns 200 on ANY completed booking (completed by the confirm or later by the sweep); a completed booking whose day was not confirmed is still 409 `wrong_status`. No behaviour change.
 - NIT-1 left alone (not trivial enough to touch the migration again).
 - Checks: lint, typecheck clean; vitest 92 files, 2127 passed + 3 expected fail; full mock e2e 270 passed.
+
+## Round 3 (Reviewer LOW-4, LOW-5: unrealistic mock dates)
+- LOW-5: the `pickedUpSeeded` hook's added day 2 (`mock-booking-changes.ts`) now has its own dates like `seedRow`: dish `eatByDate = addDays(date2, shelf)` and `pickupDeadlineDate = addDays(date2, shelf)`, where the shelf is the gap between day 1's date and the dish's eat-by date (new helper `shelfGap`). Comment says the estimate still covers the original single day. `date2` is the Toronto "today + 1" already used. Unit test in `mock-pickup-confirm.test.ts` pins day 2's date, dishes' eat-by dates and deadline.
+- LOW-4: `t080-reload-after-409-mock.spec.ts` day 2 now has `dayPlus(1)` (Toronto) as its date, with deadline and dish eat-by dates moved by the same gaps.
+- Checks: lint, typecheck, prettier clean; vitest 92 files, 2127 passed + 3 expected fail; full mock e2e 270 passed.
