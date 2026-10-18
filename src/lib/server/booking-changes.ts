@@ -111,11 +111,14 @@ async function run(
     case "ok": {
       const status = out.status as FreeTrialEvent;
       // Only these change the claim; cooked, propose and respond leave the booking `accepted`.
+      // T-081: a pickup confirm that picks up the last day completes the booking (D-81), and a
+      // completed booking uses the free trial; applied after the save like every other change.
       if (
         action === "cancel" ||
         action === "no_show" ||
         action === "complete" ||
-        action === "pickup_missed"
+        action === "pickup_missed" ||
+        (action === "pickup_confirm" && status === "completed")
       )
         await followClaim(caller, id, status, out.cooked === true);
       return loadBookingDetail(caller.supabase, caller.userId, id);

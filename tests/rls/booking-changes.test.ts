@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cancellationTiming } from "../../src/lib/domain/cancellation";
 import {
   completionDue,
+  completesOnPickup,
   pickupDeadline,
 } from "../../src/lib/domain/bookingChanges";
 import {
@@ -38,6 +39,7 @@ const SERVER_ONLY = [
   "booking_cancellation_timing",
   "booking_pickup_end",
   "booking_auto_complete_at",
+  "booking_all_picked_up", // T-081
 ];
 
 describe("booking-change functions are server-only", () => {
@@ -81,6 +83,7 @@ describe("booking-change functions are server-only", () => {
       ],
       ["booking_pickup_end", { p_eat_by: far(1) }],
       ["booking_auto_complete_at", { p_booking: b.id }],
+      ["booking_all_picked_up", { p_booking: b.id }],
     ];
     for (const [who, c] of clients)
       for (const [fn, args] of calls) {
@@ -424,6 +427,160 @@ describe("the SQL completion and pickup rules equal the TypeScript ones (L5)", (
             ),
           );
         }
+      }
+    } finally {
+      await client.end();
+    }
+  });
+});
+
+describe("T-081: booking_all_picked_up equals completesOnPickup", () => {
+  it("agrees for chef's home and customer's home, picked up or not, cancelled days ignored", async () => {
+    const client = new pg.Client({ connectionString: localEnv().dbUrl });
+    await client.connect();
+    try {
+      const cust = await makeCustomer(svc, "ap-cust");
+      const now = new Date().toISOString();
+      type Day = { cooked: boolean; picked: boolean; active: boolean };
+      const cases: ["customer_home" | "chef_home", Day[]][] = [
+        ["chef_home", [{ cooked: true, picked: true, active: true }]],
+        [
+          "chef_home",
+          [
+            { cooked: true, picked: true, active: true },
+            { cooked: true, picked: true, active: true },
+          ],
+        ],
+        [
+          "chef_home",
+          [
+            { cooked: true, picked: true, active: true },
+            { cooked: false, picked: false, active: true },
+          ],
+        ],
+        [
+          "chef_home",
+          [
+            { cooked: true, picked: true, active: true },
+            { cooked: true, picked: false, active: true },
+          ],
+        ],
+        [
+          "chef_home",
+          [
+            { cooked: true, picked: true, active: true },
+            { cooked: false, picked: false, active: false },
+          ],
+        ],
+        ["chef_home", [{ cooked: false, picked: false, active: false }]],
+        ["customer_home", [{ cooked: true, picked: true, active: true }]],
+      ];
+      let n = 0;
+      for (const [loc, days] of cases) {
+        const chef = await makeChef(svc, `ap-chef-${n}`, {
+          options: ["customer_home", "chef_home"],
+          chefHomeEnabled: true,
+        });
+        const b = await makeBooking(svc, {
+          customer: cust,
+          chef,
+          dates: days.map((_, i) => far(20 + n * 4 + i)),
+          status: "accepted",
+          location: loc,
+        });
+        for (let i = 0; i < days.length; i++) {
+          const up = await svc
+            .from("booking_days")
+            .update({
+              cooked_at: days[i].cooked ? now : null,
+              picked_up_at: days[i].picked ? now : null,
+              is_active: days[i].active,
+            })
+            .eq("id", b.dayIds[i]);
+          expect(up.error).toBeNull();
+        }
+        const r = await client.query(
+          "select public.booking_all_picked_up($1) as t",
+          [b.id],
+        );
+        expect(r.rows[0].t, `case ${n}`).toBe(
+          completesOnPickup(
+            loc,
+            days.map((d) => ({
+              isActive: d.active,
+              cookedAt: d.cooked ? now : null,
+              pickedUpAt: d.picked ? now : null,
+            })),
+          ),
+        );
+        n++;
+      }
+    } finally {
+      await client.end();
+    }
+  });
+});
+
+describe("T-081 tester: more booking_all_picked_up vs completesOnPickup cases", () => {
+  it("agrees on cooked-only, picked-without-cooked, a cancelled day that is done, and 3 days", async () => {
+    const client = new pg.Client({ connectionString: localEnv().dbUrl });
+    await client.connect();
+    try {
+      const cust = await makeCustomer(svc, "ap2-cust");
+      const now = new Date().toISOString();
+      type Day = { cooked: boolean; picked: boolean; active: boolean };
+      const D = (cooked: boolean, picked: boolean, active = true): Day => ({
+        cooked,
+        picked,
+        active,
+      });
+      const cases: ["customer_home" | "chef_home", Day[]][] = [
+        ["chef_home", [D(true, false)]],
+        ["chef_home", [D(false, true)]], // cannot happen through the API; the two rules still agree
+        ["chef_home", [D(true, true), D(true, true, false), D(true, false)]],
+        ["chef_home", [D(true, true), D(true, true), D(true, true)]],
+        ["chef_home", [D(true, true), D(true, true), D(false, false)]],
+        ["customer_home", [D(true, true), D(true, true)]],
+      ];
+      let n = 0;
+      for (const [loc, days] of cases) {
+        const chef = await makeChef(svc, `ap2-chef-${n}`, {
+          options: ["customer_home", "chef_home"],
+          chefHomeEnabled: true,
+        });
+        const b = await makeBooking(svc, {
+          customer: cust,
+          chef,
+          dates: days.map((_, i) => far(60 + n * 4 + i)),
+          status: "accepted",
+          location: loc,
+        });
+        for (let i = 0; i < days.length; i++) {
+          const up = await svc
+            .from("booking_days")
+            .update({
+              cooked_at: days[i].cooked ? now : null,
+              picked_up_at: days[i].picked ? now : null,
+              is_active: days[i].active,
+            })
+            .eq("id", b.dayIds[i]);
+          expect(up.error).toBeNull();
+        }
+        const r = await client.query(
+          "select public.booking_all_picked_up($1) as t",
+          [b.id],
+        );
+        expect(r.rows[0].t, `case ${n}`).toBe(
+          completesOnPickup(
+            loc,
+            days.map((d) => ({
+              isActive: d.active,
+              cookedAt: d.cooked ? now : null,
+              pickedUpAt: d.picked ? now : null,
+            })),
+          ),
+        );
+        n++;
       }
     } finally {
       await client.end();

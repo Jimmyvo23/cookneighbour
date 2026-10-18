@@ -96,10 +96,30 @@ export function pickupDeadline(earliestEatBy: string): Date {
  * D-33 (ASSUMPTION: "24 hours after the last day" = one calendar day after the last visit date
  * ends): when an accepted booking completes by itself. Chef's-home bookings also wait for the
  * pickup deadline of every day (SQL booking_auto_complete_at). Mirrors the SQL for customer's-home
- * bookings.
+ * bookings. T-081 (D-81): a chef's-home booking whose every day is cooked and picked up does not
+ * wait for this time or the pickup deadlines; see completesOnPickup.
  */
 export function completionDue(lastVisitDate: string): Date {
   return torontoStartOfDay(addDays(lastVisitDate, 2));
+}
+
+/**
+ * T-081 (D-81, D-83): an accepted chef's-home booking completes right away, without waiting for the
+ * pickup deadlines, once EVERY active day is cooked and has a confirmed pickup. A cancelled
+ * (inactive) day is not a day to cook, so it is ignored; at least one active day is needed. If a
+ * day is not cooked or not confirmed the normal rule applies (completionDue, then every pickup
+ * deadline). Customer's-home bookings never use this. Mirrors the SQL function
+ * booking_all_picked_up (the caller still checks status, frozen and open reports).
+ */
+export function completesOnPickup(
+  locationType: "customer_home" | "chef_home",
+  days: { isActive: boolean; cookedAt: unknown; pickedUpAt: unknown }[],
+): boolean {
+  if (locationType !== "chef_home") return false;
+  const active = days.filter((d) => d.isActive);
+  return (
+    active.length > 0 && active.every((d) => !!d.cookedAt && !!d.pickedUpAt)
+  );
 }
 
 /**

@@ -36,6 +36,7 @@ import {
   parsePickupAccept,
   parseProposedAt,
   pickupDeadline,
+  completesOnPickup,
 } from "@/lib/domain/bookingChanges";
 import { KITCHEN_ADDRESS_MISSING_MESSAGE } from "@/lib/booking/changes";
 import { cancellationTiming } from "@/lib/domain/cancellation";
@@ -284,6 +285,14 @@ function receipt(
 
 export type SeededReceipts = Record<string, MockReceipt[]>;
 
+/** Whole days from one YYYY-MM-DD date to another (calendar arithmetic in UTC, no clock). */
+function shelfGap(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) /
+      86_400_000,
+  );
+}
+
 /** The made-up requests for a signed-in chef (MOCK). Dates are relative to today. */
 export function seedChefBookings(
   chef: MeProfile,
@@ -385,18 +394,52 @@ export function seedChefBookings(
   for (const r of rows)
     if (frozenIds.includes(r.detail.id))
       r.detail = { ...r.detail, frozen: true };
-  // T-071 (D-55): the test hook `pickedUpSeeded` marks the cooked days of the listed bookings as
-  // picked up (the customer already confirmed), as if the customer had pressed the button.
+  // T-071 (D-55): the test hook `pickedUpSeeded` marks the FIRST cooked day of the listed bookings as
+  // picked up (the customer already confirmed it). T-081 (D-81): the server completes a booking once
+  // every day is picked up, so an accepted booking with a confirmed day must still have another open
+  // day. If the booking has only that one day, the hook adds an uncooked, unconfirmed day 2 (a copy
+  // of day 1, one day after today) so the seeded state is one the server can really produce.
   for (const r of rows)
-    if (pickedUpIds.includes(r.detail.id))
+    if (pickedUpIds.includes(r.detail.id)) {
+      const first = r.detail.days.find(
+        (x) => x.cookedAt && x.pickupDeadlineDate,
+      );
+      if (!first) continue;
+      const days = r.detail.days.map((x) =>
+        x === first ? { ...x, pickedUpAt: x.cookedAt } : x,
+      );
+      const hasOpen = days.some((x) => !x.pickedUpAt);
+      const date2 = addDays(today, 1);
       r.detail = {
         ...r.detail,
-        days: r.detail.days.map((x) =>
-          x.cookedAt && x.pickupDeadlineDate
-            ? { ...x, pickedUpAt: x.cookedAt }
-            : x,
-        ),
+        days: hasOpen
+          ? days
+          : [
+              ...days,
+              {
+                ...first,
+                dayNumber: days.length + 1,
+                date: date2,
+                cookedAt: null,
+                pickedUpAt: null,
+                // Like seedRow: each dish's eat-by date and the day's deadline (the earliest
+                // eat-by date) follow the day's own date and the dish's shelf life, which is the
+                // gap between day 1's date and that dish's eat-by date.
+                pickupDeadlineDate: addDays(
+                  date2,
+                  shelfGap(first.date, first.pickupDeadlineDate!),
+                ),
+                dishes: first.dishes.map((x) => ({
+                  ...x,
+                  eatByDate: addDays(date2, shelfGap(first.date, x.eatByDate)),
+                })),
+                // The estimate still covers the original single day; the extra day is only a
+                // fixture for the picked-up state and adds no cost lines.
+                pickups: [],
+              },
+            ],
       };
+    }
   const a06 = rows[5].detail;
   return {
     rows,
@@ -799,31 +842,57 @@ export function changeRoute(
       const target = n ? d.days.find((x) => x.dayNumber === n) : undefined;
       if (!target) return notFound();
       if (d.frozen) return invalid("frozen");
+      // T-081: repeating a confirm of a day that is already confirmed stays a harmless repeat even
+      // after that confirm completed the booking (double click, stale page).
+      if (d.status === "completed" && target.pickedUpAt) return save(d);
       if (d.status !== "accepted") return invalid("wrong_status");
       if (d.locationType !== "chef_home") return invalid("not_chef_home");
       if (!target.cookedAt) return invalid("day_not_cooked");
       if (target.pickedUpAt) return save(d); // repeating keeps the first time
-      return save({
-        ...d,
-        days: d.days.map((x) =>
-          x.dayNumber === n
-            ? {
-                ...x,
-                pickedUpAt: now.toISOString(),
-                // The server voids the proposals of a confirmed day.
-                pickups: x.pickups.map((p) =>
-                  p.status === "proposed" || p.status === "accepted"
-                    ? {
-                        ...p,
-                        status: "void" as const,
-                        respondedAt: p.respondedAt ?? now.toISOString(),
-                      }
-                    : p,
-                ),
-              }
-            : x,
-        ),
-      });
+      const confirmed = d.days.map((x) =>
+        x.dayNumber === n
+          ? {
+              ...x,
+              pickedUpAt: now.toISOString(),
+              // The server voids the proposals of a confirmed day.
+              pickups: x.pickups.map((p) =>
+                p.status === "proposed" || p.status === "accepted"
+                  ? {
+                      ...p,
+                      status: "void" as const,
+                      respondedAt: p.respondedAt ?? now.toISOString(),
+                    }
+                  : p,
+              ),
+            }
+          : x,
+      );
+      // T-081 (D-81, D-83): the last day just picked up completes the booking in the same step, as
+      // the server does (every day is active in mock data). MOCK: there are no problem reports here.
+      if (
+        completesOnPickup(
+          d.locationType,
+          confirmed.map((x) => ({ ...x, isActive: true })),
+        )
+      )
+        return save({
+          ...d,
+          status: "completed",
+          completedAt: now.toISOString(),
+          days: confirmed.map((x) => ({
+            ...x,
+            pickups: x.pickups.map((p) =>
+              p.status === "proposed" || p.status === "accepted"
+                ? {
+                    ...p,
+                    status: "void" as const,
+                    respondedAt: p.respondedAt ?? now.toISOString(),
+                  }
+                : p,
+            ),
+          })),
+        });
+      return save({ ...d, days: confirmed });
     }
     case "pickup-missed": {
       if (d.frozen) return invalid("frozen");

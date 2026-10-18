@@ -9,6 +9,7 @@ import {
   parseProposedAt,
   pickupDeadline,
   completionDue,
+  completesOnPickup,
 } from "./bookingChanges";
 import { freeTrialEffect } from "./cancellation";
 import { transitionFreeTrial } from "./freeTrial";
@@ -195,5 +196,54 @@ describe("refusal texts", () => {
       expect(CHANGE_REFUSALS[r]).not.toMatch(/undefined|\{|\}/);
     }
     expect(Object.keys(CHANGE_REFUSALS).sort()).toEqual([...reasons].sort());
+  });
+});
+
+// T-081 (D-81, D-83): mirror of the SQL function booking_all_picked_up.
+describe("completesOnPickup (an accepted chef's-home booking completes once every day is picked up)", () => {
+  const cooked = "2026-10-20T15:00:00Z";
+  const picked = "2026-10-20T18:00:00Z";
+  const day = (o: object = {}) => ({
+    isActive: true,
+    cookedAt: cooked,
+    pickedUpAt: picked,
+    ...o,
+  });
+
+  it("is true when the only day is cooked and picked up", () => {
+    expect(completesOnPickup("chef_home", [day()])).toBe(true);
+  });
+  it("is true when every day is cooked and picked up", () => {
+    expect(completesOnPickup("chef_home", [day(), day()])).toBe(true);
+  });
+  it("is false while a day is not cooked yet (then the pickup deadlines still decide)", () => {
+    expect(
+      completesOnPickup("chef_home", [
+        day(),
+        day({ cookedAt: null, pickedUpAt: null }),
+      ]),
+    ).toBe(false);
+  });
+  it("is false while a cooked day is not confirmed", () => {
+    expect(
+      completesOnPickup("chef_home", [day(), day({ pickedUpAt: null })]),
+    ).toBe(false);
+  });
+  it("is false for a customer's-home booking", () => {
+    expect(completesOnPickup("customer_home", [day()])).toBe(false);
+  });
+  it("ignores a cancelled day (it is not a day to cook) but needs one active day", () => {
+    expect(
+      completesOnPickup("chef_home", [
+        day(),
+        day({ isActive: false, cookedAt: null, pickedUpAt: null }),
+      ]),
+    ).toBe(true);
+    expect(
+      completesOnPickup("chef_home", [
+        day({ isActive: false, cookedAt: null, pickedUpAt: null }),
+      ]),
+    ).toBe(false);
+    expect(completesOnPickup("chef_home", [])).toBe(false);
   });
 });
