@@ -172,9 +172,7 @@ describe("database-level guarantees", () => {
       "rating",
       "subject_id",
     ].map((c) => `authenticated reviews.${c} insert`),
-    ...["body", "booking_id", "sender_id"].map(
-      (c) => `authenticated messages.${c} insert`,
-    ),
+    // T-046: no insert column on messages any more (send_message is the only writer).
     ...["booking_id", "category", "description", "reporter_id"].map(
       (c) => `authenticated reports.${c} insert`,
     ),
@@ -185,6 +183,9 @@ describe("database-level guarantees", () => {
     // the booking is accepted or completed); a policy helper like is_booking_chef.
     "booking_accepts_receipts",
     "booking_contact_unlocked",
+    // T-046 (D-94): policy helper of the party select policy on messages ("is this chat open to
+    // read": requested, accepted or completed, not a stale request). send_message is service-only.
+    "booking_chat_open",
     "can_view_kitchen_photos",
     "get_booking_contact",
     // T-064 (D-53): "is this booking frozen" for the two parties only; says nothing about the reason.

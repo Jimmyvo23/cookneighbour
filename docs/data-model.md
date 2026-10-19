@@ -98,7 +98,7 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | `booking_addresses` | customer of the booking, admin | the chef has no table access (use `get_booking_contact`) |
 | `booking_kitchen_addresses` **(T-065)** | nobody (no grant, no policy) | the kitchen address copied at acceptance; read only by `get_booking_contact` and the server. **(T-074, N5)** Rows are kept after the D-52 window ends or the booking is cancelled (no client can read them, and `get_booking_contact` stops returning them); they are deleted only with the booking. A retention job is a later decision |
 | `booking_days`, `booking_day_dishes`, `intake_forms`, `receipts` | parties, admin | via the booking. No client writes |
-| `messages` | parties, admin | read. Insert: `sender_id` = self, self is a party, booking status is `requested`, `accepted` or `completed` |
+| `messages` | parties, admin | read. **(T-046)** Parties read only while `booking_chat_open` (requested not past expiry, accepted, completed; D-94); the admin reads all (D-95). **No client insert**: the only writer is `send_message` (service role; contract 7C) |
 | `notifications` | owner | read own; update own, **`read_at` column only** (column grant) |
 | `reviews` | anon, authenticated | customer-written reviews of an approved chef |
 | | author or subject, admin | read |
@@ -131,7 +131,7 @@ Trigger `chef_private_check_paths` requires `id_document_path`, `food_handler_pa
 
 ## Client insert columns
 
-Clients may insert only these columns (column grants): `messages (booking_id, sender_id, body)`, `reviews (booking_id, author_id, subject_id, author_role, rating, comment)`, `reports (booking_id, reporter_id, category, description)`. `reports.category` is the enum `report_category`: safety, food_quality, no_show, payment, other.
+Clients may insert only these columns (column grants; **T-046:** none on `messages`, sending is API only): `reviews (booking_id, author_id, subject_id, author_role, rating, comment)`, `reports (booking_id, reporter_id, category, description)`. `reports.category` is the enum `report_category`: safety, food_quality, no_show, payment, other.
 
 ## Why `phone_e164` is stored
 

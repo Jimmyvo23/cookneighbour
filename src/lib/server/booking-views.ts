@@ -496,6 +496,6 @@ export async function listBookings(
   };
 }
 
-function encodeListCursor(createdAt: string, id: string): string {
+export function encodeListCursor(createdAt: string, id: string): string {
   return encodeCursor({ c: createdAt, i: id });
 }

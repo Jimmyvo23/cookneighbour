@@ -135,6 +135,15 @@ export default async function setup(project: TestProject) {
     dates: [dayPlus(baseDay, 4)],
     status: "completed",
   });
+  // T-046: a request past its expiry time has no readable chat (D-94), and these fixtures are
+  // reused on the same database for days. Keep the requested ones open.
+  check(
+    await svc
+      .from("bookings")
+      .update({ expires_at: "2099-01-01T00:00:00Z" })
+      .in("id", [requestedC1H1.id, requestedC2H2.id]),
+    "fixture expiry",
+  );
 
   for (const b of [requestedC1H1, acceptedC1H1, declinedC1H1]) {
     check(
