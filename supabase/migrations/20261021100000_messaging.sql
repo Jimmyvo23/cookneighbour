@@ -26,6 +26,9 @@
 --   * Execute on `send_message` is for service_role only (the route calls it after its own checks,
 --     with the sender id taken from the session). `booking_chat_open` is executable by
 --     authenticated because the select policy runs as the caller.
+--   * Round 2: booking_chat_open returns false unless the caller is a party or an admin (no probing of
+--     guessed ids); send_message refuses a body that is blank after trimming (the route trims; the
+--     function refuses rather than stores a trimmed copy, like the other blank checks).
 --   * created_at uses clock_timestamp() (not the transaction start), so a page cursor on
 --     (created_at, id) is less likely to skip a message that commits late.
 --
@@ -52,6 +55,9 @@ as $$
        and b.status in ('requested', 'accepted', 'completed')
        and not (b.status = 'requested'
                 and coalesce(b.expires_at, b.created_at + interval '72 hours') <= now())
+       -- Round 2 (LOW-1): only a party or an admin gets a true, so a signed-in user cannot probe a
+       -- guessed booking id. The policy still ANDs is_booking_party, so reads are unchanged.
+       and ((select auth.uid()) in (b.customer_id, b.chef_id) or (select public.is_admin()))
   );
 $$;
 revoke execute on function public.booking_chat_open(uuid) from public, anon;
@@ -84,7 +90,8 @@ declare
   m public.messages%rowtype;
   v_other uuid;
 begin
-  if p_client_id is null or p_body is null or char_length(p_body) not between 1 and 2000 then
+  if p_client_id is null or p_body is null or char_length(p_body) not between 1 and 2000
+     or btrim(p_body) = '' then
     raise exception 'invalid message' using errcode = '22023';
   end if;
 

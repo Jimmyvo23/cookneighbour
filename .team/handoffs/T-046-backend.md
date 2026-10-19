@@ -53,3 +53,10 @@ What the migration does:
 - Body edges: 2000 vs 2001 characters after trimming, only spaces, emoji, lone surrogate, NUL, `\r\n`.
 - The privilege snapshots in `tests/rls/visibility.test.ts` (nothing else was granted by accident).
 - MOCK adapter: `src/lib/mocks/mock-messages.ts` follows the same pure rules; try the frozen and hidden cases from the UI side once T-047 exists.
+
+## Round 2 (after Tester PASS)
+- **LOW-1 fixed:** `booking_chat_open` now returns true only when the caller is a party of the booking or an admin (`auth.uid()` / `is_admin()` inside the function). The select policy still ANDs `is_booking_party`, so reads are unchanged; `send_message` inlines its own status rule and does not call it. New RLS test: a stranger (customer and chef who are not parties) calling it for an open chat gets `false`, no error; parties and admin get `true`.
+- **NIT-1 fixed:** contract 7C now says the lazy sweep runs first (for the caller's own bookings), then the 404 check, as `loadStatus` does.
+- **NIT-2 fixed (builder choice, Jimmy may confirm):** `send_message` refuses a body that is blank after `btrim` (22023), like the other blank checks in the house, instead of storing a trimmed copy. The route still trims. New RLS test for a `"   "` body.
+- LOW-2 (`findContactDetails` and 8-digit dates) not touched, as instructed.
+- Migration edited in place (not applied to hosted). Same file name `20261021100000_messaging.sql`.

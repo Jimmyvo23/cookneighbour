@@ -188,6 +188,31 @@ describe("send_message is the only writer", () => {
     );
   });
 
+  it("round 2 LOW-1: a stranger cannot probe an open chat with booking_chat_open; the admin and parties can", async () => {
+    const s = await chat("accepted");
+    const probe = async (p: Person) =>
+      (await clientFor(p)).rpc("booking_chat_open", { p_booking: s.id });
+    for (const p of [fx.c2, fx.h2]) {
+      const r = await probe(p);
+      expect(r.error).toBeNull();
+      expect(r.data).toBe(false);
+    }
+    for (const p of [s.cust, s.chef, fx.admin])
+      expect((await probe(p)).data).toBe(true);
+  });
+
+  it("round 2 NIT-2: send_message refuses a blank body itself", async () => {
+    const s = await chat("accepted");
+    const r = await svc.rpc("send_message", {
+      p_booking: s.id,
+      p_sender: s.cust.id,
+      p_client_id: randomUUID(),
+      p_body: "   ",
+    });
+    expectCode(r, "22023");
+    expect(await rows(s.id)).toEqual([]);
+  });
+
   it("requested, accepted and completed take messages from both parties", async () => {
     for (const status of ["requested", "accepted", "completed"]) {
       const s = await chat(status);
