@@ -50,7 +50,10 @@ export function mergeServer(
       at = next.findIndex((i) => i.clientId === m.clientId);
     if (at >= 0) {
       // Keep the key (no remount) and `mine` from the bubble we made ourselves.
-      next[at] = { ...fromView(m, next[at].key), mine: next[at].mine || m.mine };
+      next[at] = {
+        ...fromView(m, next[at].key),
+        mine: next[at].mine || m.mine,
+      };
     } else next.push(fromView(m));
   }
   const saved = next

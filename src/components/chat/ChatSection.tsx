@@ -28,10 +28,7 @@ import {
   hintCls,
   secondaryButtonCls,
 } from "@/components/chef/parts";
-import {
-  dangerBoxCls,
-  infoBoxCls,
-} from "@/components/booking/parts";
+import { dangerBoxCls, infoBoxCls } from "@/components/booking/parts";
 import { useChat } from "./useChat";
 
 export interface ChatSectionProps {
@@ -132,7 +129,7 @@ function ChatPanel({
         ask("error");
       } else {
         setText("");
-        ask("box");
+        ask(r.kind === "queued" ? r.clientId : "box");
       }
     } finally {
       setBusy(false);
@@ -184,7 +181,7 @@ function ChatPanel({
       )}
       {chat.phase === "error" && (
         <div data-testid="chat-load-error" className="flex flex-col gap-3">
-          <p role="alert" className={dangerBoxCls}>
+          <p role="status" className={dangerBoxCls}>
             The chat did not load. Check your connection and try again.
           </p>
           <p>
@@ -339,7 +336,10 @@ function Bubble({
         </p>
         <p className="whitespace-pre-wrap break-words">{m.body}</p>
       </div>
-      <p className={hintCls} aria-hidden={m.state === "sent" ? undefined : true}>
+      <p
+        className={hintCls}
+        aria-hidden={m.state === "sent" ? undefined : true}
+      >
         {m.state === "pending" ? "Sending..." : formatWhen(m.createdAt)}
       </p>
       {m.state === "failed" && (

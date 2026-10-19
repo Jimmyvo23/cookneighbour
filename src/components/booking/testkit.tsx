@@ -157,6 +157,14 @@ export function routes(
   fetchMock.mockImplementation((url: string, init?: RequestInit) => {
     const key = `${init?.method ?? "GET"} ${url}`;
     const h = table[key];
+    // T-047: both booking pages load the chat history. Unless a test routes it, the chat is empty.
+    if (!h && /\/messages(\?|$)/.test(String(url)) && !init?.method)
+      return Promise.resolve(
+        new Response(JSON.stringify({ items: [], nextCursor: null }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
     if (!h)
       return Promise.resolve(
         new Response(

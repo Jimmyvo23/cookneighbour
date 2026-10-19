@@ -27,7 +27,7 @@ export type Phase = "loading" | "ready" | "hidden" | "error";
 /** What the composer should do after a send. */
 export type SendResult =
   | { kind: "ok" } // saved, or put in the list as a failed bubble: clear the box
-  | { kind: "queued" } // saved nowhere yet but shown in the list (failed): clear the box
+  | { kind: "queued"; clientId: string } // not saved, shown in the list as failed: clear the box
   | { kind: "form-error"; message: string }; // keep the text, show the message
 
 const MAX_PAGES = 200; // 200 pages of up to 50 = 10 000 messages; a stop against a loop
@@ -61,6 +61,7 @@ export function useChat({
   const itemsRef = useRef<ChatItem[]>([]);
   const userIdRef = useRef<string | null>(null);
   const needsReload = useRef(false);
+  const subRef = useRef<ChatSubscription | null>(null);
   const nameRef = useRef(otherName);
   nameRef.current = otherName;
 
@@ -86,6 +87,7 @@ export function useChat({
         const page: MessageList = await apiFetch<MessageList>(
           `${path}?${q.toString()}`,
         );
+        if (!Array.isArray(page?.items)) return { status: "error" };
         all.push(...page.items);
         if (!page.nextCursor) return { status: "ok", items: all };
         cursor = page.nextCursor;
@@ -101,14 +103,18 @@ export function useChat({
   const loadAll = useCallback(async (): Promise<Fetched> => {
     const r = await fetchAll();
     if (r.status === "ok") apply((prev) => mergeServer(prev, r.items));
-    else if (r.status === "hidden") setPhaseBoth("hidden");
+    else if (r.status === "hidden") {
+      setPhaseBoth("hidden");
+      // A hidden chat stops delivering anyway (D-94); free the channel now.
+      subRef.current?.close();
+      subRef.current = null;
+    }
     return r;
   }, [fetchAll, apply]);
 
   // Start: subscribe first, then load, so nothing between the two is missed (contract 7C).
   useEffect(() => {
     let cancelled = false;
-    let sub: ChatSubscription | null = null;
     itemsRef.current = [];
     userIdRef.current = null;
     needsReload.current = false;
@@ -156,7 +162,7 @@ export function useChat({
             s.close();
             return;
           }
-          sub = s;
+          subRef.current = s;
           userIdRef.current = s.userId;
         } catch {
           if (!cancelled) setLive("off");
@@ -171,7 +177,8 @@ export function useChat({
     void start();
     return () => {
       cancelled = true;
-      sub?.close();
+      subRef.current?.close();
+      subRef.current = null;
     };
   }, [bookingId, mock, connect, loadAll, apply]);
 
@@ -217,7 +224,7 @@ export function useChat({
               return { kind: "form-error", message: msg };
             }
             apply((prev) => markFailed(prev, clientId, msg, true));
-            return { kind: "queued" };
+            return { kind: "queued", clientId };
           }
           if (
             err.code === "INVALID_STATE" &&
@@ -226,7 +233,10 @@ export function useChat({
             // Maybe the first try was saved and only the answer was lost: look before saying "not sent".
             const r = await loadAll();
             if (r.status === "hidden") return { kind: "ok" }; // the whole chat goes away
-            if (r.status === "ok" && r.items.some((m) => m.clientId === clientId))
+            if (
+              r.status === "ok" &&
+              r.items.some((m) => m.clientId === clientId)
+            )
               return { kind: "ok" };
             const frozen = err.reason === "frozen";
             if (frozen) setFrozenSeen(true);
@@ -238,23 +248,31 @@ export function useChat({
                 false,
               ),
             );
-            return { kind: "queued" };
+            return { kind: "queued", clientId };
           }
-          if (err.code === "INVALID_STATE" && err.reason === "message_id_reused") {
+          if (
+            err.code === "INVALID_STATE" &&
+            err.reason === "message_id_reused"
+          ) {
             apply((prev) =>
-              markFailed(prev, clientId, "Not sent. Remove it and write it again.", false),
+              markFailed(
+                prev,
+                clientId,
+                "Not sent. Remove it and write it again.",
+                false,
+              ),
             );
-            return { kind: "queued" };
+            return { kind: "queued", clientId };
           }
           apply((prev) =>
             markFailed(prev, clientId, `Not sent. ${err.message}`, true),
           );
-          return { kind: "queued" };
+          return { kind: "queued", clientId };
         }
         apply((prev) =>
           markFailed(prev, clientId, "Not sent. Please try again.", true),
         );
-        return { kind: "queued" };
+        return { kind: "queued", clientId };
       }
     },
     [path, apply, loadAll],
