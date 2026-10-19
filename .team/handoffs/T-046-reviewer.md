@@ -30,3 +30,6 @@ All 12 (11 from round 1 + round-2 blank-body refusal) acceptable as written. Jim
 
 ## Next
 Planner: merge per D-42 (update-branch, green ci). Optionally take LOW-1 and the NITs first. After merge Jimmy runs `npx supabase db push --linked` for 20261021100000_messaging.sql.
+
+## Round 3 confirm (head 7c56eee)
+APPROVE stands. CI run 39308438863 green on 7c56eee (checks, e2e-mock, supabase, ci). PR comment: https://github.com/Jimmyvo23/cookneighbour/pull/171#issuecomment-6275434041. Diff abb510a..7c56eee touches only the contract, the MOCK and its tests, two test files and two handoffs; the migration and server/route code are unchanged. LOW-1 fixed (contract 7C names the Realtime test). NIT-1 fixed: the MOCK now gives 422 on unknown or repeated params, 409 message_id_reused across bookings and hides stale requests; 3 new mock tests. NIT-3 fixed: test renamed, cursor check asserts 200 with no if, Realtime after-hide uses not.toContain(marker). NIT-2 accepted as is. INFO: the round-3 mock test sends to the id named FROZEN, which is not frozen in that session; correct but the name could mislead. No new findings.
