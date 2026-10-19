@@ -307,27 +307,27 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
     c1 = await clientFor(fx.c1);
   });
 
-  it("messages: created_at and id are refused; a normal message works", async () => {
+  // T-046: messages have no client insert at all any more (send_message is the only writer), so
+  // every column, server-managed or not, is refused.
+  it("messages: no insert works, with or without server-managed columns", async () => {
     const base = {
       booking_id: b.acceptedC1H1,
       sender_id: fx.c1.id,
       body: "p4",
     };
-    expectCode(
-      await c1
-        .from("messages")
-        .insert({ ...base, created_at: "2001-01-01T00:00:00Z" })
-        .select(),
-      "42501",
-    );
-    expectCode(
-      await c1
-        .from("messages")
-        .insert({ ...base, id: crypto.randomUUID() })
-        .select(),
-      "42501",
-    );
-    expectRows(await c1.from("messages").insert(base).select(), 1);
+    for (const extra of [
+      {},
+      { created_at: "2001-01-01T00:00:00Z" },
+      { id: crypto.randomUUID() },
+      { client_id: crypto.randomUUID() },
+    ])
+      expectCode(
+        await c1
+          .from("messages")
+          .insert({ ...base, ...extra })
+          .select(),
+        "42501",
+      );
   });
 
   it("reviews: created_at, id and author_display_name are refused", async () => {

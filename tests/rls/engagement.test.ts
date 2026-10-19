@@ -14,6 +14,8 @@ const fx = inject("fx");
 const b = fx.bookings;
 const svc = serviceClient();
 
+// T-046: sending is API only (the function send_message). The browser has no insert path left;
+// the full messaging checks (D-93 to D-96) are in messaging.test.ts.
 describe("messages", () => {
   let c1: SupabaseClient;
   let c2: SupabaseClient;
@@ -25,39 +27,27 @@ describe("messages", () => {
     );
   });
 
-  it("a party can send as themselves; they cannot spoof the sender", async () => {
-    expectRows(
-      await c1
-        .from("messages")
-        .insert({
-          booking_id: b.requestedC1H1,
-          sender_id: fx.c1.id,
-          body: "hi chef",
-        })
-        .select(),
-      1,
-    );
-    expectRows(
-      await h1
-        .from("messages")
-        .insert({
-          booking_id: b.requestedC1H1,
-          sender_id: fx.h1.id,
-          body: "hi customer",
-        })
-        .select(),
-      1,
-    );
-    expectDenied(
-      await c1
-        .from("messages")
-        .insert({
-          booking_id: b.requestedC1H1,
-          sender_id: fx.h1.id,
-          body: "spoof",
-        })
-        .select(),
-    );
+  it("a party cannot insert a message directly any more, as themselves or as someone else", async () => {
+    for (const [client, sender] of [
+      [c1, fx.c1.id],
+      [h1, fx.h1.id],
+      [c1, fx.h1.id],
+    ] as const)
+      expectDenied(
+        await client
+          .from("messages")
+          .insert({
+            booking_id: b.requestedC1H1,
+            sender_id: sender,
+            body: "direct",
+          })
+          .select(),
+      );
+    const { data } = await svc
+      .from("messages")
+      .select("id")
+      .eq("body", "direct");
+    expect(data).toEqual([]);
   });
 
   it("a stranger cannot send into someone else's booking, and anon cannot send at all", async () => {
@@ -120,28 +110,14 @@ describe("messages", () => {
     );
   });
 
-  it("chat is closed on declined bookings but open on completed ones", async () => {
-    expectDenied(
-      await c1
-        .from("messages")
-        .insert({
-          booking_id: b.declinedC1H1,
-          sender_id: fx.c1.id,
-          body: "too late",
-        })
-        .select(),
-    );
-    expectRows(
-      await c1
-        .from("messages")
-        .insert({
-          booking_id: b.completedC1H1,
-          sender_id: fx.c1.id,
-          body: "thanks!",
-        })
-        .select(),
-      1,
-    );
+  it("nobody can send into a declined booking or a completed one directly", async () => {
+    for (const booking of [b.declinedC1H1, b.completedC1H1])
+      expectDenied(
+        await c1
+          .from("messages")
+          .insert({ booking_id: booking, sender_id: fx.c1.id, body: "x" })
+          .select(),
+      );
   });
 });
 
