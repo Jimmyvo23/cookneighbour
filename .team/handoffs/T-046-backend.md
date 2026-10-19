@@ -60,3 +60,9 @@ What the migration does:
 - **NIT-2 fixed (builder choice, Jimmy may confirm):** `send_message` refuses a body that is blank after `btrim` (22023), like the other blank checks in the house, instead of storing a trimmed copy. The route still trims. New RLS test for a `"   "` body.
 - LOW-2 (`findContactDetails` and 8-digit dates) not touched, as instructed.
 - Migration edited in place (not applied to hosted). Same file name `20261021100000_messaging.sql`.
+
+## Round 3 (after Reviewer APPROVE of abb510a)
+- Contract 7C: the Realtime line now says there is an automated test, `tests/rls/messaging-realtime.test.ts`.
+- MOCK (`src/lib/mocks/mock-messages.ts`) now matches the real routes: unknown or repeated query parameters are 422; a `clientId` is unique per sender across all bookings (another booking gives 409 `message_id_reused`); a request past its expiry is hidden (409 `chat_hidden`) even before the mock sweep marks it. Three new mock unit tests.
+- Test nits: renamed the stale-request test in `tests/api/messaging-edge.test.ts`; the cross-booking cursor check now asserts status 200 first with no `if`; the Realtime after-hide check now asserts that the specific marker message never reached the customer or chef (no count comparison).
+- NIT-2 (emoji length) left alone. No migration change in this round.

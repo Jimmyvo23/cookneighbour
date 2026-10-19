@@ -173,4 +173,46 @@ describe("mock chat routes", () => {
       (await c.send(ACCEPTED, { clientId: cid(1), body: "hi" })).status,
     ).toBe(201);
   });
+
+  it("round 3: unknown or repeated query parameters are 422 like the real route", async () => {
+    const c = new Session();
+    const r = await c.read(ACCEPTED, "?sort=desc&limit=1&limit=2");
+    expect(r.status).toBe(422);
+    expect(Object.keys(r.error.fields ?? {}).sort()).toEqual(["limit", "sort"]);
+  });
+
+  it("round 3: a clientId reused on another booking is 409 message_id_reused", async () => {
+    const c = new Session();
+    expect(
+      (await c.send(ACCEPTED, { clientId: cid(1), body: "hi" })).status,
+    ).toBe(201);
+    const r = await c.send(FROZEN, { clientId: cid(1), body: "hi" });
+    expect(r.status).toBe(409);
+    expect(r.error.reason).toBe("message_id_reused");
+  });
+
+  it("round 3: a request past its expiry is hidden even before the sweep marks it", async () => {
+    const c = new Session();
+    // Seed the chef bookings, then make the requested one stale without changing its status.
+    await c.read(ACCEPTED);
+    const rows = (c.s.chefBookings ?? []).map((x) =>
+      x.detail.id === REQUESTED
+        ? {
+            ...x,
+            detail: {
+              ...x.detail,
+              expiresAt: new Date(NOW.getTime() - 1000).toISOString(),
+            },
+          }
+        : x,
+    );
+    c.s = { ...c.s, chefBookings: rows };
+    for (const r of [
+      await c.read(REQUESTED),
+      await c.send(REQUESTED, { clientId: cid(2), body: "hi" }),
+    ]) {
+      expect(r.status).toBe(409);
+      expect(r.error.reason).toBe("chat_hidden");
+    }
+  });
 });

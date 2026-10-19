@@ -147,10 +147,6 @@ describe("Realtime delivery follows the select policy (D-94, D-95)", () => {
         .update({ status: "declined" })
         .eq("id", b.id);
       expect(up.error).toBeNull();
-      const before = {
-        customer: customer.bodies.length,
-        chef: chefL.bodies.length,
-      };
       const marker = `after-hide-${rand(3)}`;
       const ins = await svc.from("messages").insert({
         booking_id: b.id,
@@ -163,8 +159,9 @@ describe("Realtime delivery follows the select policy (D-94, D-95)", () => {
         "admin control event",
       ).toBe(true);
       await sleep(3_000);
-      expect(customer.bodies.length, "customer").toBe(before.customer);
-      expect(chefL.bodies.length, "chef").toBe(before.chef);
+      // Match the specific post-hide message, not counts: a late earlier event cannot fail this.
+      expect(customer.bodies, "customer").not.toContain(marker);
+      expect(chefL.bodies, "chef").not.toContain(marker);
       for (const l of [stranger, otherChef, anon])
         expect(l.bodies, l.name).toEqual([]);
     } finally {

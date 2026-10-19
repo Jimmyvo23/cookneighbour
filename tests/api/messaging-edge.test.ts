@@ -277,7 +277,7 @@ describe("order of checks (contract 7C)", () => {
     expect((await say(cust.b, id, "hi")).status).toBe(409);
   });
 
-  it("a stale request: contact-detail text is still 422 first? (status is read after the sweep)", async () => {
+  it("a stale request with contact-detail text is 409 chat_hidden, not 422 (the sweep runs first)", async () => {
     const { cust, id } = await setup({ acceptIt: false });
     await makeStale(id);
     // The sweep marks it expired before the guard runs, so the answer is the hidden chat, not 422.
@@ -373,9 +373,10 @@ describe("paging", () => {
     await say(a.cust.b, a.id, "A-two");
     const pa2 = await read(a.cust.b, a.id, "limit=1");
     const cur = pa2.body.nextCursor ?? pa.body.nextCursor;
-    const r = await read(b.cust.b, b.id, `cursor=${cur ?? "x"}`);
-    if (r.status === 200)
-      expect(JSON.stringify(r.body)).not.toContain("A-secret");
+    expect(cur).toEqual(expect.any(String));
+    const r = await read(b.cust.b, b.id, `cursor=${cur}`);
+    expect(r.status, r.text).toBe(200);
+    expect(JSON.stringify(r.body)).not.toContain("A-secret");
   });
 
   it("bad limit and query values are 422 with the field named", async () => {

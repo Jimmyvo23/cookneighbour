@@ -39,6 +39,7 @@ export function messageRoute(
   body: unknown,
   s: BookingMockState,
   role: "customer" | "chef",
+  now: Date = new Date(),
 ): BookingRouteResult | null {
   const url = new URL(path, "http://mock.invalid");
   const m = /^\/api\/bookings\/([^/]+)\/messages$/.exec(url.pathname);
@@ -61,6 +62,12 @@ export function messageRoute(
     ...x,
     mine: x.senderId === me,
   });
+  // A request past its expiry is hidden even if the sweep has not marked it yet (finding 4a).
+  const hidden =
+    !isChatOpenStatus(d.status) ||
+    (d.status === "requested" &&
+      d.expiresAt !== null &&
+      new Date(d.expiresAt).getTime() <= now.getTime());
   const refuse = (reason: keyof typeof MESSAGE_REFUSALS) =>
     fail(409, "INVALID_STATE", MESSAGE_REFUSALS[reason], { reason });
 
@@ -68,14 +75,19 @@ export function messageRoute(
     const limitRaw = url.searchParams.get("limit");
     const cursorRaw = url.searchParams.get("cursor");
     const errors: Record<string, string> = {};
+    // Like the real route: a value sent twice, or any other parameter, is 422.
+    for (const k of new Set(url.searchParams.keys()))
+      if (k !== "limit" && k !== "cursor") errors[k] = "Unknown parameter.";
+      else if (url.searchParams.getAll(k).length > 1)
+        errors[k] = "Send this only once.";
     let limit = 20;
-    if (limitRaw !== null) {
+    if (limitRaw !== null && !errors.limit) {
       if (!/^\d{1,3}$/.test(limitRaw) || +limitRaw < 1 || +limitRaw > 50)
         errors.limit = "Use a whole number from 1 to 50.";
       else limit = +limitRaw;
     }
     let from = 0;
-    if (cursorRaw !== null) {
+    if (cursorRaw !== null && !errors.cursor) {
       const c = /^m(\d{1,6})$/.exec(cursorRaw);
       if (!c) errors.cursor = "That page marker is not valid.";
       else from = +c[1];
@@ -84,7 +96,7 @@ export function messageRoute(
       return fail(422, "VALIDATION_FAILED", "Check the highlighted fields.", {
         fields: errors,
       });
-    if (!isChatOpenStatus(d.status)) return refuse("chat_hidden");
+    if (hidden) return refuse("chat_hidden");
     let next: BookingRouteResult["next"];
     if (list.length === 0) {
       list = [
@@ -140,14 +152,16 @@ export function messageRoute(
     return fail(422, "CONTACT_DETAILS_NOT_ALLOWED", CONTACT_IN_CHAT_MESSAGE, {
       fields: { body: "Remove phone numbers, email addresses and links." },
     });
-  if (!isChatOpenStatus(d.status)) return refuse("chat_hidden");
+  if (hidden) return refuse("chat_hidden");
   if (d.frozen) return refuse("frozen");
-  const first = list.find(
-    (x) => x.senderId === me && x.clientId === parsed.clientId,
-  );
-  if (first) {
-    if (first.body !== parsed.text) return refuse("message_id_reused");
-    return { res: json(200, mine(first)) };
+  // The client id is unique per sender across ALL bookings (like the database index).
+  const used = Object.values(all)
+    .flat()
+    .find((x) => x.senderId === me && x.clientId === parsed.clientId);
+  if (used) {
+    if (used.bookingId !== id || used.body !== parsed.text)
+      return refuse("message_id_reused");
+    return { res: json(200, mine(used)) };
   }
   const made: MockMessage = {
     id: crypto.randomUUID(),

@@ -578,7 +578,7 @@ const channel = supabase
 - The payload is the raw table row (snake_case). Reconcile with your own optimistic message by `client_id`, then by `id`; do not show a message twice.
 - Get the history from `GET` (the subscription only delivers new rows). Subscribe first, then load the first page, then merge by `id`, so nothing is missed between the two.
 - A booking that turns `declined`, `cancelled`, `expired` or a no-show stops delivering events (D-94); `frozen` still delivers (read only). Realtime events are best effort: after a reconnect, load the page again.
-- Not covered by an automated Realtime test (it needs the live Realtime service and a timing window that is not reliable in CI); the select policy it depends on is tested by `tests/rls/messaging.test.ts`.
+- Covered by an automated Realtime test, `tests/rls/messaging-realtime.test.ts` (entitled subscribers get the event; a stranger, another chef and anon get nothing; after the booking is hidden only the admin still gets events). Events are best effort, so that test waits with generous timeouts. The select policy it depends on is also tested by plain selects in `tests/rls/messaging.test.ts`.
 
 ### Tables, functions, files
 - `messages` gains `client_id uuid` with a unique index on `(sender_id, client_id)`. Policies: `messages_select_party` (party **and** `booking_chat_open`), `messages_select_admin` (unchanged); no insert, update or delete for clients.
