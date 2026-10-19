@@ -147,9 +147,9 @@ describe("T-072 tester: customer Cancel on a waiting booking", () => {
       (a) => a.textContent,
     );
     // The page appends one sentence about its own state after the refetch (T-083 round 2).
-    expect(
-      alerts.some((t) => t?.startsWith("There is no visit left to cancel.")),
-    ).toBe(true);
+    expect(alerts).toContain(
+      "There is no visit left to cancel. This page shows its current status.",
+    );
     expect(host.textContent).not.toContain("raw server text");
   });
 });
