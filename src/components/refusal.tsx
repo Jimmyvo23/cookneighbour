@@ -1,6 +1,7 @@
 "use client";
 // T-080: one shared way to handle "the server refused because the booking is not in that state"
-// (HTTP 409 INVALID_STATE) on a booking page. Every change section (pickup, cancel, answer,
+// (any HTTP 409: INVALID_STATE, REQUEST_EXPIRED, DOUBLE_BOOKED, ...; each means the booking changed
+// under the page) on a booking page. Every change section (pickup, cancel, answer,
 // no-show, receipts, ...) reports such a refusal to the PAGE instead of showing it inside itself:
 //   - the page shows the sentence in ONE alert that lives outside the sections, so the message
 //     survives when the reload removes the dead button (and its section);
@@ -22,10 +23,14 @@ import { ApiClientError } from "@/lib/api/client";
 
 export type ReportRefusal = (message: string) => void;
 
-/** `report` sends a refusal to the page; `count` goes up by one per refusal and never goes down. */
+/**
+ * `report` sends a refusal to the page; `count` goes up by one per refusal and never goes down;
+ * `clear` removes the page alert (a section calls it when its own action succeeds, T-083).
+ */
 export interface RefusalScope {
   report: ReportRefusal;
   count: number;
+  clear: () => void;
 }
 const RefusalContext = createContext<RefusalScope | null>(null);
 export const RefusalProvider = RefusalContext.Provider;
@@ -33,9 +38,14 @@ export const useReportRefusal = () =>
   useContext(RefusalContext)?.report ?? null;
 /**
  * For a section that keeps its own server data (the receipts list): reload quietly when this
- * changes. It is 0 until the first refusal, so a section never reloads just for mounting.
+ * changes. It is 0 until the first refusal. A section that mounts after a refusal starts by
+ * remembering 0, so it does one extra quiet reload (harmless; today the groceries section is
+ * always mounted).
  */
 export const useRefusalCount = () => useContext(RefusalContext)?.count ?? 0;
+
+/** For a section whose own action succeeded: drop the page's old refusal alert. */
+export const useClearRefusal = () => useContext(RefusalContext)?.clear ?? null;
 
 /** True for a state refusal: the booking changed under the page (HTTP 409). */
 export function isStateRefusal(err: unknown): boolean {
@@ -71,7 +81,11 @@ export function useBookingRefusals(reload: () => void | Promise<void>) {
     setCount((c) => c + 1);
     void Promise.resolve(reloadRef.current()).catch(() => {});
   }, []);
-  const scope = useMemo(() => ({ report, count }), [report, count]);
+  const clear = useCallback(() => setLast(null), []);
+  const scope = useMemo(
+    () => ({ report, count, clear }),
+    [report, count, clear],
+  );
   // Same look as the sections' Alert (components/chef/parts); it is not imported to avoid a cycle.
   // Rendered only while there is a refusal, so a page with no refusal has no empty alert, and each
   // new refusal is a new element that screen readers announce.
@@ -88,5 +102,5 @@ export function useBookingRefusals(reload: () => void | Promise<void>) {
       {last.text}
     </div>
   ) : null;
-  return { scope, alert, clear: () => setLast(null) };
+  return { scope, alert, clear };
 }

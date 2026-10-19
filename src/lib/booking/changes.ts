@@ -48,7 +48,7 @@ export function changeErrorText(err: unknown): string {
   if (!(err instanceof ApiClientError))
     return "Something went wrong. Please try again.";
   if (err.code === "REQUEST_EXPIRED")
-    return "This request expired before it was answered, so it can no longer be accepted or declined. Reload to see its status.";
+    return "This request expired before it was answered, so it can no longer be accepted or declined. This page shows its current status.";
   if (err.code === "CONTACT_DETAILS_NOT_ALLOWED")
     return "Please leave phone numbers, emails and links out. They are shared only after a booking is accepted.";
   if (err.code === "INVALID_STATE" && err.reason) {
@@ -56,7 +56,7 @@ export function changeErrorText(err: unknown): string {
     if (text) return text;
   }
   if (err.code === "INVALID_STATE")
-    return "That is not possible in this booking's current state. Reload the page to see its status.";
+    return "That is not possible in this booking's current state. This page shows its current status.";
   if (err.code === "NOT_FOUND") return "This booking could not be found.";
   if (err.code === "NETWORK" || err.code === "TIMEOUT") return err.message;
   return err.message;
@@ -69,7 +69,7 @@ export function changeErrorText(err: unknown): string {
 export function cancelBookingErrorText(err: unknown): string {
   if (err instanceof ApiClientError) {
     if (err.code === "INVALID_STATE" && err.reason === "wrong_status")
-      return "This booking is not accepted any more, so it cannot be cancelled. Reload the page to see its status.";
+      return "This booking is not accepted any more, so it cannot be cancelled. This page shows its current status.";
     if (err.code === "CONTACT_DETAILS_NOT_ALLOWED")
       return "Please leave phone numbers, emails and links out of the reason. The customer reads it, and these are shared only after a booking is accepted.";
     if (err.status === 422 && err.fields.reason) return err.fields.reason;
@@ -84,7 +84,7 @@ export function noShowErrorText(err: unknown): string {
     err.code === "INVALID_STATE" &&
     err.reason === "wrong_status"
   )
-    return "This booking is not accepted any more, so a no-show cannot be reported. Reload the page to see its status.";
+    return "This booking is not accepted any more, so a no-show cannot be reported. This page shows its current status.";
   return changeErrorText(err);
 }
 

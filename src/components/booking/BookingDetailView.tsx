@@ -81,7 +81,7 @@ function cancelErrorText(err: unknown): string {
   if (err instanceof ApiClientError) {
     if (err.code === "INVALID_STATE") {
       if (err.reason === "wrong_status")
-        return "This booking can no longer be cancelled. Reload the page to see its status.";
+        return "This booking can no longer be cancelled. This page shows its current status.";
       if (err.reason === "nothing_left")
         return "There is no visit left to cancel.";
     }

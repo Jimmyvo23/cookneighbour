@@ -93,7 +93,7 @@ test("customer: stale 'I picked up my meals' after the chef closed the booking -
     page,
     "bookings",
     SEEDED.A05,
-    'd.status = "no_show_customer";',
+    'd.status = "no_show_customer"; d.noShow = { reportedAt: new Date().toISOString(), dayNumber: 1, pickupMissed: true };',
   );
   await page.getByRole("button", { name: "Yes, I picked them up" }).click();
   const alert = page.getByTestId("refusal");

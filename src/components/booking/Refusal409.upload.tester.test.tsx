@@ -106,7 +106,7 @@ describe("receipts reload after a refusal", () => {
   });
 
   it("a 422 on the upload does not reload and keeps the section alert", async () => {
-    const b = await setup(apiError(422, "VALIDATION_ERROR", "bad amount"));
+    const b = await setup(apiError(422, "VALIDATION_FAILED", "bad amount"));
     const before = gets(b, "/receipts");
     const bookingBefore = gets(b);
     await h.click(h.button("Send receipt"));

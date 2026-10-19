@@ -183,7 +183,7 @@ describe("chef: stale 'Mark pickup missed' answered pickup_confirmed", () => {
 
 describe("other 4xx and network errors keep the section's own alert and do not refetch", () => {
   it.each([
-    [422, "VALIDATION_ERROR", "Check this."],
+    [422, "VALIDATION_FAILED", "Check this."],
     [403, "FORBIDDEN", "Not yours."],
     [404, "NOT_FOUND", "Gone."],
   ])("%s", async (status, code, message) => {
@@ -266,7 +266,11 @@ describe("customer: stale 'I picked up my meals' answered wrong_status", () => {
     const missed: BookingDetail = {
       ...b,
       status: "no_show_customer",
-      noShow: b.noShow,
+      noShow: {
+        reportedAt: "2026-10-20T20:00:00.000Z",
+        dayNumber: 1,
+        pickupMissed: true,
+      },
     };
     mountRoutes(b, missed, {
       [`POST /api/bookings/${b.id}/days/1/pickup/confirm`]: apiError(
@@ -301,7 +305,13 @@ describe("customer: stale cancel", () => {
     }));
     mountRoutes(
       b,
-      { ...b, status: "cancelled" },
+      {
+        ...b,
+        status: "cancelled",
+        cancelledBy: "chef",
+        cancelledAt: "2026-10-19T15:00:00.000Z",
+        cancellationTiming: "on_time",
+      },
       {
         [`POST /api/bookings/${b.id}/cancel`]: apiError(
           409,
@@ -326,7 +336,7 @@ describe("chef: stale accept", () => {
     const b = seededBooking(9101, "chef");
     mountRoutes(
       b,
-      { ...b, status: "expired" },
+      { ...b, status: "expired", respondedAt: null },
       {
         [`POST /api/bookings/${b.id}/accept`]: apiError(
           409,
