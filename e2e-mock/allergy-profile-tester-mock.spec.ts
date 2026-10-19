@@ -41,13 +41,15 @@ test("a failed profile save after booking keeps the booking and shows the notice
   page,
 }) => {
   await page.addInitScript((key) => {
-    const w = window as unknown as { __break?: boolean };
+    const w = window as unknown as { __break?: boolean; __armed?: boolean };
     const get = Storage.prototype.getItem;
     const set = Storage.prototype.setItem;
     Storage.prototype.setItem = function (k: string, v: string) {
       if (k === key && this === window.sessionStorage) {
         try {
-          if ((JSON.parse(v).bookings ?? []).length > 0) w.__break = true;
+          // One shot (T-047): the chat's first read also writes the MOCK state, which armed this again.
+          if (!w.__armed && (JSON.parse(v).bookings ?? []).length > 0)
+            w.__break = w.__armed = true;
         } catch {
           /* ignore */
         }

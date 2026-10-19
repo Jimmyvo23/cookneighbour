@@ -13,6 +13,7 @@ From: frontend  To: tester
   - `src/components/chat/ChatSection.tsx` (+test, 28 tests): the panel.
   - `e2e-mock/t047-chat-mock.spec.ts`: 14 mock e2e at 375 px with axe.
 - Files changed: `BookingDetailView.tsx` and `ChefBookingView.tsx` (one `<ChatSection>` each: customer after "Where and who", chef after the answer section), `testkit.tsx` (an unrouted `GET .../messages` answers an empty page), `mock-messages.ts` / `mock-bookings.ts` / `mock-messages.test.ts` (new test hook `messagesFailNext`: next send answers 500 once, so e2e can reach the retry button), `src/lib/booking/changes.ts` + 3 test files (D-63).
+- Existing test touched: `e2e-mock/allergy-profile-tester-mock.spec.ts`. Its "break the profile save" hack re-armed on every later write of the MOCK state, and the chat's first read now writes the state (the mock greeting), so a broken `role: chef` got saved. The hack is now one-shot (`__armed`). No assertion changed.
 - Impeccable: `detect` on `src/components/chat` found nothing. Helper-agent steps (finish reviewer, documenter) skipped per D-44.
 
 ## How to verify
