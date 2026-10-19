@@ -105,20 +105,15 @@ describe("body edge cases (route)", () => {
     expect(await rowsOf(id)).toHaveLength(1);
   });
 
-  // BUG (LOW, found by the Tester): vertical tab and form feed in the MIDDLE of a message are
-  // accepted, but contract 7C says only line breaks and tabs are allowed. The shared
-  // CONTROL_EXCEPT_WHITESPACE regex in text-safety.ts leaves \u000b and \u000c out. `it.fails`
-  // keeps CI green; when Backend fixes it, this test starts failing: delete the `.fails`.
-  it.fails(
-    "vertical tab and form feed inside a message are 422 (contract 7C)",
-    async () => {
-      const { cust, id } = await setup();
-      for (const bad of ["a\u000bb", "a\u000cb"])
-        expect((await say(cust.b, id, bad)).status, JSON.stringify(bad)).toBe(
-          422,
-        );
-    },
-  );
+  // Vertical tab and form feed are control characters too (a trailing one would be trimmed, so
+  // they are tested in the middle of the text).
+  it("vertical tab and form feed inside a message are 422 (contract 7C)", async () => {
+    const { cust, id } = await setup();
+    for (const bad of ["a\u000bb", "a\u000cb"])
+      expect((await say(cust.b, id, bad)).status, JSON.stringify(bad)).toBe(
+        422,
+      );
+  });
 
   it("emoji and non-Latin text are stored as sent", async () => {
     const { cust, chef, id } = await setup();
