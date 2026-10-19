@@ -727,3 +727,28 @@ describe("testkit (changed by the builder)", () => {
     expect(page.items).toEqual([]);
   });
 });
+
+describe("chat error box role (round 2)", () => {
+  it("has no alert role while idle, gets it with the text, is focused, and loses it when cleared", async () => {
+    const l = fakeLive();
+    routes(h.fetchMock, {
+      ...empty,
+      [POST]: apiError(429, "RATE_LIMITED", "Too many.", {
+        retryAfterSeconds: 10,
+      }),
+    });
+    await mount(l);
+    const chat = h.q("chat")!;
+    // Idle: the chat adds no alert to the page, so other pages' alert lookups are not disturbed.
+    expect(chat.querySelectorAll('[role="alert"]')).toHaveLength(0);
+    await typeAndSend("hi");
+    const alerts = chat.querySelectorAll('[role="alert"]');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toBe(h.q("chat-error"));
+    expect(alerts[0].textContent).toContain("too quickly");
+    expect(document.activeElement).toBe(alerts[0]); // focus owner unchanged
+    expect(box().getAttribute("aria-describedby")).toContain(alerts[0].id);
+    await h.type(box(), "hi!");
+    expect(chat.querySelectorAll('[role="alert"]')).toHaveLength(0);
+  });
+});
