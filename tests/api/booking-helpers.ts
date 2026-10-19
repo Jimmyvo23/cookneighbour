@@ -23,6 +23,7 @@ import { POST as missedRoute } from "@/app/api/bookings/[id]/pickup/missed/route
 import { GET as chefDetailRoute } from "@/app/api/chefs/[id]/route";
 import { GET as searchRoute } from "@/app/api/chefs/route";
 import { addDays, torontoToday } from "@/lib/domain/dishes";
+import { orderForShift } from "./shift-order";
 import { rand, type Browser, type Reply } from "./harness";
 import {
   newChef,
@@ -277,10 +278,17 @@ export async function shiftDays(id: string, n: number) {
     .select("id, visit_date")
     .eq("booking_id", id);
   expect(days.error).toBeNull();
-  for (const d of days.data ?? []) {
+  // Safe order matters: the unique rule is checked per row (T-086). See `orderForShift`.
+  for (const d of orderForShift(
+    (days.data ?? []).map((r) => ({
+      id: r.id as string,
+      visit_date: r.visit_date as string,
+    })),
+    n,
+  )) {
     const up = await svc
       .from("booking_days")
-      .update({ visit_date: addDays(d.visit_date as string, -n) })
+      .update({ visit_date: addDays(d.visit_date, -n) })
       .eq("id", d.id);
     expect(up.error).toBeNull();
   }
