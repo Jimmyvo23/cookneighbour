@@ -188,7 +188,9 @@ describe("error words", () => {
     );
     expect(changeErrorText(inv("chef_home_not_enabled"))).toMatch(/Decline/);
     expect(changeErrorText(inv("kitchen_in_use"))).toMatch(/locked/);
-    expect(changeErrorText(inv("something_new"))).toMatch(/Reload/);
+    expect(changeErrorText(inv("something_new"))).toMatch(
+      /not possible in this booking/,
+    );
   });
   it("words an expired request and contact details", () => {
     expect(

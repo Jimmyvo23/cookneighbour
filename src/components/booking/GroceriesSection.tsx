@@ -11,7 +11,7 @@
 // it expires. In MOCK mode no storage URL is ever built (the API gives `fileUrl: null`).
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiClientError, apiFetch, isMockEnabled } from "@/lib/api/client";
-import { useRefusalCount } from "@/components/refusal";
+import { useClearRefusal, useRefusalCount } from "@/components/refusal";
 import type {
   BookingDetail,
   ReceiptList,
@@ -145,6 +145,7 @@ export function GroceriesSection({
   // list changed (the other side already answered). The page reports each refusal; reload quietly.
   // The page's alert keeps focus: this reload draws no alert and moves no focus.
   const refusals = useRefusalCount();
+  const clearRefusal = useClearRefusal();
   const seenRefusals = useRef(0);
   useEffect(() => {
     if (refusals === seenRefusals.current) return;
@@ -172,6 +173,7 @@ export function GroceriesSection({
     receipts !== null &&
     (!current || current.status === "disputed");
   const done = (message: string) => {
+    clearRefusal?.(); // T-083: a success replaces an old page refusal
     announce(message);
     void load(true);
   };

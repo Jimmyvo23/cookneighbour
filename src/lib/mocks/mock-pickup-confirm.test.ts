@@ -286,7 +286,7 @@ describe("mock hook pickedUpSeeded (T-081)", () => {
     // Day 2 has its own, later date; its dishes' eat-by dates and its deadline follow that date
     // (a booking cannot have two days on one date).
     const today = torontoToday(NOW);
-    expect(days[1].date).toBe(addDays(today, 1));
+    expect(days[1].date).toBe(addDays(today, 2)); // tomorrow is A04's
     expect(days[1].date).not.toBe(days[0].date);
     expect(days[1].dishes.length).toBe(days[0].dishes.length);
     days[1].dishes.forEach((d, i) => {

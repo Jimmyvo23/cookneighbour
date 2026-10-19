@@ -59,7 +59,7 @@ test("chef: stale 'Mark pickup missed' -> 409 -> button gone, alert focused", as
     SEEDED.A05,
     // T-081: the server completes a booking once every day is picked up, so a stale-page 409
     // pickup_confirmed needs another open day: day 1 is confirmed, a day 2 is still to cook.
-    `const f = d.days[0]; const gap = (a, b) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000); const add = (a, n) => new Date(Date.parse(a + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10); const date2 = ${JSON.stringify(dayPlus(1))}; d.days = [{ ...f, pickedUpAt: f.cookedAt }, { ...f, dayNumber: 2, date: date2, cookedAt: null, pickedUpAt: null, pickups: [], pickupDeadlineDate: add(date2, gap(f.date, f.pickupDeadlineDate)), dishes: f.dishes.map((x) => ({ ...x, eatByDate: add(date2, gap(f.date, x.eatByDate)) })) }];`,
+    `const f = d.days[0]; const gap = (a, b) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000); const add = (a, n) => new Date(Date.parse(a + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10); const date2 = ${JSON.stringify(dayPlus(2))}; d.days = [{ ...f, pickedUpAt: f.cookedAt }, { ...f, dayNumber: 2, date: date2, cookedAt: null, pickedUpAt: null, pickups: [], pickupDeadlineDate: add(date2, gap(f.date, f.pickupDeadlineDate)), dishes: f.dishes.map((x) => ({ ...x, eatByDate: add(date2, gap(f.date, x.eatByDate)) })) }];`,
   );
   await page.getByRole("button", { name: "Yes, mark pickup missed" }).click();
 
@@ -93,11 +93,13 @@ test("customer: stale 'I picked up my meals' after the chef closed the booking -
     page,
     "bookings",
     SEEDED.A05,
-    'd.status = "no_show_customer";',
+    'd.status = "no_show_customer"; d.noShow = { reportedAt: new Date().toISOString(), dayNumber: 1, pickupMissed: true };',
   );
   await page.getByRole("button", { name: "Yes, I picked them up" }).click();
   const alert = page.getByTestId("refusal");
   await expect(alert).toBeFocused();
+  // The refetch worked, so the closing sentence is true (T-083 round 2).
+  await expect(alert).toContainText("This page shows its current status.");
   await expect(page.getByRole("button", { name: /I picked up/ })).toHaveCount(
     0,
   );

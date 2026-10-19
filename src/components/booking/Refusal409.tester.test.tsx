@@ -133,6 +133,43 @@ describe("T-080 MED-1: a failed receipts reload", () => {
   });
 });
 
+describe("T-083 LOW-3: a successful receipt answer clears an old page refusal", () => {
+  it("removes the page alert when the next answer succeeds", async () => {
+    const b = seededBooking(9106, "customer");
+    const { filePath: _f, ...receipt } = seededReceipts()[b.id][0];
+    void _f;
+    let posts = 0;
+    routes(h.fetchMock, {
+      [`GET /api/bookings/${b.id}`]: json(200, b),
+      [`GET /api/bookings/${b.id}/shopping-list`]: json(200, listFor(b)),
+      [`GET /api/bookings/${b.id}/receipts`]: json(200, {
+        bookingId: b.id,
+        groceryOption: b.groceryOption,
+        estimatedIngredientsCents: b.estimate.ingredientsCents,
+        currency: "CAD",
+        items: [receipt],
+      }),
+      [`POST /api/bookings/${b.id}/receipts/${receipt.id}/respond`]: () => {
+        posts++;
+        return posts === 1
+          ? apiError(409, "INVALID_STATE", "x", {
+              reason: "receipt_confirmed",
+            })({})
+          : json(200, { ...receipt, status: "confirmed" })({});
+      },
+    });
+    await h.mount(<BookingDetailView id={b.id} />);
+    await h.click(h.button("Confirm this amount"));
+    expect(h.q("refusal")).not.toBeNull();
+    await h.click(h.button("Confirm this amount"));
+    expect(posts).toBe(2);
+    expect(h.q("refusal")).toBeNull();
+    expect(h.q("groceries-notice")?.textContent).toMatch(
+      /confirmed the receipt/,
+    );
+  });
+});
+
 describe("T-080 race: an older slow refetch never overwrites a newer one", () => {
   it("the page ends on the newest booking state", async () => {
     const b = seededBooking(9105, "chef");
