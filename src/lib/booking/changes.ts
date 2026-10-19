@@ -309,7 +309,7 @@ export function contactWindow(b: BookingDetail): ContactWindow {
 }
 
 export const CONTACT_RULE =
-  "Phone numbers and addresses are hidden 7 days after the last visit day.";
+  "Phone numbers and addresses are hidden 7 days after the last visit day. Chat stays open.";
 
 /**
  * D-64: the server cut-off is midnight Toronto, so the last visible day is the one containing
