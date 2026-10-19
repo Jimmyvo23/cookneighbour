@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      - run: exit 1 # TEMP-GATE-PROOF
       - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v5
