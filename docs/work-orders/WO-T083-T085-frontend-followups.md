@@ -1,6 +1,6 @@
 # Work Order WO-T083-T085: Frontend follow-ups (409 texts and mock seed)
 
-Tasks: T-083, T-085. Asked for 2026-10-19 so that every agent has work during the next hour, alongside T-084. This Work Order needs Jimmy to relax D-84 (one task at a time) for that hour.
+Tasks: T-083, T-085. Asked for 2026-10-19 so that every agent has work during the next hour, alongside T-084. Approved by Jimmy 2026-10-19 (D-90), with D-84 relaxed for that hour only.
 
 ## Plan per agent
 
