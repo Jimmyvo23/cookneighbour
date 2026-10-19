@@ -31,3 +31,8 @@ From: frontend  To: tester
 - Both views' `refresh` now return true/false. The sentence is added to every page refusal, not only the old ones.
 - Tests: two new unit tests in `Refusal409.test.tsx` (success, refetch failure); `changes.test.ts` and `T072Tester.test.tsx` adjusted; T-080 mock e2e checks the success sentence.
 - NIT-A (page-wide clear) untouched. Results: lint, typecheck, prettier clean; unit 2132 + 3 expected fails; mock e2e 270.
+
+## Round 3 (Tester LOW-B)
+- `useBookingRefusals` moves focus only when a new alert appears: the effect now depends on the alert's id, not on `last`, so the status sentence that arrives later no longer pulls focus back. A repeat refusal still gets a new id, so it is focused and announced again.
+- `Refusal409.focus.tester.test.tsx`: `.fails` removed, it now passes. NIT-A and NIT-B untouched.
+- Results: lint, typecheck, prettier clean; unit 2133 + 3 expected fails; mock e2e 270.

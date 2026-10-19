@@ -12,38 +12,35 @@ import { useBookingRefusals } from "@/components/refusal";
 
 describe("T-083 round 2: late sentence and focus", () => {
   // BUG (LOW) found by Tester: the effect in useBookingRefusals depends on `last`, which changes
-  // when the sentence arrives, so focus is pulled back to the alert. Remove `.fails` when fixed.
-  it.fails(
-    "does not steal focus back when the refetch finishes later",
-    async () => {
-      let finish: (ok: boolean) => void = () => {};
-      const pending = new Promise<boolean>((r) => (finish = r));
-      let report: (t: string) => void = () => {};
-      function Page() {
-        const { scope, alert } = useBookingRefusals(() => pending);
-        report = scope.report;
-        return (
-          <div>
-            {alert}
-            <button id="other">other</button>
-          </div>
-        );
-      }
-      const host = document.createElement("div");
-      document.body.appendChild(host);
-      const root = createRoot(host);
-      await act(async () => root.render(<Page />));
-      await act(async () => report("Not possible."));
-      const alert = host.querySelector('[role="alert"]') as HTMLElement;
-      expect(document.activeElement).toBe(alert);
-      const other = host.querySelector("#other") as HTMLElement;
-      other.focus();
-      expect(document.activeElement).toBe(other);
-      await act(async () => finish(true));
-      expect(alert.textContent).toContain("current status");
-      expect(document.activeElement).toBe(other);
-      await act(async () => root.unmount());
-      host.remove();
-    },
-  );
+  // when the sentence arrives, so focus is pulled back to the alert. (Fixed in round 3: `.fails` removed.)
+  it("does not steal focus back when the refetch finishes later", async () => {
+    let finish: (ok: boolean) => void = () => {};
+    const pending = new Promise<boolean>((r) => (finish = r));
+    let report: (t: string) => void = () => {};
+    function Page() {
+      const { scope, alert } = useBookingRefusals(() => pending);
+      report = scope.report;
+      return (
+        <div>
+          {alert}
+          <button id="other">other</button>
+        </div>
+      );
+    }
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => root.render(<Page />));
+    await act(async () => report("Not possible."));
+    const alert = host.querySelector('[role="alert"]') as HTMLElement;
+    expect(document.activeElement).toBe(alert);
+    const other = host.querySelector("#other") as HTMLElement;
+    other.focus();
+    expect(document.activeElement).toBe(other);
+    await act(async () => finish(true));
+    expect(alert.textContent).toContain("current status");
+    expect(document.activeElement).toBe(other);
+    await act(async () => root.unmount());
+    host.remove();
+  });
 });

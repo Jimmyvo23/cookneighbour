@@ -77,9 +77,12 @@ export function useBookingRefusals(
       mounted.current = false;
     };
   }, []);
+  // Focus moves only when a NEW alert appears (its id changes). The status sentence that arrives
+  // later changes the text of the same alert and must not pull focus back (T-083 round 3).
+  const alertKey = last?.id ?? 0;
   useEffect(() => {
-    if (last) ref.current?.focus();
-  }, [last]);
+    if (alertKey) ref.current?.focus();
+  }, [alertKey]);
   const nextId = useRef(0);
   const [count, setCount] = useState(0);
   const report = useCallback<ReportRefusal>((text) => {
