@@ -355,6 +355,58 @@ describe("chef: stale accept", () => {
   });
 });
 
+describe("T-083 round 2: the closing sentence is true", () => {
+  const cancelRoutes = (b: BookingDetail, later: BookingDetail | "fail") =>
+    mountRoutes(b, later, {
+      [`POST /api/bookings/${b.id}/cancel`]: apiError(
+        409,
+        "INVALID_STATE",
+        "x",
+        { reason: "wrong_status" },
+      ),
+    });
+  const mk = () =>
+    seededBooking(9103, "customer", (x) => ({
+      ...x,
+      days: x.days.map((d) => ({
+        ...d,
+        cookedAt: null,
+        pickups: [],
+        date: "2099-01-20",
+      })),
+    }));
+  const cancelled = (b: BookingDetail): BookingDetail => ({
+    ...b,
+    status: "cancelled",
+    cancelledBy: "chef",
+    cancelledAt: "2026-10-19T15:00:00.000Z",
+    cancellationTiming: "on_time",
+  });
+  it("after a successful refetch says the page shows the current status", async () => {
+    const b = mk();
+    cancelRoutes(b, cancelled(b));
+    await h.mount(<BookingDetailView id={b.id} />);
+    await h.click(h.button("Cancel this booking"));
+    await h.click(h.button(/^Yes, cancel/));
+    await h.flush();
+    const t = pageAlert()?.textContent ?? "";
+    expect(t).toContain("This page shows its current status.");
+    expect(t).not.toContain("Reload the page");
+  });
+  it("after a failed refetch says to reload the page", async () => {
+    const b = mk();
+    cancelRoutes(b, "fail");
+    await h.mount(<BookingDetailView id={b.id} />);
+    await h.click(h.button("Cancel this booking"));
+    await h.click(h.button(/^Yes, cancel/));
+    await h.flush();
+    const t = pageAlert()?.textContent ?? "";
+    expect(t).toContain("Reload the page to see its status.");
+    expect(t).not.toContain("shows its current status");
+    expect(t).toContain("can no longer be cancelled");
+  });
+});
+
 describe("a successful change clears an old refusal", () => {
   it("replaces the message", async () => {
     const b = seededBooking(9103, "chef");

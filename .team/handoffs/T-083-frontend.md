@@ -25,3 +25,9 @@ From: frontend  To: tester
 ## What the next agent needs
 - Check LOW-3: after a receipt 409, a later successful receipt action removes the page alert but keeps the groceries notice.
 - Seed dates now: A01 +3, A02 +4, A03 -1, A04 0/+1, A05 -4, A06 -2.
+
+## Round 2 (Tester LOW-A)
+- The 409 texts in `changes.ts` and `BookingDetailView.tsx` no longer end with a sentence about the page. `useBookingRefusals` (`src/components/refusal.tsx`) now appends it once the refetch has finished: "This page shows its current status." when it worked, "Reload the page to see its status." when it failed, threw, or was replaced by a newer load/change (conservative). The alert keeps its element and focus; only its text gains the sentence (an unfinished refetch shows no sentence yet).
+- Both views' `refresh` now return true/false. The sentence is added to every page refusal, not only the old ones.
+- Tests: two new unit tests in `Refusal409.test.tsx` (success, refetch failure); `changes.test.ts` and `T072Tester.test.tsx` adjusted; T-080 mock e2e checks the success sentence.
+- NIT-A (page-wide clear) untouched. Results: lint, typecheck, prettier clean; unit 2132 + 3 expected fails; mock e2e 270.

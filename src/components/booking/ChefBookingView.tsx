@@ -95,17 +95,20 @@ export function ChefBookingView({ id }: { id: string }) {
 
   // T-080: after a 409 the booking is refetched quietly (the page stays on screen, no "loading").
   // A failed refetch is ignored: the old page and the refusal message stay. A newer load or
-  // change wins over an older refetch through `seq`.
+  // change wins over an older refetch through `seq`. It answers true only when this refetch's
+  // booking is what the page now shows (the refusal alert says so, T-083 round 2).
   const refresh = useCallback(async () => {
     const mine = ++seq.current;
     try {
       const booking = await apiFetch<BookingDetail>(
         `/api/bookings/${encodeURIComponent(id)}`,
       );
-      if (mine !== seq.current) return;
+      if (mine !== seq.current) return false;
       setState({ kind: "ready", booking });
+      return true;
     } catch {
       /* keep what is on screen */
+      return false;
     }
   }, [id]);
   const { scope, alert, clear } = useBookingRefusals(refresh);

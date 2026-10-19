@@ -56,8 +56,14 @@ export function isStateRefusal(err: unknown): boolean {
  * For the page. `reload` refetches the booking quietly; a failed reload must not throw or hide the
  * message. Render `alert` outside the change sections and wrap them in `<RefusalProvider value={scope}>`.
  */
-export function useBookingRefusals(reload: () => void | Promise<void>) {
-  const [last, setLast] = useState<{ text: string; id: number } | null>(null);
+export function useBookingRefusals(
+  reload: () => void | boolean | Promise<void | boolean>,
+) {
+  const [last, setLast] = useState<{
+    text: string;
+    id: number;
+    shown: boolean | null; // null = the reload is still running
+  } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const alertId = useId();
   const reloadRef = useRef(reload);
@@ -74,12 +80,31 @@ export function useBookingRefusals(reload: () => void | Promise<void>) {
   useEffect(() => {
     if (last) ref.current?.focus();
   }, [last]);
+  const nextId = useRef(0);
   const [count, setCount] = useState(0);
   const report = useCallback<ReportRefusal>((text) => {
     if (!mounted.current) return; // the page is gone: nothing to show or reload
-    setLast((p) => ({ text, id: (p?.id ?? 0) + 1 }));
+    const id = nextId.current + 1;
+    nextId.current = id;
+    setLast({ text, id, shown: null });
     setCount((c) => c + 1);
-    void Promise.resolve(reloadRef.current()).catch(() => {});
+    // The sentence about the page is added only once it is true: "shows its current status" after
+    // a successful refetch, "Reload the page" when the refetch failed or was replaced (T-083).
+    let run: Promise<void | boolean>;
+    try {
+      run = Promise.resolve(reloadRef.current());
+    } catch (e) {
+      run = Promise.reject(e);
+    }
+    void run
+      .then(
+        (ok) => ok === true,
+        () => false,
+      )
+      .then((shown) => {
+        if (!mounted.current) return;
+        setLast((p) => (p && p.id === id ? { ...p, shown } : p));
+      });
   }, []);
   const clear = useCallback(() => setLast(null), []);
   const scope = useMemo(
@@ -100,6 +125,13 @@ export function useBookingRefusals(reload: () => void | Promise<void>) {
       className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
     >
       {last.text}
+      {last.shown === null
+        ? ""
+        : `${/[.!?]$/.test(last.text) ? "" : "."} ${
+            last.shown
+              ? "This page shows its current status."
+              : "Reload the page to see its status."
+          }`}
     </div>
   ) : null;
   return { scope, alert, clear };

@@ -98,6 +98,8 @@ test("customer: stale 'I picked up my meals' after the chef closed the booking -
   await page.getByRole("button", { name: "Yes, I picked them up" }).click();
   const alert = page.getByTestId("refusal");
   await expect(alert).toBeFocused();
+  // The refetch worked, so the closing sentence is true (T-083 round 2).
+  await expect(alert).toContainText("This page shows its current status.");
   await expect(page.getByRole("button", { name: /I picked up/ })).toHaveCount(
     0,
   );
