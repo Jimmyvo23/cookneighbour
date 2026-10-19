@@ -12,10 +12,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# T-084: one 21 to 24.5 minute job was close to the 25 minute limit. It is now three jobs that
+# run at the same time, plus a tiny gate job named `ci`. No test was removed, no limit raised.
 jobs:
-  # The job id and name must stay exactly `ci`: branch protection requires a check with this name.
-  ci:
-    name: ci
+  # Lint, types, formatting, unit tests and build. No Supabase needed.
+  checks:
+    name: checks
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -32,6 +34,21 @@ jobs:
       - run: npx prettier --check .
       - run: npm test
       - run: npm run build
+
+  # Everything that needs the throwaway local Supabase stack.
+  supabase:
+    name: supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
 
       # Throwaway local Supabase on the runner. Keys are public local defaults, no repo secrets.
       - uses: supabase/setup-cli@v1
@@ -79,18 +96,63 @@ jobs:
           set +a
           npm run test:e2e
 
-      # MOCK-mode UI tests (NEXT_PUBLIC_API_MOCK=1, no Supabase involved).
-      - name: Playwright e2e (mock mode)
-        run: npm run test:e2e:mock
-
-      - name: Upload Playwright report
+      - name: Upload Playwright report (real routes)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-real
           path: |
             playwright-report/
             test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # MOCK-mode UI tests (NEXT_PUBLIC_API_MOCK=1, no Supabase involved).
+  e2e-mock:
+    name: e2e-mock
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Playwright e2e (mock mode)
+        run: npm run test:e2e:mock
+
+      - name: Upload Playwright report (mock mode)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-mock
+          path: |
+            playwright-report/
             test-results-mock/
           if-no-files-found: ignore
           retention-days: 7
+
+  # Gate job. The job id and name must stay exactly `ci`: branch protection requires a check with
+  # this name. `if: always()` makes it run even when a needed job failed or was skipped or
+  # cancelled; without it a skipped gate would count as passed. It fails unless all three succeeded.
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    needs: [checks, supabase, e2e-mock]
+    if: always()
+    steps:
+      - name: All jobs must have succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "needed job results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "A needed job did not succeed ($r)."
+              exit 1
+            fi
+          done
