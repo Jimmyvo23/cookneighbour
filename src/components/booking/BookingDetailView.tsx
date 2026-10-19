@@ -23,7 +23,8 @@ import {
   type FieldErrors,
 } from "@/lib/booking/form";
 import {
-  CONTACT_ENDED_TEXT,
+  contactEndedText,
+  chatStaysOpen,
   CONTACT_LOCKED_TEXT,
   canCustomerCancel,
   FROZEN_TEXT,
@@ -231,7 +232,8 @@ function Ready({
   };
   const canCancel = !b.frozen && canCustomerCancel(b, torontoToday());
   const win = contactWindow(b);
-  const windowText = contactOpenText(win);
+  const chatOpen = chatStaysOpen(b);
+  const windowText = contactOpenText(win, chatOpen);
   const firstDay = b.days[0]?.date;
   const anyCooked = b.days.some((d) => d.cookedAt !== null);
   return (
@@ -377,7 +379,7 @@ function Ready({
             {b.status === "requested"
               ? "Phone numbers are shared only after the chef accepts."
               : win.kind === "ended"
-                ? CONTACT_ENDED_TEXT
+                ? contactEndedText(chatOpen)
                 : win.kind === "locked"
                   ? `The chef's phone number is not shown for this booking. ${CONTACT_LOCKED_TEXT}`
                   : "The chef's phone number is not shown for this booking."}

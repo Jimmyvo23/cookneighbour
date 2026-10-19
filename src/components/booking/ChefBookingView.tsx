@@ -20,7 +20,8 @@ import type {
 } from "@/lib/api/types";
 import {
   CHEF_STATUS_TEXT,
-  CONTACT_ENDED_TEXT,
+  contactEndedText,
+  chatStaysOpen,
   CONTACT_LOCKED_TEXT,
   FROZEN_TEXT,
   allDaysCooked,
@@ -544,7 +545,8 @@ function Cooked({
 function Where({ b }: { b: BookingDetail }) {
   const hid = useId();
   const win = contactWindow(b);
-  const windowText = contactOpenText(win);
+  const chatOpen = chatStaysOpen(b);
+  const windowText = contactOpenText(win, chatOpen);
   return (
     <section
       aria-labelledby={`${hid}-h`}
@@ -586,7 +588,7 @@ function Where({ b }: { b: BookingDetail }) {
           {b.status === "requested"
             ? "The customer's phone number is shown once you accept."
             : win.kind === "ended"
-              ? CONTACT_ENDED_TEXT
+              ? contactEndedText(chatOpen)
               : win.kind === "locked"
                 ? `The customer's phone number is not shown for this booking. ${CONTACT_LOCKED_TEXT}`
                 : "The customer's phone number is not shown for this booking."}

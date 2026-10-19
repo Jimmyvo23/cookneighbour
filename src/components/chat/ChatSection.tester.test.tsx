@@ -229,21 +229,18 @@ describe.each(["customer", "chef"] as const)(
 
 // ---------------------------------------------------------------------------------------------
 describe("frozen chat has no way to send", () => {
-  it.fails(
-    "a failed message's Retry goes away when the booking becomes frozen",
-    async () => {
-      // The booking page can pass frozen=true later (a reload of the booking). A bubble that failed
-      // before that still offers "Retry sending", which would POST to a read-only chat.
-      const l = fakeLive();
-      routes(h.fetchMock, { ...empty, [POST]: offline });
-      await mount(l);
-      await typeAndSend("hello");
-      expect(h.button("Retry sending")).not.toBeNull();
-      await mount(l, { frozen: true });
-      expect(h.q("chat-frozen")).not.toBeNull();
-      expect(h.button("Retry sending")).toBeNull();
-    },
-  );
+  it("a failed message's Retry goes away when the booking becomes frozen", async () => {
+    // The booking page can pass frozen=true later (a reload of the booking). A bubble that failed
+    // before that still offers "Retry sending", which would POST to a read-only chat.
+    const l = fakeLive();
+    routes(h.fetchMock, { ...empty, [POST]: offline });
+    await mount(l);
+    await typeAndSend("hello");
+    expect(h.button("Retry sending")).not.toBeNull();
+    await mount(l, { frozen: true });
+    expect(h.q("chat-frozen")).not.toBeNull();
+    expect(h.button("Retry sending")).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -542,33 +539,30 @@ describe("live region", () => {
     expect(t.endsWith("...")).toBe(true);
   });
 
-  it.fails(
-    "two identical messages in a row both reach the screen reader (the region text must change)",
-    async () => {
-      // A screen reader announces a live region when its text changes. If the second message has the
-      // same text as the first, the string is the same, React writes nothing, and nothing is read.
-      const l = fakeLive();
-      routes(h.fetchMock, empty);
-      await mount(l);
-      const region = h.q("chat-live")!;
-      let mutations = 0;
-      const mo = new MutationObserver((m) => (mutations += m.length));
-      mo.observe(region, {
-        childList: true,
-        characterData: true,
-        subtree: true,
-      });
-      l.row(2, { body: "ok" });
-      await h.flush();
-      l.row(3, { body: "ok" });
-      await h.flush();
-      await Promise.resolve();
-      mutations += mo.takeRecords().length;
-      mo.disconnect();
-      expect(items()).toHaveLength(2);
-      expect(mutations).toBeGreaterThanOrEqual(2);
-    },
-  );
+  it("two identical messages in a row both reach the screen reader (the region text must change)", async () => {
+    // A screen reader announces a live region when its text changes. If the second message has the
+    // same text as the first, the string is the same, React writes nothing, and nothing is read.
+    const l = fakeLive();
+    routes(h.fetchMock, empty);
+    await mount(l);
+    const region = h.q("chat-live")!;
+    let mutations = 0;
+    const mo = new MutationObserver((m) => (mutations += m.length));
+    mo.observe(region, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    l.row(2, { body: "ok" });
+    await h.flush();
+    l.row(3, { body: "ok" });
+    await h.flush();
+    await Promise.resolve();
+    mutations += mo.takeRecords().length;
+    mo.disconnect();
+    expect(items()).toHaveLength(2);
+    expect(mutations).toBeGreaterThanOrEqual(2);
+  });
 });
 
 describe("realtime, with the fake channel", () => {
@@ -721,18 +715,15 @@ describe("MOCK mode and the Supabase client", () => {
 });
 
 describe("testkit (changed by the builder)", () => {
-  it.fails(
-    "an unrouted GET .../messages answers an empty page, as the testkit comment says",
-    async () => {
-      // apiFetch always passes method "GET", but the fallback in routes() tests `!init?.method`, so
-      // the branch is never taken and the chat shows "did not load" on a page test that does not
-      // route messages. Harmless today (those tests do not look at the chat); the comment is wrong.
-      routes(h.fetchMock, {});
-      const { apiFetch } = await import("@/lib/api/client");
-      const page = await apiFetch<{ items: unknown[]; nextCursor: null }>(
-        `${PATH}?limit=50`,
-      );
-      expect(page.items).toEqual([]);
-    },
-  );
+  it("an unrouted GET .../messages answers an empty page, as the testkit comment says", async () => {
+    // apiFetch always passes method "GET", but the fallback in routes() tests `!init?.method`, so
+    // the branch is never taken and the chat shows "did not load" on a page test that does not
+    // route messages. Harmless today (those tests do not look at the chat); the comment is wrong.
+    routes(h.fetchMock, {});
+    const { apiFetch } = await import("@/lib/api/client");
+    const page = await apiFetch<{ items: unknown[]; nextCursor: null }>(
+      `${PATH}?limit=50`,
+    );
+    expect(page.items).toEqual([]);
+  });
 });

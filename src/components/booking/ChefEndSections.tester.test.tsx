@@ -109,7 +109,10 @@ describe("tester: reason limits", () => {
       }),
     });
     await h.click(h.button("Cancel this booking"));
-    await h.type(h.host.querySelector("textarea"), note);
+    await h.type(
+      h.host.querySelector('textarea:not([data-testid="chat-box"])'),
+      note,
+    );
     await h.click(h.button("Yes, cancel this booking"));
     expect(callsTo(h.fetchMock, "/cancel")).toHaveLength(1);
   });
@@ -117,12 +120,17 @@ describe("tester: reason limits", () => {
     const b = accepted(3);
     await open(b);
     await h.click(h.button("Cancel this booking"));
-    await h.type(h.host.querySelector("textarea"), note + "y");
+    await h.type(
+      h.host.querySelector('textarea:not([data-testid="chat-box"])'),
+      note + "y",
+    );
     await h.click(h.button("Yes, cancel this booking"));
     expect(callsTo(h.fetchMock, "/cancel")).toHaveLength(0);
-    expect(h.host.querySelector("textarea")!.getAttribute("aria-invalid")).toBe(
-      "true",
-    );
+    expect(
+      h.host
+        .querySelector('textarea:not([data-testid="chat-box"])')!
+        .getAttribute("aria-invalid"),
+    ).toBe("true");
   });
   it("a whitespace-only reason is sent as no reason", async () => {
     const b = accepted(3);
@@ -135,7 +143,10 @@ describe("tester: reason limits", () => {
       }),
     });
     await h.click(h.button("Cancel this booking"));
-    await h.type(h.host.querySelector("textarea"), "    ");
+    await h.type(
+      h.host.querySelector('textarea:not([data-testid="chat-box"])'),
+      "    ",
+    );
     await h.click(h.button("Yes, cancel this booking"));
     expect(callsTo(h.fetchMock, "/cancel")[0][2]).toEqual({});
   });
@@ -252,7 +263,10 @@ describe("tester: no-show date rules", () => {
       ),
     });
     await h.click(h.button("Cancel this booking"));
-    await h.type(h.host.querySelector("textarea"), "abc");
+    await h.type(
+      h.host.querySelector('textarea:not([data-testid="chat-box"])'),
+      "abc",
+    );
     await h.click(h.button("Yes, cancel this booking"));
     expect(h.host.querySelector('[role="alert"]')?.textContent).toContain(
       "3 to 500",

@@ -97,6 +97,24 @@ describe.each(["customer", "chef"] as const)("%s page", (role) => {
     },
   );
 
+  // Frozen: the chat is read only (D-93), so the text must not say it stays open.
+  describe.each(["accepted", "completed"] as const)(
+    "%s and frozen",
+    (status) => {
+      it.each([
+        ["contact shown (open window)", false],
+        ["contact hidden after 7 days (ended)", true],
+      ])(
+        "%s: chat is read only and the text does not promise it",
+        async (_n, hidden) => {
+          await open({ ...make(role, status, hidden), frozen: true }, role);
+          expect(h.q("chat-frozen")).not.toBeNull();
+          expect(windowTexts()).not.toMatch(SAYS_OPEN);
+        },
+      );
+    },
+  );
+
   it("requested: chat is open; no window text is shown yet", async () => {
     await open(make(role, "requested", true), role);
     expect(h.q("chat")).not.toBeNull();
@@ -106,24 +124,16 @@ describe.each(["customer", "chef"] as const)("%s page", (role) => {
   describe.each(["no_show_customer", "no_show_chef"] as const)(
     "%s",
     (status) => {
-      // KNOWN ISSUE (frontend handoff, D-63 deviation): it.fails keeps CI green and flips to a red
-      // test the day the text is fixed, so the marker gets removed.
-      it.fails(
-        "ended (contact hidden): chat is hidden but the text says it stays open",
-        async () => {
-          await open(make(role, status, true), role);
-          expect(h.q("chat")).toBeNull();
-          expect(windowTexts()).not.toMatch(SAYS_OPEN);
-        },
-      );
-      it.fails(
-        "open window (contact shown): chat is hidden but the text says it stays open",
-        async () => {
-          await open(make(role, status, false), role);
-          expect(h.q("chat")).toBeNull();
-          expect(windowTexts()).not.toMatch(SAYS_OPEN);
-        },
-      );
+      it("ended (contact hidden): chat is hidden but the text says it stays open", async () => {
+        await open(make(role, status, true), role);
+        expect(h.q("chat")).toBeNull();
+        expect(windowTexts()).not.toMatch(SAYS_OPEN);
+      });
+      it("open window (contact shown): chat is hidden but the text says it stays open", async () => {
+        await open(make(role, status, false), role);
+        expect(h.q("chat")).toBeNull();
+        expect(windowTexts()).not.toMatch(SAYS_OPEN);
+      });
     },
   );
 });

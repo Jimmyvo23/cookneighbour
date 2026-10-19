@@ -55,7 +55,7 @@ export function useChat({
   const [phase, setPhase] = useState<Phase>("loading");
   const [items, setItems] = useState<ChatItem[]>([]);
   const [live, setLive] = useState<LiveState>(mock ? "mock" : "paused");
-  const [announcement, setAnnouncement] = useState("");
+  const [announced, setAnnounced] = useState({ text: "", id: 0 });
   const [frozenSeen, setFrozenSeen] = useState(false);
   const phaseRef = useRef<Phase>("loading");
   const itemsRef = useRef<ChatItem[]>([]);
@@ -141,7 +141,10 @@ export function useChat({
                   view.body.length > 200
                     ? `${view.body.slice(0, 200)}...`
                     : view.body;
-                setAnnouncement(`New message from ${nameRef.current}: ${text}`);
+                setAnnounced((p) => ({
+                  text: `New message from ${nameRef.current}: ${text}`,
+                  id: p.id + 1,
+                }));
               }
             },
             onStatus: (st) => {
@@ -327,7 +330,8 @@ export function useChat({
     phase,
     items,
     live,
-    announcement,
+    announcement: announced.text,
+    announcementId: announced.id,
     frozenSeen,
     send,
     retry,

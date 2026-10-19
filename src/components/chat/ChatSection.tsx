@@ -137,6 +137,7 @@ function ChatPanel({
   }
 
   async function retry(clientId: string) {
+    if (readOnly) return; // no POST to a read-only chat
     const ok = await chat.retry(clientId);
     ask(ok ? "box" : clientId);
   }
@@ -221,6 +222,7 @@ function ChatPanel({
                     key={m.key}
                     m={m}
                     otherName={otherName}
+                    canRetry={!readOnly}
                     onRetry={() => void retry(m.clientId!)}
                     onRemove={() => {
                       chat.remove(m.clientId!);
@@ -238,7 +240,8 @@ function ChatPanel({
             data-testid="chat-live"
             className="sr-only"
           >
-            {chat.announcement}
+            {/* A new key each time, so two identical messages are both read out. */}
+            <span key={chat.announcementId}>{chat.announcement}</span>
           </div>
 
           {readOnly ? (
@@ -255,7 +258,7 @@ function ChatPanel({
                 id={errId}
                 ref={errRef}
                 tabIndex={-1}
-                role="alert"
+                role={error ? "alert" : undefined}
                 data-testid="chat-error"
                 className={error ? dangerBoxCls : "sr-only"}
               >
@@ -263,6 +266,7 @@ function ChatPanel({
               </div>
               <textarea
                 id={boxId}
+                data-testid="chat-box"
                 ref={boxRef}
                 rows={3}
                 value={text}
@@ -306,11 +310,13 @@ function ChatPanel({
 function Bubble({
   m,
   otherName,
+  canRetry,
   onRetry,
   onRemove,
 }: {
   m: ChatItem;
   otherName: string;
+  canRetry: boolean;
   onRetry: () => void;
   onRemove: () => void;
 }) {
@@ -354,7 +360,7 @@ function Bubble({
             {m.error ?? "Not sent."}
           </p>
           <div className="flex flex-wrap gap-2">
-            {m.retryable !== false && (
+            {m.retryable !== false && canRetry && (
               <button
                 type="button"
                 onClick={onRetry}

@@ -152,7 +152,10 @@ describe("cancel an accepted booking", () => {
       [`POST /api/bookings/${b.id}/cancel`]: json(200, cancelled(b)),
     });
     await h.click(h.button("Cancel this booking"));
-    await h.type(h.host.querySelector("textarea"), "  I am ill  ");
+    await h.type(
+      h.host.querySelector('textarea:not([data-testid="chat-box"])'),
+      "  I am ill  ",
+    );
     await h.click(h.button("Yes, cancel this booking"));
     expect(callsTo(h.fetchMock, "/cancel")).toEqual([
       [expect.any(String), "POST", { reason: "I am ill" }],
@@ -176,10 +179,13 @@ describe("cancel an accepted booking", () => {
   it("refuses a 1 or 2 character reason on the spot and focuses the field", async () => {
     await open(accepted(3));
     await h.click(h.button("Cancel this booking"));
-    await h.type(h.host.querySelector("textarea"), "no");
+    await h.type(
+      h.host.querySelector('textarea:not([data-testid="chat-box"])'),
+      "no",
+    );
     await h.click(h.button("Yes, cancel this booking"));
     expect(callsTo(h.fetchMock, "/cancel")).toHaveLength(0);
-    const ta = h.host.querySelector("textarea")!;
+    const ta = h.host.querySelector('textarea:not([data-testid="chat-box"])')!;
     expect(ta.getAttribute("aria-invalid")).toBe("true");
     expect(document.activeElement).toBe(ta);
   });
@@ -195,12 +201,15 @@ describe("cancel an accepted booking", () => {
       ),
     });
     await h.click(h.button("Cancel this booking"));
-    await h.type(h.host.querySelector("textarea"), "call me 416 555 0199");
+    await h.type(
+      h.host.querySelector('textarea:not([data-testid="chat-box"])'),
+      "call me 416 555 0199",
+    );
     await h.click(h.button("Yes, cancel this booking"));
     expect(h.host.querySelector('[role="alert"]')?.textContent).toMatch(
       /phone numbers, emails and links out of the reason/,
     );
-    const ta = h.host.querySelector("textarea")!;
+    const ta = h.host.querySelector('textarea:not([data-testid="chat-box"])')!;
     expect(ta.getAttribute("aria-invalid")).toBe("true");
     expect(document.activeElement).toBe(ta);
     // The booking is still accepted: nothing changed.
@@ -287,7 +296,7 @@ describe("cancel an accepted booking", () => {
   it("two copies of the form on one page would not share ids", async () => {
     await open(accepted(3));
     await h.click(h.button("Cancel this booking"));
-    const ta = h.host.querySelector("textarea")!;
+    const ta = h.host.querySelector('textarea:not([data-testid="chat-box"])')!;
     const label = h.host.querySelector(`label[for="${ta.id}"]`);
     expect(label?.textContent).toContain("Reason (optional)");
     expect(ta.id).toMatch(/^cc.+-/);

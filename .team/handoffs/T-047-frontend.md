@@ -38,3 +38,11 @@ From: frontend  To: tester
   6. The message list is a scrollable region (`max-h-96`) with `tabindex=0`; it sticks to the newest message unless the reader scrolled up.
 - Probe: each status (declined, cancelled, expired, no-show, requested past `expiresAt` = nothing, no request made); frozen via the hook; the same `clientId` on retry (check the POST bodies); the echo of my own message never doubles; a 409 on retry finds the saved message; reconnect reloads once; unmount removes the channel; focus after each error; `aria-live` only for the other party's messages; the MOCK label; no Supabase URL or client in mock mode (the client module is loaded only by the real `connect`); browser console on a real stack.
 - Mock hooks: `messagesRateLimited`, `messagesFailNext`, `frozenSeeded`.
+
+## Round 2 (Tester findings)
+- **MED-1:** `changes.ts` now has `chatStaysOpen(b)` (accepted or completed, not frozen), `contactOpenText(w, chatOpen = true)` and `contactEndedText(chatOpen)`. Both booking pages pass it, so "Chat stays open." is left out for no-show and frozen bookings. `CONTACT_RULE`, `CONTACT_ENDED_TEXT` and `CONTACT_LOCKED_TEXT` keep their values (the Tester's constants tests still hold). The 8 `it.fails` in `ChatContactText.tester.test.tsx` are plain `it` now, assertions unchanged; I added frozen cases (accepted and completed, open and ended window, both roles).
+- **LOW-2:** a failed bubble shows no "Retry sending" once the chat is read only, and `retry` makes no POST then. "Remove message" stays. `it.fails` removed.
+- **LOW-3:** the live region keeps its element but its text sits in a `<span>` with a new key per announcement, so two identical messages both change the DOM. `it.fails` removed.
+- **LOW-4:** the `testkit.tsx` fallback now matches GET. This made the chat actually render in older page tests, which exposed two things I fixed:
+  - the chat textarea came first in `ChefEndSections.test.tsx` and `ChefEndSections.tester.test.tsx` selectors; those selectors now skip `[data-testid="chat-box"]` (selector only, no assertion changed; the textarea has that test id now);
+  - the chat's empty error box (`chat-error`) had `role="alert"` all the time and was the first alert on the page. It gets `role="alert"` only while an error shows (the Tester's test that expects the element with empty text still holds).
