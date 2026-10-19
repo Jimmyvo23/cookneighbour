@@ -55,6 +55,7 @@ import {
   infoBoxCls,
   warnBoxCls,
 } from "@/components/booking/parts";
+import { ChatSection } from "@/components/chat/ChatSection";
 import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { ChefPickups } from "@/components/booking/PickupSections";
 import { ChefEndSections } from "@/components/booking/ChefEndSections";
@@ -234,6 +235,14 @@ function Ready({
       <Where b={b} />
 
       {b.status === "requested" && <Answer b={b} onChange={changed} />}
+
+      <ChatSection
+        bookingId={b.id}
+        status={b.status}
+        frozen={b.frozen}
+        expiresAt={b.expiresAt}
+        otherName={b.customer.displayName}
+      />
 
       <ChefPickups booking={b} onChange={changed} />
 

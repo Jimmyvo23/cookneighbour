@@ -44,6 +44,7 @@ import {
   secondaryButtonCls,
 } from "@/components/chef/parts";
 import { NOTICE_BOX_CLS, useAnnounce } from "@/components/booking/useAnnounce";
+import { ChatSection } from "@/components/chat/ChatSection";
 import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { CustomerPickups } from "@/components/booking/PickupSections";
 import {
@@ -388,6 +389,14 @@ function Ready({
           </p>
         )}
       </section>
+
+      <ChatSection
+        bookingId={b.id}
+        status={b.status}
+        frozen={b.frozen}
+        expiresAt={b.expiresAt}
+        otherName={b.chef.displayName}
+      />
 
       <CustomerPickups booking={b} onChange={changed} />
 
