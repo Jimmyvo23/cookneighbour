@@ -56,7 +56,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 
 - **Before merging:** `gh pr update-branch <n>`, wait for `ci` to go green, then merge. *(Branch protection refuses PRs that are behind `main`.)*
 - **No loose files in the main folder.** Builders commit their handoff on the task branch; the Planner commits Tester and Reviewer handoffs (D-7). Never leave handoffs uncommitted in the main folder across branch switches. *(Uncommitted handoffs clashed with branch switches.)*
-- **Work Orders go straight into the task worktree.** Draft them in the scratchpad or `git mv` them into the new worktree; do not leave a copy in the main folder. *(T-046: an uncommitted WO-5a copy blocked `git pull` after the merge.)*
+- **Work Orders go straight into the task worktree.** Create the file in the task worktree (or move it there with plain `mv`); do not leave a copy in the main folder. *(T-046: an uncommitted WO-5a copy blocked `git pull` after the merge.)*
 - Switching branches with local changes: use `git stash`, never copy + `rm`. *(A tracked handoff file was deleted by accident.)*
 - When the main folder is busy on another branch, the agent works in a git worktree. `team-status` is still run from the main project folder.
 - Never push to `main`, never force-push. Never loosen branch protection to go faster.
