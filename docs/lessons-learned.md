@@ -50,18 +50,18 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Fixed calendar dates inside the public window | (T-079) `booking-changes.test.ts` books 3 chefs on the literal date 2026-10-31 = Toronto today + 15 on 2026-10-16, so `chefs_booked_on(far(5))` returned 4 chefs, not 1. Any literal date or random offset can land on a relative date some day. | Assert on a public list (`chefs_booked_on`, search) only with this test's own ids (`toContain` / `not.toContain` after checking `error` is null), never `toEqual([...])`. |
 | Short word regex over random values | (T-079) `not.toMatch(/markup|fee/i)` on a response flaked about 1% of runs: a hex UUID or a signed-URL token contained "fee" by chance. | Do not regex a response that holds random ids or tokens for a short word; drop those fields first, then match the plain word. Do not use `\b`: JSON keys are camelCase (`platformFeeCents`), so a whole-word match misses them. |
 | Fake clock jumps past the API timeout | (T-075) With the 20 s `apiFetch` timeout, a large Playwright `clock.fastForward` can fire the timeout before the mock adapter answers, so a retry lands one step later | In mock e2e, move the fake clock in steps shorter than `API_TIMEOUT_MS` while a call is in flight, or allow one extra retry step |
-| Updating several rows one at a time under a unique rule | (T-086) `shiftDays` moved a booking's days with no `order by`; when day 2 was updated first it landed on day 1's date and hit `booking_days_one_per_chef_date` (23505), failing CI at random | When a helper moves several rows that share a unique key, update them in a safe order (earliest first when moving earlier, latest first when moving later) or in one statement |
+| Updating several rows one at a time under a unique rule | (found in CI, T-086) `shiftDays` moved a booking's days with no `order by`; when day 2 was updated first it landed on day 1's date and hit `booking_days_one_per_chef_date` (23505), failing CI at random | When a helper moves several rows that share a unique key, update them in a safe order (earliest first when moving earlier, latest first when moving later) (one `UPDATE` does not help: a non-deferrable unique index is checked row by row) |
 
 ## 4. Git and GitHub
 
-- **Before merging:** `gh pr update-branch <n>`, wait for `ci` to go green, then merge. *(Branch protection refuses PRs that are behind `main`.)* Wait for CI with `gh run watch <run id> --exit-status`, not `gh pr checks --watch`: right after a push the checks are not registered yet and `--watch` returns at once. *(T-084)*
+- **Before merging:** `gh pr update-branch <n>`, wait for `ci` to go green, then merge. *(Branch protection refuses PRs that are behind `main`.)*
 - **No loose files in the main folder.** Builders commit their handoff on the task branch; the Planner commits Tester and Reviewer handoffs (D-7). Never leave handoffs uncommitted in the main folder across branch switches. *(Uncommitted handoffs clashed with branch switches.)*
 - Switching branches with local changes: use `git stash`, never copy + `rm`. *(A tracked handoff file was deleted by accident.)*
 - When the main folder is busy on another branch, the agent works in a git worktree. `team-status` is still run from the main project folder.
 - Never push to `main`, never force-push. Never loosen branch protection to go faster.
 - **Installers that write `.claude/settings.local.json` write to the checkout that runs them.** In a worktree the hook lands in the worktree and the session (which loads the main folder's settings) never sees it. Have the builder put the block in its handoff; the Planner places it in the main folder after merge and Jimmy's OK. *(T-068 Impeccable hook.)*
 - On macOS, `sed -i` needs an empty suffix: `sed -i '' 's/a/b/' file`. *(GNU-style `sed -i` failed during T-040.)*
-- If `gh pr checks <n> --watch` says "no checks reported" right after a push, use `gh run watch` on the new run instead. *(T-073 round 2.)*
+- If `gh pr checks <n> --watch` says "no checks reported" right after a push, or returns at once, use `gh run watch <run id> --exit-status` on the new run instead. *(T-073 round 2; again in T-084.)*
 
 ## 5. Supabase and secrets
 
