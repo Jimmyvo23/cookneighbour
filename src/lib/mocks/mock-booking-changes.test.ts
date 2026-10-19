@@ -13,6 +13,7 @@ import {
   type BookingMockState,
   type BookingRouteResult,
 } from "@/lib/mocks/mock-bookings";
+import { seedChefBookings } from "@/lib/mocks/mock-booking-changes";
 
 const NOW = new Date();
 const TODAY = torontoToday(NOW);
@@ -68,6 +69,24 @@ const asCustomer = (rows: BookingMockState["bookings"], receipts = {}) =>
       receipts,
     }),
   );
+
+describe("seed dates (T-085): one booking per chef per date", () => {
+  const me = chef().profile!;
+  const ids = [A01, A02, A03, A04, A05, A06];
+  const dupes = (rows: ReturnType<typeof seedChefBookings>["rows"]) => {
+    const seen = new Map<string, number>();
+    for (const r of rows)
+      for (const d of r.detail.days)
+        seen.set(d.date, (seen.get(d.date) ?? 0) + 1);
+    return [...seen].filter(([, n]) => n > 1).map(([date]) => date);
+  };
+  it("has no two booking days of the same chef on one date", () => {
+    expect(dupes(seedChefBookings(me, NOW).rows)).toEqual([]);
+  });
+  it("still has none when the pickedUpSeeded hook adds a day 2 to every booking", () => {
+    expect(dupes(seedChefBookings(me, NOW, [], ids).rows)).toEqual([]);
+  });
+});
 
 describe("seeded requests for a chef", () => {
   it("lists made-up bookings with the customer as counterparty", async () => {

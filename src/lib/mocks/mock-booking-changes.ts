@@ -387,7 +387,8 @@ export function seedChefBookings(
       status: "accepted",
       locationType: "customer_home",
       groceryOption: "chef_shops",
-      days: [{ offset: -1, dishes: [D.satay, D.buncha], cooked: true }],
+      // -2, not -1: A03 already holds yesterday for this chef (one booking per chef per date).
+      days: [{ offset: -2, dishes: [D.satay, D.buncha], cooked: true }],
     }),
   ];
   // T-064 (D-53): the test hook `frozenSeeded` freezes the listed bookings.
@@ -398,7 +399,7 @@ export function seedChefBookings(
   // picked up (the customer already confirmed it). T-081 (D-81): the server completes a booking once
   // every day is picked up, so an accepted booking with a confirmed day must still have another open
   // day. If the booking has only that one day, the hook adds an uncooked, unconfirmed day 2 (a copy
-  // of day 1, one day after today) so the seeded state is one the server can really produce.
+  // of day 1, on the first free date from tomorrow) so the seeded state is one the server can really produce.
   for (const r of rows)
     if (pickedUpIds.includes(r.detail.id)) {
       const first = r.detail.days.find(
@@ -409,7 +410,13 @@ export function seedChefBookings(
         x === first ? { ...x, pickedUpAt: x.cookedAt } : x,
       );
       const hasOpen = days.some((x) => !x.pickedUpAt);
-      const date2 = addDays(today, 1);
+      // The first date from tomorrow that no seeded booking of this chef uses: the server allows one
+      // booking per chef per date (`booking_days_one_per_chef_date`), and A04 holds tomorrow.
+      const taken = new Set(
+        rows.flatMap((x) => x.detail.days.map((d) => d.date)),
+      );
+      let date2 = addDays(today, 1);
+      while (taken.has(date2)) date2 = addDays(date2, 1);
       r.detail = {
         ...r.detail,
         days: hasOpen
