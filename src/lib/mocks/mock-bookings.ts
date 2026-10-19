@@ -21,6 +21,8 @@
 //                                            one-day booking also gets an open, uncooked day 2,
 //                                            because the server completes a booking once every day
 //                                            is picked up (T-081, D-81).
+//       hooks.messagesRateLimited = true     the next chat send answers 429 (T-046, mock-messages.ts).
+//   - the chat routes (T-046) are mock-messages.ts.
 //   - a row whose status is edited to `accepted` shows the cookingPlace and contact like the real
 //     view does (hidden before acceptance, CLAUDE.md 6.8).
 import type {
@@ -61,6 +63,7 @@ import { MAX_OPEN_REQUESTS } from "@/lib/domain/config";
 import { findContactDetails } from "@/lib/domain/contactDetails";
 import { estimateBooking, type Estimate } from "@/lib/domain/pricing";
 import { weekday } from "@/lib/chef/calendar";
+import { messageRoute, type MockMessage } from "@/lib/mocks/mock-messages";
 import {
   changeRoute,
   seedChefBookings,
@@ -103,6 +106,8 @@ export interface MockHooks {
    * already confirmed). Read when the made-up bookings are brought in, so set it first.
    */
   pickedUpSeeded?: string[];
+  /** T-046: the next message send answers 429 RATE_LIMITED (retry in 30 seconds). */
+  messagesRateLimited?: boolean;
 }
 
 /** A MOCK receipt as saved: the API view plus the path the chef "uploaded" (never returned). */
@@ -122,6 +127,8 @@ export interface BookingMockState {
   customerSeeded?: boolean;
   /** T-045: receipts by booking id (both sides read them). */
   receipts?: Record<string, MockReceipt[]>;
+  /** T-046: chat messages by booking id (MOCK, kept in this browser tab only). */
+  messages?: Record<string, MockMessage[]>;
 }
 
 export interface BookingRouteResult {
@@ -136,6 +143,7 @@ export interface BookingRouteResult {
       | "chefSeeded"
       | "customerSeeded"
       | "receipts"
+      | "messages"
     >
   >;
 }
@@ -562,6 +570,8 @@ export function bookingRoutes(
       return carry(listRoute(url, state, "chef"));
     if (one && method === "GET")
       return carry(detailRoute(one[1], state, "chef", now));
+    const talked = messageRoute(method, path, body, state, "chef");
+    if (talked) return carry(talked);
     const changed = changeRoute(method, p, body, state, "chef", now);
     if (changed) return carry(changed);
     return carry(fail(403, "FORBIDDEN", "Only customers can use this."));
@@ -577,6 +587,8 @@ export function bookingRoutes(
     return carry(detailRoute(one[1], state, "customer", now));
   if (cancel && method === "POST")
     return carry(cancelRoute(cancel[1], body, state, now));
+  const talked = messageRoute(method, path, body, state, "customer");
+  if (talked) return carry(talked);
   const changed = changeRoute(method, p, body, state, "customer", now);
   if (changed) return carry(changed);
   return carry(fail(404, "NOT_FOUND", "Not found."));

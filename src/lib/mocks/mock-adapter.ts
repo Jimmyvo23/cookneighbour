@@ -87,6 +87,7 @@ import {
   type MockHooks,
   type MockReceipt,
 } from "@/lib/mocks/mock-bookings";
+import type { MockMessage } from "@/lib/mocks/mock-messages";
 import { parseSavedIntake } from "@/lib/domain/savedIntake";
 import { searchRoutes } from "@/lib/mocks/mock-search";
 import {
@@ -122,6 +123,8 @@ interface MockState {
   customerSeeded: boolean;
   /** MOCK receipts by booking id (T-045). */
   receipts: Record<string, MockReceipt[]>;
+  /** MOCK chat messages by booking id (T-046), see mock-messages.ts. */
+  messages: Record<string, MockMessage[]>;
   /** MOCK saved allergy profile of the signed-in customer (T-067). */
   savedIntake: SavedIntake | null;
   savedIntakeAt: string | null;
@@ -143,6 +146,7 @@ const EMPTY: MockState = {
   chefSeeded: false,
   customerSeeded: false,
   receipts: {},
+  messages: {},
   savedIntake: null,
   savedIntakeAt: null,
 };

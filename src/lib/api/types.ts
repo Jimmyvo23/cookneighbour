@@ -867,3 +867,35 @@ export interface AnswerReceiptRequest {
   /** Required for `dispute` (3 to 300 characters), not allowed for `confirm`. */
   note?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Messaging (T-046, contract section 7C)
+// ---------------------------------------------------------------------------
+/** One chat message of a booking, as the two parties see it. */
+export interface MessageView {
+  id: string;
+  bookingId: string;
+  /** Profile id of the sender (the same ids the booking already shows for both parties). */
+  senderId: string;
+  /** True when the signed-in caller sent it. */
+  mine: boolean;
+  /** The id the sender's browser chose for this message (retry guard, reconcile an optimistic bubble). */
+  clientId: string | null;
+  body: string;
+  /** ISO instant. */
+  createdAt: string;
+}
+/** GET /api/bookings/:id/messages: oldest first, follow `nextCursor` until it is null. */
+export type MessageList = Page<MessageView>;
+/** POST /api/bookings/:id/messages (customer or chef of the booking). */
+export interface SendMessageRequest {
+  /** A new UUID per message; send the SAME one when you retry the same message. */
+  clientId: string;
+  /** 1 to 2000 characters after trimming; line breaks allowed. */
+  body: string;
+}
+/** `error.reason` values of a 409 INVALID_STATE from the two message routes. */
+export type MessageRefusalReason =
+  | "chat_hidden" // declined, cancelled, expired or no-show booking, or a request past its expiry (D-94)
+  | "frozen" // an admin flag is open (D-93): read only
+  | "message_id_reused"; // clientId already used for another booking or another text
