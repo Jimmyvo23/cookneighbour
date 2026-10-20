@@ -206,6 +206,7 @@ describe("who can read a review", () => {
       await anon
         .from("reviews")
         .select("id, rating")
+        .eq("booking_id", id)
         .eq("subject_id", chef.id)
         .eq("author_role", "customer"),
     );
