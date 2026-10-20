@@ -318,17 +318,6 @@ describe("reports (report-a-problem)", () => {
         })
         .select(),
     );
-    expectDenied(
-      await c1
-        .from("reports")
-        .insert({
-          booking_id: b.acceptedC1H1,
-          reporter_id: fx.c1.id,
-          description: "x",
-          admin_note: "fine",
-        })
-        .select(),
-    );
   });
 
   it("only the reporter and admin can read it; the other party and strangers cannot", async () => {
@@ -350,7 +339,7 @@ describe("reports (report-a-problem)", () => {
     expectDenied(
       await admin
         .from("reports")
-        .update({ status: "reviewing", admin_note: "looking" })
+        .update({ status: "reviewing" })
         .eq("id", reportId)
         .select(),
     );

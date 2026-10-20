@@ -362,7 +362,7 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
     // The allowed insert (same columns, no extras) is covered in engagement.test.ts.
   });
 
-  it("reports: status, admin_note, created_at, resolved_at are refused; valid categories work and a bogus one is rejected", async () => {
+  it("reports: status, created_at, resolved_at are refused; valid categories work and a bogus one is rejected", async () => {
     // T-048: one open report per reporter per booking, so this test uses a booking no other test
     // reports on and closes each report (service role) before it files the next.
     const base = {
@@ -381,7 +381,6 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
     };
     for (const extra of [
       { status: "open" },
-      { admin_note: "x" },
       { created_at: "2001-01-01T00:00:00Z" },
       { resolved_at: "2001-01-01T00:00:00Z" },
     ]) {

@@ -513,17 +513,10 @@ export async function decide(
   if (out.result !== "ok")
     throw new Error("admin_decide_booking: unexpected result");
 
-  // The booking id: a flag decision names it; a report decision learns it from the report.
-  let bookingId = input.bookingId;
-  if (!bookingId) {
-    const rep = await a.admin
-      .from("reports")
-      .select("booking_id")
-      .eq("id", input.reportId as string)
-      .maybeSingle();
-    if (rep.error || !rep.data) throw new Error("report lookup failed");
-    bookingId = (rep.data as Row).booking_id as string;
-  }
+  // The booking id comes back from the function (T-090), so no extra read of reports.
+  const bookingId = out.booking_id;
+  if (typeof bookingId !== "string")
+    throw new Error("admin_decide_booking: no booking id");
   logDecision(a.userId, bookingId);
 
   const status = out.status as string;
@@ -549,6 +542,7 @@ export async function decide(
     .select("state")
     .eq("booking_id", bookingId)
     .maybeSingle();
+  if (claim.error) throw new Error("free_trial_claims lookup failed");
   const state = (claim.data as Row | null)?.state as
     "held" | "consumed" | "released" | undefined;
 
