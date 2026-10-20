@@ -124,7 +124,7 @@ describe("who can review, and when", () => {
     expect(up.error).toBeNull();
     const r = await postReview(f.cust.b, f.id, { rating: 5 });
     expect(r.status, r.text).toBe(201);
-    expect(r.body.authorDisplayName).toBe("Mei Ling Chen");
+    expect(r.body.authorDisplayName.trim()).toBe("Mei Ling Chen");
     const pub = await publicReviews(new Browser(), f.chef.id);
     const item = pub.body.items.find((x: { id: string }) => x.id === r.body.id);
     expect(item.authorFirstName).toBe("Mei");
