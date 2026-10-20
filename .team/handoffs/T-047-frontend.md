@@ -46,3 +46,16 @@ From: frontend  To: tester
 - **LOW-4:** the `testkit.tsx` fallback now matches GET. This made the chat actually render in older page tests, which exposed two things I fixed:
   - the chat textarea came first in `ChefEndSections.test.tsx` and `ChefEndSections.tester.test.tsx` selectors; those selectors now skip `[data-testid="chat-box"]` (selector only, no assertion changed; the textarea has that test id now);
   - the chat's empty error box (`chat-error`) had `role="alert"` all the time and was the first alert on the page. It gets `role="alert"` only while an error shows (the Tester's test that expects the element with empty text still holds).
+
+## Round 3 (Reviewer: M-1, L-1 to L-4)
+- **M-1 / D-105:** a chat that was open and then turns out to be closed (409 `chat_hidden` on send, on retry, or found by the reload after a reconnect) is replaced by one line, "The chat for this booking is closed." (`data-testid="chat-closed"`, `role="status"`). No messages and no box show. The notice is kept by the `ChatSection` wrapper, so it stays after the page reloads the booking and its new status would otherwise remove the section.
+  - New `onClosed` prop on `ChatSection`, called once; both pages pass a quiet `refresh()` of the booking (no "loading", no focus move), so the new status shows.
+  - **Focus rule (one owner):** the notice takes focus when it appears and keeps it. The page reload moves no focus.
+  - A chat that is hidden when the page loads is unchanged: no notice, no `onClosed`, and no `/messages` request from the page (D-94).
+  - Hook: new phase `closed` (was open) next to `hidden` (closed from the start).
+  - Tests: `ChatSection.test.tsx` (send, retry, reconnect reload, notice survives the status change, hidden at load) check `activeElement` is the notice and not `body`; `ChatClosedReload.test.tsx` checks both pages refetch the booking once and show the new status.
+- **L-1:** the visible time under a bubble is always `aria-hidden`; the sr-only copy in the name line is the one read.
+- **L-2:** `live` starts as `connecting` and shows no note; the "paused" and "not available" notes show only for `paused` and `off`.
+- **L-3:** if the first SUBSCRIBED arrives after the first load finished, the history is loaded once more. A SUBSCRIBED that arrives during the first load causes no extra load. The reconnect test was updated for this (counts 2 then 3).
+- **L-4:** `onRow` returns at once when the effect was cleaned up (test added).
+- **NOTE:** stale comments on the former `it.fails` tests in `ChatSection.tester.test.tsx` are updated; no assertion changed.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // T-047: the booking chat. Realtime is a fake `connect`; the routes are the contract 7C shapes.
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BookingStatus, MessageView } from "@/lib/api/types";
 import type { ChatConnect, ChatHandlers } from "@/lib/chat/realtime";
 import {
@@ -311,16 +311,54 @@ describe("live messages", () => {
     });
     await mount(l);
     expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(1);
-    l.f.handlers!.onStatus("live"); // first connect: no extra load
+    // L-3: the channel joined after the first load, so load once more (nothing in the gap is missed).
+    l.f.handlers!.onStatus("live");
     await h.flush();
-    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(1);
+    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(2);
     l.f.handlers!.onStatus("down");
     await h.flush();
     expect(h.q("chat-live-note")?.textContent).toContain("paused");
     l.f.handlers!.onStatus("live");
     await h.flush();
-    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(2);
+    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(3);
     expect(items()).toHaveLength(1);
+  });
+
+  it("says nothing while the first connect is under way (L-2)", async () => {
+    const l = fakeLive();
+    routes(h.fetchMock, {
+      [GET1]: json(200, { items: [view(1)], nextCursor: null }),
+    });
+    await mount(l);
+    expect(h.q("chat-live-note")).toBeNull(); // connecting, not "paused"
+  });
+
+  it("ignores a late event of an old channel after the component is gone (L-4)", async () => {
+    const l = fakeLive();
+    routes(h.fetchMock, {
+      [GET1]: json(200, { items: [], nextCursor: null }),
+    });
+    await mount(l);
+    const handlers = l.f.handlers!;
+    h.cleanup();
+    expect(() => handlers.onRow({ id: "x" })).not.toThrow();
+    h = harness();
+  });
+});
+
+describe("a bubble's time is read once (L-1)", () => {
+  it("hides the visible time from screen readers", async () => {
+    const l = fakeLive();
+    routes(h.fetchMock, {
+      [GET1]: json(200, { items: [view(1)], nextCursor: null }),
+    });
+    await mount(l);
+    const li = h.host.querySelector('[data-testid="chat-message"]')!;
+    expect(li.querySelector("p.sr-only, span.sr-only")).not.toBeNull();
+    const visibleTime = [...li.querySelectorAll("p")].filter(
+      (p) => p.getAttribute("aria-hidden") === "true",
+    );
+    expect(visibleTime).toHaveLength(1);
   });
 });
 
@@ -496,42 +534,110 @@ describe("sending", () => {
     expect(h.button("Remove message")).not.toBeNull();
   });
 
-  it("removes the whole chat when a send finds it hidden", async () => {
+  const HIDDEN = () =>
+    new Response(
+      JSON.stringify({
+        error: {
+          code: "INVALID_STATE",
+          message: "closed",
+          reason: "chat_hidden",
+        },
+      }),
+      { status: 409 },
+    );
+  const OPEN = () =>
+    new Response(JSON.stringify({ items: [], nextCursor: null }), {
+      status: 200,
+    });
+
+  it("D-105: a send that finds the chat hidden shows the closed notice, keeps focus, tells the page", async () => {
+    const l = fakeLive();
+    let hidden = false;
+    const closed = vi.fn();
+    routes(h.fetchMock, {
+      [GET1]: () => (hidden ? HIDDEN() : OPEN()),
+      [POST]: () => {
+        hidden = true;
+        return HIDDEN();
+      },
+    });
+    await mount(l, { onClosed: closed });
+    await typeAndSend("late");
+    expect(h.q("chat")).toBeNull();
+    expect(h.host.querySelector("textarea")).toBeNull();
+    expect(h.q("chat-closed")?.textContent).toBe(
+      "The chat for this booking is closed.",
+    );
+    expect(document.activeElement).toBe(h.q("chat-closed"));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(closed).toHaveBeenCalledTimes(1);
+    expect(l.f.closed).toBe(1);
+  });
+
+  it("D-105: a retry that finds the chat hidden does the same", async () => {
+    const l = fakeLive();
+    let hidden = false;
+    let n = 0;
+    const closed = vi.fn();
+    routes(h.fetchMock, {
+      [GET1]: () => (hidden ? HIDDEN() : OPEN()),
+      [POST]: () => {
+        if (n++ === 0) throw new TypeError("offline");
+        hidden = true;
+        return HIDDEN();
+      },
+    });
+    await mount(l, { onClosed: closed });
+    await typeAndSend("late");
+    expect(h.q("chat-failed")).not.toBeNull();
+    await h.click(h.button("Retry sending"));
+    expect(h.q("chat-closed")).not.toBeNull();
+    expect(document.activeElement).toBe(h.q("chat-closed"));
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  it("D-105: the reload after a reconnect that finds the chat hidden does the same", async () => {
+    const l = fakeLive();
+    let hidden = false;
+    const closed = vi.fn();
+    routes(h.fetchMock, { [GET1]: () => (hidden ? HIDDEN() : OPEN()) });
+    await mount(l, { onClosed: closed });
+    l.f.handlers!.onStatus("live");
+    await h.flush();
+    l.f.handlers!.onStatus("down");
+    hidden = true;
+    l.f.handlers!.onStatus("live");
+    await h.flush();
+    expect(h.q("chat-closed")).not.toBeNull();
+    expect(document.activeElement).toBe(h.q("chat-closed"));
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  it("the notice stays when the page's status then turns hidden", async () => {
     const l = fakeLive();
     let hidden = false;
     routes(h.fetchMock, {
-      [GET1]: () =>
-        hidden
-          ? new Response(
-              JSON.stringify({
-                error: {
-                  code: "INVALID_STATE",
-                  message: "closed",
-                  reason: "chat_hidden",
-                },
-              }),
-              { status: 409 },
-            )
-          : new Response(JSON.stringify({ items: [], nextCursor: null }), {
-              status: 200,
-            }),
+      [GET1]: () => (hidden ? HIDDEN() : OPEN()),
       [POST]: () => {
         hidden = true;
-        return new Response(
-          JSON.stringify({
-            error: {
-              code: "INVALID_STATE",
-              message: "closed",
-              reason: "chat_hidden",
-            },
-          }),
-          { status: 409 },
-        );
+        return HIDDEN();
       },
     });
     await mount(l);
     await typeAndSend("late");
+    await mount(l, { status: "declined" }); // the page reloaded the booking
+    expect(h.q("chat-closed")).not.toBeNull();
+    expect(document.activeElement).toBe(h.q("chat-closed"));
+  });
+
+  it("a chat that is hidden when the page loads shows no notice and does not call onClosed", async () => {
+    const l = fakeLive();
+    const closed = vi.fn();
+    routes(h.fetchMock, { [GET1]: HIDDEN });
+    await mount(l, { onClosed: closed });
     expect(h.q("chat")).toBeNull();
+    expect(h.q("chat-closed")).toBeNull();
+    expect(closed).not.toHaveBeenCalled();
   });
 });
 

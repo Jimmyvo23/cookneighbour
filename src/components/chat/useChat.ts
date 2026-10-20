@@ -20,9 +20,13 @@ import {
   type ChatItem,
 } from "@/lib/chat/state";
 
-/** live: Realtime works. paused: it dropped (it reconnects by itself). off: it could not start. mock: MOCK mode has none. */
-export type LiveState = "live" | "paused" | "off" | "mock";
-export type Phase = "loading" | "ready" | "hidden" | "error";
+/** connecting: first connect under way (says nothing). live: Realtime works. paused: it dropped (it reconnects by itself). off: it could not start. mock: MOCK mode has none. */
+export type LiveState = "connecting" | "live" | "paused" | "off" | "mock";
+/**
+ * hidden: the chat was already closed when it loaded (shows nothing, D-94).
+ * closed: the chat was open and became hidden (D-105: shows a one-line notice).
+ */
+export type Phase = "loading" | "ready" | "hidden" | "closed" | "error";
 
 /** What the composer should do after a send. */
 export type SendResult =
@@ -44,6 +48,8 @@ export interface UseChatOptions {
   connect?: ChatConnect;
   /** Called with the plain text for the live region when the other party's message arrives. */
   otherName: string;
+  /** Called once when an open chat turns out to be closed (D-105). */
+  onClosed?: () => void;
 }
 
 export function useChat({
@@ -51,10 +57,11 @@ export function useChat({
   mock,
   connect = connectChat,
   otherName,
+  onClosed,
 }: UseChatOptions) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [items, setItems] = useState<ChatItem[]>([]);
-  const [live, setLive] = useState<LiveState>(mock ? "mock" : "paused");
+  const [live, setLive] = useState<LiveState>(mock ? "mock" : "connecting");
   const [announced, setAnnounced] = useState({ text: "", id: 0 });
   const [frozenSeen, setFrozenSeen] = useState(false);
   const phaseRef = useRef<Phase>("loading");
@@ -62,6 +69,10 @@ export function useChat({
   const userIdRef = useRef<string | null>(null);
   const needsReload = useRef(false);
   const subRef = useRef<ChatSubscription | null>(null);
+  const everLive = useRef(false);
+  const firstLoadDone = useRef(false);
+  const onClosedRef = useRef(onClosed);
+  onClosedRef.current = onClosed;
   const nameRef = useRef(otherName);
   nameRef.current = otherName;
 
@@ -104,7 +115,10 @@ export function useChat({
     const r = await fetchAll();
     if (r.status === "ok") apply((prev) => mergeServer(prev, r.items));
     else if (r.status === "hidden") {
-      setPhaseBoth("hidden");
+      // Open and then hidden: say so (D-105) and tell the page. Hidden from the start: show nothing.
+      const wasOpen = phaseRef.current === "ready";
+      setPhaseBoth(wasOpen ? "closed" : "hidden");
+      if (wasOpen) onClosedRef.current?.();
       // A hidden chat stops delivering anyway (D-94); free the channel now.
       subRef.current?.close();
       subRef.current = null;
@@ -118,6 +132,8 @@ export function useChat({
     itemsRef.current = [];
     userIdRef.current = null;
     needsReload.current = false;
+    everLive.current = false;
+    firstLoadDone.current = false;
     setItems([]);
     setFrozenSeen(false);
     setPhaseBoth("loading");
@@ -127,6 +143,7 @@ export function useChat({
         try {
           const s = await connect(bookingId, {
             onRow: (row) => {
+              if (cancelled) return;
               const view = rowToView(row, userIdRef.current);
               if (!view || view.bookingId !== bookingId) return;
               const known = itemsRef.current.some(
@@ -151,7 +168,11 @@ export function useChat({
               if (cancelled) return;
               if (st === "live") {
                 setLive("live");
-                if (needsReload.current) {
+                // Events are best effort: load again after a drop, and once if the channel
+                // joined only after the first load (a message in that gap would be missed).
+                const late = !everLive.current && firstLoadDone.current;
+                everLive.current = true;
+                if (needsReload.current || late) {
                   needsReload.current = false;
                   void loadAll(); // events are best effort: load the history again after a drop
                 }
@@ -174,6 +195,7 @@ export function useChat({
       if (cancelled) return;
       const r = await loadAll();
       if (cancelled) return;
+      firstLoadDone.current = true;
       if (r.status === "ok") setPhaseBoth("ready");
       else if (r.status === "error") setPhaseBoth("error");
     }
@@ -235,7 +257,7 @@ export function useChat({
           ) {
             // Maybe the first try was saved and only the answer was lost: look before saying "not sent".
             const r = await loadAll();
-            if (r.status === "hidden") return { kind: "ok" }; // the whole chat goes away
+            if (r.status === "hidden") return { kind: "ok" }; // the panel shows the closed notice
             if (
               r.status === "ok" &&
               r.items.some((m) => m.clientId === clientId)

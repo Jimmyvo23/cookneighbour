@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // T-047 Tester: gaps beside the builder's ChatSection.test.tsx. Realtime is a fake `connect`; the
-// routes answer the contract 7C shapes. A test marked it.fails is a bug found (see the handoff):
-// it passes in CI today and turns red the day the bug is fixed, so the marker must then go.
+// routes answer the contract 7C shapes. Bugs the Tester found were first
+// kept as it.fails; all are fixed now (rounds 2 and 3) and are plain tests that guard the fix.
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BookingStatus, MessageView } from "@/lib/api/types";
@@ -231,7 +231,7 @@ describe.each(["customer", "chef"] as const)(
 describe("frozen chat has no way to send", () => {
   it("a failed message's Retry goes away when the booking becomes frozen", async () => {
     // The booking page can pass frozen=true later (a reload of the booking). A bubble that failed
-    // before that still offers "Retry sending", which would POST to a read-only chat.
+    // before that must not offer "Retry sending" (fixed in round 2: it would POST to a read-only chat).
     const l = fakeLive();
     routes(h.fetchMock, { ...empty, [POST]: offline });
     await mount(l);
@@ -541,7 +541,8 @@ describe("live region", () => {
 
   it("two identical messages in a row both reach the screen reader (the region text must change)", async () => {
     // A screen reader announces a live region when its text changes. If the second message has the
-    // same text as the first, the string is the same, React writes nothing, and nothing is read.
+    // same text as the first, the string is the same and nothing is read. Each announcement is a
+    // keyed span (round 2), so the DOM changes every time.
     const l = fakeLive();
     routes(h.fetchMock, empty);
     await mount(l);
@@ -716,9 +717,8 @@ describe("MOCK mode and the Supabase client", () => {
 
 describe("testkit (changed by the builder)", () => {
   it("an unrouted GET .../messages answers an empty page, as the testkit comment says", async () => {
-    // apiFetch always passes method "GET", but the fallback in routes() tests `!init?.method`, so
-    // the branch is never taken and the chat shows "did not load" on a page test that does not
-    // route messages. Harmless today (those tests do not look at the chat); the comment is wrong.
+    // apiFetch always passes method "GET"; the fallback in routes() matches GET since round 2, so a
+    // page test that does not route messages gets an empty chat, not "did not load".
     routes(h.fetchMock, {});
     const { apiFetch } = await import("@/lib/api/client");
     const page = await apiFetch<{ items: unknown[]; nextCursor: null }>(

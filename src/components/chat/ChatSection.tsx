@@ -43,6 +43,12 @@ export interface ChatSectionProps {
   /** Injected in tests. */
   connect?: ChatConnect;
   mock?: boolean;
+  /**
+   * Called once when an open chat turns out to be closed (D-105), so the page can reload the
+   * booking. Focus rule: the closed notice takes focus and KEEPS it; the page's reload is a quiet
+   * refetch that moves no focus.
+   */
+  onClosed?: () => void;
 }
 
 /** D-94 plus finding 4a: whether the chat shows at all. */
@@ -59,9 +65,39 @@ export function isChatVisible(
   );
 }
 
+export const CHAT_CLOSED_TEXT = "The chat for this booking is closed.";
+
 export function ChatSection(props: ChatSectionProps) {
+  // D-105: a chat that was open and became hidden is replaced by a one-line notice. It stays even
+  // after the page reloads the booking (whose new status would otherwise remove the section).
+  const [closedFor, setClosedFor] = useState<string | null>(null);
+  if (closedFor === props.bookingId) return <ClosedNotice />;
   if (!isChatVisible(props.status, props.expiresAt)) return null;
-  return <ChatPanel {...props} />;
+  return (
+    <ChatPanel
+      {...props}
+      onClosed={() => {
+        setClosedFor(props.bookingId);
+        props.onClosed?.();
+      }}
+    />
+  );
+}
+
+function ClosedNotice() {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => ref.current?.focus(), []);
+  return (
+    <p
+      ref={ref}
+      tabIndex={-1}
+      role="status"
+      data-testid="chat-closed"
+      className={infoBoxCls}
+    >
+      {CHAT_CLOSED_TEXT}
+    </p>
+  );
 }
 
 function ChatPanel({
@@ -71,8 +107,9 @@ function ChatPanel({
   otherName,
   connect,
   mock = isMockEnabled(),
+  onClosed,
 }: ChatSectionProps) {
-  const chat = useChat({ bookingId, mock, connect, otherName });
+  const chat = useChat({ bookingId, mock, connect, otherName, onClosed });
   const uid = useId();
   const headingId = `${uid}-h`;
   const boxId = `${uid}-box`;
@@ -111,7 +148,7 @@ function ChatPanel({
     if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [chat.items]);
 
-  if (chat.phase === "hidden") return null;
+  if (chat.phase === "hidden" || chat.phase === "closed") return null;
 
   const count = text.trim().length;
   const over = count > MESSAGE_MAX_LENGTH;
@@ -167,13 +204,15 @@ function ChatPanel({
           is accepted.
         </p>
       )}
-      {!mock && chat.live !== "live" && chat.phase === "ready" && (
-        <p data-testid="chat-live-note" className={hintCls}>
-          {chat.live === "paused"
-            ? "Live updates are paused. Trying to reconnect; new messages will appear when it is back."
-            : "Live updates are not available right now. Reload the page to see new messages."}
-        </p>
-      )}
+      {!mock &&
+        (chat.live === "paused" || chat.live === "off") &&
+        chat.phase === "ready" && (
+          <p data-testid="chat-live-note" className={hintCls}>
+            {chat.live === "paused"
+              ? "Live updates are paused. Trying to reconnect; new messages will appear when it is back."
+              : "Live updates are not available right now. Reload the page to see new messages."}
+          </p>
+        )}
 
       {chat.phase === "loading" && (
         <p role="status" data-testid="chat-loading">
@@ -342,10 +381,7 @@ function Bubble({
         </p>
         <p className="whitespace-pre-wrap break-words">{m.body}</p>
       </div>
-      <p
-        className={hintCls}
-        aria-hidden={m.state === "sent" ? undefined : true}
-      >
+      <p className={hintCls} aria-hidden="true">
         {m.state === "pending" ? "Sending..." : formatWhen(m.createdAt)}
       </p>
       {m.state === "failed" && (

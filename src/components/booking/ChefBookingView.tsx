@@ -167,6 +167,7 @@ export function ChefBookingView({ id }: { id: string }) {
       {state.kind === "ready" && (
         <RefusalProvider value={scope}>
           <Ready
+            onChatClosed={() => void refresh()}
             booking={state.booking}
             onChange={(b) => {
               seq.current++;
@@ -183,9 +184,11 @@ export function ChefBookingView({ id }: { id: string }) {
 function Ready({
   booking: b,
   onChange,
+  onChatClosed,
 }: {
   booking: BookingDetail;
   onChange: (b: BookingDetail) => void;
+  onChatClosed: () => void;
 }) {
   const hid = useId();
   // One owner moves focus after a successful change: the notice below (lessons-learned section 3).
@@ -243,6 +246,7 @@ function Ready({
         frozen={b.frozen}
         expiresAt={b.expiresAt}
         otherName={b.customer.displayName}
+        onClosed={onChatClosed}
       />
 
       <ChefPickups booking={b} onChange={changed} />

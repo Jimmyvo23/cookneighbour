@@ -196,6 +196,7 @@ export function BookingDetailView({ id }: { id: string }) {
       {state.kind === "ready" && (
         <RefusalProvider value={scope}>
           <Ready
+            onChatClosed={() => void refresh()}
             booking={state.booking}
             sent={sent}
             profileNotSaved={profileNotSaved}
@@ -216,11 +217,13 @@ function Ready({
   sent,
   profileNotSaved,
   onChange,
+  onChatClosed,
 }: {
   booking: BookingDetail;
   sent: boolean;
   profileNotSaved: boolean;
   onChange: (b: BookingDetail) => void;
+  onChatClosed: () => void;
 }) {
   const hid = useId();
   // After a successful pickup proposal or receipt answer the form that was used goes away, so this
@@ -398,6 +401,7 @@ function Ready({
         frozen={b.frozen}
         expiresAt={b.expiresAt}
         otherName={b.chef.displayName}
+        onClosed={onChatClosed}
       />
 
       <CustomerPickups booking={b} onChange={changed} />
