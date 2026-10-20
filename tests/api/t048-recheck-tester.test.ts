@@ -3,7 +3,7 @@
 // the sweep, the sweep repairing a consumed claim, the chef's rating after an admin cancel,
 // and a double decision on a completed booking.
 import { beforeEach, describe, expect, it } from "vitest";
-import { freshLimits } from "./harness";
+import { Browser, freshLimits } from "./harness";
 import { claimOf, listBookings, notesFor } from "./booking-helpers";
 import { newAdmin } from "./chef-helpers";
 import {
@@ -133,9 +133,9 @@ describe("T-048 re-check: admin changes a completed booking", () => {
     const f = await completedBooking();
     expect((await postReview(f.cust.b, f.id, { rating: 4 })).status).toBe(201);
     const before = await svc
-      .from("chef_profiles")
+      .from("chefs")
       .select("review_count, rating_avg")
-      .eq("id", f.chef.id)
+      .eq("profile_id", f.chef.id)
       .single();
     const rep = await report(f);
     const admin = await newAdmin();
@@ -148,12 +148,12 @@ describe("T-048 re-check: admin changes a completed booking", () => {
       ).status,
     ).toBe(200);
     const after = await svc
-      .from("chef_profiles")
+      .from("chefs")
       .select("review_count, rating_avg")
-      .eq("id", f.chef.id)
+      .eq("profile_id", f.chef.id)
       .single();
     expect(after.data).toEqual(before.data);
-    const pub = await publicReviews(f.cust.b, f.chef.id);
+    const pub = await publicReviews(new Browser(), f.chef.id);
     expect(pub.status, pub.text).toBe(200);
     expect(JSON.stringify(pub.body)).toContain('"rating":4');
     const late = await postReview(f.chef.b, f.id, { rating: 2 });
