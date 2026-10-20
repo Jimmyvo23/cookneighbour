@@ -250,7 +250,7 @@ describe("ReviewSection: when there is no form", () => {
     });
     expect(h.q("review-form")).toBeNull();
     expect(h.q("my-review")!.textContent).toMatch(
-      /Your review.*Lovely food.*final/s,
+      /Your review[\s\S]*Lovely food[\s\S]*final/,
     );
     expect(h.q("review-why")).toBeNull();
     // No edit or delete control exists.
