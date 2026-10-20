@@ -417,7 +417,7 @@ describe("D-34 a refused decline reason changes nothing", () => {
       "Call +1 (905) 555-0123",
       "905.555.0123",
       "9055550123",
-      "555 0123",
+      "416 555 0123",
       "me@example.com",
       "see example.com/me",
       "http://x.io",
