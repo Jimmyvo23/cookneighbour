@@ -37,3 +37,24 @@ New tests: API 18 cases in `t048-tester.test.ts` (1 `it.fails`), RLS about 22 ca
 ## What the next agent needs
 - Backend: decide F-1 and F-2 with Jimmy. When fixed, delete `.fails` from the matching tests (vitest will flag them).
 - Reviewer: privacy items above; all other WO-5c rules held in tests.
+
+## Re-check (head 33b7571, after fix round 0a83d89 and round 3)
+Verdict: **PASS with findings** (no blocking defect; CI `ci` gate green at 33b7571 before my push).
+
+Method: read the diff 1d11228..33b7571, both migrations, `change_booking`/`sweep_booking_changes`/`admin_decide_booking`, `free-trial.ts`, `reviews.ts`, and the builder's updated API and RLS tests. API and RLS suites only run in CI (no Docker).
+
+Jimmy's 2026-10-20 decisions
+1. Report never blocks: PASS. `problem_reported` is gone from `change_booking` (complete, last pickup), the sweep (auto-complete, `no_day_cooked`) and the refusal text. Covered by `report-never-blocks-guards.test.ts`, rewritten completion tests and my old F-1 test (now passing). Nothing a party sees changes on report.
+2. Admin moves a completed booking: PASS. Cancelled / chef no-show / customer no-show work; `completed` or none leaves it. Release follows only with no cooked day (`allowReopen`, sweep repair). Reviews stay; new review refused (`not_completed`).
+3. Contact filter: PASS. Customer comment 422 `CONTACT_DETAILS_NOT_ALLOWED`, chef not filtered.
+4. Reporter notice: PASS. One `report_closed`, no note, nothing for the other party; dismiss and resolve.
+5. Reviews column grants: PASS by migration read (`revoke select` then column grant for anon and authenticated, five safe columns); routes read with the service role after the party / visibility check. Browser-role checks run in CI (all green).
+
+New tests (tests/api/t048-recheck-tester.test.ts, 6 cases): second report after the first moved the booking (409 `status_not_open`, note-only close works); two admins deciding one report (one 200, one 409, one notice per party); release racing with sweeps; sweep repairs a consumed claim (no cooked day) and leaves it when a day was cooked; reviews, public list and rating unchanged after an admin cancel, other party refused.
+
+Findings (ranked)
+1. LOW: `changed: true` is reported and `booking_decided` sent for a completed booking moved to cancelled, but `completed_at` is kept and `cancelled_by` is null (builder choices 4). Any later reader of `completed_at` (review window is 14 days from it) still treats the booking as once-completed; fine, but Jimmy should confirm. Not a bug.
+2. LOW: a resolve that changes the status sends the reporter two notices (`report_closed` and `booking_decided`) (builder choice 3). Jimmy said "one `report_closed` notice"; this is arguably within it but not confirmed.
+3. LOW: the customer contact filter runs before the retry check, so an identical retry of an already stored review can only be rejected if the stored one would also have been rejected (impossible), so no regression; noted only.
+4. INFO: review insert no longer returns the row; the read-back uses the service role and throws a 500 if the row is missing. Duplicate (23505), parallel and retry cases are covered by existing builder tests (green in CI). Rating trigger is `security definer`; rating asserted in `reviews.test` and my new test.
+5. INFO: report text is still not filtered (builder choice 7).
