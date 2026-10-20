@@ -20,6 +20,7 @@ The office only shows what agents report. Nothing updates on its own.
 
 - An agent's final message is a **full report**: what changed, PR number, test results, what's next. Never "placeholder" or an empty hand-back. *(Two agents returned empty reports.)*
 - The Planner never trusts a report alone. It checks the handoff file, `gh pr view <n>` and the CI result itself.
+- **The Reviewer agent is read-only (no Write tool).** Do not ask it to write a handoff file; it puts the full review in its final message and its PR comment, and the Planner copies it into the notes PR (T-087).
 
 ## 3. Bugs reviews keep finding. Builders check these before handing off
 
@@ -52,6 +53,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Fake clock jumps past the API timeout | (T-075) With the 20 s `apiFetch` timeout, a large Playwright `clock.fastForward` can fire the timeout before the mock adapter answers, so a retry lands one step later | In mock e2e, move the fake clock in steps shorter than `API_TIMEOUT_MS` while a call is in flight, or allow one extra retry step |
 | Updating several rows one at a time under a unique rule | (found in CI, T-086) `shiftDays` moved a booking's days with no `order by`; when day 2 was updated first it landed on day 1's date and hit `booking_days_one_per_chef_date` (23505), failing CI at random | When a helper moves several rows that share a unique key, update them in a safe order (earliest first when moving earlier, latest first when moving later) (one `UPDATE` does not help: a non-deferrable unique index is checked row by row) |
 | A test helper that silently never runs | (T-047) The `testkit.tsx` fallback checked `!init?.method`, but `apiFetch` always sends `method: "GET"`, so it never ran; fixing it made the chat render in older page tests and exposed a too-broad selector and an always-present empty `role="alert"` | When adding a fallback to a shared test helper, add a test that proves the fallback actually runs |
+- **Random ids inside user text in tests (T-048).** A test that puts `randomUUID()` hex into a review, chat or reason trips the contact-details phone rule whenever the hex has a long digit run, so it fails at random. Use a digit-free marker (map digits to letters).
 
 ## 4. Git and GitHub
 
@@ -80,6 +82,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - If the usage limit stops agents mid-task, nothing is lost: resume each one with SendMessage after the reset.
 - **Start a fresh session for each Work Order.** Long sessions cost more for every message. Everything needed to resume lives in PLAN.md, `docs/work-orders/`, `.team/handoffs/` and this file.
 - Jimmy says "stop" to pause. Don't start a new task if he says the limit is close.
+- **Hard pause to save tokens (2026-10-20).** Stop the running agents (TaskStop), then check every worktree with `git status -sb`: no uncommitted changes and not ahead of origin. Restart later with a fresh agent that reads its own commits and the Work Order, and tell it not to redo committed work.
 
 ## 7. What speeds things up without cutting quality
 
