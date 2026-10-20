@@ -18,6 +18,7 @@ import type {
   ReviewView,
 } from "@/lib/api/types";
 import { isUuid } from "@/lib/domain/admin-chefs";
+import { findContactDetails } from "@/lib/domain/contactDetails";
 import {
   REVIEW_REFUSALS,
   firstNameOf,
@@ -29,7 +30,7 @@ import type { BookingCaller } from "@/lib/server/bookings";
 import { loadPartyBooking } from "@/lib/server/booking-party";
 import { parseListParams } from "@/lib/server/paging";
 import { getChefDetail } from "@/lib/server/search";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type Row = Record<string, unknown>;
 
@@ -98,6 +99,20 @@ export async function createReview(
   const b = await loadPartyBooking(caller, id);
   const parsed = parseReviewBody(await readBody());
   if (!parsed.ok) throw validationFailed(parsed.fields);
+  // T-048 (Jimmy, 2026-10-20): a customer's review of a chef is public, so it gets the same contact
+  // details refusal as chat before acceptance. A chef's review of a customer is private: not filtered.
+  if (
+    caller.role === "customer" &&
+    parsed.comment &&
+    findContactDetails(parsed.comment)
+  )
+    throw new ApiFailure(
+      "CONTACT_DETAILS_NOT_ALLOWED",
+      "Do not put phone numbers, email addresses or links in a public review.",
+      {
+        fields: { comment: "Remove phone numbers, email addresses and links." },
+      },
+    );
 
   // A review the caller already wrote: the same content is a retry (200), anything else is final.
   const same = (m: ReviewView) =>
@@ -149,7 +164,10 @@ export async function listPublicReviews(
   if (!isUuid(id)) throw notFound();
   const q = parseListParams(params);
   await getChefDetail(id); // throws the identical 404 for a chef the public must not see
-  const db = await createClient();
+  // T-048 fix round (F-2): anon has no grant on author_display_name, so the route reads with the
+  // service role AFTER the visibility check above, filtered to this approved chef's customer
+  // reviews, and cuts the first name here. Nothing else leaves this function.
+  const db = createAdminClient();
   let req = db
     .from("reviews")
     .select("id, author_display_name, rating, comment, created_at")

@@ -142,6 +142,8 @@ export async function sweepExpired(
       await applyFreeTrialEvent(x.booking_id, x.status as FreeTrialEvent, {
         db: admin,
         anyDayCooked: "cooked" in x ? x.cooked === true : undefined,
+        // T-048: the sweep also lists a consumed claim an admin's change made wrong; release it.
+        allowReopen: true,
       });
     } catch (e) {
       console.error(

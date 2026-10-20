@@ -132,7 +132,7 @@ describe("D-36 sweep: idempotent, scoped, neutral", () => {
     expect(await flagsOf(idle.id)).toEqual(["no_day_cooked"]);
   });
 
-  it("an open problem report stops the flag too (nothing happens until the admin acts)", async () => {
+  it("T-048: an open problem report does not stop the no_day_cooked flag either", async () => {
     const { cust, id } = await setup();
     await shiftDays(id, 5);
     const rep = await svc.from("reports").insert({
@@ -143,10 +143,10 @@ describe("D-36 sweep: idempotent, scoped, neutral", () => {
     expect(rep.error).toBeNull();
     expect((await sweep(cust.id)).data).toMatchObject({
       completed: 0,
-      flagged: 0,
+      flagged: 1,
     });
-    expect(await flagsOf(id)).toEqual([]);
-    expect((await notesFor(cust.id, "booking_flagged")).length).toBe(0);
+    expect(await flagsOf(id)).toEqual(["no_day_cooked"]);
+    expect((await notesFor(cust.id, "booking_flagged")).length).toBe(1);
   });
 
   it("a flagged booking is completed after the chef marks a day cooked; the flag is not doubled", async () => {

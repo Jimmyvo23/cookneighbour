@@ -1,6 +1,5 @@
 // T-048 Tester additions (WO-5c): row-level security on the real stack. Own people and bookings.
-// Findings are `it.fails(...)`: the test states the SAFE behaviour, which does not hold today, so
-// the suite stays green; when the product is fixed vitest flags the test and `.fails` is removed.
+// Findings F-1 and F-2 were pinned as `it.fails` and are normal passing tests since the fix round.
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, inject, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -179,30 +178,48 @@ describe("review visibility by role", () => {
     );
   });
 
-  // FINDING F-2 (MEDIUM): `anon` has a table-wide SELECT on reviews (migration 20261007221002,
-  // line 191), so PostgREST returns EVERY column of a public review: the reviewer's full-name
-  // snapshot (`author_display_name`, defeating the first-name rule), `author_id` and `booking_id`.
-  // The safe behaviour is a column-level grant that leaves these out.
-  describe.each(["author_display_name", "author_id", "booking_id"])(
-    "FINDING F-2: anon cannot read reviews.%s",
-    (column) => {
-      it.fails(`column ${column}`, async () => {
-        const id = await booking("completed");
-        const ins = await cC
-          .from("reviews")
-          .insert(row(id, cust, chef, "customer"))
-          .select("id");
-        expectRows(ins, 1);
-        const rid = (ins.data as { id: string }[])[0].id;
-        const res = await anonClient()
-          .from("reviews")
-          .select(column)
-          .eq("id", rid);
-        // Safe: the column is refused (42501). Today: the value comes back.
-        expect(res.error?.code).toBe("42501");
-      });
-    },
-  );
+  // F-2 (fixed in the fix round, migration 20261023100000): anon has a column grant of id,
+  // author_role, rating, comment and created_at only, so PostgREST refuses the full-name snapshot,
+  // the author, the subject and the booking.
+  describe.each([
+    "author_display_name",
+    "author_id",
+    "booking_id",
+    "subject_id",
+  ])("F-2: anon cannot read reviews.%s", (column) => {
+    it(`column ${column}`, async () => {
+      const id = await booking("completed");
+      const ins = await cC
+        .from("reviews")
+        .insert(row(id, cust, chef, "customer"))
+        .select("id");
+      expectRows(ins, 1);
+      const rid = (ins.data as { id: string }[])[0].id;
+      const res = await anonClient()
+        .from("reviews")
+        .select(column)
+        .eq("id", rid);
+      expect(res.error?.code).toBe("42501");
+      expect(res.data).toBeNull();
+    });
+  });
+
+  it("F-2: anon still reads the safe columns of a public review, and a select * is refused", async () => {
+    const id = await booking("completed");
+    const ins = await cC
+      .from("reviews")
+      .insert(row(id, cust, chef, "customer"))
+      .select("id");
+    expectRows(ins, 1);
+    const rid = (ins.data as { id: string }[])[0].id;
+    const ok = await anonClient()
+      .from("reviews")
+      .select("id, author_role, rating, comment, created_at")
+      .eq("id", rid);
+    expectRows(ok, 1);
+    const all = await anonClient().from("reviews").select("*").eq("id", rid);
+    expect(all.error?.code).toBe("42501");
+  });
 });
 
 describe("reports: insert rules", () => {

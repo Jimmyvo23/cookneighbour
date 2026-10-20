@@ -200,10 +200,17 @@ describe("reviews (only after a completed booking)", () => {
       .single();
     expect(data?.review_count).toBe(1);
     expect(Number(data?.rating_avg)).toBe(5);
+    const own = await svc
+      .from("reviews")
+      .select("id")
+      .eq("booking_id", b.completedC1H1)
+      .eq("author_id", fx.c1.id)
+      .single();
+    // T-048 fix round: anon reads by id (it has no grant on booking_id or author_id).
     const pub = await anonClient()
       .from("reviews")
       .select("rating")
-      .eq("booking_id", b.completedC1H1);
+      .eq("id", own.data?.id as string);
     expectRows(pub, 1);
     // duplicate review for the same booking is rejected
     const dup = await c1
@@ -221,8 +228,17 @@ describe("reviews (only after a completed booking)", () => {
         .select(),
       1,
     );
+    const chefReview = await svc
+      .from("reviews")
+      .select("id")
+      .eq("author_id", fx.h1.id)
+      .eq("author_role", "chef")
+      .single();
     expectNoRows(
-      await anonClient().from("reviews").select("id").eq("author_id", fx.h1.id),
+      await anonClient()
+        .from("reviews")
+        .select("id")
+        .eq("id", chefReview.data?.id as string),
     );
     expectNoRows(
       await c2.from("reviews").select("id").eq("author_id", fx.h1.id),

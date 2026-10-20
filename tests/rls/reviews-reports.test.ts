@@ -201,23 +201,24 @@ describe("who can read a review", () => {
       1,
     );
     const anon = anonClient();
-    // Public: the customer's review (by subject, the way the public route reads it).
+    // T-048 fix round (F-2): anon may only read id, author_role, rating, comment, created_at, so
+    // it finds a review by its id (the service role looks the ids up here).
+    const ids = await svc
+      .from("reviews")
+      .select("id, author_role")
+      .eq("booking_id", id);
+    const custReview = (ids.data ?? []).find(
+      (x) => x.author_role === "customer",
+    )?.id as string;
+    const chefReview = (ids.data ?? []).find((x) => x.author_role === "chef")
+      ?.id as string;
+    // Public: the customer's review.
     expectRows(
-      await anon
-        .from("reviews")
-        .select("id, rating")
-        .eq("booking_id", id)
-        .eq("subject_id", chef.id)
-        .eq("author_role", "customer"),
+      await anon.from("reviews").select("id, rating").eq("id", custReview),
+      1,
     );
     // Private: nobody outside the two parties and the admin sees the chef's review.
-    expectNoRows(
-      await anon
-        .from("reviews")
-        .select("id")
-        .eq("subject_id", cust.id)
-        .eq("author_role", "chef"),
-    );
+    expectNoRows(await anon.from("reviews").select("id").eq("id", chefReview));
     expectNoRows(
       await cO
         .from("reviews")
@@ -268,8 +269,9 @@ describe("who can read a review", () => {
       .insert(review(b.id, cust, c2, "customer"))
       .select("id");
     expect(ins.error).toBeNull();
+    const rid = ins.data?.[0].id as string;
     expectRows(
-      await anonClient().from("reviews").select("id").eq("subject_id", c2.id),
+      await anonClient().from("reviews").select("id").eq("id", rid),
       1,
     );
     const off = await svc
@@ -277,9 +279,7 @@ describe("who can read a review", () => {
       .update({ status: "rejected" })
       .eq("profile_id", c2.id);
     expect(off.error).toBeNull();
-    expectNoRows(
-      await anonClient().from("reviews").select("id").eq("subject_id", c2.id),
-    );
+    expectNoRows(await anonClient().from("reviews").select("id").eq("id", rid));
   });
 });
 

@@ -25,7 +25,10 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ApiFailure } from "@/lib/api/errors";
 import { isUuid } from "@/lib/domain/admin-chefs";
-import type { FreeTrialEvent } from "@/lib/domain/cancellation";
+import {
+  freeTrialEffect,
+  type FreeTrialEvent,
+} from "@/lib/domain/cancellation";
 import {
   evaluateFreeTrial,
   transitionFreeTrial,
@@ -50,6 +53,11 @@ export interface FreeTrialDeps {
    * cooked. When left out, the booking's days are read (booking_days.cooked_at).
    */
   anyDayCooked?: boolean;
+  /**
+   * T-048: an admin moved a completed booking to cancelled or a chef no-show with no cooked day.
+   * Only then may a `consumed` claim be released again (D-26, D-37). Off for every other caller.
+   */
+  allowReopen?: boolean;
 }
 
 export const FREE_TRIAL_USED_MESSAGE =
@@ -356,6 +364,22 @@ export async function applyFreeTrialEvent(
     anyDayCooked = (c.data ?? []).length > 0;
   }
   const ctx = { anyDayCooked };
+
+  if (
+    deps.allowReopen &&
+    cur.data.state === "consumed" &&
+    freeTrialEffect(event, ctx) === "release"
+  ) {
+    const re = await db
+      .from("free_trial_claims")
+      .update({ state: "released" })
+      .eq("booking_id", bookingId)
+      .eq("state", "consumed")
+      .select("state");
+    if (re.error) throw new Error(`claim update failed: ${re.error.message}`);
+    // Zero rows: a parallel call already released it; the outcome is the same.
+    return { changed: (re.data ?? []).length === 1, state: "released" };
+  }
 
   const t = transitionFreeTrial(cur.data.state as FreeTrialState, event, ctx);
   if (t.kind === "invalid") throw invalidTransition();

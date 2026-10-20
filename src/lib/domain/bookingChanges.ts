@@ -137,8 +137,7 @@ export const CHANGE_REFUSALS: Record<string, string> = {
   no_visit_due:
     "No visit is due yet. A no-show can be reported from the visit date.",
   days_not_cooked: "Mark each visit as cooked before closing the booking.",
-  problem_reported:
-    "A problem was reported for this booking. An admin will look at it first.",
+  // T-048: the problem_reported refusal is gone; an open report never blocks a completion path.
   // T-064 (D-53): neutral on purpose, it does not say why.
   frozen:
     "This booking is on hold while an admin looks at it. Nothing can be changed until they decide.",

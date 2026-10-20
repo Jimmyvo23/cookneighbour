@@ -2,8 +2,7 @@
 // Covers: tight review-window edges, non-completed statuses, public privacy of reviews, a report
 // staying invisible to the other party on every route they can call, report races, every final
 // status on a flag with and without a cooked day, decision races, and nothing personal in logs.
-// Findings are written as `it.fails(...)`: the test states the SAFE behaviour, it fails today, and
-// CI stays green. When the product is fixed, vitest flags the test (remove `.fails`).
+// Findings F-1 and F-2 were pinned as `it.fails` and are normal passing tests since the fix round.
 import { randomUUID } from "node:crypto";
 import { inspect } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -286,21 +285,18 @@ describe("reports stay invisible to the other party", () => {
     expect((await notesFor(f.cust.id)).length).toBe(before);
   });
 
-  // FINDING F-1 (MEDIUM): an open customer report makes the chef's "visit done" answer
-  // 409 problem_reported. Jimmy's rule: the other party is never told a report exists.
-  it.fails(
-    "FINDING F-1: the chef's 'visit done' does not reveal a customer's open report",
-    async () => {
-      const f = await acceptedBooking();
-      await shiftDays(f.id, 3);
-      expect((await cooked(f.chef.b, f.id, 1)).status).toBe(200);
-      expect((await postReport(f.cust.b, f.id, reportBody())).status).toBe(201);
-      const done = await complete(f.chef.b, f.id);
-      // Safe behaviour: either it works, or the refusal says nothing about a report.
-      expect(done.text).not.toContain("problem_reported");
-      expect(done.text.toLowerCase()).not.toContain("report");
-    },
-  );
+  // F-1 (fixed in the fix round): an open customer report never blocks the chef's "visit done".
+  it("F-1: the chef's 'visit done' works with a customer's open report and says nothing about it", async () => {
+    const f = await acceptedBooking();
+    await shiftDays(f.id, 3);
+    expect((await cooked(f.chef.b, f.id, 1)).status).toBe(200);
+    expect((await postReport(f.cust.b, f.id, reportBody())).status).toBe(201);
+    const done = await complete(f.chef.b, f.id);
+    expect(done.status, done.text).toBe(200);
+    expect(done.body.status).toBe("completed");
+    expect(done.text).not.toContain("problem_reported");
+    expect(done.text.toLowerCase()).not.toContain("report");
+  });
 
   it("two parallel posts with the same clientId write one report (201 and 200)", async () => {
     const f = await acceptedBooking();

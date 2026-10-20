@@ -11,6 +11,7 @@ import {
 import { Browser, freshLimits, type Reply } from "./harness";
 import {
   accept,
+  cancel,
   bookingCustomer,
   claimOf,
   complete,
@@ -281,25 +282,30 @@ describe("D-54: resolving a report", () => {
     expect(days.data?.every((d) => d.is_active === false)).toBe(true);
   });
 
-  it("a booking that is not accepted keeps its status: a final status is refused, closing without one works", async () => {
+  it("a booking that is neither accepted nor completed keeps its status: a final status is refused, closing without one works", async () => {
     const f = await completedBooking({ trial: true });
     const rep = await report(f, "chef");
     const admin = await newAdmin();
-    const refused = await resolveReport(admin.b, rep, {
-      finalStatus: "cancelled",
+    // T-048: a completed booking now accepts a final status; "completed" means leave it.
+    const same = await resolveReport(admin.b, rep, {
+      finalStatus: "completed",
       note: NOTE,
     });
-    expect(refused.status, refused.text).toBe(409);
-    expect(refused.body.error.reason).toBe("status_not_open");
+    expect(same.status, same.text).toBe(200);
+    expect(same.body.booking.status).toBe("completed");
     expect((await bookingRow(f.id)).status).toBe("completed");
     expect((await claimOf(f.id))?.state).toBe("consumed");
-    const ok = await resolveReport(admin.b, rep, { note: NOTE });
+    const g = await completedBooking({ trial: true });
+    const rep2 = await report(g, "chef");
+    const ok = await resolveReport(admin.b, rep2, { note: NOTE });
     expect(ok.status, ok.text).toBe(200);
     expect(ok.body.booking.status).toBe("completed");
-    expect((await bookingRow(f.id)).status).toBe("completed");
-    expect((await claimOf(f.id))?.state).toBe("consumed");
-    expect((await notesFor(f.cust.id, "booking_decided")).length).toBe(0);
-    expect((await notesFor(f.chef.id, "booking_decided")).length).toBe(0);
+    expect((await bookingRow(g.id)).status).toBe("completed");
+    expect((await claimOf(g.id))?.state).toBe("consumed");
+    // Leaving a completed booking as it is sends no booking notice.
+    for (const x of [f, g])
+      for (const who of [x.cust, x.chef])
+        expect((await notesFor(who.id, "booking_decided")).length).toBe(0);
     // A requested booking behaves the same.
     const rq = await requestedBooking();
     const rq1 = await report(rq);
@@ -433,15 +439,9 @@ describe("D-54: resolving a report", () => {
 
 // ---------------------------------------------------------------------------
 describe("dismissing a report", () => {
-  it("closes the report and changes nothing else; the chef can then finish the visit", async () => {
+  it("closes the report and changes nothing else; the chef could finish the visit before and after", async () => {
     const f = await acceptedBooking({ trial: true });
-    await shiftDays(f.id, 3);
-    expect((await cooked(f.chef.b, f.id, 1)).status).toBe(200);
     const rep = await report(f);
-    // The open report blocks completion (A-30).
-    const blocked = await complete(f.chef.b, f.id);
-    expect(blocked.status).toBe(409);
-    expect(blocked.body.error.reason).toBe("problem_reported");
     const admin = await newAdmin();
     const d = await dismissReport(admin.b, rep, { note: "No action needed." });
     expect(d.status, d.text).toBe(200);
@@ -454,8 +454,28 @@ describe("dismissing a report", () => {
     expect((await bookingRow(f.id)).status).toBe("accepted");
     expect((await notesFor(f.cust.id, "booking_decided")).length).toBe(0);
     expect((await notesFor(f.chef.id, "booking_decided")).length).toBe(0);
+    await shiftDays(f.id, 3);
+    expect((await cooked(f.chef.b, f.id, 1)).status).toBe(200);
     const done = await complete(f.chef.b, f.id);
     expect(done.status, done.text).toBe(200);
+  });
+
+  it("T-048: with the report still open the chef finishes the visit; dismissing it afterwards leaves the completed booking and its consumed trial", async () => {
+    const f = await acceptedBooking({ trial: true });
+    await shiftDays(f.id, 3);
+    expect((await cooked(f.chef.b, f.id, 1)).status).toBe(200);
+    const rep = await report(f);
+    const done = await complete(f.chef.b, f.id);
+    expect(done.status, done.text).toBe(200);
+    const admin = await newAdmin();
+    const d = await dismissReport(admin.b, rep, { note: "No action needed." });
+    expect(d.status, d.text).toBe(200);
+    expect(d.body).toMatchObject({
+      booking: { id: f.id, status: "completed" },
+      freeTrial: "consumed",
+    });
+    expect((await bookingRow(f.id)).status).toBe("completed");
+    expect((await notesFor(f.chef.id, "booking_decided")).length).toBe(0);
   });
 
   it("does not accept a final status", async () => {
@@ -835,5 +855,183 @@ describe("completing through the party route is unchanged by T-048", () => {
       200,
     );
     expect((await accept(f.chef.b, f.id)).status).toBe(200);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T-048 fix round (Jimmy, 2026-10-20)
+// ---------------------------------------------------------------------------
+describe("fix round: the admin may give a completed booking a final status", () => {
+  async function wipeCooked(id: string) {
+    const up = await svc
+      .from("booking_days")
+      .update({ cooked_at: null })
+      .eq("booking_id", id);
+    expect(up.error).toBeNull();
+  }
+
+  it.each([
+    ["cancelled", "consumed"],
+    ["no_show_chef", "consumed"],
+    ["no_show_customer", "consumed"],
+  ] as const)(
+    "completed to %s with a cooked day: the trial stays %s; both parties get the neutral notice; reviews already written stay",
+    async (finalStatus, trial) => {
+      const f = await completedBooking({ trial: true });
+      expect((await postReview(f.cust.b, f.id, { rating: 4 })).status).toBe(
+        201,
+      );
+      const rep = await report(f, "chef");
+      const admin = await newAdmin();
+      const r = await resolveReport(admin.b, rep, { finalStatus, note: NOTE });
+      expect(r.status, r.text).toBe(200);
+      expect(r.body.booking.status).toBe(finalStatus);
+      expect(r.body.freeTrial).toBe(trial);
+      expect((await bookingRow(f.id)).status).toBe(finalStatus);
+      expect((await claimOf(f.id))?.state).toBe(trial);
+      for (const who of [f.cust, f.chef])
+        expect(await notesFor(who.id, "booking_decided")).toEqual([
+          {
+            type: "booking_decided",
+            title: BOOKING_DECIDED_TITLE,
+            body: bookingDecidedBody(finalStatus),
+            booking_id: f.id,
+          },
+        ]);
+      // The review written earlier is still there; no new review is accepted.
+      const mine = await getReviews(f.cust.b, f.id);
+      expect(mine.body.mine).toMatchObject({ rating: 4 });
+      expect(mine.body.allowance.allowed).toBe(false);
+      const late = await postReview(f.chef.b, f.id, { rating: 3 });
+      expect(late.status, late.text).toBe(409);
+      expect(late.body.error.reason).toBe("not_completed");
+    },
+  );
+
+  it.each(["cancelled", "no_show_chef"] as const)(
+    "completed to %s with NO cooked day: the consumed trial is released again",
+    async (finalStatus) => {
+      const f = await completedBooking({ trial: true });
+      expect((await claimOf(f.id))?.state).toBe("consumed");
+      await wipeCooked(f.id);
+      const rep = await report(f);
+      const admin = await newAdmin();
+      const r = await resolveReport(admin.b, rep, { finalStatus, note: NOTE });
+      expect(r.status, r.text).toBe(200);
+      expect(r.body.freeTrial).toBe("released");
+      expect((await claimOf(f.id))?.state).toBe("released");
+    },
+  );
+
+  it("completed to no_show_customer with no cooked day: the trial stays consumed", async () => {
+    const f = await completedBooking({ trial: true });
+    await wipeCooked(f.id);
+    const rep = await report(f);
+    const admin = await newAdmin();
+    const r = await resolveReport(admin.b, rep, {
+      finalStatus: "no_show_customer",
+      note: NOTE,
+    });
+    expect(r.status, r.text).toBe(200);
+    expect((await claimOf(f.id))?.state).toBe("consumed");
+  });
+
+  it("an accepted booking still needs a final status; a cancelled booking still closes with a note only", async () => {
+    const f = await acceptedBooking();
+    const rep = await report(f);
+    const admin = await newAdmin();
+    const none = await resolveReport(admin.b, rep, { note: NOTE });
+    expect(none.status, none.text).toBe(409);
+    expect(none.body.error.reason).toBe("final_status_required");
+    const g = await requestedBooking();
+    const rep2 = await report(g);
+    expect(
+      (await cancel(g.cust.b, g.id, { reason: "Changed my mind." })).status,
+    ).toBe(200);
+    const refused = await resolveReport(admin.b, rep2, {
+      finalStatus: "completed",
+      note: NOTE,
+    });
+    expect(refused.status, refused.text).toBe(409);
+    expect(refused.body.error.reason).toBe("status_not_open");
+    expect((await resolveReport(admin.b, rep2, { note: NOTE })).status).toBe(
+      200,
+    );
+    expect((await bookingRow(g.id)).status).toBe("cancelled");
+  });
+});
+
+describe("fix round: the reporter is told an admin closed the report, nobody else", () => {
+  const TITLE = "An admin closed your problem report";
+
+  it.each(["dismiss", "resolve"] as const)(
+    "%s: one notification for the reporter, no note in it, and none for the other party",
+    async (how) => {
+      const f = await requestedBooking();
+      const secret = `SECRET-NOTE-${randomUUID()}`;
+      const rep = await report(f, "cust");
+      const admin = await newAdmin();
+      const r =
+        how === "dismiss"
+          ? await dismissReport(admin.b, rep, { note: secret })
+          : await resolveReport(admin.b, rep, { note: secret });
+      expect(r.status, r.text).toBe(200);
+      const mine = await notesFor(f.cust.id, "report_closed");
+      expect(mine.length).toBe(1);
+      expect(mine[0].title).toBe(TITLE);
+      expect(mine[0].booking_id).toBe(f.id);
+      expect(`${mine[0].title} ${mine[0].body}`).not.toContain(secret);
+      // The other party gets nothing about it, of any kind.
+      expect((await notesFor(f.chef.id, "report_closed")).length).toBe(0);
+      for (const n of await notesFor(f.chef.id))
+        expect(`${n.type} ${n.title} ${n.body}`.toLowerCase()).not.toContain(
+          "report",
+        );
+    },
+  );
+
+  it("a resolve with a final status: the reporter gets the closing notice and the neutral booking notice, the other party only the booking notice", async () => {
+    const f = await acceptedBooking();
+    const rep = await report(f, "chef");
+    const admin = await newAdmin();
+    const r = await resolveReport(admin.b, rep, {
+      finalStatus: "cancelled",
+      note: NOTE,
+    });
+    expect(r.status, r.text).toBe(200);
+    expect((await notesFor(f.chef.id, "report_closed")).length).toBe(1);
+    expect((await notesFor(f.cust.id, "report_closed")).length).toBe(0);
+    expect((await notesFor(f.cust.id, "booking_decided")).length).toBe(1);
+    expect((await notesFor(f.chef.id, "booking_decided")).length).toBe(1);
+  });
+
+  it("a decided report cannot be decided again and sends no second notice", async () => {
+    const f = await requestedBooking();
+    const rep = await report(f);
+    const admin = await newAdmin();
+    expect((await dismissReport(admin.b, rep, { note: NOTE })).status).toBe(
+      200,
+    );
+    expect((await dismissReport(admin.b, rep, { note: NOTE })).status).toBe(
+      409,
+    );
+    expect((await notesFor(f.cust.id, "report_closed")).length).toBe(1);
+  });
+});
+
+describe("fix round: an open report never blocks a completion path", () => {
+  it("the chef's visit done works with an open and a reviewing report", async () => {
+    const f = await acceptedBooking({ trial: true });
+    await shiftDays(f.id, 3);
+    expect((await cooked(f.chef.b, f.id, 1)).status).toBe(200);
+    const rep = await report(f);
+    const up = await svc
+      .from("reports")
+      .update({ status: "reviewing" })
+      .eq("id", rep);
+    expect(up.error).toBeNull();
+    const done = await complete(f.chef.b, f.id);
+    expect(done.status, done.text).toBe(200);
+    expect((await claimOf(f.id))?.state).toBe("consumed");
   });
 });

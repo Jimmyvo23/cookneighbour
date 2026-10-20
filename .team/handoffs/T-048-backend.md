@@ -43,3 +43,34 @@ From: backend  To: tester
 
 ## What the next agent needs
 - Tester: window edges (day 14 vs 15), non-completed bookings, second review, chef review hidden from public, report by non-party, one-open-report rule, each final status and free-trial effect, unfreeze, admin-only routes 401/403, first-name rule. Test accounts are created by the helpers; use `tests/api/engagement-helpers.ts`.
+
+# Fix round (WO-5c, Jimmy's decisions of 2026-10-20)
+
+## What changed
+- New migration `supabase/migrations/20261023100000_report_never_blocks.sql` (no old migration edited). Contract v1.17, section 7D "Changes in the fix round" lists everything for Frontend; `docs/data-model.md` updated.
+- **F-2 (Tester MEDIUM, "Close it in this fix round"):** `anon` table `SELECT` on `reviews` revoked, column grant `id, author_role, rating, comment, created_at` only. `GET /api/chefs/:id/reviews` now reads with the service role AFTER the `getChefDetail` visibility check (same 404), filtered to that chef's customer reviews, and cuts the first name on the server. RLS tests that filtered anon by `booking_id`/`subject_id`/`author_id` now read by `id`. The Tester's 3 `it.fails` are normal passing tests (4 column rows now, plus a positive test and a `select *` refusal).
+- **F-1 (Tester MEDIUM + LOW, "Let the chef finish", "All of them"):** `change_booking` (action `complete` and the last `pickup_confirm`) and `sweep_booking_changes` (auto completion and the `no_day_cooked` flag) no longer look at reports. 409 `problem_reported` and its message text are removed. **A-30 is replaced** (an open or reviewing report never blocks any completion path). The Tester's `it.fails` is a passing test. Old tests that asserted the block were rewritten to assert completion (`booking-changes`, `auto-complete-on-pickup` x2, `booking-changes-t066-tester`, `admin-engagement` dismiss test).
+- **Admin may change a completed booking ("Yes, admin may change it"):** inside the one locked function `admin_decide_booking`. On `completed`, `finalStatus` is optional: `cancelled`, `no_show_chef`, `no_show_customer` change it; `completed` or none leaves it (no notice). `accepted` still requires a final status. Other statuses (`requested`, `declined`, `expired`, `cancelled`, no-shows): final status is still 409 `status_not_open`, close with a note only. Both parties get the existing `booking_decided` notice. Free trial: `applyFreeTrialEvent` got `allowReopen`, which lets a `consumed` claim be released when the new status is cancelled / chef no-show with no cooked day (A-16, D-26, D-37). The sweep also lists such a consumed claim, so a failed follow-up is repaired. Reviews written stay; no new review (policy and route need `completed`).
+- **Contact filter ("Yes for public reviews"):** `createReview` runs a customer's comment through `findContactDetails`: 422 `CONTACT_DETAILS_NOT_ALLOWED`, `fields.comment`, nothing stored. A chef's review is not filtered.
+- **Reporter notice ("Notification, no note"):** `admin_decide_booking` writes one `report_closed` notification (title "An admin closed your problem report") to the reporter on resolve and on dismiss; no note, nothing for the other party. Test asserts the other party has none.
+
+## Tests
+- Unit: `npm test` 2330 passed + 3 expected fail (the 3 are Frontend component `it.fails`, not mine); new `report-never-blocks-guards.test.ts`. Lint, `npm run typecheck` and prettier clean.
+- New or changed API tests (CI only): `admin-engagement` (completed -> each status with trial effects, re-release with no cooked day, reporter notice x4 rows, open report then chef finishes, dismiss afterwards), `reviews` (3 contact rows + chef not filtered), `t048-tester` (F-1 passing), plus the 5 rewritten completion tests above.
+- New or changed RLS tests (CI only): F-2 4 column rows + positive/`select *`, anon reads by id in `reviews-reports`, `engagement`.
+- I also ran the new migration on PGlite (all migrations loaded; completed -> cancelled, completed -> completed, requested refusal, dismiss notice, chef complete with an open report, anon column grant): all passed. The API/RLS suites themselves ran only in CI.
+
+## Contract changes since 48d20c1
+v1.17: no shape change except: new 422 `CONTACT_DETAILS_NOT_ALLOWED` on `POST /api/bookings/:id/reviews`; `resolve` accepts a `finalStatus` on a `completed` booking; reason `problem_reported` removed; notification type `report_closed`. Open points 18, 19, 20, 21 updated.
+
+## Builder choices (NOT confirmed by Jimmy)
+1. `completed` chosen on a completed booking means leave it (no notice, audit row still written with `final_status = completed`).
+2. For `requested`, `declined`, `expired`, `cancelled`, no-show bookings a resolve only closes the report (`status_not_open` if a final status is sent), as built before.
+3. The `report_closed` type name and body "An admin has looked at your report and closed it."; a resolve that changes the status sends the reporter both this and `booking_decided`.
+4. A completed booking moved to cancelled keeps `completed_at` (not cleared); `cancelled_by` stays null, as for the other admin cancels.
+5. The customer's contact filter runs before the retry/state checks of a review.
+6. Open point 21 remains partly: `authenticated` keeps the table grant on `reviews`, so a signed-in user can still read the full name and author id of public reviews through PostgREST. Needs Jimmy's decision.
+7. Report text is still not filtered (only the public review comment is).
+
+## Next
+Tester: re-run the fix-round areas in CI (API + RLS); Planner: `supabase db push` for both migrations after merge.

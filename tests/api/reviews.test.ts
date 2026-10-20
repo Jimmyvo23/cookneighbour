@@ -431,3 +431,40 @@ describe("GET /api/chefs/:id/reviews (public)", () => {
     expect((await publicReviews(anon, f.chef.id)).status).toBe(404);
   });
 });
+
+describe("T-048 fix round: contact details in a public review", () => {
+  it.each([
+    "Call me on 416 555 0199",
+    "Write to someone@example.com",
+    "See www.example.com for photos",
+  ])(
+    "a customer's comment '%s' is refused with 422 and nothing is stored; a clean retry works",
+    async (comment) => {
+      const f = await completedBooking();
+      const r = await postReview(f.cust.b, f.id, { rating: 5, comment });
+      expect(r.status, r.text).toBe(422);
+      expect(r.body.error.code).toBe("CONTACT_DETAILS_NOT_ALLOWED");
+      expect(r.body.error.fields.comment).toBeTruthy();
+      const rows = await svc
+        .from("reviews")
+        .select("id")
+        .eq("booking_id", f.id);
+      expect(rows.data).toEqual([]);
+      const ok = await postReview(f.cust.b, f.id, {
+        rating: 5,
+        comment: "Lovely food",
+      });
+      expect(ok.status, ok.text).toBe(201);
+    },
+  );
+
+  it("a chef's review of a customer is private and is not filtered", async () => {
+    const f = await completedBooking();
+    const r = await postReview(f.chef.b, f.id, {
+      rating: 4,
+      comment: "Reach the customer on 416 555 0199",
+    });
+    expect(r.status, r.text).toBe(201);
+    expect(r.body.comment).toBe("Reach the customer on 416 555 0199");
+  });
+});

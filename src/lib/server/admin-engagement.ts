@@ -471,7 +471,7 @@ const REFUSALS: Record<string, string> = {
   final_status_required:
     "This booking is still open, so choose its final status (completed, cancelled, chef no-show or customer no-show).",
   status_not_open:
-    "Only an open (accepted) booking can be given a final status. Close the report without a final status.",
+    "Only an accepted or completed booking can be given a final status. Close the report without a final status.",
   no_open_flag: "This booking has no open flag to resolve.",
 };
 
@@ -533,6 +533,9 @@ export async function decide(
       await applyFreeTrialEvent(bookingId, status as FreeTrialEvent, {
         db: a.admin,
         anyDayCooked: out.cooked === true,
+        // T-048: a completed booking an admin cancels (or marks a chef no-show) releases its
+        // consumed trial again unless a day was cooked.
+        allowReopen: true,
       });
     } catch (e) {
       console.error(

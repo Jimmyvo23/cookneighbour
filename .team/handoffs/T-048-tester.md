@@ -28,6 +28,7 @@ No blocking defect in the builder's code. Two findings need Jimmy's decision (F-
 
 ## Counts
 New tests: API 18 cases in `t048-tester.test.ts` (1 `it.fails`), RLS about 22 cases (3 `it.fails`). Each expands to the `it.each` rows.
+(Fix round, backend: F-1 and F-2 are fixed, so `t048-tester.test.ts` now has 0 `it.fails` in both files; F-2 is 4 column rows plus one positive test in the RLS file.)
 
 ## Known gaps or risks
 - API and RLS suites only run in CI (no Docker here); my tests were checked with lint, typecheck and prettier locally.
