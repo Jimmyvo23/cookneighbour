@@ -81,27 +81,27 @@ describe("review window: tight edges (30 seconds either side of 14 x 24 h)", () 
       await cC
         .from("reviews")
         .insert(row(inside, cust, chef, "customer"))
-        .select(),
+        .select("id"),
       1,
     );
     expectRows(
       await cH
         .from("reviews")
         .insert(row(inside, chef, cust, "chef"))
-        .select(),
+        .select("id"),
       1,
     );
     expectDenied(
       await cC
         .from("reviews")
         .insert(row(past, cust, chef, "customer"))
-        .select(),
+        .select("id"),
     );
     expectDenied(
       await cH
         .from("reviews")
         .insert(row(past, chef, cust, "chef"))
-        .select(),
+        .select("id"),
     );
     const rows = await svc.from("reviews").select("id").eq("booking_id", past);
     expect(rows.data).toEqual([]);
@@ -115,13 +115,13 @@ describe("review window: tight edges (30 seconds either side of 14 x 24 h)", () 
         await cC
           .from("reviews")
           .insert(row(id, cust, chef, "customer"))
-          .select(),
+          .select("id"),
       );
       expectDenied(
         await cH
           .from("reviews")
           .insert(row(id, chef, cust, "chef"))
-          .select(),
+          .select("id"),
       );
       const rows = await svc.from("reviews").select("id").eq("booking_id", id);
       expect(rows.data).toEqual([]);
@@ -139,7 +139,7 @@ describe("review window: tight edges (30 seconds either side of 14 x 24 h)", () 
       await cC
         .from("reviews")
         .insert(row(id, cust, chef, "customer"))
-        .select(),
+        .select("id"),
     );
   });
 });
@@ -147,35 +147,30 @@ describe("review window: tight edges (30 seconds either side of 14 x 24 h)", () 
 describe("review visibility by role", () => {
   it("a chef's review of a customer is hidden from anon, another customer and another chef, however they filter", async () => {
     const id = await booking("completed");
-    expectRows(
-      await cH
-        .from("reviews")
-        .insert(row(id, chef, cust, "chef"))
-        .select(),
-      1,
-    );
+    const ins = await cH
+      .from("reviews")
+      .insert(row(id, chef, cust, "chef"))
+      .select("id");
+    expectRows(ins, 1);
+    const rid = (ins.data as { id: string }[])[0].id;
     const stranger = await makeChef(svc, "tt-other-chef", {
       status: "approved",
     });
     const cS = await clientFor(stranger);
+    // Round 3: no browser role may filter on booking_id, subject_id or author_id, so rows are
+    // found by id; the stranger and anon see nothing, the two parties and the admin see the row.
     for (const c of [anonClient(), cO, cS]) {
-      expectNoRows(await c.from("reviews").select("id").eq("booking_id", id));
-      expectNoRows(
-        await c.from("reviews").select("id").eq("subject_id", cust.id),
-      );
+      expectNoRows(await c.from("reviews").select("id").eq("id", rid));
       expectNoRows(
         await c
           .from("reviews")
           .select("id")
           .eq("author_role", "chef")
-          .eq("booking_id", id),
+          .eq("id", rid),
       );
     }
-    expectRows(await cC.from("reviews").select("id").eq("booking_id", id), 1);
-    expectRows(
-      await cAdmin.from("reviews").select("id").eq("booking_id", id),
-      1,
-    );
+    for (const c of [cC, cH, cAdmin])
+      expectRows(await c.from("reviews").select("id").eq("id", rid), 1);
   });
 
   // F-2 (fixed in the fix round, migration 20261023100000): anon has a column grant of id,
@@ -186,7 +181,7 @@ describe("review visibility by role", () => {
     "author_id",
     "booking_id",
     "subject_id",
-  ])("F-2: anon cannot read reviews.%s", (column) => {
+  ])("F-2: no browser role can read reviews.%s", (column) => {
     it(`column ${column}`, async () => {
       const id = await booking("completed");
       const ins = await cC
@@ -195,12 +190,13 @@ describe("review visibility by role", () => {
         .select("id");
       expectRows(ins, 1);
       const rid = (ins.data as { id: string }[])[0].id;
-      const res = await anonClient()
-        .from("reviews")
-        .select(column)
-        .eq("id", rid);
-      expect(res.error?.code).toBe("42501");
-      expect(res.data).toBeNull();
+      // Round 3 (open point 21): signed-in users get the same columns as visitors, so the
+      // anon, a non-party, a party and the admin are all refused.
+      for (const c of [anonClient(), cO, cC, cH, cAdmin]) {
+        const res = await c.from("reviews").select(column).eq("id", rid);
+        expect(res.error?.code).toBe("42501");
+        expect(res.data).toBeNull();
+      }
     });
   });
 
@@ -212,13 +208,15 @@ describe("review visibility by role", () => {
       .select("id");
     expectRows(ins, 1);
     const rid = (ins.data as { id: string }[])[0].id;
-    const ok = await anonClient()
-      .from("reviews")
-      .select("id, author_role, rating, comment, created_at")
-      .eq("id", rid);
-    expectRows(ok, 1);
-    const all = await anonClient().from("reviews").select("*").eq("id", rid);
-    expect(all.error?.code).toBe("42501");
+    for (const c of [anonClient(), cO, cC, cH, cAdmin]) {
+      const ok = await c
+        .from("reviews")
+        .select("id, author_role, rating, comment, created_at")
+        .eq("id", rid);
+      expectRows(ok, 1);
+      const all = await c.from("reviews").select("*").eq("id", rid);
+      expect(all.error?.code).toBe("42501");
+    }
   });
 });
 

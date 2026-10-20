@@ -2,10 +2,10 @@
 //
 // Authorization (contract section 2): the role comes from profiles.role (requireBookingParty:
 // customers and chefs only; the admin reads reviews through GET /api/admin/reviews). The booking is
-// matched against the caller's OWN rows. Reads and the insert use the caller's user-scoped client,
-// so row-level security is a second line of defence: the select policies decide who reads what (a
-// chef's review of a customer is visible to that customer and the admin only), and the insert policy
-// repeats "completed booking, inside the window, as myself, about the other party".
+// matched against the caller's OWN rows. Reads use the service role AFTER that party check (round 3:
+// browser roles may select only id, author_role, rating, comment, created_at), so a chef's review of
+// a customer reaches that customer through this route only. The insert uses the caller's client, so
+// the insert policy is a second line of defence; it repeats "completed booking, inside the window, as myself, about the other party".
 // A posted review is final: there is no update or delete anywhere.
 // Retry (T-075): the unique key (booking, author) is the guard; the same content again returns the
 // first review.
@@ -55,7 +55,10 @@ const refusal = (reason: keyof typeof REVIEW_REFUSALS) =>
 
 /** The two reviews of a booking the caller may read (their own and the one about them). */
 async function readPair(caller: BookingCaller, bookingId: string) {
-  const r = await caller.supabase
+  // T-048 round 3 (open point 21): browser roles cannot select author_id, subject_id, booking_id or
+  // author_display_name, so this reads with the service role. The caller is already proven a party
+  // of this booking (loadPartyBooking) and the filter below is their own two rows.
+  const r = await createAdminClient()
     .from("reviews")
     .select(COLS)
     .eq("booking_id", bookingId)
@@ -129,18 +132,16 @@ export async function createReview(
   });
   if (!allowance.allowed && allowance.reason) throw refusal(allowance.reason);
 
-  const ins = await caller.supabase
-    .from("reviews")
-    .insert({
-      booking_id: b.id,
-      author_id: caller.userId,
-      subject_id: b.otherId,
-      author_role: caller.role,
-      rating: parsed.rating,
-      comment: parsed.comment,
-    })
-    .select(COLS)
-    .single();
+  // The insert stays on the user session (no returning), so the RLS insert policy still runs as a
+  // second line of defence; the stored row is read back with the service role (round 3).
+  const ins = await caller.supabase.from("reviews").insert({
+    booking_id: b.id,
+    author_id: caller.userId,
+    subject_id: b.otherId,
+    author_role: caller.role,
+    rating: parsed.rating,
+    comment: parsed.comment,
+  });
   if (ins.error) {
     if (ins.error.code === "23505") {
       // Lost a race with our own retry: judge the stored review the same way.
@@ -152,7 +153,9 @@ export async function createReview(
     if (ins.error.code === "42501") throw refusal("window_closed");
     throw new Error(`review insert failed: ${ins.error.code}`);
   }
-  return { review: view(ins.data as Row, caller.userId), duplicate: false };
+  const stored = (await readPair(caller, b.id)).mine;
+  if (!stored) throw new Error("review read-back failed");
+  return { review: stored, duplicate: false };
 }
 
 // GET /api/chefs/:id/reviews (public). Same 404 as the chef page for every hidden chef.

@@ -342,21 +342,21 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
       await c1
         .from("reviews")
         .insert({ ...base, created_at: "2001-01-01T00:00:00Z" })
-        .select(),
+        .select("id"),
       "42501",
     );
     expectCode(
       await c1
         .from("reviews")
         .insert({ ...base, author_display_name: "Someone Else" })
-        .select(),
+        .select("id"),
       "42501",
     );
     expectCode(
       await c1
         .from("reviews")
         .insert({ ...base, id: crypto.randomUUID() })
-        .select(),
+        .select("id"),
       "42501",
     );
     // The allowed insert (same columns, no extras) is covered in engagement.test.ts.

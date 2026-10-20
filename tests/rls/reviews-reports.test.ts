@@ -80,14 +80,14 @@ describe("review window (insert policy)", () => {
       await cC
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
-        .select(),
+        .select("id"),
       1,
     );
     expectRows(
       await cH
         .from("reviews")
         .insert(review(id, chef, cust, "chef"))
-        .select(),
+        .select("id"),
       1,
     );
   });
@@ -98,13 +98,13 @@ describe("review window (insert policy)", () => {
       await cC
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
-        .select(),
+        .select("id"),
     );
     expectDenied(
       await cH
         .from("reviews")
         .insert(review(id, chef, cust, "chef"))
-        .select(),
+        .select("id"),
     );
     const rows = await svc.from("reviews").select("id").eq("booking_id", id);
     expect(rows.data).toEqual([]);
@@ -117,7 +117,7 @@ describe("review window (insert policy)", () => {
         await cC
           .from("reviews")
           .insert(review(id, cust, chef, "customer"))
-          .select(),
+          .select("id"),
       );
     }
   });
@@ -128,19 +128,19 @@ describe("review window (insert policy)", () => {
       await cO
         .from("reviews")
         .insert(review(id, other, chef, "customer"))
-        .select(),
+        .select("id"),
     );
     expectDenied(
       await cO
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
-        .select(),
+        .select("id"),
     );
     expectDenied(
       await cC
         .from("reviews")
         .insert(review(id, cust, chef, "chef"))
-        .select(),
+        .select("id"),
     );
   });
 
@@ -150,13 +150,13 @@ describe("review window (insert policy)", () => {
       await cC
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
-        .select(),
+        .select("id"),
       1,
     );
     const dup = await cC
       .from("reviews")
       .insert(review(id, cust, chef, "customer"))
-      .select();
+      .select("id");
     expect(dup.error?.code).toBe("23505");
     expectDenied(
       await cC
@@ -190,14 +190,14 @@ describe("who can read a review", () => {
       await cC
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
-        .select(),
+        .select("id"),
       1,
     );
     expectRows(
       await cH
         .from("reviews")
         .insert(review(id, chef, cust, "chef"))
-        .select(),
+        .select("id"),
       1,
     );
     const anon = anonClient();
@@ -219,39 +219,11 @@ describe("who can read a review", () => {
     );
     // Private: nobody outside the two parties and the admin sees the chef's review.
     expectNoRows(await anon.from("reviews").select("id").eq("id", chefReview));
-    expectNoRows(
-      await cO
-        .from("reviews")
-        .select("id")
-        .eq("subject_id", cust.id)
-        .eq("author_role", "chef"),
-    );
-    expectRows(
-      await cC
-        .from("reviews")
-        .select("id")
-        .eq("booking_id", id)
-        .eq("subject_id", cust.id)
-        .eq("author_role", "chef"),
-      1,
-    );
-    expectRows(
-      await cH
-        .from("reviews")
-        .select("id")
-        .eq("booking_id", id)
-        .eq("author_id", chef.id)
-        .eq("author_role", "chef"),
-      1,
-    );
-    expectRows(
-      await cAdmin
-        .from("reviews")
-        .select("id")
-        .eq("booking_id", id)
-        .eq("subject_id", cust.id)
-        .eq("author_role", "chef"),
-    );
+    // Round 3: no browser role may filter on booking_id, subject_id or author_id, so rows are
+    // found by id. A stranger sees nothing; the two parties and the admin see the row.
+    expectNoRows(await cO.from("reviews").select("id").eq("id", chefReview));
+    for (const c of [cC, cH, cAdmin])
+      expectRows(await c.from("reviews").select("id").eq("id", chefReview), 1);
   });
 
   it("when the chef stops being approved, customers' reviews of them leave the public list", async () => {

@@ -158,16 +158,21 @@ describe("database-level guarantees", () => {
     ...["availability", "chefs", "dishes", "postal_prefixes"].map(
       (t) => `anon ${t} select`,
     ),
-    ...allTables.map((t) => `authenticated ${t} select`),
+    // Round 3: reviews has column grants only (see expectedColumns), no table-level select.
+    ...allTables
+      .filter((t) => t !== "reviews")
+      .map((t) => `authenticated ${t} select`),
     // T-028: chef_private, chefs and profiles are written by routes only (no client update).
     // T-048: reports are not updated from a browser either (admin_decide_booking is the only way).
     // T-032: dishes and availability are written by routes only (no client write privilege).
   ].sort();
   const expectedColumns: string[] = [
-    // T-048 fix round (F-2): anon reads only these review columns (no author, subject, booking or
-    // full-name snapshot).
-    ...["author_role", "comment", "created_at", "id", "rating"].map(
-      (c) => `anon reviews.${c} select`,
+    // T-048 fix round (F-2) and round 3 (open point 21): anon AND authenticated read only these
+    // review columns (no author, subject, booking or full-name snapshot, so no select *).
+    ...["anon", "authenticated"].flatMap((role) =>
+      ["author_role", "comment", "created_at", "id", "rating"].map(
+        (c) => `${role} reviews.${c} select`,
+      ),
     ),
     ...[
       "author_id",

@@ -74,3 +74,14 @@ v1.17: no shape change except: new 422 `CONTACT_DETAILS_NOT_ALLOWED` on `POST /a
 
 ## Next
 Tester: re-run the fix-round areas in CI (API + RLS); Planner: `supabase db push` for both migrations after merge.
+
+## Round 3 (open point 21 closed, Jimmy: "Close it now")
+- New migration `supabase/migrations/20261024100000_reviews_authenticated_columns.sql`: `revoke select on public.reviews from authenticated`; `grant select (id, author_role, rating, comment, created_at)` to `authenticated`. Older migrations untouched. The insert grant and the RLS policies are unchanged (policies still filter rows; the insert policy stays the second line of defence for direct browser inserts).
+- Changed reads (`src/lib/server/reviews.ts`): `readPair` (used by `GET /api/bookings/:id/reviews` and the POST retry/duplicate checks) now uses the service role after `loadPartyBooking`, filtered to the caller's own two rows (author or subject = caller, this booking). `POST` still inserts with the user session (so the insert policy and its window check still run) but without `returning`; the stored row is read back with the service role. The 23505 and 42501 handling is unchanged. `GET /api/admin/reviews` and `GET /api/chefs/:id/reviews` already used the service role. The rating trigger and the display-name trigger are `security definer`, so they are unaffected. No other code reads `reviews` with a user session.
+- The chef's review of a customer is still reachable by the customer, through `GET /api/bookings/:id/reviews` only (`other`). Response bodies are unchanged.
+- Tests (CI only, no Docker): grant snapshot in `tests/rls/visibility.test.ts` (authenticated reviews: 5 column select rows, no table select); `t048-tester` F-2 now loops anon, non-party, customer party, chef party and admin over the 4 hidden columns and `select *` (42501) and checks the 5 safe columns work for all; RLS tests that filtered by `booking_id`, `subject_id` or `author_id` through a browser client now read by `id`; review inserts through a browser client use `.select("id")` instead of `.select()` (returning `*` is now refused).
+- Docs: contract v1.18 (7D, open point 21 closed), `docs/data-model.md`.
+
+### Builder choices (NOT confirmed by Jimmy), round 3
+8. Insert stays on the user session without returning, then a service-role read-back, rather than moving the insert to the service role. Reason: the RLS insert policy (window, completed, role) keeps running on the route path too.
+9. Browser-client RLS tests changed from filtering by hidden columns to reading by `id`; this is the only way left to find a row, which is the point of the change.
