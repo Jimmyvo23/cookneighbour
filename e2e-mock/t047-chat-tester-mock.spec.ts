@@ -226,3 +226,37 @@ test("the booking page and the chat survive a long message and a long unbroken w
   expect(await scrollsSideways(page)).toBe(false);
   await expectNoAxeViolations(page);
 });
+
+// D-105: the chat is open, then the booking is closed behind the page's back (the other party
+// declines or cancels). In MOCK mode the state is edited in the tab; the next send finds it closed.
+for (const [who, key, path] of [
+  ["customer", "bookings", "/bookings"],
+  ["chef", "chefBookings", "/chef/bookings"],
+] as const) {
+  test(`${who}: the chat closes while open, shows the notice with focus, reloads the status, axe clean`, async ({
+    page,
+  }) => {
+    if (who === "customer") await customerList(page);
+    else await chefList(page);
+    await openPage(page, `${path}/${SEEDED.A01}`);
+    await expect(chat(page).getByTestId("chat-message")).toHaveCount(1);
+    await expect(box(page)).toBeVisible();
+    await setDetail(page, key, SEEDED.A01, { status: "declined" });
+    await box(page).fill("Are you there?");
+    await send(page).click();
+    const notice = page.getByTestId("chat-closed").filter({ visible: true });
+    await expect(notice).toHaveText("The chat for this booking is closed.");
+    await expect(notice).toBeFocused();
+    await expect(notice).toHaveAttribute("role", "status");
+    await expect(page.getByTestId("chat")).toHaveCount(0);
+    await expect(page.getByRole("textbox")).toHaveCount(0);
+    // The page refetched the booking and shows the new status.
+    await expect(
+      page.getByTestId("status").filter({ visible: true }),
+    ).toContainText(/declined/i);
+    await expect(notice).toBeFocused(); // the reload did not move focus
+    await expect(notice).toBeVisible(); // still there after the new status
+    expect(await scrollsSideways(page)).toBe(false);
+    await expectNoAxeViolations(page);
+  });
+}

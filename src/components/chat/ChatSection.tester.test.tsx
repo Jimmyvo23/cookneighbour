@@ -752,3 +752,83 @@ describe("chat error box role (round 2)", () => {
     expect(chat.querySelectorAll('[role="alert"]')).toHaveLength(0);
   });
 });
+
+describe("round 3: connecting state and late join (L-2, L-3, L-4)", () => {
+  it("a channel that joins BEFORE the first load finishes causes no extra load", async () => {
+    const l = fakeLive();
+    let release!: () => void;
+    routes(h.fetchMock, {
+      [GET1]: () =>
+        new Promise<Response>((res) => {
+          release = () =>
+            res(
+              new Response(JSON.stringify({ items: [], nextCursor: null }), {
+                status: 200,
+              }),
+            );
+        }) as unknown as Response,
+    });
+    await mount(l);
+    l.f.handlers!.onStatus("live"); // joined while the history is still loading
+    release();
+    await h.flush();
+    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(1);
+    expect(h.q("chat-live-note")).toBeNull();
+  });
+
+  it("says nothing while connecting or live, 'paused' after a drop, 'not available' if it cannot start", async () => {
+    const l = fakeLive();
+    routes(h.fetchMock, empty);
+    await mount(l);
+    expect(h.q("chat-live-note")).toBeNull(); // connecting
+    l.f.handlers!.onStatus("live");
+    await h.flush();
+    expect(h.q("chat-live-note")).toBeNull();
+    l.f.handlers!.onStatus("down");
+    await h.flush();
+    expect(h.q("chat-live-note")?.textContent).toContain("paused");
+    h.cleanup();
+    h = harness();
+    const bad: ChatConnect = async () => {
+      throw new Error("no session");
+    };
+    routes(h.fetchMock, empty);
+    await h.mount(
+      <ChatSection
+        bookingId={BID}
+        status="accepted"
+        frozen={false}
+        expiresAt={null}
+        otherName="Lan"
+        connect={bad}
+        mock={false}
+      />,
+    );
+    expect(h.q("chat-live-note")?.textContent).toContain("not available");
+  });
+
+  it("a late event after switching booking does not reach the new list", async () => {
+    const l = fakeLive();
+    routes(h.fetchMock, empty);
+    await mount(l);
+    const old = l.f.handlers!;
+    const other = "00000000-0000-4000-8000-000000000b02";
+    routes(h.fetchMock, {
+      [`GET /api/bookings/${other}/messages?limit=50`]: json(200, {
+        items: [],
+        nextCursor: null,
+      }),
+    });
+    await mount(l, { bookingId: other });
+    old.onRow({
+      id: mid(9),
+      booking_id: other, // even a row that names the new booking is dropped from the old channel
+      sender_id: "other",
+      client_id: null,
+      body: "stale",
+      created_at: "2026-10-19T12:00:09.000Z",
+    });
+    await h.flush();
+    expect(items().join("")).not.toContain("stale");
+  });
+});
