@@ -591,7 +591,7 @@ CLAUDE.md 6.4 step 6, 6.7 and 6.9. Same conventions as 7A: `Cache-Control: no-st
 
 ### Types (see `src/lib/api/types.ts`)
 - `ReviewView` `{ id, bookingId, authorRole: "customer"|"chef", authorDisplayName, rating (1 to 5), comment (string|null), createdAt, mine (boolean) }`. For a booking's parties only. No author or subject id.
-- `PublicReview` `{ id, authorDisplayName, rating, comment, createdAt }` for the public list. **No author id and no booking id** (answers N4). `authorDisplayName` is the snapshot taken when the review was written.
+- `PublicReview` `{ id, authorFirstName, rating, comment, createdAt }` for the public list. **No author id and no booking id** (answers N4). **`authorFirstName` is only the first word of the reviewer's display name snapshot** (trimmed, split on whitespace; an empty name gives "Customer"), cut on the server so the full name never reaches an anonymous reader (Jimmy, 2026-10-20). The booking's parties still get the whole snapshot in `ReviewView.authorDisplayName`. (Changed since 337a44b: field renamed from `authorDisplayName`.)
 - `ReviewAllowance` `{ allowed: boolean, reason: null | "not_completed" | "window_closed" | "already_reviewed", closesAt: ISO|null }`. `closesAt` is `completedAt` + 14 days (set whenever the booking is completed, also after the window closed; null otherwise).
 - `ReportView` `{ id, bookingId, category: "safety"|"food_quality"|"no_show"|"payment"|"other", description, status: "open"|"reviewing"|"resolved"|"dismissed", createdAt, resolvedAt (ISO|null) }`. This is everything the reporter sees: **no admin note, no final status, no decision text**.
 - `FinalBookingStatus`: `completed | cancelled | no_show_chef | no_show_customer` (D-54).
@@ -664,7 +664,7 @@ All three decision routes call **one** database function, `admin_decide_booking`
 - `reports.client_id uuid` with a unique index on `(reporter_id, client_id)`; partial unique index `reports_one_open_per_reporter` on `(reporter_id, booking_id)` where `status in ('open','reviewing')`. The browser can no longer `UPDATE` reports (privilege revoked; an admin decides only through `admin_decide_booking`). Reports are still readable by the reporter and the admin only.
 - `admin_decisions` (new, admin audit trail, row-level security on and **no** client privilege): `id, kind, booking_id, report_id, flag_reason, admin_id, final_status, note, created_at`.
 - `review_window_days()`; `reviews_insert_party` replaced (window).
-- Code: `src/lib/domain/reviews.ts` (pure rules, shared with the MOCK adapter), `src/lib/server/reviews.ts`, `src/lib/server/reports.ts`, `src/lib/server/admin-engagement.ts`; routes under `src/app/api/bookings/[id]/{reviews,reports}`, `src/app/api/chefs/[id]/reviews`, `src/app/api/admin/{bookings,reports,free-trial-blocks,reviews}`. MOCK adapter `src/lib/mocks/mock-engagement.ts` (labelled MOCK; browser tab only).
+- Code: `src/lib/domain/reviews.ts` (pure rules, shared with the MOCK adapter), `src/lib/server/reviews.ts`, `src/lib/server/reports.ts`, `src/lib/server/admin-engagement.ts`; routes under `src/app/api/bookings/[id]/{reviews,reports}`, `src/app/api/chefs/[id]/reviews`, `src/app/api/admin/{bookings,reports,free-trial-blocks,reviews}`. The UI mock adapter for 7D is owned by Frontend (`src/lib/mocks/mock-reviews-reports.ts`).
 - The hosted database needs `supabase db push` for migration `20261022100000_reviews_reports.sql` (the Planner asks Jimmy).
 
 ## 8. Rule: phone uniqueness across accounts (for T-028)

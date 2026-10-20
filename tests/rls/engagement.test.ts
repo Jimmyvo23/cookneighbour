@@ -325,7 +325,7 @@ describe("reports (report-a-problem)", () => {
     expectNoRows(await anonClient().from("reports").select("id"));
   });
 
-  it("only admin can triage; the reporter cannot close their own report", async () => {
+  it("nobody can update a report from a browser (T-048: the admin decides through admin_decide_booking)", async () => {
     expectDenied(
       await c1
         .from("reports")
@@ -333,20 +333,19 @@ describe("reports (report-a-problem)", () => {
         .eq("id", reportId)
         .select(),
     );
-    expectRows(
+    expectDenied(
       await admin
         .from("reports")
         .update({ status: "reviewing", admin_note: "looking" })
         .eq("id", reportId)
         .select(),
-      1,
     );
     const { data } = await svc
       .from("reports")
       .select("status")
       .eq("id", reportId)
       .single();
-    expect(data?.status).toBe("reviewing");
+    expect(data?.status).toBe("open");
     expect(ids(await admin.from("reports").select("id"))).toContain(reportId);
   });
 });

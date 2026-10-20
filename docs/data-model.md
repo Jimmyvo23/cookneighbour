@@ -46,7 +46,8 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | `messages` | Chat per booking (in the `supabase_realtime` publication; Realtime applies the RLS policies). |
 | `notifications` | In-app only (A-5). |
 | `reviews` | Rating 1..5, comment, author/subject, `author_role`, author display-name snapshot. Unique per booking and author. |
-| `reports` | Report-a-problem per booking. |
+| `reports` | Report-a-problem per booking. **T-048:** `client_id` (the reporter's retry key, unique per reporter); a partial unique index allows one `open` or `reviewing` report per reporter per booking. The admin's note is NOT stored here (see `admin_decisions`). |
+| `admin_decisions` **(T-048)** | The admin's audit trail and the only home of the admin's note: `kind` (`report_resolved`, `report_dismissed`, `flag_resolved`), booking, report, flag reason, admin, `final_status`, note (3 to 500 characters). Row-level security on, **no client privilege and no policy**: only the service role (the admin routes) reads or writes it. |
 | `free_trial_claims` | `customer_id`, `booking_id`, `phone_hash`, `address_hash`, state. |
 | `free_trial_blocks` | Log of blocked second-trial attempts for the admin list. T-042: `attempts` and `last_attempt_at`; repeated attempts by one customer for one reason inside an hour are counted in one row (`record_free_trial_block`). |
 
@@ -102,10 +103,10 @@ Source of truth: `supabase/migrations/` (`core_schema`, `core_rls`, `storage_buc
 | `notifications` | owner | read own; update own, **`read_at` column only** (column grant) |
 | `reviews` | anon, authenticated | customer-written reviews of an approved chef |
 | | author or subject, admin | read |
-| | insert | author = self, booking `completed`, self is a party, subject is the other party, `author_role` matches |
+| | insert | author = self, booking `completed`, **(T-048) now() is at most `review_window_days()` x 24 hours (14 days) after `completed_at`**, self is a party, subject is the other party, `author_role` matches. No update or delete for anyone: a posted review is final |
 | `reports` | reporter, admin | read own / all |
 | | insert | reporter = self, status `open`, no admin note, self is a party |
-| | update | admin only |
+| | update | **(T-048) nobody from a browser** (privilege and the admin policy were removed): the admin decides only through the function `admin_decide_booking` (service role) |
 | `free_trial_claims` | owner, admin | own / all. No client writes |
 | `free_trial_blocks` | admin | all. No client writes |
 
@@ -178,3 +179,4 @@ Lock order: customer advisory lock, then the `chefs` row (`FOR SHARE`), then ava
 - `pickup_proposals` (D-29): one row per proposed pickup time for a day of a chef's-home booking; status `proposed | accepted | declined | void`; a unique partial index allows one live (`proposed` or `accepted`) row per day. Parties and admin can read; only the server writes.
 - `booking_flags` (D-22): admin-only note on an accepted booking: `chef_rejected` (chef was rejected) or, since T-066 (D-36), `no_day_cooked` (the visits are over but no day was cooked, so the sweep did not complete it). One flag per booking. **T-064:** `resolved_at` (null = open). An open flag other than `no_day_cooked` freezes the booking (D-53, function `booking_is_frozen`); completing the booking resolves its `no_day_cooked` flag (D-57); rejecting the chef upgrades an open `no_day_cooked` flag to `chef_rejected`.
 - Functions (service role only, SECURITY INVOKER): `change_booking`, `sweep_booking_changes`, `booking_cancellation_timing`, `booking_pickup_end`, `booking_auto_complete_at`; `answer_booking` and `admin_reject_chef` replaced. Lock order everywhere: chef row, then booking row.
+- **T-048 (reviews, reports, admin decisions):** `review_window_days()` (14; executable by `authenticated` for the insert policy; the TypeScript constant `REVIEW_WINDOW_DAYS` mirrors it and a test compares them). `admin_decide_booking(admin, kind, booking, report, final_status, note)` (service role only, `search_path = ''`): one transaction that locks the booking row, then the report row, and resolves or dismisses a report or resolves an open flag; a final status (completed, cancelled, no-show by either side) does what the party action does and sets `resolved_at` on every open flag of the booking, which unfreezes it (D-67); it adds a neutral `booking_decided` notice for both parties and one `admin_decisions` row. It does not touch the free trial: the route calls `applyFreeTrialEvent` afterwards and the sweep repairs a failure. Migration `20261022100000_reviews_reports.sql`. Known gap: `anon` can still select `reviews.author_id` and `booking_id` through the REST API (the public route hides them); a column grant would close it (contract open point 21).

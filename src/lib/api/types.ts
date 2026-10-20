@@ -899,3 +899,200 @@ export type MessageRefusalReason =
   | "chat_hidden" // declined, cancelled, expired or no-show booking, or a request past its expiry (D-94)
   | "frozen" // an admin flag is open (D-93): read only
   | "message_id_reused"; // clientId already used for another booking or another text
+
+// ---------------------------------------------------------------------------
+// Reviews, problem reports and the admin lists (T-048, contract section 7D)
+// ---------------------------------------------------------------------------
+export type ReviewAuthorRole = "customer" | "chef";
+/** One review as the two parties of a booking see it. No author or subject id. */
+export interface ReviewView {
+  id: string;
+  bookingId: string;
+  authorRole: ReviewAuthorRole;
+  /** Name snapshot taken when the review was written. */
+  authorDisplayName: string;
+  /** 1 to 5. */
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  /** True when the signed-in caller wrote it. */
+  mine: boolean;
+}
+/** A customer's review of an approved chef, as the public sees it: first name only, no author id, no booking id (N4). */
+export interface PublicReview {
+  id: string;
+  /** Only the first word of the reviewer's display name (Jimmy, 2026-10-20), cut on the server. */
+  authorFirstName: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+/** GET /api/chefs/:id/reviews */
+export type PublicReviewList = Page<PublicReview>;
+export type ReviewBlockReason =
+  "not_completed" | "window_closed" | "already_reviewed";
+export interface ReviewAllowance {
+  allowed: boolean;
+  reason: ReviewBlockReason | null;
+  /** completedAt + 14 days (ISO); null while the booking is not completed. */
+  closesAt: string | null;
+}
+/** GET /api/bookings/:id/reviews */
+export interface BookingReviews {
+  bookingId: string;
+  allowance: ReviewAllowance;
+  /** The caller's own review. */
+  mine: ReviewView | null;
+  /** The other party's review of the caller. */
+  other: ReviewView | null;
+}
+/** POST /api/bookings/:id/reviews (customer or chef of a completed booking, final once posted). */
+export interface CreateReviewRequest {
+  /** Whole number 1 to 5. */
+  rating: number;
+  /** Optional, up to 1000 characters. */
+  comment?: string;
+}
+/** `error.reason` of a 409 INVALID_STATE from the review routes. */
+export type ReviewRefusalReason = ReviewBlockReason;
+
+export type ReportCategory =
+  "safety" | "food_quality" | "no_show" | "payment" | "other";
+export type ReportStatus = "open" | "reviewing" | "resolved" | "dismissed";
+/** What the reporter sees of their own report. No admin note, no decision. */
+export interface ReportView {
+  id: string;
+  bookingId: string;
+  category: ReportCategory;
+  description: string;
+  status: ReportStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+/** POST /api/bookings/:id/reports (either party, any booking status). */
+export interface CreateReportRequest {
+  /** A new lower-case UUID per report; send the SAME one when you retry. */
+  clientId: string;
+  /** Default `other`. */
+  category?: ReportCategory;
+  /** 1 to 2000 characters after trimming. */
+  description: string;
+}
+/** GET /api/bookings/:id/reports: only the caller's own reports. */
+export interface ReportList {
+  items: ReportView[];
+}
+/** `error.reason` of a 409 INVALID_STATE from the report routes. */
+export type ReportRefusalReason = "report_open" | "client_id_reused";
+
+/** D-54: the status an admin gives a booking when deciding. */
+export type FinalBookingStatus =
+  "completed" | "cancelled" | "no_show_chef" | "no_show_customer";
+export interface AdminPerson {
+  id: string;
+  displayName: string;
+}
+export interface AdminDecision {
+  kind: "report_resolved" | "report_dismissed" | "flag_resolved";
+  finalStatus: FinalBookingStatus | null;
+  note: string;
+  decidedAt: string;
+}
+export interface AdminBookingItem {
+  id: string;
+  status: string;
+  locationType: LocationType;
+  groceryOption: string;
+  isFreeTrial: boolean;
+  createdAt: string;
+  firstDay: string | null;
+  dates: string[];
+  totalCents: number;
+  currency: string;
+  customer: AdminPerson;
+  chef: AdminPerson;
+  anyDayCooked: boolean;
+  /** `flaggedAt` is the flag's ORIGINAL creation time (also after an upgrade to chef_rejected). */
+  flag: {
+    reason: "chef_rejected" | "no_day_cooked";
+    flaggedAt: string;
+    resolvedAt: string | null;
+  } | null;
+  openReportCount: number;
+}
+export interface AdminReportItem {
+  id: string;
+  bookingId: string;
+  category: ReportCategory;
+  description: string;
+  status: ReportStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+  reporter: AdminPerson & { role: "customer" | "chef" };
+  booking: {
+    status: string;
+    firstDay: string | null;
+    customer: AdminPerson;
+    chef: AdminPerson;
+    anyDayCooked: boolean;
+    frozen: boolean;
+  };
+  decision: AdminDecision | null;
+}
+export interface AdminFreeTrialBlock {
+  id: string;
+  customer: AdminPerson;
+  /** The real rule that blocked. Admin only. */
+  reason: "customer" | "phone" | "address";
+  createdAt: string;
+  attempts: number;
+}
+export interface AdminReviewItem {
+  id: string;
+  bookingId: string;
+  authorRole: ReviewAuthorRole;
+  author: AdminPerson;
+  subject: AdminPerson;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+export interface AdminMessageView {
+  id: string;
+  bookingId: string;
+  senderId: string;
+  senderRole: "customer" | "chef";
+  senderName: string;
+  clientId: string | null;
+  body: string;
+  createdAt: string;
+}
+/** POST /api/admin/reports/:id/resolve */
+export interface AdminResolveReportRequest {
+  /** Required when the booking is `accepted`; not allowed otherwise. */
+  finalStatus?: FinalBookingStatus;
+  /** 3 to 500 characters, admin only. */
+  note: string;
+}
+/** POST /api/admin/reports/:id/dismiss */
+export interface AdminDismissReportRequest {
+  note: string;
+}
+/** POST /api/admin/bookings/:id/resolve-flag */
+export interface AdminResolveFlagRequest {
+  finalStatus: FinalBookingStatus;
+  note: string;
+}
+export interface AdminDecisionResponse {
+  reportId: string | null;
+  booking: { id: string; status: string };
+  decision: AdminDecision;
+  /** The free-trial claim's state after the decision; `none` when the booking had no claim. */
+  freeTrial: "held" | "consumed" | "released" | "none";
+}
+/** `error.reason` of a 409 INVALID_STATE from the admin decision routes. */
+export type AdminDecisionRefusalReason =
+  | "already_decided"
+  | "final_status_required"
+  | "status_not_open"
+  | "no_open_flag";

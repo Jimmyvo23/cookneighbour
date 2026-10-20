@@ -160,7 +160,7 @@ describe("database-level guarantees", () => {
     ),
     ...allTables.map((t) => `authenticated ${t} select`),
     // T-028: chef_private, chefs and profiles are written by routes only (no client update).
-    "authenticated reports update",
+    // T-048: reports are not updated from a browser either (admin_decide_booking is the only way).
     // T-032: dishes and availability are written by routes only (no client write privilege).
   ].sort();
   const expectedColumns: string[] = [
@@ -196,6 +196,8 @@ describe("database-level guarantees", () => {
     "is_booking_chef",
     "is_booking_party",
     "is_chef",
+    // T-048: the review window (14) used by the insert policy on reviews.
+    "review_window_days",
     "shares_booking_with",
     "storage_booking_id",
     "storage_folder_uuid",
