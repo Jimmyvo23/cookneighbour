@@ -33,7 +33,8 @@ function caller(claim: { data: unknown; error: unknown }) {
       const q: Record<string, unknown> = {};
       q.select = () => q;
       q.eq = () => q;
-      q.maybeSingle = async () => (t === "free_trial_claims" ? claim : { data: null, error: null });
+      q.maybeSingle = async () =>
+        t === "free_trial_claims" ? claim : { data: null, error: null };
       return q;
     }),
   };
