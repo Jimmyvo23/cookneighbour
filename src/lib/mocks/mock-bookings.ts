@@ -22,6 +22,7 @@
 //                                            because the server completes a booking once every day
 //                                            is picked up (T-081, D-81).
 //       hooks.messagesRateLimited = true     the next chat send answers 429 (T-046, mock-messages.ts).
+//       hooks.messagesFailNext = true        the next chat send answers 500 once (T-047).
 //   - the chat routes (T-046) are mock-messages.ts.
 //   - a row whose status is edited to `accepted` shows the cookingPlace and contact like the real
 //     view does (hidden before acceptance, CLAUDE.md 6.8).
@@ -108,6 +109,8 @@ export interface MockHooks {
   pickedUpSeeded?: string[];
   /** T-046: the next message send answers 429 RATE_LIMITED (retry in 30 seconds). */
   messagesRateLimited?: boolean;
+  /** T-047: the next message send answers a generic 500 INTERNAL, once (to try the retry button). */
+  messagesFailNext?: boolean;
 }
 
 /** A MOCK receipt as saved: the API view plus the path the chef "uploaded" (never returned). */

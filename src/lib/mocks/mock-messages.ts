@@ -9,7 +9,8 @@
 //   - the first time a chat with no messages is read, one made-up greeting from the other party is
 //     added, so the UI has something to show (MOCK; a real chat starts empty);
 //   - the cursor is an index, not a (time, id) pair, but it is just as opaque to the UI;
-//   - test hook hooks.messagesRateLimited = true makes the next send answer 429 (retry 30 s).
+//   - test hook hooks.messagesRateLimited = true makes the next send answer 429 (retry 30 s);
+//     hooks.messagesFailNext = true makes the next send answer a generic 500, once (T-047).
 // The frozen state comes from `BookingDetail.frozen` (hooks.frozenSeeded in mock-bookings.ts).
 import type { MessageView } from "@/lib/api/types";
 import {
@@ -138,6 +139,16 @@ export function messageRoute(
         },
       ),
       next: { hooks: { ...s.hooks, messagesRateLimited: false } },
+    };
+  if (s.hooks.messagesFailNext)
+    return {
+      res: json(500, {
+        error: {
+          code: "INTERNAL",
+          message: "Something went wrong on our side. Please try again.",
+        },
+      }),
+      next: { hooks: { ...s.hooks, messagesFailNext: false } },
     };
   const parsed = parseMessageBody(
     typeof body === "object" && body !== null && !Array.isArray(body)

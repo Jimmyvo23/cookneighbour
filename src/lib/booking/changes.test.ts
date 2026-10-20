@@ -553,7 +553,7 @@ describe("customer cancel guard and contact window (T-073)", () => {
       "Visible until the end of Tue, Oct 27 (Toronto time)",
     );
     expect(summer).not.toContain("12:00");
-    expect(summer).not.toContain("Chat stays open");
+    expect(summer).toContain("Chat stays open.");
     // Last day Oct 25 -> cut-off Nov 2 00:00 Toronto = 05:00Z (EST, after the DST change).
     expect(
       contactOpenText({ kind: "open", until: "2026-11-02T05:00:00.000Z" }),
@@ -564,6 +564,8 @@ describe("customer cancel guard and contact window (T-073)", () => {
       CONTACT_RULE,
     );
     expect(CONTACT_RULE).toContain("7 days after the last visit day");
+    expect(CONTACT_RULE).toContain("Chat stays open.");
+    // Cancelled bookings hide their chat (D-94), so the locked text must not promise it.
     expect(CONTACT_LOCKED_TEXT).not.toContain("Chat stays open");
     expect(contactOpenText({ kind: "ended" })).toBeNull();
     expect(contactOpenText({ kind: "locked" })).toBeNull();

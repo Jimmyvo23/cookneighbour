@@ -23,7 +23,8 @@ import {
   type FieldErrors,
 } from "@/lib/booking/form";
 import {
-  CONTACT_ENDED_TEXT,
+  contactEndedText,
+  chatStaysOpen,
   CONTACT_LOCKED_TEXT,
   canCustomerCancel,
   FROZEN_TEXT,
@@ -44,6 +45,7 @@ import {
   secondaryButtonCls,
 } from "@/components/chef/parts";
 import { NOTICE_BOX_CLS, useAnnounce } from "@/components/booking/useAnnounce";
+import { ChatSection } from "@/components/chat/ChatSection";
 import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { CustomerPickups } from "@/components/booking/PickupSections";
 import {
@@ -194,6 +196,7 @@ export function BookingDetailView({ id }: { id: string }) {
       {state.kind === "ready" && (
         <RefusalProvider value={scope}>
           <Ready
+            onChatClosed={() => void refresh()}
             booking={state.booking}
             sent={sent}
             profileNotSaved={profileNotSaved}
@@ -214,11 +217,13 @@ function Ready({
   sent,
   profileNotSaved,
   onChange,
+  onChatClosed,
 }: {
   booking: BookingDetail;
   sent: boolean;
   profileNotSaved: boolean;
   onChange: (b: BookingDetail) => void;
+  onChatClosed: () => void;
 }) {
   const hid = useId();
   // After a successful pickup proposal or receipt answer the form that was used goes away, so this
@@ -230,7 +235,8 @@ function Ready({
   };
   const canCancel = !b.frozen && canCustomerCancel(b, torontoToday());
   const win = contactWindow(b);
-  const windowText = contactOpenText(win);
+  const chatOpen = chatStaysOpen(b);
+  const windowText = contactOpenText(win, chatOpen);
   const firstDay = b.days[0]?.date;
   const anyCooked = b.days.some((d) => d.cookedAt !== null);
   return (
@@ -376,7 +382,7 @@ function Ready({
             {b.status === "requested"
               ? "Phone numbers are shared only after the chef accepts."
               : win.kind === "ended"
-                ? CONTACT_ENDED_TEXT
+                ? contactEndedText(chatOpen)
                 : win.kind === "locked"
                   ? `The chef's phone number is not shown for this booking. ${CONTACT_LOCKED_TEXT}`
                   : "The chef's phone number is not shown for this booking."}
@@ -388,6 +394,15 @@ function Ready({
           </p>
         )}
       </section>
+
+      <ChatSection
+        bookingId={b.id}
+        status={b.status}
+        frozen={b.frozen}
+        expiresAt={b.expiresAt}
+        otherName={b.chef.displayName}
+        onClosed={onChatClosed}
+      />
 
       <CustomerPickups booking={b} onChange={changed} />
 

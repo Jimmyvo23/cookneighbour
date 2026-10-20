@@ -308,8 +308,20 @@ export function contactWindow(b: BookingDetail): ContactWindow {
   }
 }
 
-export const CONTACT_RULE =
+const CONTACT_HIDE_RULE =
   "Phone numbers and addresses are hidden 7 days after the last visit day.";
+const CHAT_OPEN_SENTENCE = "Chat stays open.";
+export const CONTACT_RULE = `${CONTACT_HIDE_RULE} ${CHAT_OPEN_SENTENCE}`;
+
+/**
+ * T-047 round 2: "Chat stays open." is true only while the chat is open for writing: accepted or
+ * completed and not frozen (D-93, D-94). The pages pass this to the contact-window texts.
+ */
+export function chatStaysOpen(b: Pick<BookingDetail, "status" | "frozen">) {
+  return (b.status === "accepted" || b.status === "completed") && !b.frozen;
+}
+const ruleFor = (chatOpen: boolean) =>
+  chatOpen ? CONTACT_RULE : CONTACT_HIDE_RULE;
 
 /**
  * D-64: the server cut-off is midnight Toronto, so the last visible day is the one containing
@@ -327,16 +339,21 @@ function lastVisibleDay(untilIso: string): string | null {
 }
 
 /** The sentence under the contact details while they are visible. Null when nothing is shown. */
-export function contactOpenText(w: ContactWindow): string | null {
+export function contactOpenText(
+  w: ContactWindow,
+  chatOpen = true,
+): string | null {
   if (w.kind !== "open") return null;
   const day = w.until ? lastVisibleDay(w.until) : null;
   return day
-    ? `Visible until the end of ${day} (Toronto time). ${CONTACT_RULE}`
-    : CONTACT_RULE;
+    ? `Visible until the end of ${day} (Toronto time). ${ruleFor(chatOpen)}`
+    : ruleFor(chatOpen);
 }
 
 /** The sentence that replaces hidden contact details, for the ended and cancelled cases. */
 export const CONTACT_ENDED_TEXT = `Contact details are hidden now. ${CONTACT_RULE}`;
+export const contactEndedText = (chatOpen: boolean) =>
+  `Contact details are hidden now. ${ruleFor(chatOpen)}`;
 export const CONTACT_LOCKED_TEXT =
   "Phone numbers and addresses are locked when a booking is cancelled.";
 

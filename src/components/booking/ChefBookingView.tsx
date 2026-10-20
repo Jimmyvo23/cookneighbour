@@ -20,7 +20,8 @@ import type {
 } from "@/lib/api/types";
 import {
   CHEF_STATUS_TEXT,
-  CONTACT_ENDED_TEXT,
+  contactEndedText,
+  chatStaysOpen,
   CONTACT_LOCKED_TEXT,
   FROZEN_TEXT,
   allDaysCooked,
@@ -55,6 +56,7 @@ import {
   infoBoxCls,
   warnBoxCls,
 } from "@/components/booking/parts";
+import { ChatSection } from "@/components/chat/ChatSection";
 import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { ChefPickups } from "@/components/booking/PickupSections";
 import { ChefEndSections } from "@/components/booking/ChefEndSections";
@@ -165,6 +167,7 @@ export function ChefBookingView({ id }: { id: string }) {
       {state.kind === "ready" && (
         <RefusalProvider value={scope}>
           <Ready
+            onChatClosed={() => void refresh()}
             booking={state.booking}
             onChange={(b) => {
               seq.current++;
@@ -181,9 +184,11 @@ export function ChefBookingView({ id }: { id: string }) {
 function Ready({
   booking: b,
   onChange,
+  onChatClosed,
 }: {
   booking: BookingDetail;
   onChange: (b: BookingDetail) => void;
+  onChatClosed: () => void;
 }) {
   const hid = useId();
   // One owner moves focus after a successful change: the notice below (lessons-learned section 3).
@@ -234,6 +239,15 @@ function Ready({
       <Where b={b} />
 
       {b.status === "requested" && <Answer b={b} onChange={changed} />}
+
+      <ChatSection
+        bookingId={b.id}
+        status={b.status}
+        frozen={b.frozen}
+        expiresAt={b.expiresAt}
+        otherName={b.customer.displayName}
+        onClosed={onChatClosed}
+      />
 
       <ChefPickups booking={b} onChange={changed} />
 
@@ -535,7 +549,8 @@ function Cooked({
 function Where({ b }: { b: BookingDetail }) {
   const hid = useId();
   const win = contactWindow(b);
-  const windowText = contactOpenText(win);
+  const chatOpen = chatStaysOpen(b);
+  const windowText = contactOpenText(win, chatOpen);
   return (
     <section
       aria-labelledby={`${hid}-h`}
@@ -577,7 +592,7 @@ function Where({ b }: { b: BookingDetail }) {
           {b.status === "requested"
             ? "The customer's phone number is shown once you accept."
             : win.kind === "ended"
-              ? CONTACT_ENDED_TEXT
+              ? contactEndedText(chatOpen)
               : win.kind === "locked"
                 ? `The customer's phone number is not shown for this booking. ${CONTACT_LOCKED_TEXT}`
                 : "The customer's phone number is not shown for this booking."}

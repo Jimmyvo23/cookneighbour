@@ -55,7 +55,7 @@ test("customer: an accepted booking explains the window, shows the cut-off, and 
   await expect(note).toContainText("Visible until");
   await expect(note).toContainText("Toronto time");
   await expect(note).toContainText("hidden 7 days after the last visit day");
-  await expect(note).not.toContainText("Chat stays open");
+  await expect(note).toContainText("Chat stays open.");
   await expect(
     page.getByRole("button", { name: "Cancel this booking" }),
   ).toBeVisible();

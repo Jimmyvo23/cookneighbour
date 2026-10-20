@@ -174,6 +174,18 @@ describe("mock chat routes", () => {
     ).toBe(201);
   });
 
+  it("T-047: hooks.messagesFailNext makes the next send answer a generic 500, once", async () => {
+    const c = new Session();
+    c.s = { ...c.s, hooks: { ...c.s.hooks, messagesFailNext: true } };
+    const r = await c.send(ACCEPTED, { clientId: cid(1), body: "hi" });
+    expect(r.status).toBe(500);
+    expect(r.error.code).toBe("INTERNAL");
+    // Nothing was saved, so the retry with the same clientId is a new message (201).
+    expect(
+      (await c.send(ACCEPTED, { clientId: cid(1), body: "hi" })).status,
+    ).toBe(201);
+  });
+
   it("round 3: unknown or repeated query parameters are 422 like the real route", async () => {
     const c = new Session();
     const r = await c.read(ACCEPTED, "?sort=desc&limit=1&limit=2");
