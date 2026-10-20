@@ -155,7 +155,7 @@ describe("database-level guarantees", () => {
     "reviews",
   ];
   const expectedTable: string[] = [
-    ...["availability", "chefs", "dishes", "postal_prefixes", "reviews"].map(
+    ...["availability", "chefs", "dishes", "postal_prefixes"].map(
       (t) => `anon ${t} select`,
     ),
     ...allTables.map((t) => `authenticated ${t} select`),
@@ -164,6 +164,11 @@ describe("database-level guarantees", () => {
     // T-032: dishes and availability are written by routes only (no client write privilege).
   ].sort();
   const expectedColumns: string[] = [
+    // T-048 fix round (F-2): anon reads only these review columns (no author, subject, booking or
+    // full-name snapshot).
+    ...["author_role", "comment", "created_at", "id", "rating"].map(
+      (c) => `anon reviews.${c} select`,
+    ),
     ...[
       "author_id",
       "author_role",
