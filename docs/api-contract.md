@@ -663,6 +663,7 @@ All three decision routes call **one** database function, `admin_decide_booking`
 
 ### Tables, functions, files
 - `reports.client_id uuid` with a unique index on `(reporter_id, client_id)`; partial unique index `reports_one_open_per_reporter` on `(reporter_id, booking_id)` where `status in ('open','reviewing')`. The browser can no longer `UPDATE` reports (privilege revoked; an admin decides only through `admin_decide_booking`). Reports are still readable by the reporter and the admin only.
+- **T-090 (migration `20261025100000`):** the unused column `reports.admin_note` is dropped (the admin's note is only in `admin_decisions`); `admin_decide_booking` also returns `booking_id`, so the route no longer reads `reports`; the route answers 500 if the final `free_trial_claims` read fails (it never answers `freeTrial: "none"` on an error). No response shape changes.
 - `admin_decisions` (new, admin audit trail, row-level security on and **no** client privilege): `id, kind, booking_id, report_id, flag_reason, admin_id, final_status, note, created_at`.
 - `review_window_days()`; `reviews_insert_party` replaced (window).
 - Code: `src/lib/domain/reviews.ts` (pure rules, shared with the MOCK adapter), `src/lib/server/reviews.ts`, `src/lib/server/reports.ts`, `src/lib/server/admin-engagement.ts`; routes under `src/app/api/bookings/[id]/{reviews,reports}`, `src/app/api/chefs/[id]/reviews`, `src/app/api/admin/{bookings,reports,free-trial-blocks,reviews}`. The UI mock adapter for 7D is owned by Frontend (`src/lib/mocks/mock-reviews-reports.ts`).
