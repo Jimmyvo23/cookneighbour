@@ -229,6 +229,7 @@ describe("who can read a review", () => {
       await cC
         .from("reviews")
         .select("id")
+        .eq("booking_id", id)
         .eq("subject_id", cust.id)
         .eq("author_role", "chef"),
       1,
@@ -237,6 +238,7 @@ describe("who can read a review", () => {
       await cH
         .from("reviews")
         .select("id")
+        .eq("booking_id", id)
         .eq("author_id", chef.id)
         .eq("author_role", "chef"),
       1,
@@ -245,6 +247,7 @@ describe("who can read a review", () => {
       await cAdmin
         .from("reviews")
         .select("id")
+        .eq("booking_id", id)
         .eq("subject_id", cust.id)
         .eq("author_role", "chef"),
     );
