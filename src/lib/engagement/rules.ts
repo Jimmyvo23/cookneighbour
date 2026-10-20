@@ -287,3 +287,13 @@ export const FLAG_REASON_TEXT = {
     "The chef's application was rejected after this booking was accepted.",
   no_day_cooked: "All visit days passed and no day was marked as cooked.",
 } as const;
+
+const DATE_ONLY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Toronto",
+  dateStyle: "medium",
+});
+/** "Oct 12, 2026" in Toronto time; the input is shown as is when it is not a date. */
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : DATE_ONLY.format(d);
+}

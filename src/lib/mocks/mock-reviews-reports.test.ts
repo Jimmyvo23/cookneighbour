@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- the mock answers are untyped JSON */
 import { describe, expect, it } from "vitest";
 import type { MeProfile } from "@/lib/api/types";
 import { seedChefBookings } from "@/lib/mocks/mock-booking-changes";
@@ -73,7 +74,7 @@ function client(
       const r = engagementRoute(method, path, body ?? {}, s, NOW);
       if (!r) return { status: -1, data: null as unknown };
       if (r.next) s = { ...s, ...r.next };
-      return { status: r.res.status, data: (await r.res.json()) as any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      return { status: r.res.status, data: (await r.res.json()) as any };
     },
   };
 }
@@ -374,7 +375,6 @@ describe("admin lists and decisions", () => {
     expect(p2.data.nextCursor).toBeNull();
     const flags = await c.call("GET", "/api/admin/bookings?flag=open");
     expect(flags.data.items.map((b: any) => b.flag.reason).sort()).toEqual([
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       "chef_rejected",
       "no_day_cooked",
     ]);
@@ -395,7 +395,7 @@ describe("admin lists and decisions", () => {
       "open",
       "open",
       "reviewing",
-    ]); // eslint-disable-line @typescript-eslint/no-explicit-any
+    ]);
     expect(JSON.stringify(r.data)).not.toMatch(/phone|email|address/i);
     const all = await c.call("GET", "/api/admin/reports?status=all");
     expect(all.data.items).toHaveLength(4);
@@ -434,7 +434,7 @@ describe("admin lists and decisions", () => {
     const list = await c.call("GET", "/api/admin/bookings?status=cancelled");
     expect(list.data.items.map((b: any) => b.id)).toContain(
       ADMIN_IDS.acceptedWithReport,
-    ); // eslint-disable-line @typescript-eslint/no-explicit-any
+    );
   });
 
   it("uses the shared free-trial rule for each final status", async () => {
@@ -515,7 +515,7 @@ describe("admin lists and decisions", () => {
     const open = await c.call("GET", "/api/admin/bookings?flag=open");
     expect(open.data.items.map((b: any) => b.id)).not.toContain(
       ADMIN_IDS.flaggedRejected,
-    ); // eslint-disable-line @typescript-eslint/no-explicit-any
+    );
   });
 
   it("reads a chat oldest first, read only, also for a hidden chat", async () => {
@@ -527,7 +527,7 @@ describe("admin lists and decisions", () => {
     expect(m.data.items.map((x: any) => x.senderRole)).toEqual([
       "customer",
       "chef",
-    ]); // eslint-disable-line @typescript-eslint/no-explicit-any
+    ]);
     expect(
       (
         await c.call(

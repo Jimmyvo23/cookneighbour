@@ -57,6 +57,8 @@ import {
   warnBoxCls,
 } from "@/components/booking/parts";
 import { ChatSection } from "@/components/chat/ChatSection";
+import { ReportSection } from "@/components/reports/ReportSection";
+import { ReviewSection } from "@/components/reviews/ReviewSection";
 import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { ChefPickups } from "@/components/booking/PickupSections";
 import { ChefEndSections } from "@/components/booking/ChefEndSections";
@@ -232,6 +234,14 @@ function Ready({
         <StatusNotes b={b} />
       </header>
 
+      {b.status === "completed" && (
+        <ReviewSection
+          bookingId={b.id}
+          viewer="chef"
+          otherName={b.customer.displayName}
+        />
+      )}
+
       <Intake b={b} />
 
       <Days b={b} onChange={changed} />
@@ -277,6 +287,8 @@ function Ready({
       {b.status === "accepted" && !b.frozen && (
         <ChefEndSections booking={b} onChange={changed} />
       )}
+
+      <ReportSection bookingId={b.id} />
     </>
   );
 }
