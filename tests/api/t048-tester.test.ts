@@ -501,7 +501,9 @@ describe("nothing personal is logged", () => {
       );
     const f = await acceptedBooking({ trial: true });
     // T-088 main-red flake fix: digits become letters so the marker can never look like a phone number.
-    const mark = `LOGMARK${randomUUID().replace(/-/g, "").replace(/[0-9]/g, (d) => "ghijklmnop"[+d])}`;
+    const mark = `LOGMARK${randomUUID()
+      .replace(/-/g, "")
+      .replace(/[0-9]/g, (d) => "ghijklmnop"[+d])}`;
     await svc
       .from("profiles")
       .update({ display_name: `${mark}Name Surname` })

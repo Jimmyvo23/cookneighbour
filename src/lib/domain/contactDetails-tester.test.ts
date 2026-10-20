@@ -58,5 +58,4 @@ describe("known limits (documented, not bugs)", () => {
     "nine zero five five five five zero one two three",
     "I live at 12 Main Street, Mississauga",
   ])("lets through %j", (t) => expect(findContactDetails(t)).toBeNull());
-
 });
