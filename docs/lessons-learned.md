@@ -27,7 +27,6 @@ The office only shows what agents report. Nothing updates on its own.
 Each of these reached the Tester or Reviewer at least once, except the rows marked "(preventive)". Validate free text on the server too, not only in the form (T-033/T-059). Catching them in the builder's own check saves a full fix round.
 
 | Bug class | Example we had | Check |
-| Random ids inside user text in tests | `tests/api/t048-tester.test.ts` put `randomUUID()` hex into a review comment; a long digit run tripped the phone rule, so `main` failed at random (T-048) | Use a digit-free marker in test text (map digits to letters) |
 |---|---|---|
 | Pointing at someone else's data | A chef could link another chef's documents | Every ID from the client is checked against the signed-in user's own rows |
 | Check-then-act race | The admin could verify a file that was swapped after review; approval didn't require both checks to still be `verified` | Do the check and the write in **one** conditional update (`... where status = 'verified'`) |
@@ -54,6 +53,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Fake clock jumps past the API timeout | (T-075) With the 20 s `apiFetch` timeout, a large Playwright `clock.fastForward` can fire the timeout before the mock adapter answers, so a retry lands one step later | In mock e2e, move the fake clock in steps shorter than `API_TIMEOUT_MS` while a call is in flight, or allow one extra retry step |
 | Updating several rows one at a time under a unique rule | (found in CI, T-086) `shiftDays` moved a booking's days with no `order by`; when day 2 was updated first it landed on day 1's date and hit `booking_days_one_per_chef_date` (23505), failing CI at random | When a helper moves several rows that share a unique key, update them in a safe order (earliest first when moving earlier, latest first when moving later) (one `UPDATE` does not help: a non-deferrable unique index is checked row by row) |
 | A test helper that silently never runs | (T-047) The `testkit.tsx` fallback checked `!init?.method`, but `apiFetch` always sends `method: "GET"`, so it never ran; fixing it made the chat render in older page tests and exposed a too-broad selector and an always-present empty `role="alert"` | When adding a fallback to a shared test helper, add a test that proves the fallback actually runs |
+| Random ids inside user text in tests | `tests/api/t048-tester.test.ts` put `randomUUID()` hex into a review comment; a long digit run tripped the phone rule, so `main` failed at random (T-048) | Use a digit-free marker in test text (map digits to letters) |
 
 ## 4. Git and GitHub
 
