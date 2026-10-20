@@ -144,6 +144,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [checks, supabase, e2e-mock]
     if: always()
+    # The gate only reads the other jobs' results (a few seconds), so 5 minutes is generous;
+    # a hung runner then fails fast instead of holding the required check for 6 hours (T-087).
+    timeout-minutes: 5
     steps:
       - name: All jobs must have succeeded
         env:
