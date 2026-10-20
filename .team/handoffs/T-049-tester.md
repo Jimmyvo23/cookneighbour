@@ -34,3 +34,11 @@ PR #181, head 6848526 (plus my test commit). No blocking bug. Every item in the 
 
 ## What the next agent needs
 Frontend: fix finding 1 (a prop on `ListBody` for the order word) and decide finding 2 with Jimmy. Reviewer: the privacy texts above are the ones to compare with the contract.
+
+## Re-check (round 2, head 35e5644)
+Verdict: PASS. No product code touched; no new tests needed.
+- F1: admin chat count line now says "oldest first"; other admin lists keep "newest first" (default prop; converted test passes).
+- F2: both booking pages mount ReviewSection for every status, readOnly when not completed. Read-only shows mine/other cards with the same privacy labels, no form (even if the server says allowed), no why text; nothing while loading, on load error, or with no reviews (unit tests plus new 375 px axe e2e).
+- F3: refused report_open stays in the form, typed text kept, role=alert, focus on the alert (unit test). Old refusal box removed.
+- Regressions: lint and tsc clean; unit 113 files, 2458 passed + 3 expected fails (unrelated ChefDetail it.fails.each); mock e2e 315 passed.
+- Notes (INFO): the extra GET reviews runs for every status; failures render nothing, so pages are not broken. Real routes not exercised (T-050).
