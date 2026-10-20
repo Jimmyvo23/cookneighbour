@@ -13,7 +13,7 @@ import type {
   AdminBookingItem,
   AdminDecisionResponse,
   AdminReportItem,
-} from "@/lib/engagement/types";
+} from "@/lib/api/types";
 import {
   AdminBlocksView,
   AdminBookingsView,
@@ -172,7 +172,7 @@ describe("AdminReportsView", () => {
     routes(h.fetchMock, {
       [REPORTS]: json(200, {
         items: [
-          report({ booking: { ...report().booking, status: "completed" } }),
+          report({ booking: { ...report().booking, status: "cancelled" } }),
         ],
         nextCursor: null,
       }),
@@ -187,6 +187,37 @@ describe("AdminReportsView", () => {
     await h.type(noteBox(), "Nothing to change");
     await h.click(h.button("Confirm decision"));
     expect(posted).toEqual({ note: "Nothing to change" });
+  });
+
+  it("on a completed booking offers an optional status and says what it does (v1.18)", async () => {
+    let posted: unknown;
+    routes(h.fetchMock, {
+      [REPORTS]: json(200, {
+        items: [
+          report({ booking: { ...report().booking, status: "completed" } }),
+        ],
+        nextCursor: null,
+      }),
+      [`POST /api/admin/reports/${id(1)}/resolve`]: (b) => {
+        posted = b;
+        return json(200, decision({ freeTrial: "released" }))(null);
+      },
+    });
+    await h.mount(<AdminReportsView />);
+    await h.click(h.button(/^Resolve/));
+    const sel = statusSelect()!;
+    expect(sel.textContent).toMatch(/Keep it completed/);
+    expect(sel.textContent).not.toMatch(/^Completed|>Completed</);
+    await choose(sel, "cancelled");
+    const effect = h.q("decision-effect")!.textContent!;
+    expect(effect).toMatch(/Reviews already written stay/);
+    expect(effect).toMatch(/free first booking/);
+    await h.type(noteBox(), "Never happened");
+    await h.click(h.button("Confirm decision"));
+    expect(posted).toEqual({
+      finalStatus: "cancelled",
+      note: "Never happened",
+    });
   });
 
   it("dismisses with a note only", async () => {

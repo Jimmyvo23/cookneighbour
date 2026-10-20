@@ -8,7 +8,7 @@ import {
   routes,
   type Harness,
 } from "@/components/booking/testkit";
-import type { PublicReview } from "@/lib/engagement/types";
+import type { PublicReview } from "@/lib/api/types";
 import { PublicReviews } from "./PublicReviews";
 
 let h: Harness;
@@ -22,7 +22,7 @@ const FIRST = `GET /api/chefs/${CHEF}/reviews?limit=10`;
 const MORE = `GET /api/chefs/${CHEF}/reviews?limit=10&cursor=m10`;
 const rv = (n: number, over: Partial<PublicReview> = {}): PublicReview => ({
   id: `00000000-0000-4000-8000-0000000000${String(n).padStart(2, "0")}`,
-  authorDisplayName: "Mina",
+  authorFirstName: "Mina",
   rating: 5,
   comment: `Comment ${n}`,
   createdAt: "2026-10-12T15:00:00.000Z",
@@ -35,7 +35,7 @@ describe("PublicReviews", () => {
       [FIRST]: json(200, {
         items: [
           {
-            ...rv(1, { authorDisplayName: "Mina", rating: 4 }),
+            ...rv(1, { authorFirstName: "Mina", rating: 4 }),
             authorId: "SECRET-AUTHOR",
             bookingId: "SECRET-BOOKING",
           },
@@ -55,7 +55,7 @@ describe("PublicReviews", () => {
   it("does not build a longer name: it prints exactly what the server sent", async () => {
     routes(h.fetchMock, {
       [FIRST]: json(200, {
-        items: [rv(1, { authorDisplayName: "Mina" })],
+        items: [rv(1, { authorFirstName: "Mina" })],
         nextCursor: null,
       }),
     });

@@ -9,7 +9,7 @@ import {
   routes,
   type Harness,
 } from "@/components/booking/testkit";
-import type { ReportView } from "@/lib/engagement/types";
+import type { ReportView } from "@/lib/api/types";
 import { ReportSection } from "./ReportSection";
 
 let h: Harness;

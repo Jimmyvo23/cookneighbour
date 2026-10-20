@@ -2,22 +2,21 @@
 // contract section 7D). No I/O. The server stays the authority: these checks only save a round
 // trip and word the answers. The limits are copied from the contract.
 import { ApiClientError } from "@/lib/api/client";
-import type { BookingStatus } from "@/lib/api/types";
+import { REVIEW_WINDOW_DAYS } from "@/lib/domain/config";
 import { freeTrialEffect } from "@/lib/domain/cancellation";
 import { hasUnsafeText } from "@/lib/domain/text-safety";
 import { formatWhen } from "@/lib/booking/form";
 import type {
   CreateReportRequest,
   CreateReviewRequest,
-  DecisionRequest,
+  AdminResolveReportRequest as DecisionRequest,
   FinalBookingStatus,
   ReportCategory,
   ReportStatus,
   ReviewAllowance,
-} from "./types";
+} from "@/lib/api/types";
 
-// TODO(T-048 types): REVIEW_WINDOW_DAYS will live in src/lib/domain/config.ts once T-048 merges.
-export const REVIEW_WINDOW_DAYS = 14;
+export { REVIEW_WINDOW_DAYS };
 export const COMMENT_MAX = 1000;
 export const DESCRIPTION_MAX = 2000;
 export const NOTE_MIN = 3;
@@ -178,12 +177,20 @@ export function finalStatusChoices(): {
   }));
 }
 
-/** What a final status does, from the contract 7D rules and the shared free-trial rule. */
+/**
+ * What a final status does, from the contract 7D rules and the shared free-trial rule.
+ * `isFreeTrial` is null when the screen does not know (the report list): the text then says what
+ * would happen IF it was the free first booking. `wasCompleted`: the booking is already completed
+ * (v1.18), so reviews already written stay and no new one can be written once it is changed.
+ */
 export function decisionEffectText(
   status: FinalBookingStatus,
   anyDayCooked: boolean,
-  isFreeTrial: boolean,
+  isFreeTrial: boolean | null,
+  wasCompleted = false,
 ): string {
+  if (wasCompleted && status === "completed")
+    return "The booking stays completed and nothing changes.";
   const base: Record<FinalBookingStatus, string> = {
     completed: `The booking becomes completed. Both people can then write a review for ${REVIEW_WINDOW_DAYS} days.`,
     cancelled: "The booking is cancelled and its days are freed.",
@@ -193,11 +200,21 @@ export function decisionEffectText(
       "The booking is marked as a customer no-show and the days not yet cooked are freed.",
   };
   let text = `${base[status]} Any open flag on it is closed.`;
-  if (isFreeTrial)
+  if (wasCompleted)
     text +=
-      freeTrialEffect(status, { anyDayCooked }) === "consume"
-        ? " The customer's free first booking is used up."
-        : " The customer's free first booking is given back.";
+      " Reviews already written stay. No new review can be written once the booking is no longer completed.";
+  if (isFreeTrial !== false) {
+    const consumed = freeTrialEffect(status, { anyDayCooked }) === "consume";
+    const result = consumed
+      ? "is used up"
+      : wasCompleted
+        ? "is given back, even if it was already used up"
+        : "is given back";
+    text +=
+      isFreeTrial === true
+        ? ` The customer's free first booking ${result}.`
+        : ` If this was the customer's free first booking, it ${result}.`;
+  }
   return text;
 }
 
@@ -205,7 +222,7 @@ export type DecisionKind = "resolve" | "dismiss" | "flag";
 
 export function parseDecisionForm(input: {
   kind: DecisionKind;
-  bookingStatus: BookingStatus;
+  bookingStatus: string;
   finalStatus: string;
   note: string;
 }): { ok: true; request: DecisionRequest } | { ok: false; fields: Fields } {
@@ -217,17 +234,22 @@ export function parseDecisionForm(input: {
     fields.note = `Use ${NOTE_MAX} characters or fewer (${note.length - NOTE_MAX} too many).`;
   else if (hasUnsafeText(note, true))
     fields.note = "Remove the special characters from the note.";
-  // A report on a booking that is not accepted cannot change it (so no status is sent); a
-  // dismissal never changes it; a flag always needs one.
+  // Accepted booking: a status is required. Completed booking (v1.18): optional, and "completed"
+  // means "leave it". Any other status cannot be changed (no status is sent). A dismissal never
+  // changes anything; a flag always needs one.
   const needsStatus =
     input.kind === "flag" ||
     (input.kind === "resolve" && input.bookingStatus === "accepted");
   const valid = finalStatusChoices().some((c) => c.value === input.finalStatus);
   if (needsStatus && !valid)
     fields.finalStatus = "Choose the status the booking gets.";
+  const optional =
+    input.kind === "resolve" && input.bookingStatus === "completed";
+  if (optional && input.finalStatus && !valid)
+    fields.finalStatus = "Choose a status from the list, or keep it completed.";
   if (Object.keys(fields).length) return { ok: false, fields };
   const request: DecisionRequest = { note };
-  if (needsStatus)
+  if (needsStatus || (optional && input.finalStatus !== "completed" && valid))
     request.finalStatus = input.finalStatus as FinalBookingStatus;
   return { ok: true, request };
 }

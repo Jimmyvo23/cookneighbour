@@ -192,6 +192,24 @@ describe("reviews", () => {
     ).toBe(403);
   });
 
+  it("refuses contact details in a customer's comment with fields.comment, but not a chef's (v1.18)", async () => {
+    const c = client(CUSTOMER, { status: "completed", completedAgoDays: 1 });
+    const bad = await c.call("POST", `/api/bookings/${B}/reviews`, {
+      rating: 5,
+      comment: "Call me on 416-555-0199",
+    });
+    expect(bad.status).toBe(422);
+    expect(bad.data.error.code).toBe("CONTACT_DETAILS_NOT_ALLOWED");
+    expect(bad.data.error.fields.comment).toBeTruthy();
+    expect(c.s().engagement?.reviews ?? []).toHaveLength(0);
+    const chef = client(CHEF, { status: "completed", completedAgoDays: 1 });
+    const ok = await chef.call("POST", `/api/bookings/${B}/reviews`, {
+      rating: 4,
+      comment: "Call me on 416-555-0199",
+    });
+    expect(ok.status).toBe(201);
+  });
+
   it("puts a customer's review on the chef's public list with the first name only", async () => {
     const c = client(CUSTOMER, { status: "completed", completedAgoDays: 1 });
     const chefId = c.s().bookings.find((r) => r.detail.id === B)!.detail.chef
@@ -202,10 +220,10 @@ describe("reviews", () => {
       comment: "Great",
     });
     const posted = c.s().engagement!.postedPublic[chefId][0];
-    expect(posted.authorDisplayName).toBe("Sam");
+    expect(posted.authorFirstName).toBe("Sam");
     expect(JSON.stringify(posted)).not.toContain("Customer");
     expect(Object.keys(posted).sort()).toEqual([
-      "authorDisplayName",
+      "authorFirstName",
       "comment",
       "createdAt",
       "id",
@@ -224,13 +242,13 @@ describe("public chef reviews", () => {
     expect(first.data.nextCursor).toBe("m10");
     for (const r of first.data.items) {
       expect(Object.keys(r).sort()).toEqual([
-        "authorDisplayName",
+        "authorFirstName",
         "comment",
         "createdAt",
         "id",
         "rating",
       ]);
-      expect(r.authorDisplayName).not.toMatch(/\s/);
+      expect(r.authorFirstName).not.toMatch(/\s/);
     }
     const rest = await c.call(
       "GET",
@@ -456,18 +474,40 @@ describe("admin lists and decisions", () => {
     expect(await run("no_show_chef")).toBe("released");
   });
 
-  it("closes a report on a finished booking without a status, and refuses one", async () => {
+  it("on a completed booking the status is optional and may be a cancel or a no-show (v1.18)", async () => {
+    const path = `/api/admin/reports/${ADMIN_IDS.completedReport}/resolve`;
+    const kept = await admin().call("POST", path, { note: "Checked it" });
+    expect(kept.status).toBe(200);
+    expect(kept.data.booking.status).toBe("completed");
+    expect(kept.data.decision.finalStatus).toBeNull();
+    const same = await admin().call("POST", path, {
+      note: "Checked it",
+      finalStatus: "completed",
+    });
+    expect(same.data.decision.finalStatus).toBeNull();
+    const changed = await admin().call("POST", path, {
+      note: "Checked it",
+      finalStatus: "no_show_customer",
+    });
+    expect(changed.data.booking.status).toBe("no_show_customer");
+    expect(changed.data.decision.finalStatus).toBe("no_show_customer");
+  });
+
+  it("refuses a status on a cancelled booking, but still closes the report", async () => {
     const c = admin();
+    await c.call("GET", "/api/admin/reports");
+    const a = c.s().engagement!.admin!;
+    // MOCK: turn the seeded completed booking into a cancelled one.
+    const rep = a.reports.find((r) => r.id === ADMIN_IDS.completedReport)!;
+    a.bookings.find((x) => x.id === rep.bookingId)!.status = "cancelled";
     const path = `/api/admin/reports/${ADMIN_IDS.completedReport}/resolve`;
     const bad = await c.call("POST", path, {
       note: "Checked it",
-      finalStatus: "cancelled",
+      finalStatus: "no_show_chef",
     });
     expect(bad.data.error.reason).toBe("status_not_open");
     const ok = await c.call("POST", path, { note: "Checked it" });
-    expect(ok.status).toBe(200);
-    expect(ok.data.booking.status).toBe("completed");
-    expect(ok.data.decision.finalStatus).toBeNull();
+    expect(ok.data.booking.status).toBe("cancelled");
   });
 
   it("dismisses without touching the booking", async () => {

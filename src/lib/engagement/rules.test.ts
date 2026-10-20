@@ -120,15 +120,34 @@ describe("parseDecisionForm", () => {
       request: { finalStatus: "cancelled", note: "Checked it" },
     });
   });
-  it("leaves the final status out for a booking that is not accepted", () => {
+  it("leaves the final status out for a booking that is cancelled, declined or expired", () => {
     expect(
       parseDecisionForm({
         kind: "resolve",
-        bookingStatus: "completed",
-        finalStatus: "cancelled",
+        bookingStatus: "cancelled",
+        finalStatus: "no_show_chef",
         note: "Checked it",
       }),
     ).toEqual({ ok: true, request: { note: "Checked it" } });
+  });
+  it("makes the status optional on a completed booking (v1.18)", () => {
+    const base = {
+      kind: "resolve" as const,
+      bookingStatus: "completed",
+      note: "Checked it",
+    };
+    expect(parseDecisionForm({ ...base, finalStatus: "" })).toEqual({
+      ok: true,
+      request: { note: "Checked it" },
+    });
+    expect(parseDecisionForm({ ...base, finalStatus: "completed" })).toEqual({
+      ok: true,
+      request: { note: "Checked it" },
+    });
+    expect(parseDecisionForm({ ...base, finalStatus: "cancelled" })).toEqual({
+      ok: true,
+      request: { finalStatus: "cancelled", note: "Checked it" },
+    });
   });
   it("never sends a final status with a dismissal", () => {
     expect(
@@ -167,6 +186,22 @@ describe("texts", () => {
     expect(decisionEffectText("cancelled", true, true)).toMatch(/used up/);
     expect(decisionEffectText("no_show_chef", false, false)).not.toMatch(
       /free first booking/,
+    );
+  });
+  it("says it conditionally when the screen does not know the free trial", () => {
+    expect(decisionEffectText("cancelled", false, null)).toMatch(
+      /If this was the customer's free first booking, it is given back/,
+    );
+  });
+  it("on a completed booking says reviews stay and a used-up trial is given back (v1.18)", () => {
+    const t = decisionEffectText("cancelled", false, true, true);
+    expect(t).toMatch(/Reviews already written stay/);
+    expect(t).toMatch(/given back, even if it was already used up/);
+    expect(decisionEffectText("no_show_customer", false, true, true)).toMatch(
+      /is used up/,
+    );
+    expect(decisionEffectText("completed", false, true, true)).toMatch(
+      /stays completed/,
     );
   });
   it("words each report status plainly", () => {

@@ -17,8 +17,7 @@ import {
 import type {
   AdminDecisionResponse,
   FinalBookingStatus,
-} from "@/lib/engagement/types";
-import type { BookingStatus } from "@/lib/api/types";
+} from "@/lib/api/types";
 
 export function DecisionForm({
   kind,
@@ -31,9 +30,10 @@ export function DecisionForm({
 }: {
   kind: DecisionKind;
   path: string;
-  bookingStatus: BookingStatus;
+  bookingStatus: string;
   anyDayCooked: boolean;
-  isFreeTrial: boolean;
+  /** null when the list does not say (reports). */
+  isFreeTrial: boolean | null;
   onDone: (r: AdminDecisionResponse) => void;
   onCancel: () => void;
 }) {
@@ -49,6 +49,8 @@ export function DecisionForm({
 
   const needsStatus =
     kind === "flag" || (kind === "resolve" && bookingStatus === "accepted");
+  const optionalStatus = kind === "resolve" && bookingStatus === "completed";
+  const showStatus = needsStatus || optionalStatus;
   const heading =
     kind === "dismiss"
       ? "Dismiss this report"
@@ -107,10 +109,12 @@ export function DecisionForm({
         chef never see it.
         {kind === "dismiss" && " Dismissing does not change the booking."}
       </p>
-      {needsStatus && (
+      {showStatus && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${uid}-s`} className="text-sm font-medium">
-            Status the booking gets
+            {optionalStatus
+              ? "Change the booking status (optional)"
+              : "Status the booking gets"}
           </label>
           <select
             id={`${uid}-s`}
@@ -121,12 +125,16 @@ export function DecisionForm({
             aria-describedby={fields.finalStatus ? `${uid}-se` : undefined}
             className={inputCls}
           >
-            <option value="">Choose a status</option>
-            {finalStatusChoices().map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
+            <option value="">
+              {optionalStatus ? "Keep it completed" : "Choose a status"}
+            </option>
+            {finalStatusChoices()
+              .filter((c) => !optionalStatus || c.value !== "completed")
+              .map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
           </select>
           {fields.finalStatus && (
             <p id={`${uid}-se`} className={errCls}>
@@ -135,12 +143,17 @@ export function DecisionForm({
           )}
           {chosen && (
             <p data-testid="decision-effect" className="text-sm">
-              {decisionEffectText(chosen, anyDayCooked, isFreeTrial)}
+              {decisionEffectText(
+                chosen,
+                anyDayCooked,
+                isFreeTrial,
+                optionalStatus,
+              )}
             </p>
           )}
         </div>
       )}
-      {kind === "resolve" && !needsStatus && (
+      {kind === "resolve" && !showStatus && (
         <p className="text-sm">
           This booking is already finished, so resolving only closes the report.
         </p>

@@ -39,7 +39,7 @@ import {
   reportStatusText,
   type Fields,
 } from "@/lib/engagement/rules";
-import type { ReportView } from "@/lib/engagement/types";
+import type { ReportView } from "@/lib/api/types";
 
 type View =
   | { kind: "loading" }

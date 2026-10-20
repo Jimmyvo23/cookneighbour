@@ -29,7 +29,7 @@ import type {
   AdminFreeTrialBlock,
   AdminMessageView,
   AdminReportItem,
-} from "@/lib/engagement/types";
+} from "@/lib/api/types";
 
 const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
   requested: "Requested",
@@ -41,7 +41,7 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
   no_show_chef: "Chef no-show",
   expired: "Expired",
 };
-const statusText = (s: BookingStatus) => BOOKING_STATUS_TEXT[s] ?? s;
+const statusText = (s: string) => BOOKING_STATUS_TEXT[s as BookingStatus] ?? s;
 const money = (cents: number, currency: string) =>
   new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(
     cents / 100,
@@ -216,8 +216,10 @@ export function AdminReportsView() {
                 </p>
                 <p className="text-sm">
                   Booking: {statusText(r.booking.status)}, first day{" "}
-                  {formatDate(r.booking.firstDay)}. Customer{" "}
-                  {r.booking.customer.displayName}, chef{" "}
+                  {r.booking.firstDay
+                    ? formatDate(r.booking.firstDay)
+                    : "not set"}
+                  . Customer {r.booking.customer.displayName}, chef{" "}
                   {r.booking.chef.displayName}.{" "}
                   {r.booking.anyDayCooked
                     ? "A day was cooked."
@@ -247,7 +249,7 @@ export function AdminReportsView() {
                       path={`/api/admin/reports/${r.id}/${deciding.kind}`}
                       bookingStatus={r.booking.status}
                       anyDayCooked={r.booking.anyDayCooked}
-                      isFreeTrial={false}
+                      isFreeTrial={null}
                       onDone={done}
                       onCancel={() => setDeciding(null)}
                     />
@@ -377,7 +379,7 @@ export function AdminBookingsView() {
                     {" · "}
                     {b.dates.length} {b.dates.length === 1 ? "day" : "days"}
                     {" from "}
-                    {formatDate(b.firstDay)}
+                    {b.firstDay ? formatDate(b.firstDay) : "not set"}
                     {" · "}
                     {b.locationType === "chef_home"
                       ? "At the chef's home"

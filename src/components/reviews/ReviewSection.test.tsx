@@ -9,7 +9,7 @@ import {
   routes,
   type Harness,
 } from "@/components/booking/testkit";
-import type { BookingReviews, ReviewView } from "@/lib/engagement/types";
+import type { BookingReviews, ReviewView } from "@/lib/api/types";
 import { ReviewSection } from "./ReviewSection";
 
 let h: Harness;
@@ -155,6 +155,30 @@ describe("ReviewSection: the form", () => {
     await h.click(post());
     expect(h.host.textContent).toMatch(/Remove the special characters\./);
     expect(comment().value).toBe("hello");
+    expect(document.activeElement).toBe(comment());
+  });
+
+  it("shows contact details refusal next to the comment field (v1.18)", async () => {
+    await mount(allowed, "customer", {
+      [POST]: apiError(
+        422,
+        "CONTACT_DETAILS_NOT_ALLOWED",
+        "Do not put phone numbers, email addresses or links in a public review.",
+        {
+          fields: {
+            comment: "Remove phone numbers, email addresses and links.",
+          },
+        },
+      ),
+    });
+    expect(h.q("review-visibility")!.textContent).toMatch(/Do not put phone/);
+    await h.click(rating(5));
+    await h.type(comment(), "Call 416 555 0199");
+    await h.click(post());
+    const err = h.host.querySelector(`#${comment().id}-error`)!;
+    expect(err.textContent).toMatch(/Remove phone numbers/);
+    expect(comment().getAttribute("aria-invalid")).toBe("true");
+    expect(comment().value).toBe("Call 416 555 0199");
     expect(document.activeElement).toBe(comment());
   });
 

@@ -12,7 +12,7 @@ import type { Page } from "@/lib/api/types";
 import { Alert, hintCls, secondaryButtonCls } from "@/components/chef/parts";
 import { Stars } from "@/components/reviews/Stars";
 import { formatDate } from "@/lib/engagement/rules";
-import type { PublicReview } from "@/lib/engagement/types";
+import type { PublicReview } from "@/lib/api/types";
 
 export const SHOW_PUBLIC_COMMENT = true;
 const PAGE = 10;
@@ -142,7 +142,7 @@ export function PublicReviews({ chefId }: { chefId: string }) {
                     data-testid="public-review"
                     className="flex flex-col gap-1 rounded-md border border-zinc-300 p-3 [overflow-wrap:anywhere] dark:border-zinc-700"
                   >
-                    <p className="font-semibold">{r.authorDisplayName}</p>
+                    <p className="font-semibold">{r.authorFirstName}</p>
                     <p>
                       <Stars value={r.rating} />
                     </p>

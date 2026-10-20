@@ -32,7 +32,7 @@ import {
   reviewErrorText,
   type Fields,
 } from "@/lib/engagement/rules";
-import type { BookingReviews, ReviewView } from "@/lib/engagement/types";
+import type { BookingReviews, ReviewView } from "@/lib/api/types";
 
 type View =
   | { kind: "loading" }
@@ -368,7 +368,7 @@ function ReviewForm({
       )}
       <p className={hintCls} data-testid="review-visibility">
         {viewer === "customer"
-          ? `Your rating, comment, first name and the date will show on ${otherName}'s public chef page.`
+          ? `Your rating, comment, first name and the date will show on ${otherName}'s public chef page. Do not put phone numbers, email addresses or links in the comment.`
           : `Only ${otherName} and an admin can see your review. It is not shown on any public page.`}
       </p>
 

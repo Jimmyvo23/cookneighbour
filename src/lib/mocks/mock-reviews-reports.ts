@@ -1,5 +1,5 @@
 // MOCK REVIEWS, PROBLEM REPORTS AND ADMIN LISTS (T-049). Stand in for docs/api-contract.md
-// section 7D (v1.16) so the screens can be built before the browser talks to the real routes.
+// section 7D (v1.18) so the screens can be built before the browser talks to the real routes.
 // Nothing here is real: every review, report, flag, free-trial block and chat message is made up
 // and lives in this browser tab only (sessionStorage); nobody else ever sees it, and no
 // notification is sent.
@@ -16,6 +16,7 @@
 //       alreadyDecidedOnce = true  the next admin decision answers 409 `already_decided`, once.
 // Frontend owns this file (T-049); Backend does not edit it.
 import type { BookingDetail, BookingStatus, MeProfile } from "@/lib/api/types";
+import { findContactDetails } from "@/lib/domain/contactDetails";
 import { freeTrialEffect } from "@/lib/domain/cancellation";
 import { addDays, torontoToday } from "@/lib/domain/dishes";
 import {
@@ -37,7 +38,7 @@ import type {
   ReportView,
   ReviewAllowance,
   ReviewView,
-} from "@/lib/engagement/types";
+} from "@/lib/api/types";
 import {
   UUID,
   fail,
@@ -184,7 +185,7 @@ function seededPublic(chefId: string, now: Date): PublicReview[] {
   const n = idx === 0 ? 24 : idx % 4 === 3 ? 0 : 3;
   return Array.from({ length: n }, (_, i) => ({
     id: `00000000-0000-4000-8000-0000000c${String(idx).padStart(2, "0")}${String(i).padStart(2, "0")}`,
-    authorDisplayName: FIRST_NAMES[(idx + i) % FIRST_NAMES.length],
+    authorFirstName: FIRST_NAMES[(idx + i) % FIRST_NAMES.length],
     rating: 5 - ((idx + i) % 3 === 2 ? 2 : (idx + i) % 3),
     comment: COMMENTS[(idx + i) % COMMENTS.length],
     createdAt: new Date(now.getTime() - (i + 1) * 3 * DAY_MS).toISOString(),
@@ -350,6 +351,18 @@ function partyRoute(
     });
     if (!parsed.ok) return invalid(parsed.fields);
     const comment = parsed.request.comment ?? null;
+    // v1.18: a customer's comment is public, so contact details are refused (a chef's is private).
+    if (role === "customer" && comment && findContactDetails(comment))
+      return rawFail(
+        422,
+        "CONTACT_DETAILS_NOT_ALLOWED",
+        "Do not put phone numbers, email addresses or links in a public review.",
+        {
+          fields: {
+            comment: "Remove phone numbers, email addresses and links.",
+          },
+        },
+      );
     if (mine) {
       // A retry with the same content is answered with the first review; anything else is final.
       if (mine.rating === parsed.request.rating && mine.comment === comment)
@@ -387,7 +400,8 @@ function partyRoute(
           {
             id: review.id,
             // MOCK: the real server snapshots the FIRST name; the mock imitates that.
-            authorDisplayName: s.profile!.displayName.split(/\s+/)[0],
+            authorFirstName:
+              s.profile!.displayName.trim().split(/\s+/)[0] || "Customer",
             rating: review.rating,
             comment: review.comment,
             createdAt: review.createdAt,
@@ -498,7 +512,7 @@ export const ADMIN_IDS = {
   flaggedNoDay: aid(8002),
   /** accepted, flag chef_rejected open (frozen) */
   flaggedRejected: aid(8003),
-  /** completed, one open report (cannot change the status) */
+  /** completed, one open report (the admin may change the status, v1.18) */
   completedWithReport: aid(8004),
   /** accepted, a report in review */
   reviewing: aid(8005),
@@ -917,7 +931,7 @@ function adminRoute(
     };
 
   const decidedAt = now.toISOString();
-  let newStatus: BookingStatus = booking.status;
+  let newStatus: string = booking.status;
   let kind: AdminDecision["kind"];
   if (resolveFlag) {
     if (!booking.flag || booking.flag.resolvedAt)
@@ -956,6 +970,9 @@ function adminRoute(
             },
           );
         newStatus = finalStatus;
+      } else if (booking.status === "completed") {
+        // v1.18: optional; "completed" (or none) leaves it as it is.
+        if (finalStatus) newStatus = finalStatus;
       } else if (finalStatus)
         return rawFail(
           409,

@@ -23,3 +23,24 @@ From: frontend  To: tester
 ## What the next agent needs
 - Admin decisions are final and say so on the form; the note is "admins only".
 - Not confirmed by Jimmy (my UI choices): separate admin pages with a 4-link nav; inline decision forms with Resolve/Dismiss buttons; a report can be resolved only while open or in review; "Only bookings with an open flag" filter; chat read-only with "Back to bookings"; result line after a decision; reload of the list after a decision.
+
+## Update after T-048 merge
+
+Merged `origin/main` (5230318) into the branch with a merge commit (no rebase, no force-push). The only conflict was `docs/api-contract.md`; I took main's version (Backend owns it, now v1.18).
+
+What changed:
+- Deleted `src/lib/engagement/types.ts`; every import now comes from `@/lib/api/types`. `rules.ts` takes `REVIEW_WINDOW_DAYS` from `src/lib/domain/config.ts`. Public reviews use `authorFirstName` (page, mock, tests).
+- An open report never blocks completion: no UI expected 409 `problem_reported` (grep finds none in `src`; only a guard test asserting its absence).
+- Admin decision on a COMPLETED booking (v1.18): the report "Resolve" form shows an optional status select ("Keep it completed", cancelled, chef no-show, customer no-show). Choosing "Keep it completed" sends no `finalStatus`. On accepted it is still required; on cancelled, declined, expired or a no-show it is not shown and nothing is sent. Effect text says what happens to the free trial and that written reviews stay and no new review can be written. Because the report list does not carry `isFreeTrial`, the text is conditional there ("If this was the customer's free first booking, it ... is given back, even if it was already used up"). The saved-decision line shows the server's real `freeTrial` value.
+- Customer review comment with contact details: 422 `CONTACT_DETAILS_NOT_ALLOWED` with `fields.comment` is shown under the comment box (invalid, focus on the field, text kept). The customer's visibility hint now also says not to put phone numbers, email addresses or links in it. A chef's review is not filtered (matches the server).
+- `report_closed` notification: no notification list UI exists and no text promises one (checked report/review/admin copy).
+- MOCK adapter `mock-reviews-reports.ts` is aligned with v1.18: `authorFirstName`, contact-details refusal for customers only, optional status on a completed booking, 409 `status_not_open` still for other non-accepted statuses.
+- Tests updated/added: rules (optional status, conditional effect text), mock adapter (completed booking changes, cancelled still refused, contact details), `ReviewSection` (422 under the comment), admin views (completed select + cancelled none).
+- Impeccable helper agents skipped (D-44); `impeccable detect` on the touched folders: no findings.
+
+Checks: lint clean, typecheck clean, vitest 112 files / 2439 passed (3 expected fail), mock e2e 309 passed.
+
+New design choices, not confirmed by Jimmy:
+1. Select label "Change the booking status (optional)" with default "Keep it completed"; "Completed" is left out of the list for a completed booking.
+2. Conditional free-trial wording on the report list (it has no `isFreeTrial` field).
+3. Contact-details hint shown for customers before they type, not only after the 422.
