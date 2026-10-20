@@ -247,11 +247,9 @@ describe("reports: insert rules", () => {
       .insert({ ...base, reporter_id: cust.id, status: "resolved" })
       .select();
     expect(closed.error?.code).toBe("42501");
-    const noted = await cC
-      .from("reports")
-      .insert({ ...base, reporter_id: cust.id, admin_note: "mine" })
-      .select();
-    expect(noted.error?.code).toBe("42501");
+    // T-090: reports.admin_note is gone, so the column cannot be written or read by anyone.
+    const gone = await svc.from("reports").select("admin_note").limit(1);
+    expect(gone.error).not.toBeNull();
     const rows = await svc.from("reports").select("id").eq("booking_id", id);
     expect(rows.data).toEqual([]);
   });
