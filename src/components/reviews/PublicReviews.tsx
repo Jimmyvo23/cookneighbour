@@ -4,8 +4,8 @@
 // rating", 2026-10-20: the server sends the first name only), the rating and the date. The UI
 // never builds a name itself. A chef's review of a customer never comes through this route.
 //
-// OPEN QUESTION Q1 (see the T-049 handoff): whether the written comment shows publicly. The
-// contract sends it, so it is shown while SHOW_PUBLIC_COMMENT is true.
+// Decided by Jimmy (D-114): the public sees the first name only. The contract sends the written
+// comment too, so it is shown while SHOW_PUBLIC_COMMENT is true.
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import type { Page } from "@/lib/api/types";

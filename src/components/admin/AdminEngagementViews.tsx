@@ -1,10 +1,12 @@
 "use client";
 // Admin lists for T-049 (contract 7D): bookings, problem reports, free-trial blocks, and a
-// read-only chat. Built against the MOCK adapter until the routes exist; the data here is made up.
+// read-only chat. They call the real admin routes; only when MOCK mode is on (isMockEnabled())
+// do they run on the made-up in-tab adapter, and then the MOCK badge and "made-up" lines show.
 // Reports and the admin's notes are for admins only: nothing on these pages is shown to the
 // customer or the chef.
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { isMockEnabled } from "@/lib/api/client";
 import { MockBadge } from "@/components/MockBadge";
 import { Alert, secondaryButtonCls } from "@/components/chef/parts";
 import { DecisionForm } from "@/components/admin/DecisionForm";
@@ -52,21 +54,36 @@ const selectCls =
 const itemCls =
   "flex flex-col gap-2 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700";
 
+export const DEFAULT_MOCK_LINE = "Made-up data in this prototype.";
+
 function Shell({
   title,
   intro,
+  mockLine = DEFAULT_MOCK_LINE,
   children,
 }: {
   title: string;
+  /** A true sentence, always shown (privacy rules). */
   intro?: string;
+  /** Shown with the MOCK badge only in MOCK mode. */
+  mockLine?: string;
   children: React.ReactNode;
 }) {
+  const mock = isMockEnabled();
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8 [overflow-wrap:anywhere]">
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="text-sm text-zinc-700 dark:text-zinc-300">
-        <MockBadge>MOCK</MockBadge> {intro ?? "Made-up data in this prototype."}
-      </p>
+      {mock && (
+        <p
+          data-testid="admin-mock-line"
+          className="text-sm text-zinc-700 dark:text-zinc-300"
+        >
+          <MockBadge>MOCK</MockBadge> {mockLine}
+        </p>
+      )}
+      {intro && (
+        <p className="text-sm text-zinc-700 dark:text-zinc-300">{intro}</p>
+      )}
       {children}
     </main>
   );
@@ -162,6 +179,15 @@ export function AdminReportsView() {
     kind: DecisionKind;
   } | null>(null);
   const filterId = useId();
+  const returnTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (deciding === null && returnTo.current) {
+      document
+        .querySelector<HTMLElement>(`[data-opener="${returnTo.current}"]`)
+        ?.focus();
+      returnTo.current = null;
+    }
+  }, [deciding]);
 
   function done(r: AdminDecisionResponse) {
     setDeciding(null);
@@ -173,7 +199,8 @@ export function AdminReportsView() {
   return (
     <Shell
       title="Problem reports"
-      intro="Reports are made-up in this prototype. Only the person who sent a report and admins can read it; the other person is never told."
+      mockLine="Reports are made-up in this prototype."
+      intro="Only the person who sent a report and admins can read it; the other person is never told."
     >
       <div className="flex flex-col gap-1 self-start">
         <label htmlFor={filterId} className="text-sm font-medium">
@@ -253,13 +280,17 @@ export function AdminReportsView() {
                       anyDayCooked={r.booking.anyDayCooked}
                       isFreeTrial={null}
                       onDone={done}
-                      onCancel={() => setDeciding(null)}
+                      onCancel={() => {
+                        returnTo.current = `${r.id}:${deciding.kind}`;
+                        setDeciding(null);
+                      }}
                     />
                   ) : (
                     <div className="flex flex-wrap gap-3">
                       <button
                         type="button"
                         className={secondaryButtonCls}
+                        data-opener={`${r.id}:resolve`}
                         onClick={() =>
                           setDeciding({ id: r.id, kind: "resolve" })
                         }
@@ -270,6 +301,7 @@ export function AdminReportsView() {
                       <button
                         type="button"
                         className={secondaryButtonCls}
+                        data-opener={`${r.id}:dismiss`}
                         onClick={() =>
                           setDeciding({ id: r.id, kind: "dismiss" })
                         }
@@ -308,6 +340,15 @@ export function AdminBookingsView() {
   const resultRef = useRef<HTMLDivElement>(null);
   const [deciding, setDeciding] = useState<string | null>(null);
   const sid = useId();
+  const returnTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (deciding === null && returnTo.current) {
+      document
+        .querySelector<HTMLElement>(`[data-opener="${returnTo.current}"]`)
+        ?.focus();
+      returnTo.current = null;
+    }
+  }, [deciding]);
 
   function done(r: AdminDecisionResponse) {
     setDeciding(null);
@@ -424,11 +465,15 @@ export function AdminBookingsView() {
                         anyDayCooked={b.anyDayCooked}
                         isFreeTrial={b.isFreeTrial}
                         onDone={done}
-                        onCancel={() => setDeciding(null)}
+                        onCancel={() => {
+                          returnTo.current = b.id;
+                          setDeciding(null);
+                        }}
                       />
                     ) : (
                       <button
                         type="button"
+                        data-opener={b.id}
                         className={`${secondaryButtonCls} self-start`}
                         onClick={() => setDeciding(b.id)}
                       >
@@ -499,11 +544,11 @@ export function AdminBlocksView() {
 // ---------------------------------------------------------------------------
 export function AdminChatView({ bookingId }: { bookingId: string }) {
   const list = useAdminList<AdminMessageView>(
-    `/api/admin/bookings/${bookingId}/messages`,
+    `/api/admin/bookings/${encodeURIComponent(bookingId)}/messages`,
     (e) => decisionErrorText(e),
   );
   return (
-    <Shell title="Booking chat" intro="Made-up messages.">
+    <Shell title="Booking chat" mockLine="Made-up messages.">
       <p className={infoBoxCls}>Read only. Admins cannot send messages.</p>
       <Link
         href="/admin/bookings"

@@ -4,7 +4,7 @@
 import { useId, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { buttonCls, secondaryButtonCls } from "@/components/chef/parts";
-import { errCls, inputCls } from "@/components/booking/parts";
+import { dangerBoxCls, errCls, inputCls } from "@/components/booking/parts";
 import {
   NOTE_MAX,
   decisionEffectText,
@@ -183,11 +183,7 @@ export function DecisionForm({
         tabIndex={-1}
         role="alert"
         data-testid="decision-error"
-        className={
-          error
-            ? "rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900"
-            : "sr-only"
-        }
+        className={error ? dangerBoxCls : "sr-only"}
       >
         {error}
       </div>

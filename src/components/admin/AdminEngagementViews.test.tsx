@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // T-049: admin lists, decisions and the read-only chat (contract 7D). Real fetch is stubbed.
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   apiError,
   callsTo,
@@ -25,7 +25,10 @@ let h: Harness;
 beforeEach(() => {
   h = harness();
 });
-afterEach(() => h.cleanup());
+afterEach(() => {
+  h.cleanup();
+  vi.unstubAllEnvs();
+});
 
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -101,8 +104,85 @@ async function choose(el: HTMLSelectElement, value: string) {
   });
 }
 
+describe("MOCK lines", () => {
+  const CHAT = `GET /api/admin/bookings/${id(2)}/messages`;
+  it("shows the MOCK badge and made-up lines only in MOCK mode", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_MOCK", "1");
+    routes(h.fetchMock, {
+      [REPORTS]: json(200, { items: [], nextCursor: null }),
+    });
+    await h.mount(<AdminReportsView />);
+    expect(h.text()).toMatch(/Reports are made-up in this prototype/);
+    expect(h.text()).toMatch(/Only the person who sent a report/);
+    expect(h.qa("mock-badge").length).toBeGreaterThan(0);
+  });
+  it("hides them outside MOCK mode but keeps the privacy sentence", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_MOCK", "");
+    routes(h.fetchMock, {
+      [REPORTS]: json(200, { items: [], nextCursor: null }),
+    });
+    await h.mount(<AdminReportsView />);
+    expect(h.text()).not.toMatch(/made-up/i);
+    expect(h.qa("mock-badge")).toHaveLength(0);
+    expect(h.text()).toMatch(/Only the person who sent a report/);
+  });
+  it("chat page: made-up line only in MOCK mode, and the id is encoded", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_MOCK", "");
+    routes(h.fetchMock, { [CHAT]: json(200, { items: [], nextCursor: null }) });
+    await h.mount(<AdminChatView bookingId={id(2)} />);
+    expect(h.text()).not.toMatch(/Made-up messages/);
+    expect(h.qa("mock-badge")).toHaveLength(0);
+  });
+  it("chat page shows Made-up messages in MOCK mode", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_MOCK", "1");
+    routes(h.fetchMock, { [CHAT]: json(200, { items: [], nextCursor: null }) });
+    await h.mount(<AdminChatView bookingId={id(2)} />);
+    expect(h.text()).toMatch(/Made-up messages/);
+  });
+  it("encodes an odd booking id in the chat path", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_MOCK", "");
+    routes(h.fetchMock, {});
+    await h.mount(<AdminChatView bookingId="a/b?c" />);
+    expect(
+      callsTo(h.fetchMock, "/api/admin/bookings/a%2Fb%3Fc/messages").length,
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe("Cancel returns focus to the opener", () => {
+  it("report decision form", async () => {
+    routes(h.fetchMock, {
+      [REPORTS]: json(200, { items: [report()], nextCursor: null }),
+    });
+    await h.mount(<AdminReportsView />);
+    await h.click(h.button(/^Dismiss/));
+    await h.click(h.button("Cancel"));
+    expect(document.activeElement).toBe(h.button(/^Dismiss/));
+  });
+  it("booking flag form", async () => {
+    routes(h.fetchMock, {
+      "GET /api/admin/bookings?status=all": json(200, {
+        items: [
+          booking({
+            flag: {
+              reason: "chef_rejected",
+              flaggedAt: "2026-10-19T10:00:00.000Z",
+              resolvedAt: null,
+            },
+          }),
+        ],
+        nextCursor: null,
+      }),
+    });
+    await h.mount(<AdminBookingsView />);
+    await h.click(h.button(/^Resolve flag/));
+    await h.click(h.button("Cancel"));
+    expect(document.activeElement).toBe(h.button(/^Resolve flag/));
+  });
+});
+
 describe("AdminReportsView", () => {
-  it("lists reports with reporter, booking and the MOCK label", async () => {
+  it("lists reports with reporter and booking", async () => {
     routes(h.fetchMock, {
       [REPORTS]: json(200, { items: [report()], nextCursor: null }),
     });
@@ -111,7 +191,6 @@ describe("AdminReportsView", () => {
     expect(h.text()).toMatch(/Safety/);
     expect(h.text()).toMatch(/The kitchen was dirty/);
     expect(h.text()).toMatch(/Priya Patel \(customer\)/);
-    expect(h.qa("mock-badge").length).toBeGreaterThan(0);
   });
 
   it("asks for a status on an accepted booking and a note, and sends nothing until both are valid", async () => {

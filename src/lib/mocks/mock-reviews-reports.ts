@@ -321,7 +321,18 @@ function partyRoute(
       (r) => r.bookingId === id && r.authorRole === otherRole,
     );
     const view = (r: MockReview | undefined): ReviewView | null =>
-      r ? { ...r, mine: r.authorRole === role } : null;
+      r
+        ? {
+            id: r.id,
+            bookingId: r.bookingId,
+            authorRole: r.authorRole,
+            authorDisplayName: r.authorDisplayName,
+            rating: r.rating,
+            comment: r.comment,
+            createdAt: r.createdAt,
+            mine: r.authorRole === role,
+          }
+        : null;
 
     if (method === "GET")
       return {

@@ -63,6 +63,14 @@ export function ReportSection({
     seq.current++;
   }, []);
   const sentRef = useRef<HTMLParagraphElement>(null);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
+  useEffect(() => {
+    if (!open && returnFocus.current) {
+      returnFocus.current = false;
+      openerRef.current?.focus();
+    }
+  }, [open]);
 
   const load = useCallback(
     async (quiet = false) => {
@@ -163,13 +171,17 @@ export function ReportSection({
                 setView({ kind: "ready", items: [r, ...items] });
                 setSent((n) => n + 1);
               }}
-              onCancel={() => setOpen(false)}
+              onCancel={() => {
+                returnFocus.current = true;
+                setOpen(false);
+              }}
             />
           ) : (
             <p>
               <button
                 type="button"
                 data-testid="report-button"
+                ref={openerRef}
                 onClick={() => setOpen(true)}
                 className={secondaryButtonCls}
               >

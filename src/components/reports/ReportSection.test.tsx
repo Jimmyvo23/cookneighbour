@@ -214,6 +214,7 @@ describe("ReportSection", () => {
     await h.click(h.button("Close without sending"));
     expect(h.q("report-form")).toBeNull();
     expect(h.q("report-button")).not.toBeNull();
+    expect(document.activeElement).toBe(h.q("report-button"));
   });
 
   it("shows a retry when the reports do not load", async () => {

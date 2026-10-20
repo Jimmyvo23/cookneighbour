@@ -210,6 +210,27 @@ describe("reviews", () => {
     expect(ok.status).toBe(201);
   });
 
+  it("sends ReviewView with exactly the contract keys (no chefId), in the POST and the GET", async () => {
+    const KEYS = [
+      "authorDisplayName",
+      "authorRole",
+      "bookingId",
+      "comment",
+      "createdAt",
+      "id",
+      "mine",
+      "rating",
+    ];
+    const c = client(CUSTOMER, { status: "completed", completedAgoDays: 1 });
+    const p = await c.call("POST", `/api/bookings/${B}/reviews`, {
+      rating: 5,
+      comment: "Great",
+    });
+    expect(Object.keys(p.data).sort()).toEqual(KEYS);
+    const g = await c.call("GET", `/api/bookings/${B}/reviews`);
+    expect(Object.keys(g.data.mine).sort()).toEqual(KEYS);
+  });
+
   it("puts a customer's review on the chef's public list with the first name only", async () => {
     const c = client(CUSTOMER, { status: "completed", completedAgoDays: 1 });
     const chefId = c.s().bookings.find((r) => r.detail.id === B)!.detail.chef
