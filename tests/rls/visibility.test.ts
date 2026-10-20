@@ -155,15 +155,25 @@ describe("database-level guarantees", () => {
     "reviews",
   ];
   const expectedTable: string[] = [
-    ...["availability", "chefs", "dishes", "postal_prefixes", "reviews"].map(
+    ...["availability", "chefs", "dishes", "postal_prefixes"].map(
       (t) => `anon ${t} select`,
     ),
-    ...allTables.map((t) => `authenticated ${t} select`),
+    // Round 3: reviews has column grants only (see expectedColumns), no table-level select.
+    ...allTables
+      .filter((t) => t !== "reviews")
+      .map((t) => `authenticated ${t} select`),
     // T-028: chef_private, chefs and profiles are written by routes only (no client update).
-    "authenticated reports update",
+    // T-048: reports are not updated from a browser either (admin_decide_booking is the only way).
     // T-032: dishes and availability are written by routes only (no client write privilege).
   ].sort();
   const expectedColumns: string[] = [
+    // T-048 fix round (F-2) and round 3 (open point 21): anon AND authenticated read only these
+    // review columns (no author, subject, booking or full-name snapshot, so no select *).
+    ...["anon", "authenticated"].flatMap((role) =>
+      ["author_role", "comment", "created_at", "id", "rating"].map(
+        (c) => `${role} reviews.${c} select`,
+      ),
+    ),
     ...[
       "author_id",
       "author_role",
@@ -196,6 +206,8 @@ describe("database-level guarantees", () => {
     "is_booking_chef",
     "is_booking_party",
     "is_chef",
+    // T-048: the review window (14) used by the insert policy on reviews.
+    "review_window_days",
     "shares_booking_with",
     "storage_booking_id",
     "storage_folder_uuid",

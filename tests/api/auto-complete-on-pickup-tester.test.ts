@@ -143,7 +143,7 @@ describe("T-081 tester: after completion", () => {
 });
 
 describe("T-081 tester: the sweep path", () => {
-  it("a report opened between cooked and confirm: confirm keeps it accepted; the first read after the report is closed completes it and consumes the trial once", async () => {
+  it("T-048: a report opened between cooked and confirm does not stop the confirm from completing it; the trial is consumed once", async () => {
     const { chef, cust, id } = await setup();
     await shiftDays(id, 3);
     await setEatBy(id, 5);
@@ -160,21 +160,12 @@ describe("T-081 tester: the sweep path", () => {
     expect(rep.error).toBeNull();
     const r = await confirmPickup(cust.b, id, 1);
     expect(r.status, r.text).toBe(200);
-    expect(r.body.status).toBe("accepted");
-    expect((await claimOf(id))?.state).toBe("held");
-    // Reading while the report is open changes nothing.
-    expect((await getBooking(cust.b, id)).body.status).toBe("accepted");
-    // Reviewing is also open.
+    expect(r.body.status).toBe("completed");
+    // Reviewing is also "open"; reading changes nothing more.
     await svc
       .from("reports")
       .update({ status: "reviewing" })
       .eq("id", rep.data?.id as string);
-    expect((await getBooking(cust.b, id)).body.status).toBe("accepted");
-    await svc
-      .from("reports")
-      .update({ status: "resolved" })
-      .eq("id", rep.data?.id as string);
-    // A route read runs the lazy sweep, which also applies the free-trial change.
     const g = await getBooking(cust.b, id);
     expect(g.body.status).toBe("completed");
     expect((await claimOf(id))?.state).toBe("consumed");

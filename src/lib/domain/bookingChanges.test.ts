@@ -178,7 +178,6 @@ describe("refusal texts", () => {
       "too_early",
       "no_visit_due",
       "days_not_cooked",
-      "problem_reported",
       "frozen", // T-064 (D-53)
       "not_chef_home",
       "pickup_window_open",

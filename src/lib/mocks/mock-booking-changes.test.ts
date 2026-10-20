@@ -73,6 +73,8 @@ const asCustomer = (rows: BookingMockState["bookings"], receipts = {}) =>
 describe("seed dates (T-085): one booking per chef per date", () => {
   const me = chef().profile!;
   const ids = [A01, A02, A03, A04, A05, A06];
+  // Groups by date only (not by chef + date) because the mock seed has a single chef, so any
+  // repeated date is a double booking for that chef (T-083 NIT-2). Revisit if the seed gets more chefs.
   const dupes = (rows: ReturnType<typeof seedChefBookings>["rows"]) => {
     const seen = new Map<string, number>();
     for (const r of rows)

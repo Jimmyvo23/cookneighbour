@@ -148,13 +148,13 @@ describe("reviews (only after a completed booking)", () => {
       await c1
         .from("reviews")
         .insert(review(b.acceptedC1H1, fx.c1.id, fx.h1.id, "customer"))
-        .select(),
+        .select("id"),
     );
     expectDenied(
       await c1
         .from("reviews")
         .insert(review(b.requestedC1H1, fx.c1.id, fx.h1.id, "customer"))
-        .select(),
+        .select("id"),
     );
   });
 
@@ -163,25 +163,25 @@ describe("reviews (only after a completed booking)", () => {
       await c2
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c2.id, fx.h1.id, "customer"))
-        .select(),
+        .select("id"),
     );
     expectDenied(
       await c2
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "customer"))
-        .select(),
+        .select("id"),
     );
     expectDenied(
       await c1
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "chef"))
-        .select(),
+        .select("id"),
     );
     expectDenied(
       await c1
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c1.id, fx.h2.id, "customer"))
-        .select(),
+        .select("id"),
     );
   });
 
@@ -190,7 +190,7 @@ describe("reviews (only after a completed booking)", () => {
       await c1
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "customer"))
-        .select(),
+        .select("id"),
       1,
     );
     const { data } = await svc
@@ -200,16 +200,23 @@ describe("reviews (only after a completed booking)", () => {
       .single();
     expect(data?.review_count).toBe(1);
     expect(Number(data?.rating_avg)).toBe(5);
+    const own = await svc
+      .from("reviews")
+      .select("id")
+      .eq("booking_id", b.completedC1H1)
+      .eq("author_id", fx.c1.id)
+      .single();
+    // T-048 fix round: anon reads by id (it has no grant on booking_id or author_id).
     const pub = await anonClient()
       .from("reviews")
       .select("rating")
-      .eq("booking_id", b.completedC1H1);
+      .eq("id", own.data?.id as string);
     expectRows(pub, 1);
     // duplicate review for the same booking is rejected
     const dup = await c1
       .from("reviews")
       .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "customer"))
-      .select();
+      .select("id");
     expect(dup.error?.code).toBe("23505");
   });
 
@@ -218,19 +225,26 @@ describe("reviews (only after a completed booking)", () => {
       await h1
         .from("reviews")
         .insert(review(b.completedC1H1, fx.h1.id, fx.c1.id, "chef"))
-        .select(),
+        .select("id"),
       1,
     );
+    const chefReview = await svc
+      .from("reviews")
+      .select("id")
+      .eq("author_id", fx.h1.id)
+      .eq("author_role", "chef")
+      .single();
     expectNoRows(
-      await anonClient().from("reviews").select("id").eq("author_id", fx.h1.id),
+      await anonClient()
+        .from("reviews")
+        .select("id")
+        .eq("id", chefReview.data?.id as string),
     );
-    expectNoRows(
-      await c2.from("reviews").select("id").eq("author_id", fx.h1.id),
-    );
-    expectRows(
-      await c1.from("reviews").select("id").eq("author_id", fx.h1.id),
-      1,
-    );
+    // Round 3: browser roles cannot filter on author_id, so rows are found by id.
+    const rid = chefReview.data?.id as string;
+    expectNoRows(await c2.from("reviews").select("id").eq("id", rid));
+    expectRows(await c1.from("reviews").select("id").eq("id", rid), 1);
+    expectRows(await h1.from("reviews").select("id").eq("id", rid), 1);
   });
 
   it("reviews cannot be edited or deleted by clients", async () => {
@@ -325,7 +339,7 @@ describe("reports (report-a-problem)", () => {
     expectNoRows(await anonClient().from("reports").select("id"));
   });
 
-  it("only admin can triage; the reporter cannot close their own report", async () => {
+  it("nobody can update a report from a browser (T-048: the admin decides through admin_decide_booking)", async () => {
     expectDenied(
       await c1
         .from("reports")
@@ -333,20 +347,19 @@ describe("reports (report-a-problem)", () => {
         .eq("id", reportId)
         .select(),
     );
-    expectRows(
+    expectDenied(
       await admin
         .from("reports")
         .update({ status: "reviewing", admin_note: "looking" })
         .eq("id", reportId)
         .select(),
-      1,
     );
     const { data } = await svc
       .from("reports")
       .select("status")
       .eq("id", reportId)
       .single();
-    expect(data?.status).toBe("reviewing");
+    expect(data?.status).toBe("open");
     expect(ids(await admin.from("reports").select("id"))).toContain(reportId);
   });
 });

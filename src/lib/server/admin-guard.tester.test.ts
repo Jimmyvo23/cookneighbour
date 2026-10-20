@@ -44,7 +44,7 @@ describe("admin pages and routes keep their server guard", () => {
 
   it("every /api/admin route handler checks the admin role first", () => {
     const routes = walk("app/api/admin").filter((f) => f.endsWith("route.ts"));
-    expect(routes.length).toBe(6);
+    expect(routes.length).toBe(14); // 6 chef-queue routes (T-035) + 8 T-048 routes
     for (const f of routes) {
       const src = read(f);
       const handlers = src.match(

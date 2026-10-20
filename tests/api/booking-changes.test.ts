@@ -319,7 +319,7 @@ describe("POST /api/bookings/:id/complete and the D-33 auto-completion", () => {
     expect((await complete(chef.b, id)).status).toBe(409);
   });
 
-  it("an open problem report stops completion", async () => {
+  it("T-048: an open problem report does not stop the chef's completion (replaces A-30)", async () => {
     const { chef, cust, id } = await setup();
     await shiftDays(id, 3);
     await cooked(chef.b, id, 1);
@@ -330,8 +330,9 @@ describe("POST /api/bookings/:id/complete and the D-33 auto-completion", () => {
     });
     expect(rep.error).toBeNull();
     const r = await complete(chef.b, id);
-    expect(r.status).toBe(409);
-    expect(r.body.error.reason).toBe("problem_reported");
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.status).toBe("completed");
+    expect(r.text).not.toContain("problem_reported");
   });
 
   it("completes by itself once the day after the last day has ended and a day was cooked (read triggers it)", async () => {
@@ -383,21 +384,23 @@ describe("POST /api/bookings/:id/complete and the D-33 auto-completion", () => {
     expect((await claimOf(id))?.state).toBe("consumed");
   });
 
-  it("does not complete yet on the day after, nor with an open report", async () => {
+  it("does not complete yet on the day after; T-048: an open report does not stop the automatic completion", async () => {
     const early = await setup();
     await shiftDays(early.id, 4); // last day 1 day ago: due at the end of tomorrow
     expect((await getBooking(early.cust.b, early.id)).body.status).toBe(
       "accepted",
     );
-    const held = await setup();
-    await shiftDays(held.id, 6);
+    const held = await setup({ offsets: [3, 4] });
+    await shiftDays(held.id, 3);
+    expect((await cooked(held.chef.b, held.id, 1)).status).toBe(200);
     await svc.from("reports").insert({
       booking_id: held.id,
       reporter_id: held.cust.id,
       description: "A problem.",
     });
+    await shiftDays(held.id, 3);
     expect((await getBooking(held.cust.b, held.id)).body.status).toBe(
-      "accepted",
+      "completed",
     );
   });
 });

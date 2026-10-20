@@ -117,6 +117,8 @@ export function useBookingRefusals(
   // Same look as the sections' Alert (components/chef/parts); it is not imported to avoid a cycle.
   // Rendered only while there is a refusal, so a page with no refusal has no empty alert, and each
   // new refusal is a new element that screen readers announce.
+  // Trailing spaces are dropped so the punctuation check and the rendered text agree (T-087).
+  const shownText = last ? last.text.trimEnd() : "";
   const alert = last ? (
     <div
       key={last.id}
@@ -127,10 +129,10 @@ export function useBookingRefusals(
       data-testid="refusal"
       className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
     >
-      {last.text}
+      {shownText}
       {last.shown === null
         ? ""
-        : `${/[.!?]$/.test(last.text) ? "" : "."} ${
+        : `${/[.!?]$/.test(shownText) ? "" : "."} ${
             last.shown
               ? "This page shows its current status."
               : "Reload the page to see its status."
