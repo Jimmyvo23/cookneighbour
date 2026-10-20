@@ -176,7 +176,7 @@ describe("T-081: confirming the last picked-up day completes the booking", () =>
     expect((await bookingRow(id)).status).toBe("accepted");
   });
 
-  it("an open problem report keeps the booking accepted; the sweep completes it once the report is closed", async () => {
+  it("T-048: an open problem report does not stop the last pickup confirmation from completing the booking (replaces A-30)", async () => {
     const { chef, cust, id } = await setup();
     await shiftDays(id, 3);
     await setEatBy(id, 5);
@@ -193,16 +193,16 @@ describe("T-081: confirming the last picked-up day completes the booking", () =>
     expect(rep.error).toBeNull();
     const r = await confirmPickup(cust.b, id, 1);
     expect(r.status, r.text).toBe(200);
-    expect(r.body.status).toBe("accepted");
-    expect((await sweep(cust.id)).data).toMatchObject({ completed: 0 });
-    expect((await bookingRow(id)).status).toBe("accepted");
-    const close = await svc
-      .from("reports")
-      .update({ status: "resolved" })
-      .eq("id", rep.data?.id as string);
-    expect(close.error).toBeNull();
-    expect((await sweep(cust.id)).data).toMatchObject({ completed: 1 });
+    expect(r.body.status).toBe("completed");
     expect((await bookingRow(id)).status).toBe("completed");
+    // Nothing is left for the sweep, and the report itself is untouched.
+    expect((await sweep(cust.id)).data).toMatchObject({ completed: 0 });
+    const still = await svc
+      .from("reports")
+      .select("status")
+      .eq("id", rep.data?.id as string)
+      .single();
+    expect(still.data?.status).toBe("open");
   });
 
   it("sweep path: an all-picked-up booking is due before any deadline; a partly picked-up one is not", async () => {

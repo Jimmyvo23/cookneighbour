@@ -54,3 +54,10 @@ export const FREE_TRIAL_BLOCK_LOG_WINDOW_MINUTES = 60;
 /** Intake form text limits (D-23): picked allergens plus free text. */
 export const INTAKE_ALLERGY_NOTES_MAX = 300;
 export const INTAKE_DIETARY_NOTES_MAX = 500;
+
+/**
+ * T-048 (Jimmy, 2026-10-20): a review can be written until this many days (24 hours each) after
+ * the booking was completed. The database mirrors it in review_window_days() (migration
+ * 20261022100000); a test compares the two numbers.
+ */
+export const REVIEW_WINDOW_DAYS = 14;

@@ -342,31 +342,42 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
       await c1
         .from("reviews")
         .insert({ ...base, created_at: "2001-01-01T00:00:00Z" })
-        .select(),
+        .select("id"),
       "42501",
     );
     expectCode(
       await c1
         .from("reviews")
         .insert({ ...base, author_display_name: "Someone Else" })
-        .select(),
+        .select("id"),
       "42501",
     );
     expectCode(
       await c1
         .from("reviews")
         .insert({ ...base, id: crypto.randomUUID() })
-        .select(),
+        .select("id"),
       "42501",
     );
     // The allowed insert (same columns, no extras) is covered in engagement.test.ts.
   });
 
   it("reports: status, admin_note, created_at, resolved_at are refused; valid categories work and a bogus one is rejected", async () => {
+    // T-048: one open report per reporter per booking, so this test uses a booking no other test
+    // reports on and closes each report (service role) before it files the next.
     const base = {
-      booking_id: b.acceptedC1H1,
+      booking_id: b.acceptedChefHomeC1H1,
       reporter_id: fx.c1.id,
       description: "p4 report",
+    };
+    const close = async (res: { data: unknown }) => {
+      const id = (res.data as { id: string }[])[0].id;
+      const up = await svc
+        .from("reports")
+        .update({ status: "dismissed" })
+        .eq("id", id)
+        .select();
+      expect(up.error).toBeNull();
     };
     for (const extra of [
       { status: "open" },
@@ -396,15 +407,14 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
       "payment",
       "other",
     ]) {
-      expectRows(
-        await c1
-          .from("reports")
-          .insert({ ...base, category })
-          .select(),
-        1,
-      );
+      const res = await c1
+        .from("reports")
+        .insert({ ...base, category })
+        .select("id");
+      expectRows(res, 1);
+      await close(res);
     }
-    const dflt = await c1.from("reports").insert(base).select("category");
+    const dflt = await c1.from("reports").insert(base).select("id, category");
     expectRows(dflt, 1);
     expect((dflt.data as { category: string }[])[0].category).toBe("other");
   });

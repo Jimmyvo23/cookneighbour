@@ -126,8 +126,8 @@ describe("admin gate and logging (source guards)", () => {
   );
   const server = read("src/lib/server/admin-chefs.ts");
 
-  it("finds the six route files", () => {
-    expect(routes).toHaveLength(6);
+  it("finds the 14 route files (6 chef queue, 8 from T-048)", () => {
+    expect(routes).toHaveLength(14);
   });
   it("every route calls requireAdmin first, before any other await", () => {
     for (const f of routes) {
