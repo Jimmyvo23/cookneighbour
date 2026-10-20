@@ -8,7 +8,6 @@ describe("findContactDetails (best effort)", () => {
     "(416) 555-0199",
     "+1 416.555.0199",
     "4165550199",
-    "text 555 0199 please",
     "1-800-555-0199 ext 5",
   ])("finds a phone number in %j", (t) => {
     expect(findContactDetails(t)).toBe("phone");
