@@ -183,3 +183,52 @@ test("public chef page: first names only, load more moves focus to the first new
   expect(await scrollsSideways(page)).toBe(false);
   await expectNoAxeViolations(page);
 });
+
+test("review: after an admin moves a completed booking to cancelled, both written reviews show read only, with no form (T49-F2)", async ({
+  page,
+}) => {
+  await loginCustomer(page);
+  await seedCustomerBookings(page);
+  await complete(page, 1);
+  await open(page);
+
+  // The customer writes a review on the completed booking.
+  const reviews = section(page, "reviews");
+  await reviews.getByRole("radio", { name: /^5/ }).check({ force: true });
+  await reviews.getByLabel("Comment (optional)").fill("Lovely food.");
+  await reviews.getByRole("button", { name: "Post review" }).click();
+  await expect(reviews.getByTestId("my-review")).toBeVisible();
+
+  // MOCK: the chef's review is added and an admin cancels the booking (the state an admin
+  // decision leaves behind; the decision itself is covered by the adapter unit tests).
+  await editMockState(
+    page,
+    (st, args: { id: string }) => {
+      for (const r of st.bookings)
+        if (r.detail.id === args.id) r.detail.status = "cancelled";
+      st.engagement.reviews.push({
+        id: "00000000-0000-4000-8000-0000000e9999",
+        bookingId: args.id,
+        authorRole: "chef",
+        authorDisplayName: "Chef",
+        rating: 4,
+        comment: "Easy to cook for.",
+        createdAt: new Date().toISOString(),
+        chefId: "mock-chef",
+      });
+    },
+    { id: SEEDED.A04 },
+  );
+  await open(page);
+
+  const ro = section(page, "reviews");
+  await expect(ro.getByTestId("my-review")).toContainText("Lovely food.");
+  await expect(ro.getByTestId("other-review")).toContainText(
+    "Easy to cook for.",
+  );
+  await expect(ro.getByTestId("review-form")).toHaveCount(0);
+  await expect(ro.getByTestId("review-why")).toHaveCount(0);
+  await expect(ro).not.toContainText(/write a review/i);
+  expect(await scrollsSideways(page)).toBe(false);
+  await expectNoAxeViolations(page);
+});

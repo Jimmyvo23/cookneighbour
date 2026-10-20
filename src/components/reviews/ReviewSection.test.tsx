@@ -366,3 +366,84 @@ describe("ReviewSection: loading and errors", () => {
     expect(h.q("reviews-mock")!.textContent).toMatch(/MOCK/);
   });
 });
+
+describe("ReviewSection: read only (booking no longer completed)", () => {
+  const gone = {
+    allowed: false,
+    reason: "not_completed",
+    closesAt: null,
+  } as const;
+  async function mountRO(data: BookingReviews, viewer: "customer" | "chef") {
+    routes(h.fetchMock, { [GET]: json(200, data) });
+    await h.mount(
+      <ReviewSection
+        bookingId={BID}
+        viewer={viewer}
+        otherName="Lan"
+        mock={false}
+        readOnly
+      />,
+    );
+  }
+  const chefReview = review({
+    id: "00000000-0000-4000-8000-0000000000e2",
+    authorRole: "chef",
+    authorDisplayName: "Lan Nguyen",
+    mine: false,
+  });
+
+  it("shows nothing at all when there are no reviews", async () => {
+    await mountRO({ ...allowed, allowance: gone }, "customer");
+    expect(h.q("reviews")).toBeNull();
+    expect(h.text()).not.toMatch(/review/i);
+  });
+
+  it("shows nothing when the reviews do not load", async () => {
+    routes(h.fetchMock, { [GET]: apiError(500, "INTERNAL", "x") });
+    await h.mount(
+      <ReviewSection
+        bookingId={BID}
+        viewer="chef"
+        otherName="Sam"
+        mock={false}
+        readOnly
+      />,
+    );
+    expect(h.q("reviews")).toBeNull();
+  });
+
+  it("shows both reviews to the customer with no form and no prompt", async () => {
+    await mountRO(
+      { ...allowed, allowance: gone, mine: review(), other: chefReview },
+      "customer",
+    );
+    expect(h.q("my-review")).not.toBeNull();
+    expect(h.q("other-review")!.textContent).toMatch(/Only you and an admin/);
+    expect(h.q("review-form")).toBeNull();
+    expect(h.q("review-why")).toBeNull();
+    expect(h.text()).not.toMatch(/write a review/i);
+  });
+
+  it("shows the chef their own review and the customer's, read only", async () => {
+    await mountRO(
+      {
+        ...allowed,
+        allowance: gone,
+        mine: review({ authorRole: "chef", mine: true }),
+        other: review({ mine: false }),
+      },
+      "chef",
+    );
+    expect(h.q("my-review")!.textContent).toMatch(
+      /Only the customer and an admin/,
+    );
+    expect(h.q("other-review")).not.toBeNull();
+    expect(h.q("review-form")).toBeNull();
+  });
+
+  it("never shows a form even if the server says a review is allowed", async () => {
+    await mountRO({ ...allowed, other: review({ mine: false }) }, "customer");
+    expect(h.q("other-review")).not.toBeNull();
+    expect(h.q("review-form")).toBeNull();
+  });
+});

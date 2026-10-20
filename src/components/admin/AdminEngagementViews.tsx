@@ -76,11 +76,13 @@ function ListBody<T extends { id: string }>({
   list,
   noun,
   empty,
+  order = "newest first",
   children,
 }: {
   list: ReturnType<typeof useAdminList<T>>;
   noun: string;
   empty: string;
+  order?: string;
   children: (items: T[]) => React.ReactNode;
 }) {
   const alertId = useId();
@@ -98,7 +100,7 @@ function ListBody<T extends { id: string }>({
           <p role="status" data-testid="list-count">
             {view.items.length === 0
               ? empty
-              : `Showing ${view.items.length} ${noun}, newest first${view.nextCursor ? " (more available)" : ""}.`}
+              : `Showing ${view.items.length} ${noun}, ${order}${view.nextCursor ? " (more available)" : ""}.`}
           </p>
           {view.items.length > 0 && children(view.items)}
           {view.nextCursor && (
@@ -509,7 +511,12 @@ export function AdminChatView({ bookingId }: { bookingId: string }) {
       >
         Back to bookings
       </Link>
-      <ListBody list={list} noun="messages" empty="No messages in this chat.">
+      <ListBody
+        list={list}
+        noun="messages"
+        empty="No messages in this chat."
+        order="oldest first"
+      >
         {(items) => (
           <ol
             aria-label="Messages, oldest first"

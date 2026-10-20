@@ -45,6 +45,11 @@ export interface ReviewSectionProps {
   /** The other person's name as the booking page already shows it. */
   otherName: string;
   mock?: boolean;
+  /**
+   * The booking is not completed any more (an admin moved it, Jimmy 2026-10-20): show the reviews
+   * already written, read only, and show nothing at all when there are none.
+   */
+  readOnly?: boolean;
 }
 
 export function ReviewSection({
@@ -52,6 +57,7 @@ export function ReviewSection({
   viewer,
   otherName,
   mock = isMockEnabled(),
+  readOnly = false,
 }: ReviewSectionProps) {
   const hid = useId();
   const [view, setView] = useState<View>({ kind: "loading" });
@@ -120,6 +126,13 @@ export function ReviewSection({
     void load(true); // the answer was about the review state: read it again, keep the page still
   }
 
+  // Read only: nothing is shown while loading, on a load error, or when no review exists.
+  if (
+    readOnly &&
+    !(view.kind === "ready" && (view.data.mine || view.data.other))
+  )
+    return null;
+
   return (
     <section
       aria-labelledby={`${hid}-h`}
@@ -179,6 +192,7 @@ export function ReviewSection({
           data={view.data}
           viewer={viewer}
           otherName={otherName}
+          readOnly={readOnly}
           onPosted={onPosted}
           onRefused={onRefused}
         />
@@ -223,17 +237,19 @@ function Ready({
   data,
   viewer,
   otherName,
+  readOnly,
   onPosted,
   onRefused,
 }: {
   data: BookingReviews;
   viewer: "customer" | "chef";
   otherName: string;
+  readOnly: boolean;
   onPosted: (r: ReviewView) => void;
   onRefused: (message: string) => void;
 }) {
   const { allowance, mine, other } = data;
-  const why = mine ? null : allowanceText(allowance);
+  const why = mine || readOnly ? null : allowanceText(allowance);
   return (
     <>
       {mine && (
@@ -265,7 +281,7 @@ function Ready({
           {why}
         </p>
       )}
-      {allowance.allowed && (
+      {allowance.allowed && !readOnly && (
         <ReviewForm
           bookingId={data.bookingId}
           viewer={viewer}

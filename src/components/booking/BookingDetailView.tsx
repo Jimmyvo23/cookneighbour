@@ -293,13 +293,12 @@ function Ready({
 
       <StatusNotes b={b} anyCooked={anyCooked} />
 
-      {b.status === "completed" && (
-        <ReviewSection
-          bookingId={b.id}
-          viewer="customer"
-          otherName={b.chef.displayName}
-        />
-      )}
+      <ReviewSection
+        bookingId={b.id}
+        viewer="customer"
+        otherName={b.chef.displayName}
+        readOnly={b.status !== "completed"}
+      />
 
       <section aria-labelledby={`${hid}-days-h`} className={cardCls}>
         <h2 id={`${hid}-days-h`} className="text-lg font-semibold">

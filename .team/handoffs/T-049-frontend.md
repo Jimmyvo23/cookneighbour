@@ -44,3 +44,15 @@ New design choices, not confirmed by Jimmy:
 1. Select label "Change the booking status (optional)" with default "Keep it completed"; "Completed" is left out of the list for a completed booking.
 2. Conditional free-trial wording on the report list (it has no `isFreeTrial` field).
 3. Contact-details hint shown for customers before they type, not only after the 422.
+
+## Round 2
+
+Fixes for the Tester's findings (handoff `T-049-tester.md`). Impeccable helper agents skipped (D-44); `impeccable detect` on reviews and reports: no findings.
+
+- **F1 (LOW) fixed.** `ListBody` in `AdminEngagementViews.tsx` has an `order` prop (default "newest first"); `AdminChatView` passes "oldest first". The Tester's `it.fails` is now a normal test that also checks for "oldest first".
+- **F2 fixed (Jimmy, 2026-10-20: "Show them read-only (Recommended)").** `ReviewSection` has a `readOnly` prop. `BookingDetailView` and `ChefBookingView` now mount it for every status, with `readOnly` when the booking is not `completed`. Read only: only the cards for `mine` and `other` (same privacy notes, so a chef's review of the customer is still labelled for that customer and admin only), no form, no "why" text, no prompt. No reviews, a loading state or a load error: the section renders nothing. Note: the page now calls `GET /api/bookings/:id/reviews` for every status, not only completed.
+- **MOCK adapter.** `mock-reviews-reports.ts`: an admin decision that changes a status now also moves the customer's and chef's own copy of that booking in the tab (`next.bookings` / `next.chefBookings`), and written reviews stay. Unit test added.
+- **F3 fixed.** `ReportSection`: a 409 `report_open` is now shown inside the form (the form's alert, focus on it, server text as received) and the typed category and text are kept; the old separate refusal box and the reload that closed the form are removed. Test rewritten.
+- Tests: 5 new `ReviewSection` read-only unit tests, 1 adapter test, F1 test converted, F3 test rewritten, 1 new mock e2e at 375 px with axe (customer posts a review, state moves to cancelled with the chef's review added, both shown read only, no form). The e2e sets the cancelled status and the chef review by editing the tab's MOCK state; the real admin-decision path is covered by the adapter unit test.
+- Results: lint and typecheck clean; unit 113 files, 2458 passed + 3 expected fail; mock e2e 315 passed.
+- New design choices not confirmed by Jimmy: the read-only section keeps the "Reviews" heading and the MOCK line; it shows nothing when the reviews fail to load; a refused second report stays in the form rather than showing the open report at once (it appears after a reload or the next visit).

@@ -493,6 +493,49 @@ describe("admin lists and decisions", () => {
     expect(changed.data.decision.finalStatus).toBe("no_show_customer");
   });
 
+  it("moves the party's own copy of the booking too, and the reviews written stay", async () => {
+    const c = admin();
+    await c.call("GET", "/api/admin/reports");
+    const a = c.s().engagement!.admin!;
+    const bookingId = a.reports.find(
+      (r) => r.id === ADMIN_IDS.completedReport,
+    )!.bookingId;
+    const base = c.s();
+    const row = {
+      ...base.bookings[0],
+      detail: {
+        ...base.bookings[0].detail,
+        id: bookingId,
+        status: "completed" as const,
+      },
+    };
+    let s: EngagementMockState = {
+      ...base,
+      profile: ADMIN,
+      bookings: [row],
+      chefBookings: [row],
+    };
+    const r = engagementRoute(
+      "POST",
+      `/api/admin/reports/${ADMIN_IDS.completedReport}/resolve`,
+      { note: "Checked it", finalStatus: "cancelled" },
+      s,
+      NOW,
+    )!;
+    expect(r.res.status).toBe(200);
+    expect(r.next!.bookings![0].detail.status).toBe("cancelled");
+    expect(r.next!.chefBookings![0].detail.status).toBe("cancelled");
+    s = { ...s, ...r.next, profile: CUSTOMER };
+    const got = engagementRoute(
+      "GET",
+      `/api/bookings/${bookingId}/reviews`,
+      {},
+      s,
+      NOW,
+    )!;
+    expect(got.res.status).toBe(200);
+  });
+
   it("refuses a status on a cancelled booking, but still closes the report", async () => {
     const c = admin();
     await c.call("GET", "/api/admin/reports");

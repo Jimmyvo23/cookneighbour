@@ -95,7 +95,12 @@ export interface EngagementMockState {
 
 export interface EngagementResult {
   res: Response;
-  next?: { engagement: EngagementState };
+  /** `bookings` / `chefBookings`: the party's own copies, when an admin decision changed one. */
+  next?: {
+    engagement: EngagementState;
+    bookings?: MockBookingRow[];
+    chefBookings?: MockBookingRow[];
+  };
 }
 
 const rawFail = (
@@ -284,7 +289,7 @@ export function engagementRoute(
 
   if (role !== "admin")
     return rawFail(403, "FORBIDDEN", "Only admins can do this.");
-  return adminRoute(method, url, body, e, now);
+  return adminRoute(method, url, body, e, now, s);
 }
 
 function partyRoute(
@@ -794,6 +799,7 @@ function adminRoute(
   body: unknown,
   e0: EngagementState,
   now: Date,
+  party?: EngagementMockState,
 ): EngagementResult {
   const p = url.pathname;
   const a0 = e0.admin ?? seedAdminEngagement(now);
@@ -1044,8 +1050,27 @@ function adminRoute(
     decision,
     freeTrial: trial,
   };
+  // When the customer's or chef's own copy of this booking exists in this tab, it gets the new
+  // status too, so the booking page shows what the admin decided (reviews already written stay).
+  const move = (rows?: MockBookingRow[]) =>
+    rows?.some((r) => r.detail.id === booking.id)
+      ? rows.map((r) =>
+          r.detail.id === booking.id
+            ? {
+                ...r,
+                detail: { ...r.detail, status: newStatus as BookingStatus },
+              }
+            : r,
+        )
+      : undefined;
+  const mine = changed ? move(party?.bookings) : undefined;
+  const theirs = changed ? move(party?.chefBookings) : undefined;
   return {
     res: json(200, out),
-    next: save({ admin: { ...a, bookings, reports } }),
+    next: {
+      engagement: { ...e, admin: { ...a, bookings, reports } },
+      ...(mine && { bookings: mine }),
+      ...(theirs && { chefBookings: theirs }),
+    },
   };
 }

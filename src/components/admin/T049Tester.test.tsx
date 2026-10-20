@@ -143,29 +143,27 @@ describe("T-049 tester: admin decision form edges (D-54, D-57, contract 7D)", ()
 });
 
 describe("T-049 tester: admin chat", () => {
-  it.fails(
-    "BUG T49-F1: the chat count line does not say 'newest first' (the chat is oldest first)",
-    async () => {
-      const id = "00000000-0000-4000-8000-000000000002";
-      routes(h.fetchMock, {
-        [`GET /api/admin/bookings/${id}/messages`]: json(200, {
-          items: [
-            {
-              id: "00000000-0000-4000-8000-000000000003",
-              bookingId: id,
-              senderId: "00000000-0000-4000-8000-000000000004",
-              senderRole: "customer",
-              senderName: "Priya Patel",
-              clientId: null,
-              body: "Hello chef",
-              createdAt: "2026-10-20T10:00:00.000Z",
-            },
-          ],
-          nextCursor: null,
-        }),
-      });
-      await h.mount(<AdminChatView bookingId={id} />);
-      expect(h.q("list-count")!.textContent).not.toMatch(/newest first/i);
-    },
-  );
+  it("the chat count line says 'oldest first', not 'newest first' (T49-F1)", async () => {
+    const id = "00000000-0000-4000-8000-000000000002";
+    routes(h.fetchMock, {
+      [`GET /api/admin/bookings/${id}/messages`]: json(200, {
+        items: [
+          {
+            id: "00000000-0000-4000-8000-000000000003",
+            bookingId: id,
+            senderId: "00000000-0000-4000-8000-000000000004",
+            senderRole: "customer",
+            senderName: "Priya Patel",
+            clientId: null,
+            body: "Hello chef",
+            createdAt: "2026-10-20T10:00:00.000Z",
+          },
+        ],
+        nextCursor: null,
+      }),
+    });
+    await h.mount(<AdminChatView bookingId={id} />);
+    expect(h.q("list-count")!.textContent).not.toMatch(/newest first/i);
+    expect(h.q("list-count")!.textContent).toMatch(/oldest first/i);
+  });
 });

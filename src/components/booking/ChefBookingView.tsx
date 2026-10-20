@@ -234,13 +234,12 @@ function Ready({
         <StatusNotes b={b} />
       </header>
 
-      {b.status === "completed" && (
-        <ReviewSection
-          bookingId={b.id}
-          viewer="chef"
-          otherName={b.customer.displayName}
-        />
-      )}
+      <ReviewSection
+        bookingId={b.id}
+        viewer="chef"
+        otherName={b.customer.displayName}
+        readOnly={b.status !== "completed"}
+      />
 
       <Intake b={b} />
 

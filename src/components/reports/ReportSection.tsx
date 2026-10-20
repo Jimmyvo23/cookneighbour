@@ -5,8 +5,8 @@
 // Privacy (Jimmy, 2026-10-20): a report is read only by its reporter and an admin. This section
 // shows the caller's OWN reports (the server returns nothing else) and never says that the other
 // person has or has not reported. One open report per person per booking: while one is open (or
-// being reviewed) its status is shown instead of the form, and the server's 409 `report_open` text
-// is shown as received if a second one gets through.
+// being reviewed) its status is shown instead of the form. If the server still answers 409
+// `report_open`, its text is shown inside the form (focus on it) and the typed text is kept.
 //
 // Focus has ONE owner, this section: after an error it goes to the first invalid field, else to the
 // message; after a sent report it goes to the confirmation; opening the form moves it to the
@@ -57,14 +57,12 @@ export function ReportSection({
   const [view, setView] = useState<View>({ kind: "loading" });
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(0);
-  const [refusal, setRefusal] = useState<string | null>(null);
   const seq = useRef(0);
   // Answers that arrive after the page left (or a newer load) are ignored.
   const cancelRequests = useCallback(() => {
     seq.current++;
   }, []);
   const sentRef = useRef<HTMLParagraphElement>(null);
-  const refusalRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(
     async (quiet = false) => {
@@ -90,9 +88,6 @@ export function ReportSection({
   useEffect(() => {
     if (sent) sentRef.current?.focus();
   }, [sent]);
-  useEffect(() => {
-    if (refusal) refusalRef.current?.focus();
-  }, [refusal]);
 
   const items = view.kind === "ready" ? view.items : [];
   const active = items.find((r) => isReportActive(r.status));
@@ -129,15 +124,6 @@ export function ReportSection({
           Your report was sent. An admin will look at it.
         </p>
       )}
-      <div
-        ref={refusalRef}
-        tabIndex={-1}
-        role={refusal ? "alert" : undefined}
-        data-testid="report-refusal"
-        className={refusal ? dangerBoxCls : "sr-only"}
-      >
-        {refusal}
-      </div>
 
       {view.kind === "loading" && <p role="status">Loading your reports...</p>}
       {view.kind === "error" && (
@@ -173,15 +159,9 @@ export function ReportSection({
               bookingId={bookingId}
               onSent={(r) => {
                 seq.current++;
-                setRefusal(null);
                 setOpen(false);
                 setView({ kind: "ready", items: [r, ...items] });
                 setSent((n) => n + 1);
-              }}
-              onRefused={(m) => {
-                setRefusal(m);
-                setOpen(false);
-                void load(true); // the open report shows in place of the form
               }}
               onCancel={() => setOpen(false)}
             />
@@ -244,12 +224,10 @@ function ReportCard({ r }: { r: ReportView }) {
 function ReportForm({
   bookingId,
   onSent,
-  onRefused,
   onCancel,
 }: {
   bookingId: string;
   onSent: (r: ReportView) => void;
-  onRefused: (message: string) => void;
   onCancel: () => void;
 }) {
   const uid = useId();
@@ -303,10 +281,6 @@ function ReportForm({
       );
       onSent(r);
     } catch (err) {
-      if (err instanceof ApiClientError && err.reason === "report_open") {
-        onRefused(reportErrorText(err));
-        return;
-      }
       setFields(err instanceof ApiClientError ? err.fields : {});
       setError(reportErrorText(err));
       setTick((t) => t + 1);

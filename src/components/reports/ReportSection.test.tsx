@@ -178,27 +178,22 @@ describe("ReportSection", () => {
     expect(h.text()).not.toMatch(/SECRET-NOTE|cancelled/);
   });
 
-  it("shows the server's own text when a second report is refused, and then the open report", async () => {
-    let n = 0;
+  it("shows the server's own text inside the form when a second report is refused, and keeps the typed text", async () => {
     const SERVER =
       "You already have a problem report open for this booking. Wait for an admin to answer it before sending another.";
     await mount([], {
-      [GET]: () => {
-        n++;
-        return json(200, { items: n === 1 ? [] : [report()] })(null);
-      },
       [POST]: apiError(409, "INVALID_STATE", SERVER, { reason: "report_open" }),
     });
     await h.click(h.q("report-button"));
     await setCategory("other");
-    await h.type(desc(), "Again");
+    await h.type(desc(), "Again, please look at this");
     await h.click(h.button("Send report"));
-    const refusal = h.q("report-refusal")!;
-    expect(refusal.textContent).toBe(SERVER);
-    expect(refusal.getAttribute("role")).toBe("alert");
-    expect(document.activeElement).toBe(refusal);
-    expect(h.q("report-open")).not.toBeNull();
-    expect(h.q("report-form")).toBeNull();
+    const err = h.q("report-error")!;
+    expect(err.textContent).toBe(SERVER);
+    expect(err.getAttribute("role")).toBe("alert");
+    expect(document.activeElement).toBe(err);
+    expect(h.q("report-form")).not.toBeNull();
+    expect(desc().value).toBe("Again, please look at this");
   });
 
   it("counts the description and refuses more than 2000 characters", async () => {
