@@ -60,4 +60,25 @@ describe("refusal alert punctuation", () => {
       `Already answered. ${STATUS}`,
     );
   });
+  it("handles tabs and newlines at the end", async () => {
+    expect(await refusalText("Already answered.\t\n")).toBe(
+      `Already answered. ${STATUS}`,
+    );
+    expect(await refusalText("Already answered\n\t ")).toBe(
+      `Already answered. ${STATUS}`,
+    );
+  });
+  it("keeps a question mark or exclamation mark, with or without trailing space", async () => {
+    expect(await refusalText("Is it done? ")).toBe(`Is it done? ${STATUS}`);
+    expect(await refusalText("Too late!")).toBe(`Too late! ${STATUS}`);
+    expect(await refusalText("Too late! \n")).toBe(`Too late! ${STATUS}`);
+  });
+  it("does not render trailing whitespace before the status sentence", async () => {
+    expect(await refusalText("Already answered. \t ")).not.toMatch(/\s{2,}/);
+  });
+  // Characterisation (T-087 finding): whitespace-only or empty text is reachable via report("").
+  it("whitespace-only or empty text renders a leading full stop (current behaviour)", async () => {
+    expect(await refusalText("   ")).toBe(`. ${STATUS}`);
+    expect(await refusalText("")).toBe(`. ${STATUS}`);
+  });
 });
