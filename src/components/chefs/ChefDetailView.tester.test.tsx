@@ -103,20 +103,23 @@ afterEach(() => {
 });
 
 describe("ChefDetailView (tester)", () => {
-  it("makes exactly one request, a GET of /api/chefs/:id, and none for the Book link", async () => {
+  it("makes a GET of /api/chefs/:id and a GET of its public reviews (T-049), and none for the Book link", async () => {
     fetchMock.mockImplementation(reply(200, chef()));
     await mount();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`/api/chefs/${ID}`);
     expect(init.method).toBe("GET");
+    const [rurl, rinit] = fetchMock.mock.calls[1];
+    expect(rurl).toBe(`/api/chefs/${ID}/reviews?limit=10`);
+    expect(rinit.method).toBe("GET");
 
     // The Book entry is a plain link to the booking flow (T-043): it opens a page, it makes no request.
     const book = host.querySelector<HTMLAnchorElement>(
       '[data-testid="book-link"]',
     )!;
     expect(book.getAttribute("href")).toBe(`/chefs/${ID}/book`);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("encodes a hostile id in the request path", async () => {
@@ -381,7 +384,10 @@ describe("ChefDetailView (tester)", () => {
       await Promise.resolve();
     });
     expect(host.querySelector("h1")!.textContent).toBe("Mai Tran (MOCK)");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // The failed chef call, the second chef call and its reviews (T-049).
+    expect(
+      fetchMock.mock.calls.filter((c) => c[0] === `/api/chefs/${ID}`),
+    ).toHaveLength(2);
   });
 
   it("chef's home only shows the MOCK kitchen note and no address", async () => {
@@ -442,6 +448,7 @@ describe("ChefDetailView (tester)", () => {
       "H3:Bun cha",
       "H3:Rau muong",
       "H2:Available days",
+      "H2:Reviews",
       "H2:Book this chef",
     ]);
   });

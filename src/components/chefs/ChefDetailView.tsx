@@ -13,6 +13,7 @@ import {
   formatMinutes,
 } from "@/lib/chef/dishes";
 import { MockBadge } from "@/components/MockBadge";
+import { PublicReviews } from "@/components/reviews/PublicReviews";
 import {
   allergenText,
   groupDatesByMonth,
@@ -371,6 +372,8 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
         </h2>
         <Dates chef={chef} />
       </section>
+
+      <PublicReviews chefId={chef.id} />
 
       <section aria-labelledby="book-h" className={sectionCls}>
         <h2 id="book-h" className="text-lg font-semibold">
