@@ -10,16 +10,28 @@
  *   digits and letters become ASCII), accents removed, invisible characters removed. Other scripts
  *   (Vietnamese letters aside from tones, Chinese, Arabic, Hindi...) are kept as they are.
  */
-const REFUSED_CHARS = /[‪-‮⁦-⁩​⁠﻿]/;
+const REFUSED_CHARS = /[\u202a-\u202e\u2066-\u2069\u200b\u2060\ufeff]/;
 /** Everything the fold strips: the refused ones plus the joiners ZWNJ and ZWJ (U+200C, U+200D). */
-const INVISIBLE_CHARS_G = /[‪-‮⁦-⁩​-‍⁠﻿]/g;
+const INVISIBLE_CHARS_G =
+  /[\u202a-\u202e\u2066-\u2069\u200b-\u200d\u2060\ufeff]/g;
 /** Combining marks of the "Combining Diacritical Marks" block: accents and Vietnamese tones. */
-const ACCENTS = /[̀-ͯ]/g;
+const ACCENTS = /[\u0300-\u036f]/g;
 /** Dashes that look like a hyphen-minus: hyphen, non-breaking hyphen, figure, en, em dash, minus. */
-const DASHES = /[‐-―−]/g;
+const DASHES = /[\u2010-\u2015\u2212]/g;
 
 export function hasInvisibleText(text: string): boolean {
   return REFUSED_CHARS.test(text);
+}
+
+/** Error text for a name or address line that has no visible character (T-093). */
+export const NO_VISIBLE_TEXT = "Enter at least one visible character.";
+
+/**
+ * True when nothing visible is left after the fold and a trim: empty, spaces only, or only
+ * joiners. Used for names and address lines (T-093); other free text is not checked with it.
+ */
+export function hasNoVisibleText(text: string): boolean {
+  return foldText(text).trim() === "";
 }
 
 /**
