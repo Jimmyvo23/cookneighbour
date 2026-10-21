@@ -3,7 +3,7 @@
 From: frontend  To: tester
 
 ## What changed
-- Branch: `feature/T-052-accessibility` (from main 6071b11; origin/main merged, no conflicts). PR: see the PR for this branch (title "T-052: Accessibility pass with axe checks").
+- Branch: `feature/T-052-accessibility` (from main 6071b11; origin/main merged, no conflicts). PR: https://github.com/Jimmyvo23/cookneighbour/pull/201.
 - New `e2e-mock/t052-a11y-mock.spec.ts` (mock stack, `NEXT_PUBLIC_API_MOCK=1`): axe over every page at 375 px, 1280 px and 375 px in dark mode, in the role each page needs (signed out, customer, chef, admin), plus interactive states (booking form with errors, filled form with estimate, review step, cancel panel, decline panel with error, dish form with errors, admin reject error) and keyboard checks.
 - `src/components/SkipLink.tsx` (new) and `src/app/layout.tsx`: "Skip to main content" link as first Tab stop, plus one anchor (`#main-content`) after the account bar.
 - `src/components/booking/BookingDetailView.tsx`: "Keep my booking" now returns focus to the "Cancel this booking" button.
