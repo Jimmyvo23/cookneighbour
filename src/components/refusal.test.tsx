@@ -82,3 +82,26 @@ describe("refusal alert punctuation", () => {
     expect(await refusalText("")).toBe(STATUS);
   });
 });
+
+// T-089 Tester: every kind of whitespace-only text gives just the status sentence.
+describe("refusal alert with blank text (T-089)", () => {
+  it.each([
+    ["spaces", "     "],
+    ["tab", "\t"],
+    ["newlines", "\n\n"],
+    ["CRLF", "\r\n"],
+    ["no-break space", "\u00a0\u00a0"],
+    ["mixed", " \t\n\u00a0 "],
+  ])("%s only: no leading full stop or space", async (_n, text) => {
+    expect(await refusalText(text)).toBe(STATUS);
+  });
+  it("a trailing no-break space after text still gets one full stop", async () => {
+    expect(await refusalText("Already answered\u00a0")).toBe(
+      `Already answered. ${STATUS}`,
+    );
+    expect(await refusalText("Done.\u00a0")).toBe(`Done. ${STATUS}`);
+  });
+  it("leading whitespace is kept as before (only the end is trimmed)", async () => {
+    expect((await refusalText("  Hi")).trimStart()).toBe(`Hi. ${STATUS}`);
+  });
+});
