@@ -1,6 +1,6 @@
 # Security and privacy review (T-053)
 
-Reviewer agent, 2026-10-21, read-only review of `main` at `9674e51` (includes T-093, PR #192). Scope: CLAUDE.md sections 6, 10 and 11; all 25 migrations; all 50 API routes; server libraries; Supabase clients; `src/proxy.ts`; `next.config.ts`; the CI workflow; seed scripts; MOCK labels in the UI.
+Reviewer agent, 2026-10-21, read-only review of `main` at `9674e51` (includes T-093, PR #192). Scope: CLAUDE.md sections 6, 10 and 11; all 25 migrations; all 51 API route files; server libraries; Supabase clients; `src/proxy.ts`; `next.config.ts`; the CI workflow; seed scripts; MOCK labels in the UI.
 
 Checks run: `npm test` (124 files, 2978 passed, 3 expected fail); `npm audit --omit=dev` (0 vulnerabilities); a pattern scan of tracked files and git history for keys and committed `.env` files (none). Not run: RLS and API suites (need Docker; CI runs them). Nothing was run against the hosted Supabase project and `.env.local` was not read.
 
@@ -38,7 +38,7 @@ No HIGH findings. Deny-by-default holds: RLS is on for every table; execute is r
 
 **LOW-2. The chef can read the customer's allergy and dietary notes on every booking indefinitely, even after decline, cancel or expiry.** `20261007221002_core_rls.sql:335-336` (`intake_forms_select_party` uses `is_booking_party` only). Intake notes are not contact-filtered (`src/lib/domain/bookingRequest.ts:178` checks unsafe characters only). The spec needs the chef to see the form before accepting, not afterwards forever. Fix (Jimmy decides): limit the chef's read to `requested` and the accepted statuses (or the D-52 window) and contact-filter the notes, or record it as a limit.
 
-**LOW-3. Signing up directly with Supabase Auth skips the app's sign-up rules.** `20261007221001_core_schema.sql:99-115` (`handle_new_user` only trims and cuts `display_name` to 80 characters) and `supabase/config.toml:177,183` (minimum password length 6). A direct `/auth/v1/signup` call allows a 6-character password and a display name with bidi, invisible-only text or a phone number. Fix: apply the same rules in the trigger and set the minimum password length to 8 locally and on hosted; consider leaked-password protection on hosted.
+**LOW-3. Signing up directly with Supabase Auth skips the app's sign-up rules.** `20261007221001_core_schema.sql:99-115` (`handle_new_user` only trims and cuts `display_name` to 80 characters) and `supabase/config.toml:177` (`enable_signup = true`) and `:183` (minimum password length 6). A direct `/auth/v1/signup` call allows a 6-character password and a display name with bidi, invisible-only text or a phone number. Fix: apply the same rules in the trigger and set the minimum password length to 8 locally and on hosted; consider leaked-password protection on hosted.
 
 **LOW-4. Login and sign-up rate limits trust a header the client controls.** `src/lib/api/request.ts:79-84` uses the first `x-forwarded-for` value (`src/app/api/auth/login/route.ts:23`, `signup/route.ts:14`). A new value per request resets the limit. The limiter is also in-memory per instance (`rate-limit.ts:1-8`, a known placeholder). Fix: use the platform's client IP on Vercel and add an email-only key, or move limits to the database.
 
@@ -52,7 +52,7 @@ No HIGH findings. Deny-by-default holds: RLS is on for every table; execute is r
 
 ## INFO
 
-1. Owners can read their own `phone_hash` and `address_hash` (`core_rls.sql:421-422`, `profile_private_select_own`). Harmless while the pepper is strong and secret (LOW-7); a column grant without the hash columns would be tighter.
+1. Owners can read their own `phone_hash` and `address_hash` (`free_trial_claims_select_own`, `core_rls.sql:421-422`, and `profile_private_select_own`, `core_rls.sql:231-232`). Harmless while the pepper is strong and secret (LOW-7); a column grant without the hash columns would be tighter.
 2. The admin can read every user's phone and address from the browser (`profile_private_select_admin`, `core_rls.sql:233-234`, and the admin policies on `booking_addresses` and `messages`). By design (D-95); one stolen admin session exposes everyone, so use a strong admin password and consider MFA on hosted.
 3. Anyone can see which dates an approved chef is booked (`chef_booked_dates`, `chefs_booked_on`, `20261011100100_booking_api.sql:433-434`). Dates only, not who; intended (D-27).
 4. The chat topic is not protected but the chat data is (`src/lib/chat/realtime.ts:47-62`). No Realtime Authorization policies exist, so anyone can broadcast on a `chat:<id>:…` topic, but the client listens only to `postgres_changes`, which RLS filters. Turn on private channels before adding broadcast or presence.
