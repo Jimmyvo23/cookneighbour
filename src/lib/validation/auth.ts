@@ -9,6 +9,7 @@ import type {
 } from "@/lib/api/types";
 
 import { hasUnsafeText } from "@/lib/domain/chef-application";
+import { hasNoVisibleText, NO_VISIBLE_TEXT } from "@/lib/domain/text-fold";
 
 export type FieldErrors = Record<string, string>;
 
@@ -24,6 +25,7 @@ export function displayNameProblem(raw: unknown): string | null {
   if (name.length > 80) return "Use 80 characters or fewer.";
   if (hasUnsafeText(name))
     return "Use plain text. Control characters are not allowed.";
+  if (hasNoVisibleText(name)) return NO_VISIBLE_TEXT;
   return null;
 }
 
@@ -80,8 +82,14 @@ export function validateAddress(
   const postal = typeof v.postalCode === "string" ? v.postalCode.trim() : "";
   if (!line) e.line = "Enter your street address.";
   else if (line.length > 120) e.line = "Use 120 characters or fewer.";
+  else if (hasUnsafeText(line))
+    e.line = "Remove control or invalid characters.";
+  else if (hasNoVisibleText(line)) e.line = NO_VISIBLE_TEXT;
   if (!city) e.city = "Enter your city.";
   else if (city.length > 80) e.city = "Use 80 characters or fewer.";
+  else if (hasUnsafeText(city))
+    e.city = "Remove control or invalid characters.";
+  else if (hasNoVisibleText(city)) e.city = NO_VISIBLE_TEXT;
   if (!POSTAL.test(postal)) e.postalCode = "Enter a postal code like L5B 1M2.";
   return e;
 }

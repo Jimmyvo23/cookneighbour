@@ -459,11 +459,11 @@ describe("T-060 round 1 re-check: wording by family (contract v1.20)", () => {
     expect(parseUpdateBody({ bio: "a﻿b" }).errors.bio).toBe(std);
     expect(parseUpdateBody({ bio: "﻿ab" }).value.bio).toBe("ab");
   });
-  it("F7 characterisation: edge joiners kept, and a joiner-only name is accepted (looks blank)", () => {
+  it("F7 (changed by T-093): edge joiners kept in free text, and a joiner-only dish name is refused", () => {
     expect(parseCancelReason({ reason: "‍abc" })).toEqual({ value: "‍abc" });
     expect(
       parseDishBody({ name: "‍", cuisine: "Thai", cookMinutes: 30 }, "create")
         .errors.name,
-    ).toBeUndefined();
+    ).toBe("Enter at least one visible character.");
   });
 });

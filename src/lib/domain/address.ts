@@ -35,7 +35,8 @@ const ABBREVIATIONS: Record<string, string> = {
  * a non-Latin street name never collapses to an empty key. Unit numbers are kept ("#5" and "unit 5" both keep the number as a token).
  */
 export function normalizeAddressLine(line: string): string {
-  const cleaned = foldText(line.toLowerCase())
+  const cleaned = foldText(line)
+    .toLowerCase()
     .replace(/#/g, " unit ")
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")

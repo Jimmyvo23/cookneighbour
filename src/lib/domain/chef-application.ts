@@ -12,6 +12,7 @@ import type {
 } from "../api/types.ts";
 import { normalizePostalCode } from "./address.ts";
 import { hasUnsafeText } from "./text-safety.ts";
+import { hasNoVisibleText, NO_VISIBLE_TEXT } from "./text-fold.ts";
 
 // ---------------------------------------------------------------------------
 // Limits (contract section 5; the bounds marked ASSUMPTION there are not requirements)
@@ -393,12 +394,18 @@ function parseKitchenAddress(
   } else if (hasUnsafeText(line)) {
     errors["kitchenAddress.line"] = "Remove control or invalid characters.";
     bad = true;
+  } else if (hasNoVisibleText(line)) {
+    errors["kitchenAddress.line"] = NO_VISIBLE_TEXT;
+    bad = true;
   }
   if (city.length < 1 || city.length > 80) {
     errors["kitchenAddress.city"] = "Enter 1 to 80 characters.";
     bad = true;
   } else if (hasUnsafeText(city)) {
     errors["kitchenAddress.city"] = "Remove control or invalid characters.";
+    bad = true;
+  } else if (hasNoVisibleText(city)) {
+    errors["kitchenAddress.city"] = NO_VISIBLE_TEXT;
     bad = true;
   }
   const postalCode =

@@ -19,6 +19,7 @@ import { torontoStartOfDay } from "./cancellation.ts";
 import { ALLERGEN_CHOICES } from "./dishes.ts";
 import type { BookingIssue, LocationType } from "./bookingValidation.ts";
 import { hasUnsafeText } from "./text-safety.ts";
+import { hasNoVisibleText, NO_VISIBLE_TEXT } from "./text-fold.ts";
 
 export const BOOKING_KEYS = [
   "chefId",
@@ -62,6 +63,7 @@ function text(
   v: unknown,
   max: number,
   allowWhitespace = false,
+  visible = false,
 ): string {
   if (typeof v !== "string") {
     errors[key] = "Required.";
@@ -71,6 +73,7 @@ function text(
   if (t.length < 1 || t.length > max)
     errors[key] = `Enter 1 to ${max} characters.`;
   else if (hasUnsafeText(t, allowWhitespace)) errors[key] = UNSAFE;
+  else if (visible && hasNoVisibleText(t)) errors[key] = NO_VISIBLE_TEXT;
   return t;
 }
 
@@ -85,8 +88,8 @@ function parseAddress(
   for (const k of Object.keys(v))
     if (!["line", "city", "postalCode"].includes(k))
       errors[`address.${k}`] = "Unknown field.";
-  const line = text(errors, "address.line", v.line, 120);
-  const city = text(errors, "address.city", v.city, 80);
+  const line = text(errors, "address.line", v.line, 120, false, true);
+  const city = text(errors, "address.city", v.city, 80, false, true);
   const postal =
     typeof v.postalCode === "string" ? normalizePostalCode(v.postalCode) : null;
   if (!postal)
