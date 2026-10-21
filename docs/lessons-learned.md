@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-16 (T-075, T-079).
+Last updated: 2026-10-21 (T-050, T-060; T-060 also added a row of its own).
 
 ## 1. Office status (Planner and every agent)
 
@@ -54,6 +54,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 | Updating several rows one at a time under a unique rule | (found in CI, T-086) `shiftDays` moved a booking's days with no `order by`; when day 2 was updated first it landed on day 1's date and hit `booking_days_one_per_chef_date` (23505), failing CI at random | When a helper moves several rows that share a unique key, update them in a safe order (earliest first when moving earlier, latest first when moving later) (one `UPDATE` does not help: a non-deferrable unique index is checked row by row) |
 | A test helper that silently never runs | (T-047) The `testkit.tsx` fallback checked `!init?.method`, but `apiFetch` always sends `method: "GET"`, so it never ran; fixing it made the chat render in older page tests and exposed a too-broad selector and an always-present empty `role="alert"` | When adding a fallback to a shared test helper, add a test that proves the fallback actually runs |
 | Random ids inside user text in tests | `tests/api/t048-tester.test.ts` put `randomUUID()` hex into a review comment; a long digit run tripped the phone rule, so `main` failed at random (T-048) | Use a digit-free marker in test text (map digits to letters) |
+| Test fakes that are kinder than the real library | (T-050) The chat unit tests used a fake Realtime client that made a new channel on every call, but the real `@supabase/ssr` browser client is a singleton and `channel(topic)` returns the existing channel; an overlapping remount closed the topic the new mount used, and only the real-stack e2e saw that live messages never arrived (B-1, T-094) | When faking a library, copy the behaviours that matter (shared instances, reuse by key) from its source, and keep at least one real-stack test for live features |
 | Extensionless import in a file the seed script loads | (found in CI, T-060) `address.ts` imported `./text-fold`; the seed script runs plain Node, which needs `./text-fold.ts`, so the `supabase` job failed with ERR_MODULE_NOT_FOUND after 16 minutes | Files under `src/lib/domain` that `hash.ts`/the seed script reach import siblings with the `.ts` extension; after adding an import there, run `node --experimental-strip-types -e "import('./src/lib/domain/hash.ts')"` |
 
 ## 4. Git and GitHub
@@ -65,6 +66,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - When the main folder is busy on another branch, the agent works in a git worktree. `team-status` is still run from the main project folder.
 - Never push to `main`, never force-push. Never loosen branch protection to go faster.
 - **Installers that write `.claude/settings.local.json` write to the checkout that runs them.** In a worktree the hook lands in the worktree and the session (which loads the main folder's settings) never sees it. Have the builder put the block in its handoff; the Planner places it in the main folder after merge and Jimmy's OK. *(T-068 Impeccable hook.)*
+- **Several agents at once share one GitHub rate limit.** With four agents polling `gh pr checks`, one hit the limit (2026-10-21). Poll about every 60 s. `gh run watch` refreshes every 3 s by default, so pass `--interval 60`.
 - On macOS, `sed -i` needs an empty suffix: `sed -i '' 's/a/b/' file`. *(GNU-style `sed -i` failed during T-040.)*
 - If `gh pr checks <n> --watch` says "no checks reported" right after a push, or returns at once, use `gh run watch <run id> --exit-status` on the new run instead. *(T-073 round 2; again in T-084.)*
 
