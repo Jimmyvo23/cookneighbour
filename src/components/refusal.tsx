@@ -132,7 +132,7 @@ export function useBookingRefusals(
       {shownText}
       {last.shown === null
         ? ""
-        : `${/[.!?]$/.test(shownText) ? "" : "."} ${
+        : `${shownText === "" || /[.!?]$/.test(shownText) ? "" : "."}${shownText === "" ? "" : " "}${
             last.shown
               ? "This page shows its current status."
               : "Reload the page to see its status."

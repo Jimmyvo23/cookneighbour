@@ -324,6 +324,32 @@ describe("live messages", () => {
     expect(items()).toHaveLength(1);
   });
 
+  // T-089 (T-047 Reviewer LOW): the channel can join while the first GET is still running.
+  it("loads again when the channel joins while the first load is running, without duplicates", async () => {
+    const l = fakeLive();
+    let release: (r: Response) => void = () => {};
+    const gate = new Promise<Response>((res) => (release = res));
+    routes(h.fetchMock, {
+      [GET1]: () => gate,
+    });
+    await mount(l);
+    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(1);
+    // Joined and a message arrived while the first GET has not answered yet.
+    l.f.handlers!.onStatus("live");
+    l.row(1);
+    await h.flush();
+    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(2);
+    // The first GET now answers with the same message: it must not show twice.
+    release(
+      new Response(JSON.stringify({ items: [view(1)], nextCursor: null }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    await h.flush();
+    expect(items()).toHaveLength(1);
+  });
+
   it("says nothing while the first connect is under way (L-2)", async () => {
     const l = fakeLive();
     routes(h.fetchMock, {
