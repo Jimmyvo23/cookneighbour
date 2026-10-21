@@ -44,7 +44,8 @@ describe("makeConnectChat", () => {
       onRow: (r) => rows.push(r),
       onStatus: (s) => states.push(s),
     });
-    expect(f.calls.channel).toEqual(["chat:b-1"]);
+    expect(f.calls.channel).toHaveLength(1);
+    expect(f.calls.channel[0]).toMatch(/^chat:b-1:.+/);
     expect(f.calls.on[0]).toEqual({
       event: "INSERT",
       schema: "public",
@@ -71,5 +72,75 @@ describe("makeConnectChat", () => {
       }),
     ).rejects.toThrow(/session/);
     expect(f.raw.channel).not.toHaveBeenCalled();
+  });
+});
+
+// T-094 (B-1): @supabase/ssr's browser client is a singleton and channel(topic) returns the
+// SAME channel for the same topic. An overlapping remount used to close the new mount's channel.
+function singletonClient() {
+  type Ch = {
+    topic: string;
+    cb: (p: { new: unknown }) => void;
+    removed: boolean;
+    on: (t: string, f: unknown, cb: Ch["cb"]) => Ch;
+    subscribe: (cb: (s: string) => void) => Ch;
+  };
+  const channels = new Map<string, Ch>();
+  const client = {
+    auth: {
+      getSession: async () => ({
+        data: { session: { access_token: "tok", user: { id: "u1" } } },
+      }),
+    },
+    realtime: { setAuth: async () => {} },
+    channel(topic: string) {
+      const existing = channels.get(topic);
+      if (existing) return existing; // the real client does this
+      const ch: Ch = {
+        topic,
+        cb: () => {},
+        removed: false,
+        on(_t, _f, cb) {
+          ch.cb = cb;
+          return ch;
+        },
+        subscribe() {
+          return ch;
+        },
+      };
+      channels.set(topic, ch);
+      return ch;
+    },
+    async removeChannel(ch: Ch) {
+      ch.removed = true;
+      channels.delete(ch.topic);
+      return "ok";
+    },
+  };
+  // Server side: deliver a row to every live (not removed) channel.
+  const deliver = (row: unknown) =>
+    channels.forEach((c) => !c.removed && c.cb({ new: row }));
+  return { client: client as unknown as SupabaseClient, deliver };
+}
+
+describe("makeConnectChat overlapping mounts (T-094)", () => {
+  it("the second mount still receives messages after the first one closes", async () => {
+    const s = singletonClient();
+    const connect = makeConnectChat(async () => s.client);
+    const first: unknown[] = [];
+    const second: unknown[] = [];
+    const a = await connect("b-1", {
+      onRow: (r) => first.push(r),
+      onStatus() {},
+    });
+    const b = await connect("b-1", {
+      onRow: (r) => second.push(r),
+      onStatus() {},
+    });
+    a.close(); // StrictMode: the first mount's cleanup runs after the second subscribed
+    await Promise.resolve();
+    s.deliver({ id: "m1" });
+    expect(second).toEqual([{ id: "m1" }]);
+    b.close();
   });
 });

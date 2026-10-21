@@ -165,9 +165,56 @@ describe("T-089 late join", () => {
     l.f.handlers!.onStatus("live");
     await h.flush();
     expect(loads()).toBe(2);
-    // Pinned current behaviour (Tester note, LOW): the late load succeeded in the background, but
-    // the error box stays until the person presses the retry button; nothing is shown twice.
+    // T-092: the late load that worked clears the error box; nothing is shown twice.
+    expect(h.q("chat-load-error")).toBeNull();
+    expect(items()).toHaveLength(1);
+  });
+});
+
+describe("T-092 late load settles the phase", () => {
+  it("a failed first load, then the channel joins and the late load works: no error box", async () => {
+    const l = fakeLive();
+    let n = 0;
+    routes(h.fetchMock, {
+      [GET1]: () =>
+        ++n === 1
+          ? new Response(JSON.stringify({ error: { code: "INTERNAL" } }), {
+              status: 500,
+            })
+          : page([view(1)]),
+    });
+    await mount(l);
     expect(h.q("chat-load-error")).not.toBeNull();
-    expect(items()).toHaveLength(0);
+    l.f.handlers!.onStatus("live"); // late join: one more load
+    await h.flush();
+    expect(h.q("chat-load-error")).toBeNull();
+    expect(items()).toHaveLength(1);
+  });
+
+  it("a late hidden answer is not overwritten by a stale first-load ok", async () => {
+    const l = fakeLive();
+    const gates: Array<(r: Response) => void> = [];
+    routes(h.fetchMock, {
+      [GET1]: () => new Promise<Response>((res) => gates.push(res)),
+    });
+    await mount(l);
+    l.f.handlers!.onStatus("live");
+    await h.flush();
+    gates[1](
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "INVALID_STATE",
+            message: "closed",
+            reason: "chat_hidden",
+          },
+        }),
+        { status: 409 },
+      ),
+    );
+    await h.flush();
+    gates[0](page([])); // the stale first load answers ok afterwards
+    await h.flush();
+    expect(h.q("chat")).toBeNull();
   });
 });
