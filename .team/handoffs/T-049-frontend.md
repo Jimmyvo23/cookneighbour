@@ -56,3 +56,14 @@ Fixes for the Tester's findings (handoff `T-049-tester.md`). Impeccable helper a
 - Tests: 5 new `ReviewSection` read-only unit tests, 1 adapter test, F1 test converted, F3 test rewritten, 1 new mock e2e at 375 px with axe (customer posts a review, state moves to cancelled with the chef's review added, both shown read only, no form). The e2e sets the cancelled status and the chef review by editing the tab's MOCK state; the real admin-decision path is covered by the adapter unit test.
 - Results: lint and typecheck clean; unit 113 files, 2458 passed + 3 expected fail; mock e2e 315 passed.
 - New design choices not confirmed by Jimmy: the read-only section keeps the "Reviews" heading and the MOCK line; it shows nothing when the reviews fail to load; a refused second report stays in the form rather than showing the open report at once (it appears after a reload or the next visit).
+
+## Round 3 (Reviewer REQUEST CHANGES on fd41aff)
+
+1. MEDIUM: `Shell` in `AdminEngagementViews.tsx` shows the MOCK badge and "made-up" lines only when `isMockEnabled()`. The true privacy sentence ("Only the person who sent a report and admins can read it...") shows in both modes. Header comment updated. Tests: MOCK mode shows the lines, non-mock hides them and keeps the privacy sentence (reports and chat pages).
+2. LOW: `AdminChatView` uses `encodeURIComponent(bookingId)`. Test: id `a/b?c` calls `/api/admin/bookings/a%2Fb%3Fc/messages`.
+3. LOW: mock `view()` in `mock-reviews-reports.ts` lists the ReviewView keys explicitly (no `chefId`). Test: exact key list on POST and GET.
+4. LOW: focus returns to the opener on Cancel / Close without sending (`ReportSection` via ref; admin reports and bookings via `data-opener`). Tests for report button, Dismiss and Resolve flag.
+5. LOW: stale "OPEN QUESTION Q1" comment in `PublicReviews.tsx` replaced (Jimmy's decision D-114).
+6. INFO: `decision-error` box uses `dangerBoxCls`.
+
+Checks: lint, typecheck, prettier clean; vitest 113 files, 2466 passed + 3 expected fail; mock e2e t049-tester-mock + t049-admin-engagement-mock 12 passed. Impeccable finish-reviewer skipped (D-44). Files touched: only those named above plus their tests.
