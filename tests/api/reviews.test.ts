@@ -363,21 +363,18 @@ describe("GET /api/chefs/:id/reviews (public)", () => {
     });
     ids.push(first.body.id);
     for (let i = 0; i < 2; i++) {
-      const ins = await svc
-        .from("reviews")
-        .insert({
-          booking_id: f1.id,
-          author_id: (await bookingCustomer()).id,
-          subject_id: f1.chef.id,
-          author_role: "customer",
-          rating: 3 + i,
-          comment: `extra ${i}`,
-        })
-        .select("id")
-        .single();
-      // The unique key is (booking, author), so a new author is allowed for the same booking.
-      expect(ins.error).toBeNull();
-      ids.push(ins.data?.id as string);
+      // T-098: a review is only written for a completed booking of its author with this chef (a
+      // database trigger enforces it for every writer), so each extra author gets a real one.
+      const extra = await completedBooking({
+        chef: f1.chef,
+        shift: 4 + i,
+      });
+      const posted = await postReview(extra.cust.b, extra.id, {
+        rating: 3 + i,
+        comment: `extra ${i}`,
+      });
+      expect(posted.status, posted.text).toBe(201);
+      ids.push(posted.body.id);
     }
     const anon = new Browser();
     const p1 = await publicReviews(anon, f1.chef.id, "limit=2");

@@ -4,8 +4,10 @@
 // customers and chefs only; the admin reads reviews through GET /api/admin/reviews). The booking is
 // matched against the caller's OWN rows. Reads use the service role AFTER that party check (round 3:
 // browser roles may select only id, author_role, rating, comment, created_at), so a chef's review of
-// a customer reaches that customer through this route only. The insert uses the caller's client, so
-// the insert policy is a second line of defence; it repeats "completed booking, inside the window, as myself, about the other party".
+// a customer reaches that customer through this route only.
+// T-098: browser roles have no insert privilege on reviews (MED-1): this route is the only writer.
+// It inserts with the service role after its own checks; the database trigger reviews_guard_insert
+// still enforces "completed booking, inside the window, author a party, about the other party".
 // A posted review is final: there is no update or delete anywhere.
 // Retry (T-075): the unique key (booking, author) is the guard; the same content again returns the
 // first review.
@@ -132,9 +134,10 @@ export async function createReview(
   });
   if (!allowance.allowed && allowance.reason) throw refusal(allowance.reason);
 
-  // The insert stays on the user session (no returning), so the RLS insert policy still runs as a
-  // second line of defence; the stored row is read back with the service role (round 3).
-  const ins = await caller.supabase.from("reviews").insert({
+  // T-098 (MED-1): the insert is the service role's, after the party, filter and window checks
+  // above; there is no browser insert path. The trigger reviews_guard_insert is the second line of
+  // defence (no returning); the stored row is read back below.
+  const ins = await createAdminClient().from("reviews").insert({
     booking_id: b.id,
     author_id: caller.userId,
     subject_id: b.otherId,
@@ -149,7 +152,7 @@ export async function createReview(
       if (now && same(now)) return { review: now, duplicate: true };
       throw refusal("already_reviewed");
     }
-    // The policy refused although the route allowed it: the window closed in between.
+    // The trigger refused although the route allowed it: the window closed in between.
     if (ins.error.code === "42501") throw refusal("window_closed");
     throw new Error(`review insert failed: ${ins.error.code}`);
   }

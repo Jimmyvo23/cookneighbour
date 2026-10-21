@@ -8,7 +8,9 @@
 // Retry (T-075): reports.client_id is unique per reporter; the same content again returns the first
 // report (200), different content with the same client id is 409 client_id_reused.
 // The insert uses the service role AFTER the party check (loadPartyBooking read the booking with
-// the caller's session and matched the caller's id), because client_id is not a browser column.
+// the caller's session and matched the caller's id). T-098 (LOW-1): browser roles have no insert
+// privilege on reports at all, so this route is the only writer; the trigger reports_guard_insert
+// still requires a party reporter and an open, unresolved row.
 import "server-only";
 import { ApiFailure, validationFailed } from "@/lib/api/errors";
 import type { ReportList, ReportView } from "@/lib/api/types";
