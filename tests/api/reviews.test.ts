@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import * as reviewsModule from "@/app/api/bookings/[id]/reviews/route";
 import { REVIEW_WINDOW_DAYS } from "@/lib/domain/config";
 import { Browser, freshLimits } from "./harness";
-import { bookingCustomer, getBooking } from "./booking-helpers";
+import { bookingCustomer, getBooking, shiftDays } from "./booking-helpers";
 import { newAdmin, newCustomer } from "./chef-helpers";
 import {
   acceptedBooking,
@@ -353,22 +353,22 @@ describe("access and validation", () => {
 describe("GET /api/chefs/:id/reviews (public)", () => {
   it("is newest first, pages without gaps or repeats, and refuses bad queries", async () => {
     const f1 = await completedBooking();
-    // One chef, three reviews: each customer needs a completed booking with this chef. Reuse the
-    // chef's bookings by making further bookings is heavy; one chef per review is enough for paging
-    // when the reviews are written by direct inserts for the same subject.
+    // One chef, three reviews: each customer needs a completed booking with this chef.
     const ids: string[] = [];
     const first = await postReview(f1.cust.b, f1.id, {
       rating: 5,
       comment: "one",
     });
     ids.push(first.body.id);
+    let lastId = f1.id;
     for (let i = 0; i < 2; i++) {
       // T-098: a review is only written for a completed booking of its author with this chef (a
       // database trigger enforces it for every writer), so each extra author gets a real one.
-      const extra = await completedBooking({
-        chef: f1.chef,
-        shift: 4 + i,
-      });
+      // The chef's visits are all "today" when completed, so move the earlier booking back a day
+      // first (a completed booking's date no longer matters) to free today for the next one.
+      await shiftDays(lastId, i + 1);
+      const extra = await completedBooking({ chef: f1.chef });
+      lastId = extra.id;
       const posted = await postReview(extra.cust.b, extra.id, {
         rating: 3 + i,
         comment: `extra ${i}`,
