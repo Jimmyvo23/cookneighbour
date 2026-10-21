@@ -44,7 +44,7 @@ cp .env.example .env.local        # placeholders only; never commit .env.local
 Code lives in `src/lib/supabase/`: `client.ts` (browser), `server.ts` (server, cookie session) and `admin.ts` (server-only secret key; the `server-only` package makes the build fail if it is imported into browser code).
 With `cacheComponents` on, `server.ts` reads `cookies()`, so call it per request from inside a `<Suspense>` boundary, a Route Handler or a Server Function; never at module level or in a `"use cache"` function.
 
-Local Supabase (`supabase/config.toml`) needs Docker and runs only in CI (T-022). Tables and migrations arrive in a later task.
+Local Supabase (`supabase/config.toml`) needs Docker. On a machine without Docker the RLS, API and real-stack end-to-end tests run only in CI. The schema lives in `supabase/migrations/`; after a merged migration, `npx supabase db push --linked` brings the hosted project up to date (ask the project owner first).
 
 ## Demo data (T-030)
 
@@ -63,4 +63,53 @@ Demo logins (local and demo use only):
 
 Pending and rejected chefs exist so you can show they never appear in search.
 
-More setup (demo script) arrives in later tasks.
+## What is MOCK
+
+Nothing real is charged, sent or verified. Every item below is labelled **MOCK** in the code and the UI.
+
+| Area                                                        | What happens instead                                                                                                         |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Payments                                                    | The estimate shows labour, ingredients, travel fee and the platform fee (10 %), but no money moves. Stripe is not connected. |
+| Free first booking                                          | Chef labour is shown as free; nobody pays the chef (open question Q-1).                                                      |
+| Grocery receipts (option B)                                 | The chef uploads a receipt and the customer confirms the amount; the reimbursement is recorded, never collected.             |
+| SMS phone check                                             | `MOCK_SMS_ENABLED` in `src/lib/server/mock-sms.ts`: any 6-digit code is accepted. No SMS is sent.                            |
+| ID, food-handler certificate, police check, kitchen hygiene | Uploaded files are stored; the admin records a MOCK outcome. Nobody verifies anything.                                       |
+| UI without Supabase                                         | `NEXT_PUBLIC_API_MOCK=1` runs the screens on fake data and shows a "MOCK API" badge. Leave it blank for the real routes.     |
+
+## Demo script (CLAUDE.md section 12)
+
+Run the app (`npm run dev`) against a seeded stack. Use two browsers (or one normal and one private window) for the customer and the chef.
+
+1. **Search.** Sign in as `customer1@example.com`. Open Search, choose Mississauga and Vietnamese. Lan (`chef.lan@`) appears, sorted by distance, with rating, rate and cuisines. Pending and rejected chefs never appear.
+2. **Book 2 days on the free trial.** Open Lan, pick dishes for two days, choose the cooking location and grocery option, fill in the allergy form. The estimate shows the cooking time, labour (free on the first booking), ingredients, travel fee and platform fee. Send the request.
+3. **Chef accepts, both chat.** Sign in as `chef.lan@example.com` in the second browser. Open Bookings, read the intake form, accept. Both sides open the booking and send a message; it appears on the other side without a reload. Phone and address show only after acceptance.
+4. **Review after the visit.** The review form opens once the booking is completed (the chef marks each day cooked and the visit done, after the visit day). A fresh booking cannot reach this state on the same day, so the live demo shows this step with a booking from an earlier day, or with the automated test below.
+5. **Admin and free-trial block.** Sign in as `admin@example.com`. Open the chef queue, open a pending chef, record the MOCK checks and approve; the chef now appears in search. Then try a second free first booking with the same phone, or with a new account at the same home address: it is refused with one general message, and the admin "Free-trial blocks" list shows why.
+
+The whole path runs automatically in CI: `e2e/demo-path-real.spec.ts` (steps 1 to 5, including live chat and the review after a completed visit).
+
+## Known limits
+
+These are prototype limits, not bugs to hide. A real launch needs each one decided.
+
+- **Free first booking can still be gamed.** It is keyed on a verified phone and a normalized home address (both hashed with `HASH_PEPPER`). Cheap SIM cards and several addresses can still get more than one; a real launch needs ID verification.
+- **Changing `HASH_PEPPER` invalidates every stored phone and address hash.**
+- **Stored address keys are not recomputed.** Addresses saved before T-060 and T-093 with accents, full-width or look-alike letters (for example "ℌ") or non-Latin letters keep their old key until the address is saved again (no migration, D-135).
+- **Look-alike text.** Cyrillic look-alike letters and Arabic-Indic digits are not folded into Latin ones. U+200E, U+200F, U+00AD, U+180E, U+2061 and U+3164 are not refused, so a name made only of them can look blank.
+- **Contact snapshots are kept.** Phone and address copied onto a booking at acceptance are hidden 7 days after the last visit day (D-52) but the rows are never deleted. A retention job is a later decision.
+- **Sign-up says when an email is already registered** (409 `EMAIL_IN_USE`), so anyone can test whether an email has an account (T-053 LOW-8).
+- **Email confirmation is off** in the local Supabase config; fine for the demo, not for a launch.
+- **Chat topics are open, chat data is not.** There are no Realtime Authorization policies, so anyone can broadcast on a chat topic, but the app listens only to database changes that RLS filters. Turn on private channels before adding broadcast or presence.
+- **`NEXT_PUBLIC_API_MOCK=1` must never be set on a deployment.** It turns the page guards off and shows fake data (the API routes still check access).
+- **Open security findings.** The T-053 review (`docs/security-review.md`) found no HIGH issues; its MED and LOW findings are tasks T-098 to T-102 and must be fixed (at least T-098 to T-100) before any deploy.
+- **Not verified yet:** hosted Auth settings (email confirmation, minimum password length, leaked-password protection, MFA), that hosted migrations and Storage settings match `main`, and Vercel environment variables.
+
+## Open legal and business risks
+
+The prototype does **not** claim compliance with Ontario food-safety, licensing or insurance rules. These stay open for Jimmy and his mentor:
+
+- Licensing, food-premises exemption or insurance for cooking in a customer's home, and for selling meals cooked in a chef's own kitchen.
+- Liability for allergens and food poisoning. The "eat by" window (about 2 days) still needs Ontario public-health confirmation.
+- A real background-check and ID-verification provider, and its cost.
+- Who pays the chef during the free first booking.
+- Commission percentage and travel-fee rate (10 % and 60 cents per km are placeholders).
