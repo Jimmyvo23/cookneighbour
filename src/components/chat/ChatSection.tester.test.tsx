@@ -754,7 +754,7 @@ describe("chat error box role (round 2)", () => {
 });
 
 describe("round 3: connecting state and late join (L-2, L-3, L-4)", () => {
-  it("a channel that joins BEFORE the first load finishes causes no extra load", async () => {
+  it("a channel that joins while the first load is running loads once more (T-089, replaces the old no-extra-load rule)", async () => {
     const l = fakeLive();
     let release!: () => void;
     routes(h.fetchMock, {
@@ -772,7 +772,8 @@ describe("round 3: connecting state and late join (L-2, L-3, L-4)", () => {
     l.f.handlers!.onStatus("live"); // joined while the history is still loading
     release();
     await h.flush();
-    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(1);
+    // T-089: the GET may have been read before the channel joined, so one more load closes the gap.
+    expect(callsTo(h.fetchMock, "limit=50")).toHaveLength(2);
     expect(h.q("chat-live-note")).toBeNull();
   });
 

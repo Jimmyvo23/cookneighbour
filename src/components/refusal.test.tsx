@@ -76,9 +76,9 @@ describe("refusal alert punctuation", () => {
   it("does not render trailing whitespace before the status sentence", async () => {
     expect(await refusalText("Already answered. \t ")).not.toMatch(/\s{2,}/);
   });
-  // Characterisation (T-087 finding): whitespace-only or empty text is reachable via report("").
-  it("whitespace-only or empty text renders a leading full stop (current behaviour)", async () => {
-    expect(await refusalText("   ")).toBe(`. ${STATUS}`);
-    expect(await refusalText("")).toBe(`. ${STATUS}`);
+  // T-089 (T-087 LOW-1): empty or whitespace-only text gives just the status sentence.
+  it("whitespace-only or empty text renders only the status sentence", async () => {
+    expect(await refusalText("   ")).toBe(STATUS);
+    expect(await refusalText("")).toBe(STATUS);
   });
 });
