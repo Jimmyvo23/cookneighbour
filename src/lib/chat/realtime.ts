@@ -29,6 +29,12 @@ async function defaultClient(): Promise<SupabaseClient> {
   return createClient();
 }
 
+let subscriptionCounter = 0;
+function nextSubscriptionId(): string {
+  subscriptionCounter += 1;
+  return `${Date.now().toString(36)}-${subscriptionCounter}`;
+}
+
 export function makeConnectChat(
   makeClient: () => Promise<SupabaseClient> = defaultClient,
 ): ChatConnect {
@@ -39,7 +45,12 @@ export function makeConnectChat(
     if (!session) throw new Error("No signed-in session for live updates.");
     await supabase.realtime.setAuth(session.access_token);
     const channel = supabase
-      .channel(`chat:${bookingId}`)
+      // A unique topic per subscription: the browser client is a singleton and returns the
+      // existing channel for the same topic, so an overlapping remount would otherwise close the
+      // channel the new mount uses (T-094). Safe for access: the topic is only a label. The
+      // project has no Realtime Authorization policies on realtime.messages; postgres_changes
+      // rows are filtered by row-level security on public.messages (the booking's two parties).
+      .channel(`chat:${bookingId}:${nextSubscriptionId()}`)
       .on(
         "postgres_changes",
         {
