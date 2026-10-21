@@ -1,5 +1,6 @@
 // Small field validators. Each returns the cleaned value or records a message in `fields`.
 import { hasUnsafeText } from "@/lib/domain/text-safety";
+import { hasNoVisibleText, NO_VISIBLE_TEXT } from "@/lib/domain/text-fold";
 import { validationFailed } from "./errors";
 
 export class Fields {
@@ -36,6 +37,21 @@ export class Fields {
     const t = this.string(body, key, min, max);
     if (!this.errors[key] && hasUnsafeText(t))
       this.errors[key] = "Remove control or invalid characters.";
+    return t;
+  }
+  /**
+   * `text` for names and address lines (T-093): also refuses a value with no visible character
+   * (only spaces or joiners). The browser checks use the same `hasNoVisibleText`.
+   */
+  visibleText(
+    body: Record<string, unknown>,
+    key: string,
+    min: number,
+    max: number,
+  ): string {
+    const t = this.text(body, key, min, max);
+    if (!this.errors[key] && hasNoVisibleText(t))
+      this.errors[key] = NO_VISIBLE_TEXT;
     return t;
   }
   done(): void {
