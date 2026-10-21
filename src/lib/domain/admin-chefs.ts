@@ -12,6 +12,7 @@ import type {
 } from "../api/types.ts";
 import { normalizePostalCode } from "./address.ts";
 import type { KitchenAddress } from "./chef-application.ts";
+import { hasUnsafeText } from "./text-safety.ts";
 
 export const REASON_MIN = 3;
 export const REASON_MAX = 500;
@@ -294,12 +295,21 @@ export function parseKitchenReview(
       typeof o.postalCode === "string"
         ? normalizePostalCode(o.postalCode)
         : null;
-    if (
+    const line = typeof o.line === "string" ? o.line.trim() : "";
+    const city = typeof o.city === "string" ? o.city.trim() : "";
+    // T-060 F4: the same text check as the chef's own address fields.
+    if (line && hasUnsafeText(line))
+      errors["reviewedAddress.line"] = "Remove control or invalid characters.";
+    if (city && hasUnsafeText(city))
+      errors["reviewedAddress.city"] = "Remove control or invalid characters.";
+    if (errors["reviewedAddress.line"] || errors["reviewedAddress.city"]) {
+      // reported above
+    } else if (
       typeof o.line === "string" &&
       typeof o.city === "string" &&
       postal &&
-      o.line.trim() &&
-      o.city.trim()
+      line &&
+      city
     )
       address = {
         line: o.line.trim(),

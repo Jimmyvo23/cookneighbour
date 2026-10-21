@@ -70,7 +70,7 @@ export function useChat({
   const needsReload = useRef(false);
   const subRef = useRef<ChatSubscription | null>(null);
   const everLive = useRef(false);
-  const firstLoadDone = useRef(false);
+  const firstLoadStarted = useRef(false);
   const onClosedRef = useRef(onClosed);
   onClosedRef.current = onClosed;
   const nameRef = useRef(otherName);
@@ -133,7 +133,7 @@ export function useChat({
     userIdRef.current = null;
     needsReload.current = false;
     everLive.current = false;
-    firstLoadDone.current = false;
+    firstLoadStarted.current = false;
     setItems([]);
     setFrozenSeen(false);
     setPhaseBoth("loading");
@@ -169,8 +169,8 @@ export function useChat({
               if (st === "live") {
                 setLive("live");
                 // Events are best effort: load again after a drop, and once if the channel
-                // joined only after the first load (a message in that gap would be missed).
-                const late = !everLive.current && firstLoadDone.current;
+                // joined after the first load started (a message in that gap would be missed).
+                const late = !everLive.current && firstLoadStarted.current;
                 everLive.current = true;
                 if (needsReload.current || late) {
                   needsReload.current = false;
@@ -193,9 +193,10 @@ export function useChat({
         }
       }
       if (cancelled) return;
+      // Set when the load STARTS: a channel that joins while the GET runs must load again (T-089).
+      firstLoadStarted.current = true;
       const r = await loadAll();
       if (cancelled) return;
-      firstLoadDone.current = true;
       if (r.status === "ok") setPhaseBoth("ready");
       else if (r.status === "error") setPhaseBoth("error");
     }
