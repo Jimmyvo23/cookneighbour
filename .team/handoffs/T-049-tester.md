@@ -42,3 +42,17 @@ Verdict: PASS. No product code touched; no new tests needed.
 - F3: refused report_open stays in the form, typed text kept, role=alert, focus on the alert (unit test). Old refusal box removed.
 - Regressions: lint and tsc clean; unit 113 files, 2458 passed + 3 expected fails (unrelated ChefDetail it.fails.each); mock e2e 315 passed.
 - Notes (INFO): the extra GET reviews runs for every status; failures render nothing, so pages are not broken. Real routes not exercised (T-050).
+
+## Round 3 re-check (head 6b5d076 plus Tester tests)
+
+Verdict: PASS. No bugs found.
+
+- Item 1 (MOCK only when isMockEnabled): PASS. In live mode the MOCK badge, "made-up" lines and test id are absent from the DOM (checked innerHTML on bookings, blocks, reports and chat). Privacy sentences show in both modes; "only the reporter and admins read it, other person never told" matches contract 7D.
+- Item 2 (encodeURIComponent): PASS. Ids `..%2F..`, `../x`, `a#b`, `a b` are encoded.
+- Item 3 (mock ReviewView keys): PASS (builder test checks exact keys on POST and GET).
+- Item 4 (focus after Cancel): PASS for ReportSection, admin report Resolve and Dismiss, booking Resolve flag (unit) and admin reports in a real browser.
+- Items 5 and 6: PASS (comment cites D-114; error box uses dangerBoxCls with dark colours).
+- Earlier fixes F1, F2, F3: no regression (existing specs pass).
+
+Tests added: `src/components/admin/AdminEngagementRound3.test.tsx` (8 tests), `e2e-mock/t049-round3-focus-mock.spec.ts` (1 test).
+Results: lint, typecheck, prettier clean; vitest 113 files 2466 passed + 3 expected fail (before my 8); T-049 mock Playwright 12 passed + 1 new.
