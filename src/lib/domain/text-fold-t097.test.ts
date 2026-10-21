@@ -99,3 +99,15 @@ describe("T-097 browser display-name message equals the server's", () => {
     expect(s).toBe(std);
   });
 });
+
+describe("T-097 round 1: exact messages by case (contract v1.22)", () => {
+  it("a spacing accent such as U+00B4 alone is refused as no visible character", () => {
+    expect(displayNameProblem("´")).toBe(NO_VISIBLE_TEXT);
+    expect(hasNoVisibleText("´")).toBe(true);
+  });
+  it("U+200B alone gets the unsafe message, not the no-visible one", () => {
+    expect(displayNameProblem("​")).toBe(
+      "Remove control or invalid characters.",
+    );
+  });
+});

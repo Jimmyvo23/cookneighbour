@@ -16,3 +16,9 @@ None. Sign-up form and chef page use `displayNameProblem`, so both show the new 
 
 ## What the next agent needs
 Builder choices, unconfirmed by Jimmy: (1) contract wording for the exact rule and the limits list; (2) the browser display-name message is the server standard, not the dish-description one.
+
+## Round 1 (Reviewer REQUEST CHANGES, comment 6325132116)
+- Contract section 1: states the real check order (length, unsafe, no-visible) and the message per case (spaces-only or U+FEFF-only: length message; U+200B, U+2060, bidi-only: unsafe message; joiners, accents, spacing accents: no-visible message). Names the NFKC spacing accents (U+00B4 and the rest, 33 characters outside U+0300-036F) as refused.
+- `hasNoVisibleText` JSDoc updated. No rule change.
+- Pins added to `src/lib/domain/text-fold-t097.test.ts`: U+00B4 alone gives the no-visible message; U+200B alone gives the unsafe message.
+- Builder choice unconfirmed: the contract describes the 33 characters by rule and examples, not a full list.
