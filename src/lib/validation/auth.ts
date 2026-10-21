@@ -23,8 +23,7 @@ export function displayNameProblem(raw: unknown): string | null {
   const name = typeof raw === "string" ? raw.trim() : "";
   if (!name) return "Enter your name.";
   if (name.length > 80) return "Use 80 characters or fewer.";
-  if (hasUnsafeText(name))
-    return "Use plain text. Control characters are not allowed.";
+  if (hasUnsafeText(name)) return "Remove control or invalid characters.";
   if (hasNoVisibleText(name)) return NO_VISIBLE_TEXT;
   return null;
 }
