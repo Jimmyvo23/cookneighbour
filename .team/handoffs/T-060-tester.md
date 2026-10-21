@@ -30,3 +30,12 @@ From: tester  To: reviewer
 
 ## What the next agent needs
 - The tests I added include characterisation tests of F1, F3, F4, F5, F2 so a deliberate change shows up as a failing test to update.
+
+## Round 1 re-check (head 9dd1ffb plus my added tests)
+Verdict: PASS with one low finding.
+- Backend's edits to my tests are honest: joiners removed from the refused CHARS list (and a new test proves every family accepts U+200C/U+200D), F1 expectations flipped as Jimmy decided, F3 bio test now checks trim behaviour, F4 and F2 characterisations replaced by real assertions (every refused char on `reviewedAddress.line`/`.city`; standard message for bio and kitchen address, length errors keep theirs). Nothing else weakened: the refused set, 16-family refusal loop, ASCII-key reference, non-Latin and T-088 tests are unchanged.
+- Code verified: refused set = U+202A-202E, U+2066-2069, U+200B, U+2060, U+FEFF (mid-text); joiners allowed in public text and still stripped by `foldText`, `addressKey`, `normalizeAddressLine` and `findContactDetails` (new tests, including non-Latin lines). Edge/mid U+FEFF: bio now trims first (edge BOM trimmed, mid-text refused with the standard message).
+- Contract v1.20 matches the code: standard message everywhere except dish `description` and the browser display-name check (both verified by grep and tests); kitchen-address length errors keep their own wording; `reviewedAddress.line/city` keys exist.
+- F7 (low, new, characterisation): a name made only of a joiner (e.g. dish name "‍") is accepted and looks blank. Consequence of allowing joiners; could be refused as "no visible character" if Jimmy wants.
+- F5 and F6 unchanged (known limits, no migration per Jimmy).
+- Added 16 tests in `src/lib/domain/text-fold-tester.test.ts` (wording by family, joiner stripping everywhere, FEFF edge/mid, F7).

@@ -410,3 +410,60 @@ describe("T-060 round 1: joiners allowed in every family (Jimmy 2026-10-21)", ()
       expect(run(mid(c))).toEqual([]);
     });
 });
+
+describe("T-060 round 1 re-check: wording by family (contract v1.20)", () => {
+  const std = "Remove control or invalid characters.";
+  const bad = "a​b";
+  const dish = (o: Record<string, unknown>) =>
+    parseDishBody(
+      { name: "Pho", cuisine: "Thai", cookMinutes: 30, ...o },
+      "create",
+    ).errors;
+  it("dish name and cuisine use the standard message; description keeps the older one", () => {
+    expect(dish({ name: bad }).name).toBe(std);
+    expect(dish({ cuisine: bad }).cuisine).toBe(std);
+    expect(dish({ description: bad }).description).toBe(
+      "Use plain text. Control characters are not allowed.",
+    );
+  });
+  it("booking, report, decision, message and review fields use the standard message", () => {
+    const b = parseBookingBody(
+      {
+        chefId: ID,
+        locationType: "customer_home",
+        address: { line: bad, city: bad, postalCode: "L5B1A1" },
+      },
+      "estimate",
+    ).errors;
+    expect(b["address.line"]).toBe(std);
+    expect(b["address.city"]).toBe(std);
+    const r = parseReportBody({ clientId: ID, description: bad });
+    expect(!r.ok && r.fields.description).toBe(std);
+    const d = parseDecisionBody({ note: bad }, "none");
+    expect(!d.ok && d.fields.note).toBe(std);
+  });
+  it("joiners are stripped by the address key and contact filter, everywhere the fold applies", () => {
+    for (const j of ["‌", "‍"]) {
+      expect(addressKey(`10${j}0 Main St`, "L5B 1A1")).toBe(
+        addressKey("100 Main St", "L5B 1A1"),
+      );
+      expect(normalizeAddressLine(`王${j}小明路`)).toBe(
+        normalizeAddressLine("王小明路"),
+      );
+      expect(findContactDetails(`4${j}16 555 01${j}99`)).toBe("phone");
+      expect(findContactDetails(`a${j}@b.com`)).toBe("email");
+    }
+  });
+  it("U+FEFF mid-text stays refused; at the edge it is trimmed (bio included)", () => {
+    expect(hasUnsafeText("a﻿b")).toBe(true);
+    expect(parseUpdateBody({ bio: "a﻿b" }).errors.bio).toBe(std);
+    expect(parseUpdateBody({ bio: "﻿ab" }).value.bio).toBe("ab");
+  });
+  it("F7 characterisation: edge joiners kept, and a joiner-only name is accepted (looks blank)", () => {
+    expect(parseCancelReason({ reason: "‍abc" })).toEqual({ value: "‍abc" });
+    expect(
+      parseDishBody({ name: "‍", cuisine: "Thai", cookMinutes: 30 }, "create")
+        .errors.name,
+    ).toBeUndefined();
+  });
+});
