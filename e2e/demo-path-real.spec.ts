@@ -6,6 +6,7 @@ import {
   type BrowserContext,
   type Page,
 } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 import { createLocalAdmin } from "./helpers/local-admin";
 import { createSubmittedChef, uniq } from "./helpers/local-chef";
 
@@ -17,7 +18,7 @@ import { createSubmittedChef, uniq } from "./helpers/local-chef";
 // Demo step 1: search Mississauga for a Vietnamese chef and find one.
 // Demo step 2: pick dishes, see time and cost, book 2 days with the free first booking.
 // Demo step 3: the chef accepts; both sides exchange messages LIVE (two browser contexts).
-// Demo step 4: the customer leaves a review -> test.fixme below, waits for T-049.
+// Demo step 4: after the visit the customer leaves a review that shows on the chef page.
 // Demo step 5: an admin approves a new chef; a second free-trial attempt is blocked.
 //
 // DATA STRATEGY (lessons-learned section 3): the spec creates its own chefs and customers per run.
@@ -689,11 +690,136 @@ test.describe("CLAUDE.md section 12 demo path (real stack)", () => {
     await closeAll([chefBrowser, customerBrowser, adminBrowser]);
   });
 
-  // TODO(T-050, step 4): add after T-049 (PR #181, reviews UI) is merged. Needs: the chef marks
-  // the visit done (POST /api/bookings/:id/complete after each day is cooked), then the customer
-  // opens the booking, leaves a review, and it shows on the chef's public page. The Planner will
-  // send the Tester back after T-049 merges.
-  test.fixme("demo step 4: after the visit the customer leaves a review (waits for T-049)", async () => {});
+  // Demo step 4: after the visit the customer leaves a review, and it shows on the chef's public
+  // page with the customer's FIRST NAME and the rating (contract 7D). The booking is made and
+  // accepted through the real routes; the visit day is then moved to yesterday with the local
+  // service role (the only way to "let time pass": there is no clock to move, same as
+  // tests/api shiftDays). The chef marks the day cooked and the visit done through the real routes.
+  test("demo step 4: after the visit the customer leaves a review that shows on the chef's page", async ({
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(180_000);
+    const chefName = `E2E Review Chef ${uniq()}`;
+    const firstName = `Revy${words(uniq())}`;
+    const street = `${100 + Math.floor(Math.random() * 8900)} Rev${uniq().slice(0, 6)} Street`;
+    const chefBrowser = await newBrowserContext(browser, baseURL);
+    const chef = await createSubmittedChef(chefBrowser.request, chefName);
+    const adminBrowser = await adminContext(browser, baseURL);
+    await approveByApi(adminBrowser.request, chefBrowser.request, chef.id);
+    const win = await (
+      await chefBrowser.request.get("/api/chef/availability")
+    ).json();
+    const d = new Date(`${win.today}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 27);
+    const date = d.toISOString().slice(0, 10);
+    const put = await chefBrowser.request.put("/api/chef/availability", {
+      headers: json,
+      data: { add: [date] },
+    });
+    expect(put.status(), await put.text()).toBe(200);
+
+    const customerBrowser = await newBrowserContext(browser, baseURL);
+    await signUpCustomer(customerBrowser.request, `${firstName} Customer`, {
+      line: street,
+    });
+    const dishId = (
+      await (await customerBrowser.request.get(`/api/chefs/${chef.id}`)).json()
+    ).dishes[0].id as string;
+    const created = await customerBrowser.request.post("/api/bookings", {
+      headers: json,
+      data: {
+        chefId: chef.id,
+        locationType: "customer_home",
+        address: { line: street, city: "Mississauga", postalCode: "L5B 1M2" },
+        days: [{ date, dishes: [{ dishId }] }],
+        groceryOption: "customer_buys",
+        intake: { noAllergies: true, noDietaryNeeds: true },
+        useFreeTrial: true,
+      },
+    });
+    expect(created.status(), await created.text()).toBe(201);
+    const bookingId = (await created.json()).id as string;
+    const accepted = await chefBrowser.request.post(
+      `/api/bookings/${bookingId}/accept`,
+      { headers: json, data: {} },
+    );
+    expect(accepted.status(), await accepted.text()).toBe(200);
+
+    // Before the visit there is no review form (reviews are for completed bookings only).
+    const page = await customerBrowser.newPage();
+    await page.goto(`/bookings/${bookingId}`);
+    await expect(page.getByTestId("status")).toContainText(/accepted/i);
+    await expect(page.getByTestId("review-form")).toHaveCount(0);
+    const early = await customerBrowser.request.post(
+      `/api/bookings/${bookingId}/reviews`,
+      { headers: json, data: { rating: 5 } },
+    );
+    expect(early.status()).toBe(409);
+
+    // Time passes: the visit day becomes yesterday. The chef cooks and marks the visit done.
+    const svc = createClient(
+      process.env.API_URL ?? "",
+      process.env.SERVICE_ROLE_KEY ?? process.env.SECRET_KEY ?? "",
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+    const y = new Date(`${win.today}T12:00:00Z`);
+    y.setUTCDate(y.getUTCDate() - 1);
+    const shifted = await svc
+      .from("booking_days")
+      .update({ visit_date: y.toISOString().slice(0, 10) })
+      .eq("booking_id", bookingId);
+    expect(shifted.error).toBeNull();
+    const cooked = await chefBrowser.request.post(
+      `/api/bookings/${bookingId}/days/1/cooked`,
+      { headers: json, data: {} },
+    );
+    expect(cooked.status(), await cooked.text()).toBe(200);
+    const done = await chefBrowser.request.post(
+      `/api/bookings/${bookingId}/complete`,
+      { headers: json, data: {} },
+    );
+    expect(done.status(), await done.text()).toBe(200);
+
+    // The customer opens the booking and posts the review in the UI.
+    const comment = `Wonderful pho ${words(uniq())}, the broth tasted like home`;
+    await page.goto(`/bookings/${bookingId}`);
+    await expect(page.getByTestId("status")).toContainText(/completed/i);
+    const form = page.getByTestId("review-form");
+    await expect(form).toBeVisible();
+    await expect(page.getByTestId("review-visibility")).toContainText(
+      "first name",
+    );
+    await form.getByRole("radio", { name: "5 stars" }).check({ force: true });
+    await page.getByTestId("review-comment").fill(comment);
+    await form.getByRole("button", { name: "Post review" }).click();
+    await expect(page.getByTestId("review-posted")).toContainText(
+      "Your review was posted",
+    );
+
+    // It is on the chef's public page: first name and rating, no email or full name.
+    const visitor = await newBrowserContext(browser, baseURL);
+    const vp = await visitor.newPage();
+    await vp.goto(`/chefs/${chef.id}`);
+    const review = vp.getByTestId("public-review");
+    await expect(review).toHaveCount(1);
+    await expect(review).toContainText(firstName);
+    await expect(review).toContainText("5 out of 5");
+    await expect(review).not.toContainText("Customer");
+    const api = await (
+      await visitor.request.get(`/api/chefs/${chef.id}/reviews`)
+    ).json();
+    expect(api.items).toHaveLength(1);
+    expect(api.items[0].rating).toBe(5);
+    expect(api.items[0].authorFirstName).toBe(firstName);
+    // A second review by the same customer is refused (final, no edit).
+    const again = await customerBrowser.request.post(
+      `/api/bookings/${bookingId}/reviews`,
+      { headers: json, data: { rating: 1 } },
+    );
+    expect(again.status()).toBe(409);
+    await closeAll([chefBrowser, customerBrowser, adminBrowser, visitor]);
+  });
 });
 
 async function closeAll(ctxs: BrowserContext[]) {
