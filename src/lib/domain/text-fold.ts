@@ -2,21 +2,24 @@
  * Invisible characters and the fold for look-alike text (T-060, D-125). One module, used by the
  * browser and the server (through `text-safety.ts`, `address.ts` and `contactDetails.ts`).
  *
- * - Refused in public text: bidi controls (U+202A-202E, U+2066-2069) and zero-width characters
- *   (U+200B-200D, U+2060, U+FEFF). They let text hide or reorder what a reader sees.
+ * - Refused in public text: bidi controls (U+202A-202E, U+2066-2069), zero-width space U+200B,
+ *   word joiner U+2060 and U+FEFF. They let text hide or reorder what a reader sees. Jimmy's
+ *   2026-10-21 decision: the joiners U+200C and U+200D are ALLOWED in public text (joined emoji,
+ *   Persian ZWNJ, Hindi conjuncts), but the fold below still strips them.
  * - Folded before the free-trial address key and the pre-acceptance contact filter: NFKC (full-width
  *   digits and letters become ASCII), accents removed, invisible characters removed. Other scripts
  *   (Vietnamese letters aside from tones, Chinese, Arabic, Hindi...) are kept as they are.
  */
-const INVISIBLE_CHARS = /[‪-‮⁦-⁩​-‍⁠﻿]/;
-const INVISIBLE_CHARS_G = new RegExp(INVISIBLE_CHARS.source, "g");
+const REFUSED_CHARS = /[‪-‮⁦-⁩​⁠﻿]/;
+/** Everything the fold strips: the refused ones plus the joiners ZWNJ and ZWJ (U+200C, U+200D). */
+const INVISIBLE_CHARS_G = /[‪-‮⁦-⁩​-‍⁠﻿]/g;
 /** Combining marks of the "Combining Diacritical Marks" block: accents and Vietnamese tones. */
 const ACCENTS = /[̀-ͯ]/g;
 /** Dashes that look like a hyphen-minus: hyphen, non-breaking hyphen, figure, en, em dash, minus. */
 const DASHES = /[‐-―−]/g;
 
 export function hasInvisibleText(text: string): boolean {
-  return INVISIBLE_CHARS.test(text);
+  return REFUSED_CHARS.test(text);
 }
 
 /**

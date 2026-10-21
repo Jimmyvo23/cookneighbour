@@ -27,3 +27,20 @@ From: backend  To: tester
 
 ## What the next agent needs
 Edge cases to try: each invisible character in each field through the real routes; full-width phone in chat while `requested`; two Chinese/Arabic/Vietnamese street lines give different keys; "Édouard" vs "Edouard" same free-trial address.
+
+## Round 1 (Tester findings and Jimmy's decisions, 2026-10-21)
+Jimmy's decisions, quoted:
+- Joiners: "Allow joiners only (Recommended)". U+200C and U+200D are allowed in public text; bidi controls, U+200B, U+2060 and mid-text U+FEFF stay refused; the address key and contact filter still strip joiners.
+- Reach: "Everywhere (Recommended)" (shared helper stays on all free-text fields).
+- Vietnamese: "Yes, same home (Recommended)" (d with stroke to d, tones stripped in the key).
+- Old hashes: "No migration, record it (Recommended)".
+
+Changes:
+- Joiners: `text-fold.ts` has a refused set (no joiners) and a stripped set (with joiners). Restored the joined-emoji tests in `src/lib/api/validate.test.ts` and `tests/api/auth.test.ts`; Tester's F1 characterisation tests now expect acceptance; the CHARS list in the Tester's file no longer holds the joiners; new test that every field family accepts them.
+- F2: chef kitchen address line/city give "Remove control or invalid characters." for invisible text, length errors keep "Enter 1 to N characters." Chef bio uses the standard message too. Contract (v1.20) states the wording exactly, naming the two exceptions (dish description and the browser display-name check still say "Use plain text. Control characters are not allowed.").
+- F3: bio is checked after trimming (an edge BOM is trimmed, like other fields).
+- F4: admin kitchen review checks `reviewedAddress.line` and `.city` (422 on `reviewedAddress.line` / `reviewedAddress.city`).
+- Files beyond the findings: `docs/domain-rules.md`.
+- F5 known limits (no change): U+200E/200F, U+00AD, U+180E, U+2061, U+3164 pass; Cyrillic look-alikes not folded; Vietnamese tone-only differences collide in the key by design.
+- F6: no migration (Jimmy). The Planner records it as a README known limit.
+New builder choices: reviewedAddress errors use new keys `reviewedAddress.line` / `reviewedAddress.city` (the object-level `reviewedAddress` key is unchanged for shape errors); a reviewedAddress with control characters is now refused (it used to be accepted).

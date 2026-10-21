@@ -684,7 +684,7 @@ describe("unsafe text: tester additions (T-059)", () => {
       .eq("profile_id", id)
       .single();
     expect(copy.data?.display_name).toBe("Chef Keep");
-    const name = "Siobhán O'Brien-Smith 🍜";
+    const name = "Siobhán O'Brien-Smith 👩‍🍳";
     const ok = await b.call(patchMe, {
       method: "PATCH",
       body: { displayName: name },

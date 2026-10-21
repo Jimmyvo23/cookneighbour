@@ -11,7 +11,9 @@ import { findContactDetails } from "./contactDetails";
 import { foldText, hasInvisibleText } from "./text-fold";
 
 const BIDI = ["‪", "‫", "‬", "‭", "‮", "⁦", "⁧", "⁨", "⁩"];
-const ZERO_WIDTH = ["​", "‌", "‍", "⁠", "﻿"];
+const ZERO_WIDTH = ["\u200b", "\u2060", "\ufeff"];
+// Allowed in public text (Jimmy, 2026-10-21) but still stripped by the fold.
+const JOINERS = ["\u200c", "\u200d"];
 const INVISIBLE = [...BIDI, ...ZERO_WIDTH];
 
 describe("hasInvisibleText / hasUnsafeText", () => {
@@ -20,8 +22,16 @@ describe("hasInvisibleText / hasUnsafeText", () => {
     expect(hasUnsafeText(`ab${ch}cd`)).toBe(true);
     expect(hasUnsafeText(`ab${ch}cd`, true)).toBe(true);
   });
-  it("refuses joined emoji (they contain U+200D, Jimmy's D-125 list)", () => {
-    expect(hasUnsafeText("Zoë 👩\u200d🍳")).toBe(true);
+  it("allows the joiners U+200C and U+200D (joined emoji, Persian, Hindi)", () => {
+    for (const j of JOINERS) expect(hasUnsafeText(`Zoë 👩${j}🍳`)).toBe(false);
+    expect(hasUnsafeText("می\u200cخواهم")).toBe(false);
+  });
+  it("the fold still strips the joiners", () => {
+    expect(foldText("1\u200d0\u200c0")).toBe("100");
+    expect(addressKey("1\u200d00 Main St", "L5B 1A1")).toBe(
+      addressKey("100 Main St", "L5B 1A1"),
+    );
+    expect(findContactDetails("416\u200d555\u200c0199")).toBe("phone");
   });
   it("accepts normal text, emoji, accents and non-Latin scripts", () => {
     for (const ok of [
@@ -65,6 +75,20 @@ describe("client and server agree on invisible characters (T-060)", () => {
     const r = parseReviewBody({ rating: 5, comment: text });
     expect(!r.ok).toBe(refused);
     if (!r.ok) expect(Object.keys(r.fields)).toEqual(["comment"]);
+  });
+});
+
+describe("joiners (Jimmy 2026-10-21)", () => {
+  it("are allowed in public text: joined emoji, Persian, Hindi", () => {
+    for (const j of JOINERS) expect(hasUnsafeText(`Zoë 👩${j}🍳`)).toBe(false);
+    expect(hasUnsafeText("می\u200cخواهم")).toBe(false);
+  });
+  it("are still stripped by the fold, the address key and the contact filter", () => {
+    expect(foldText("1\u200d0\u200c0")).toBe("100");
+    expect(addressKey("1\u200d00 Main St", "L5B 1A1")).toBe(
+      addressKey("100 Main St", "L5B 1A1"),
+    );
+    expect(findContactDetails("416\u200d555\u200c0199")).toBe("phone");
   });
 });
 

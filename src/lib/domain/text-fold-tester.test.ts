@@ -30,8 +30,6 @@ const CHARS: [string, string][] = [
   ["2068", "⁨"],
   ["2069", "⁩"],
   ["200B", "​"],
-  ["200C", "‌"],
-  ["200D", "‍"],
   ["2060", "⁠"],
   ["FEFF", "﻿"],
 ];
@@ -170,20 +168,22 @@ describe("T-060 tester: edge versus middle (characterisation)", () => {
     expect(parseCancelReason({ reason: "​Not well" })).toHaveProperty("error");
     expect(hasUnsafeText("Not well​")).toBe(true);
   });
-  it("chef bio is checked before trim, so a leading BOM is refused there (inconsistent with other fields, low)", () => {
-    expect(parseUpdateBody({ bio: "﻿Hello" }).errors.bio).toBeTruthy();
+  it("chef bio is trimmed before the check, so an edge BOM is trimmed like in other fields (F3)", () => {
+    const r = parseUpdateBody({ bio: "\ufeffHello\ufeff" });
+    expect(r.errors.bio).toBeUndefined();
+    expect(r.value.bio).toBe("Hello");
   });
 });
 
-describe("T-060 tester: joiner effect on scripts and emoji (characterisation, pending Jimmy)", () => {
-  it("refuses joined emoji (woman cook), keeps single emoji and skin-tone emoji", () => {
-    expect(hasUnsafeText("👩‍🍳")).toBe(true);
+describe("T-060 tester: joiner effect on scripts and emoji (Jimmy 2026-10-21: joiners allowed)", () => {
+  it("allows joined emoji (woman cook), single emoji and skin-tone emoji", () => {
+    expect(hasUnsafeText("👩‍🍳")).toBe(false);
     expect(hasUnsafeText("👩🍳")).toBe(false);
     expect(hasUnsafeText("👩🏽")).toBe(false);
   });
-  it("refuses Persian text that needs ZWNJ (می‌خواهم) and Hindi with ZWJ", () => {
-    expect(hasUnsafeText("می‌خواهم")).toBe(true);
-    expect(hasUnsafeText("क्‍ष")).toBe(true);
+  it("allows Persian text that needs ZWNJ (می‌خواهم) and Hindi with ZWJ", () => {
+    expect(hasUnsafeText("می‌خواهم")).toBe(false);
+    expect(hasUnsafeText("क्‍ष")).toBe(false);
     // Without the joiner the same words are accepted.
     expect(hasUnsafeText("میخواهم")).toBe(false);
   });
@@ -353,30 +353,60 @@ describe("T-060 tester: contact filter fold and T-088 no regression", () => {
   });
 });
 
-describe("T-060 tester: admin kitchen reviewedAddress (gap, low)", () => {
-  it("characterisation: reviewedAddress.line is NOT checked for invisible text (admin-only, compared to the stored address)", () => {
-    const r = parseKitchenReview({
+describe("T-060 round 1: admin kitchen reviewedAddress is checked (F4)", () => {
+  const review = (line: string, city: string) =>
+    parseKitchenReview({
       decision: "approve",
       reviewedPhotoPaths: [],
-      reviewedAddress: {
-        line: "1 Ma​in St",
-        city: "Mississauga",
-        postalCode: "L5B 1A1",
-      },
+      reviewedAddress: { line, city, postalCode: "L5B 1A1" },
     });
-    expect(r.reviewedAddress?.line).toBe("1 Ma​in St");
+  it.each(CHARS)("U+%s in line or city is 422 on its own key", (_n, c) => {
+    for (const [line, city, key] of [
+      [mid(c), "Mississauga", "reviewedAddress.line"],
+      ["1 Main St", mid(c), "reviewedAddress.city"],
+    ]) {
+      try {
+        review(line, city);
+        throw new Error("not refused");
+      } catch (e) {
+        expect(failFields(e)[key]).toBe(
+          "Remove control or invalid characters.",
+        );
+      }
+    }
+  });
+  it("clean text passes", () => {
+    expect(review("1 Main St", "Mississauga").reviewedAddress?.line).toBe(
+      "1 Main St",
+    );
   });
 });
 
-describe("T-060 tester: message wording differs by field (contract says 'same message', low)", () => {
-  it("characterisation: bio and kitchen address keep their older wording, still 422 on the field", () => {
-    expect(parseUpdateBody({ bio: "a​b" }).errors.bio).toBe(
-      "Use plain text. Control characters are not allowed.",
-    );
-    expect(
-      parseUpdateBody({
-        kitchenAddress: { line: "a​b", city: "x", postalCode: "L5B1A1" },
-      }).errors["kitchenAddress.line"],
-    ).toBe("Enter 1 to 120 characters.");
+describe("T-060 round 1: message wording (F2)", () => {
+  const std = "Remove control or invalid characters.";
+  it("bio and chef kitchen address give the standard message for invisible text", () => {
+    expect(parseUpdateBody({ bio: "a​b" }).errors.bio).toBe(std);
+    const e = parseUpdateBody({
+      kitchenAddress: { line: "a​b", city: "x‮y", postalCode: "L5B1A1" },
+    }).errors;
+    expect(e["kitchenAddress.line"]).toBe(std);
+    expect(e["kitchenAddress.city"]).toBe(std);
   });
+  it("length errors keep their own message", () => {
+    const e = parseUpdateBody({
+      kitchenAddress: { line: "", city: "x".repeat(81), postalCode: "L5B1A1" },
+    }).errors;
+    expect(e["kitchenAddress.line"]).toBe("Enter 1 to 120 characters.");
+    expect(e["kitchenAddress.city"]).toBe("Enter 1 to 80 characters.");
+  });
+});
+
+describe("T-060 round 1: joiners allowed in every family (Jimmy 2026-10-21)", () => {
+  for (const [family, run] of Object.entries(FIELD_FAMILIES))
+    it.each([
+      ["200C", "‌"],
+      ["200D", "‍"],
+    ])(`${family}: U+%s passes`, (_n, c) => {
+      expect(run(mid(c))).toEqual([]);
+    });
 });
