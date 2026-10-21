@@ -88,6 +88,10 @@ import {
   type MockReceipt,
 } from "@/lib/mocks/mock-bookings";
 import type { MockMessage } from "@/lib/mocks/mock-messages";
+import {
+  engagementRoute,
+  type EngagementState,
+} from "@/lib/mocks/mock-reviews-reports";
 import { parseSavedIntake } from "@/lib/domain/savedIntake";
 import { searchRoutes } from "@/lib/mocks/mock-search";
 import {
@@ -128,6 +132,8 @@ interface MockState {
   /** MOCK saved allergy profile of the signed-in customer (T-067). */
   savedIntake: SavedIntake | null;
   savedIntakeAt: string | null;
+  /** MOCK reviews, problem reports and admin lists (T-049), see mock-reviews-reports.ts. */
+  engagement: EngagementState | null;
 }
 
 const KEY = "cookneighbour-mock-api-state";
@@ -149,6 +155,7 @@ const EMPTY: MockState = {
   messages: {},
   savedIntake: null,
   savedIntakeAt: null,
+  engagement: null,
 };
 let memory: MockState = { ...EMPTY };
 
@@ -414,6 +421,14 @@ export async function mockFetch(
 
   const s = load();
   const route = `${method} ${path}`;
+
+  // Reviews, problem reports and the admin lists (T-049, contract 7D). Placed before the booking
+  // routes, which would otherwise take `/api/bookings/:id/reviews` as an unknown sub-route.
+  const engaged = engagementRoute(method, path, body, s);
+  if (engaged) {
+    if (engaged.next) save({ ...s, ...engaged.next });
+    return engaged.res;
+  }
 
   if (route === "POST /api/auth/signup") {
     const b = body as SignUpRequest;
