@@ -23,6 +23,7 @@ import {
 import { findAllergyConflicts } from "@/lib/domain/allergy";
 import { issuesToFields } from "@/lib/domain/bookingRequest";
 import { hasUnsafeText } from "@/lib/domain/text-safety";
+import { hasNoVisibleText, NO_VISIBLE_TEXT } from "@/lib/domain/text-fold";
 import { formatMinutes } from "@/lib/chef/dishes";
 
 export type FieldErrors = Record<string, string>;
@@ -223,9 +224,13 @@ export function localProblems(
       e["address.line"] = "Enter the street address where the chef will cook.";
     else if (hasUnsafeText(d.address.line))
       e["address.line"] = "Remove control or invalid characters.";
+    else if (hasNoVisibleText(d.address.line))
+      e["address.line"] = NO_VISIBLE_TEXT;
     if (!d.address.city.trim()) e["address.city"] = "Enter the city.";
     else if (hasUnsafeText(d.address.city))
       e["address.city"] = "Remove control or invalid characters.";
+    else if (hasNoVisibleText(d.address.city))
+      e["address.city"] = NO_VISIBLE_TEXT;
     if (!normalizePostalCode(d.address.postalCode))
       e["address.postalCode"] =
         "Enter a valid postal code, for example L5B 1A1.";
