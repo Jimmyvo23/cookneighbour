@@ -169,6 +169,32 @@ export function routes(
           headers: { "Content-Type": "application/json" },
         }),
       );
+    // T-049: the booking pages also load the caller's reviews and reports, and the chef page the
+    // public reviews. Unless a test routes them, there are none.
+    const plain = (body: unknown) =>
+      Promise.resolve(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    if (!h && (!init?.method || init.method === "GET")) {
+      if (/\/api\/bookings\/[^/]+\/reports$/.test(String(url)))
+        return plain({ items: [] });
+      if (/\/api\/bookings\/[^/]+\/reviews$/.test(String(url)))
+        return plain({
+          bookingId: "x",
+          allowance: {
+            allowed: false,
+            reason: "not_completed",
+            closesAt: null,
+          },
+          mine: null,
+          other: null,
+        });
+      if (/\/api\/chefs\/[^/]+\/reviews(\?|$)/.test(String(url)))
+        return plain({ items: [], nextCursor: null });
+    }
     if (!h)
       return Promise.resolve(
         new Response(

@@ -46,6 +46,8 @@ import {
 } from "@/components/chef/parts";
 import { NOTICE_BOX_CLS, useAnnounce } from "@/components/booking/useAnnounce";
 import { ChatSection } from "@/components/chat/ChatSection";
+import { ReportSection } from "@/components/reports/ReportSection";
+import { ReviewSection } from "@/components/reviews/ReviewSection";
 import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { CustomerPickups } from "@/components/booking/PickupSections";
 import {
@@ -291,6 +293,13 @@ function Ready({
 
       <StatusNotes b={b} anyCooked={anyCooked} />
 
+      <ReviewSection
+        bookingId={b.id}
+        viewer="customer"
+        otherName={b.chef.displayName}
+        readOnly={b.status !== "completed"}
+      />
+
       <section aria-labelledby={`${hid}-days-h`} className={cardCls}>
         <h2 id={`${hid}-days-h`} className="text-lg font-semibold">
           Days and dishes
@@ -456,6 +465,8 @@ function Ready({
       {canCancel && firstDay && (
         <CancelSection booking={b} firstDay={firstDay} onChange={onChange} />
       )}
+
+      <ReportSection bookingId={b.id} />
     </>
   );
 }
