@@ -158,17 +158,11 @@ describe("reviews (only after a completed booking)", () => {
     );
   });
 
-  it("a non-party cannot review; nobody can write as someone else or with the wrong role", async () => {
+  it("a non-party cannot review, and the role and subject must match the booking (a forged author is not a database question any more: only the route writes)", async () => {
     expectDenied(
       await svc
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c2.id, fx.h1.id, "customer"))
-        .select("id"),
-    );
-    expectDenied(
-      await svc
-        .from("reviews")
-        .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "customer"))
         .select("id"),
     );
     expectDenied(

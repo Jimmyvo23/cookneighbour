@@ -122,18 +122,12 @@ describe("review window (insert policy)", () => {
     }
   });
 
-  it("a non-party cannot review, nobody writes as someone else, the role must match", async () => {
+  it("a non-party cannot review, and the role must match (a forged author is not a database question any more: only the route writes)", async () => {
     const id = await booking("completed", 1000);
     expectDenied(
       await svc
         .from("reviews")
         .insert(review(id, other, chef, "customer"))
-        .select("id"),
-    );
-    expectDenied(
-      await svc
-        .from("reviews")
-        .insert(review(id, cust, chef, "customer"))
         .select("id"),
     );
     expectDenied(

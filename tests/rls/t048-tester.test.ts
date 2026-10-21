@@ -221,25 +221,13 @@ describe("review visibility by role", () => {
 });
 
 describe("reports: insert rules", () => {
-  it("a non-party cannot report, nobody reports as someone else, and a report cannot start closed or with a note", async () => {
+  it("a non-party cannot report, and a report cannot start closed (a forged reporter id is not a database question any more: only the route writes)", async () => {
     const id = await booking("accepted");
     const base = { booking_id: id, description: "tester" };
     expectDenied(
       await svc
         .from("reports")
         .insert({ ...base, reporter_id: other.id })
-        .select(),
-    );
-    expectDenied(
-      await svc
-        .from("reports")
-        .insert({ ...base, reporter_id: cust.id })
-        .select(),
-    );
-    expectDenied(
-      await svc
-        .from("reports")
-        .insert({ ...base, reporter_id: cust.id })
         .select(),
     );
     const closed = await svc
