@@ -4,16 +4,11 @@ import { addressKey } from "./address";
 import { cancellationTiming } from "./cancellation";
 
 describe("T-051 second free trial from the same normalized address (CLAUDE.md 6.6, A-2)", () => {
-  it.fails(
-    "BUG T51-B1: two different house numbers written with full-width digits get different keys",
-    () => {
-      // addressKey drops every character outside a-z0-9, so the house number vanishes and
-      // two different homes on one street and postal code share a key (a wrong free-trial block).
-      expect(addressKey("１００ Fictional Street", "L5B 1A1")).not.toBe(
-        addressKey("２００ Fictional Street", "L5B 1A1"),
-      );
-    },
-  );
+  it("T51-B1 (fixed in T-060): full-width digits are folded, so different house numbers get different keys", () => {
+    expect(addressKey("１００ Fictional Street", "L5B 1A1")).not.toBe(
+      addressKey("２００ Fictional Street", "L5B 1A1"),
+    );
+  });
 
   it("ASCII house numbers still tell two homes on one street apart", () => {
     expect(addressKey("100 Fictional Street", "L5B 1A1")).not.toBe(
