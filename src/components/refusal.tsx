@@ -126,17 +126,23 @@ export function useBookingRefusals(
       ref={ref}
       tabIndex={-1}
       role="alert"
+      // aria-atomic="false" (role alert defaults to true): when the status sentence is added later
+      // as a new child, a screen reader reads only that addition, not the whole alert again
+      // (T-083 NIT-B, T-052).
+      aria-atomic="false"
       data-testid="refusal"
       className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
     >
       {shownText}
-      {last.shown === null
-        ? ""
-        : `${shownText === "" || /[.!?]$/.test(shownText) ? "" : "."}${shownText === "" ? "" : " "}${
+      {last.shown === null ? null : (
+        <span data-testid="refusal-status">
+          {`${shownText === "" || /[.!?]$/.test(shownText) ? "" : "."}${shownText === "" ? "" : " "}${
             last.shown
               ? "This page shows its current status."
               : "Reload the page to see its status."
           }`}
+        </span>
+      )}
     </div>
   ) : null;
   return { scope, alert, clear };
