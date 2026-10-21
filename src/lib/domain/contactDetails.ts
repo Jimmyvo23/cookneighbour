@@ -7,6 +7,8 @@
 // dates, 7-digit local numbers), 12 or more digits in a row and prices pass. It does NOT detect street addresses and
 // it can be fooled (spelled-out digits, "at"/"dot" tricks, spaced letters). Known limit for the
 // README; the real protection is that private data lives in tables the other party cannot read.
+import { foldForContact } from "./text-fold";
+
 export type ContactKind = "phone" | "email" | "url";
 
 // Calendar dates such as 2026-10-20 are not phone numbers.
@@ -24,7 +26,9 @@ function isNorthAmericanDigits(d: string): boolean {
   return d.length === 10 || (d.length === 11 && d.startsWith("1"));
 }
 
-export function findContactDetails(text: string): ContactKind | null {
+export function findContactDetails(input: string): ContactKind | null {
+  // T-060 (D-125): fold full-width digits, accents, invisible characters and look-alike dashes first.
+  const text = foldForContact(input);
   if (EMAIL.test(text)) return "email";
   if (URL_LIKE.test(text)) return "url";
   const withoutDates = text.replace(ISO_DATE, " ");

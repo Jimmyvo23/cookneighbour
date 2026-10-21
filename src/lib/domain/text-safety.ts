@@ -1,3 +1,5 @@
+import { hasInvisibleText } from "./text-fold";
+
 /**
  * Text that Postgres or the API cannot store safely. NUL (and the other control characters) are
  * refused; a lone UTF-16 surrogate is not valid text either and the database rejects it. Checked
@@ -13,6 +15,7 @@ const LONE_SURROGATE =
 export function hasUnsafeText(text: string, allowWhitespace = false): boolean {
   return (
     (allowWhitespace ? CONTROL_EXCEPT_WHITESPACE : CONTROL).test(text) ||
-    LONE_SURROGATE.test(text)
+    LONE_SURROGATE.test(text) ||
+    hasInvisibleText(text)
   );
 }

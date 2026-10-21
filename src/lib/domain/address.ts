@@ -1,4 +1,5 @@
-// Address and postal-code normalization (PLAN.md A-1, A-2). Pure functions, no imports.
+// Address and postal-code normalization (PLAN.md A-1, A-2). Pure functions.
+import { foldText } from "./text-fold";
 
 const ABBREVIATIONS: Record<string, string> = {
   street: "st",
@@ -29,13 +30,14 @@ const ABBREVIATIONS: Record<string, string> = {
 
 /**
  * A-2: lowercase, trim, strip punctuation, collapse spaces, map standard street words to their
- * abbreviations. Unit numbers are kept ("#5" and "unit 5" both keep the number as a token).
+ * abbreviations. T-060 (D-125): the line is folded first (NFKC, accents and invisible characters
+ * removed), and letters and digits of any script are kept, so full-width digits equal ASCII ones and
+ * a non-Latin street name never collapses to an empty key. Unit numbers are kept ("#5" and "unit 5" both keep the number as a token).
  */
 export function normalizeAddressLine(line: string): string {
-  const cleaned = line
-    .toLowerCase()
+  const cleaned = foldText(line.toLowerCase())
     .replace(/#/g, " unit ")
-    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
   return cleaned

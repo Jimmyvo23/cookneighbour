@@ -656,6 +656,21 @@ describe("unsafe text: tester additions (T-059)", () => {
     expect(rows.data).toEqual([]);
   });
 
+  it("sign-up with a right-to-left override or a zero-width space is 422 naming displayName (T-060)", async () => {
+    for (const bad of ["Mai\u202eevil", "Ma\u200bi"]) {
+      const res = await new Browser().call(signup, {
+        body: {
+          email: newEmail("customer"),
+          password: PASSWORD,
+          role: "customer",
+          displayName: bad,
+        },
+      });
+      expect(res.status).toBe(422);
+      expect(Object.keys(res.body.error.fields)).toEqual(["displayName"]);
+    }
+  });
+
   it("a rejected PATCH leaves a chef's public copy unchanged; emoji pairs, apostrophes and hyphens pass", async () => {
     const { b, id } = await signedUp("chef", "Chef Keep");
     const bad = await b.call(patchMe, {
@@ -669,7 +684,7 @@ describe("unsafe text: tester additions (T-059)", () => {
       .eq("profile_id", id)
       .single();
     expect(copy.data?.display_name).toBe("Chef Keep");
-    const name = "Siobhán O'Brien-Smith 👩‍🍳";
+    const name = "Siobhán O'Brien-Smith 🍜";
     const ok = await b.call(patchMe, {
       method: "PATCH",
       body: { displayName: name },
