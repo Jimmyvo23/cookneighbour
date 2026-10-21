@@ -387,12 +387,18 @@ function parseKitchenAddress(
     }
   const line = typeof o.line === "string" ? o.line.trim() : "";
   const city = typeof o.city === "string" ? o.city.trim() : "";
-  if (line.length < 1 || line.length > 120 || hasUnsafeText(line)) {
+  if (line.length < 1 || line.length > 120) {
     errors["kitchenAddress.line"] = "Enter 1 to 120 characters.";
     bad = true;
+  } else if (hasUnsafeText(line)) {
+    errors["kitchenAddress.line"] = "Remove control or invalid characters.";
+    bad = true;
   }
-  if (city.length < 1 || city.length > 80 || hasUnsafeText(city)) {
+  if (city.length < 1 || city.length > 80) {
     errors["kitchenAddress.city"] = "Enter 1 to 80 characters.";
+    bad = true;
+  } else if (hasUnsafeText(city)) {
+    errors["kitchenAddress.city"] = "Remove control or invalid characters.";
     bad = true;
   }
   const postalCode =
@@ -419,8 +425,9 @@ export function parseUpdateBody(body: Record<string, unknown>): {
     if (v === null) value.bio = null;
     else if (typeof v !== "string" || v.trim().length > BIO_MAX)
       errors.bio = `Enter up to ${BIO_MAX} characters.`;
-    else if (hasUnsafeText(v, true))
-      errors.bio = "Use plain text. Control characters are not allowed.";
+    // Checked after trimming, like every other field (T-060 F3, F2: standard message).
+    else if (hasUnsafeText(v.trim(), true))
+      errors.bio = "Remove control or invalid characters.";
     else value.bio = v.trim() === "" ? null : v.trim();
   }
 

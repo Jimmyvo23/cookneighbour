@@ -43,7 +43,7 @@ Everything in CLAUDE.md §3, §6, §10, §11 and §12. Highlights the plan is bu
 
 ### Assumptions (need Jimmy's confirmation; never treated as requirements)
 - A-1 **Location:** a seeded table maps GTA postal-code prefixes (first 3 characters, e.g. `L5B`) to a centre point. Distance = straight-line (haversine) in code. Postal codes whose prefix is not in the table are rejected as non-GTA. No geocoding service.
-- A-2 **Address normalization for the free-trial hash:** lowercase, trim, collapse spaces, strip punctuation, standard street abbreviations (Street→st, Avenue→ave…), unit number kept, postal code uppercase without space. Hash = HMAC-SHA256 keyed with a server-only secret (`HASH_PEPPER`), domain-separated (`phone:` / `address:`).
+- A-2 **Address normalization for the free-trial hash:** lowercase, trim, collapse spaces, strip punctuation, standard street abbreviations (Street→st, Avenue→ave…), unit number kept, postal code uppercase without space. **T-060 (D-125):** the line is folded first (NFKC, accents off, invisible characters off, đ to d) and letters and digits of any script are kept. Hash = HMAC-SHA256 keyed with a server-only secret (`HASH_PEPPER`), domain-separated (`phone:` / `address:`).
 - A-3 **Phone:** normalized to Canadian E.164 (`+1XXXXXXXXXX`); anything else is malformed. Hashed like A-2.
 - A-4 **Login** uses Supabase Auth email + password. Phone verification is a separate step with a **MOCK** SMS code (real SMS OTP needs a paid provider).
 - A-5 **Notifications** are in-app only (a notifications list and badge). No email or push.
