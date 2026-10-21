@@ -1,6 +1,7 @@
 // Dish and availability rules (T-032, contract sections 5A and 5B). Pure functions, no I/O and no
 // server imports, so they are unit-tested without a database and the routes stay thin.
 import { hasUnsafeText } from "./text-safety.ts";
+import { hasNoVisibleText, NO_VISIBLE_TEXT } from "./text-fold.ts";
 
 // ---------------------------------------------------------------------------
 // Limits (contract 5A and 5B). Decided by Jimmy: cook time, cost, servings, shelf life and its
@@ -110,7 +111,8 @@ export function parseDishBody(
 
   if (!need("name")) {
     const t = line(body.name, 1, NAME_MAX);
-    if (t !== undefined) value.name = t;
+    if (t !== undefined && hasNoVisibleText(t)) errors.name = NO_VISIBLE_TEXT;
+    else if (t !== undefined) value.name = t;
     else
       errors.name =
         typeof body.name === "string" &&
