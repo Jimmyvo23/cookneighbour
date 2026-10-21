@@ -1,5 +1,5 @@
 // Address and postal-code normalization (PLAN.md A-1, A-2). Pure functions.
-import { foldText } from "./text-fold";
+import { foldText } from "./text-fold.ts";
 
 const ABBREVIATIONS: Record<string, string> = {
   street: "st",

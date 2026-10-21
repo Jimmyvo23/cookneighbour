@@ -7,7 +7,7 @@
 // dates, 7-digit local numbers), 12 or more digits in a row and prices pass. It does NOT detect street addresses and
 // it can be fooled (spelled-out digits, "at"/"dot" tricks, spaced letters). Known limit for the
 // README; the real protection is that private data lives in tables the other party cannot read.
-import { foldForContact } from "./text-fold";
+import { foldForContact } from "./text-fold.ts";
 
 export type ContactKind = "phone" | "email" | "url";
 

@@ -1,4 +1,4 @@
-import { hasInvisibleText } from "./text-fold";
+import { hasInvisibleText } from "./text-fold.ts";
 
 /**
  * Text that Postgres or the API cannot store safely. NUL (and the other control characters) are
