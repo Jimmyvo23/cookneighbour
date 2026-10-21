@@ -561,12 +561,11 @@ test.describe("CLAUDE.md section 12 demo path (real stack)", () => {
   // Realtime channels are ACKNOWLEDGED by the server, each side sends and the other must show the
   // message without a reload (a window marker proves the page did not reload).
   //
-  // KNOWN BUG (see handoff of T-050, bug B-1): on the dev server the page leaves its Realtime
-  // channel right after "Subscribed to PostgreSQL" (phx_close), so no message ever arrives live in
-  // CI. While REALTIME_IS_KNOWN_BROKEN is true a missing live message is recorded as an annotation
-  // and the test passes (the message is still checked to be saved on the server). The task that
-  // fixes the bug sets it to false, which makes the live delivery a hard requirement.
-  const REALTIME_IS_KNOWN_BROKEN = true;
+  // Bug B-1 (T-050) is fixed by T-094 (a unique Realtime topic per subscription), so live
+  // delivery is a hard requirement. Setting REALTIME_IS_KNOWN_BROKEN to true again would only
+  // record a missing live message as an annotation (the message is still checked to be saved);
+  // if the flag is true and the live check passes, an annotation says to flip it back.
+  const REALTIME_IS_KNOWN_BROKEN = false as boolean;
 
   test("demo step 3 (live): a message reaches the other party through Realtime without a reload", async ({
     browser,
@@ -675,6 +674,12 @@ test.describe("CLAUDE.md section 12 demo path (real stack)", () => {
       });
     }
     if (REALTIME_IS_KNOWN_BROKEN) {
+      if (chefGotIt && customerGotIt)
+        test.info().annotations.push({
+          type: "REALTIME-FLAG-STALE",
+          description:
+            "Live delivery works: set REALTIME_IS_KNOWN_BROKEN to false so it is a hard requirement.",
+        });
       await closeAll([chefBrowser, customerBrowser, adminBrowser]);
       return;
     }
@@ -758,8 +763,20 @@ test.describe("CLAUDE.md section 12 demo path (real stack)", () => {
     expect(early.status()).toBe(409);
 
     // Time passes: the visit day becomes yesterday. The chef cooks and marks the visit done.
+    // Safety (Reviewer L-2): this client holds the service role, so only ever use it on a local stack.
+    const apiUrl = process.env.API_URL ?? "";
+    let apiHost = "";
+    try {
+      apiHost = new URL(apiUrl).hostname;
+    } catch {
+      /* not a URL: refused below */
+    }
+    expect(
+      ["127.0.0.1", "localhost"].includes(apiHost),
+      `refusing to build the service-role client for non-local Supabase URL host "${apiHost}"`,
+    ).toBe(true);
     const svc = createClient(
-      process.env.API_URL ?? "",
+      apiUrl,
       process.env.SERVICE_ROLE_KEY ?? process.env.SECRET_KEY ?? "",
       { auth: { persistSession: false, autoRefreshToken: false } },
     );

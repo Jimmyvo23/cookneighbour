@@ -174,7 +174,17 @@ export function useChat({
                 everLive.current = true;
                 if (needsReload.current || late) {
                   needsReload.current = false;
-                  void loadAll(); // events are best effort: load the history again after a drop
+                  // Events are best effort: load the history again after a drop. A late load
+                  // also settles the phase (T-092): error -> ready when it works.
+                  void loadAll().then((r) => {
+                    if (cancelled) return;
+                    if (
+                      r.status === "ok" &&
+                      (phaseRef.current === "error" ||
+                        phaseRef.current === "loading")
+                    )
+                      setPhaseBoth("ready");
+                  });
                 }
               } else {
                 needsReload.current = true;
@@ -197,6 +207,8 @@ export function useChat({
       firstLoadStarted.current = true;
       const r = await loadAll();
       if (cancelled) return;
+      // Only while still loading: a later answer (the late load) may already have set the phase.
+      if (phaseRef.current !== "loading") return;
       if (r.status === "ok") setPhaseBoth("ready");
       else if (r.status === "error") setPhaseBoth("error");
     }
