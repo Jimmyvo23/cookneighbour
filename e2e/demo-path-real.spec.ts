@@ -255,7 +255,7 @@ async function publicChefNames(page: Page, word: string): Promise<string[]> {
 }
 
 test.describe("CLAUDE.md section 12 demo path (real stack)", () => {
-  test("demo steps 1, 2, 3 and 5: search, book 2 days free, chef accepts, live chat, admin approves, second free trial blocked", async ({
+  test("demo steps 1, 2, 3 and 5: search, book 2 days free, chef accepts, chat, admin approves, second free trial blocked", async ({
     browser,
     baseURL,
   }) => {
