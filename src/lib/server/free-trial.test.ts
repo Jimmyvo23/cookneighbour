@@ -11,7 +11,10 @@ import { addressHash, phoneHash } from "@/lib/domain/hash";
 import {
   applyFreeTrialEvent,
   checkFreeTrialEligibility,
+  estimateBlockReason,
   holdFreeTrial,
+  prepareFreeTrial,
+  recordTrialBlock,
 } from "./free-trial";
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -435,5 +438,55 @@ describe("applyFreeTrialEvent", () => {
     expect(
       (await code(applyFreeTrialEvent("nope", "completed", d)))?.code,
     ).toBe("NOT_FOUND");
+  });
+});
+
+describe("T-103: estimate block log", () => {
+  it("logs the rule only when the trial was asked for and refused by a customer, phone or address match", async () => {
+    const a = setup();
+    const d = { db: a.db.as(), pepper: PEPPER };
+    await holdFreeTrial(a.id, booking(a.db, a.id), d);
+    a.db.t.free_trial_blocks.length = 0;
+
+    // Same customer (D-154): refused, but the estimate does not log the customer's own trial.
+    const p = await prepareFreeTrial(a.id, d);
+    expect(p.eligible).toBe(false);
+    expect(estimateBlockReason(true, p)).toBeUndefined();
+    expect(estimateBlockReason(false, p)).toBeUndefined();
+
+    // A new account that shares the address.
+    const id = randomUUID();
+    a.db.t.profiles.push({ id, role: "customer" });
+    a.db.t.profile_private.push({
+      profile_id: id,
+      phone_e164: "+16475550199",
+      phone_verified: true,
+      address_line: "12 Main Street",
+      postal_code: "L5B1A1",
+    });
+    const q = await prepareFreeTrial(id, d);
+    const reason = estimateBlockReason(true, q);
+    expect(reason).toBe("address");
+    await recordTrialBlock(a.db.as(), id, reason!);
+    await recordTrialBlock(a.db.as(), id, reason!);
+    // One row per customer and rule, repeats counted.
+    expect(a.db.t.free_trial_blocks).toEqual([
+      { customer_id: id, reason: "address", attempts: 2 },
+    ]);
+    // Never carries a phone, address or hash.
+    expect(JSON.stringify(a.db.t.free_trial_blocks)).not.toMatch(
+      /hash|\+1647|Main/,
+    );
+  });
+  it("an eligible customer has no reason to log", async () => {
+    const { db, id } = setup();
+    const p = await prepareFreeTrial(id, { db: db.as(), pepper: PEPPER });
+    expect(estimateBlockReason(true, p)).toBeUndefined();
+  });
+  it("a missing phone or address throws before any rule is known, so nothing is logged", async () => {
+    const { db, id } = setup({ line: null });
+    const e = await code(prepareFreeTrial(id, { db: db.as(), pepper: PEPPER }));
+    expect(e?.code).toBe("ADDRESS_NOT_SET");
+    expect(db.t.free_trial_blocks).toEqual([]);
   });
 });

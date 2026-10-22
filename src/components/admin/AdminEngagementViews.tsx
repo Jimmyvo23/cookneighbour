@@ -527,8 +527,8 @@ export function AdminBlocksView() {
                 </h2>
                 <p>{blockReasonText(b.reason)}</p>
                 <p className="text-sm">
-                  {b.attempts} {b.attempts === 1 ? "attempt" : "attempts"}, last
-                  on {formatWhen(b.createdAt)}
+                  {b.attempts} {b.attempts === 1 ? "attempt" : "attempts"},
+                  first on {formatWhen(b.createdAt)}
                 </p>
               </li>
             ))}

@@ -13,15 +13,12 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { ADMIN_EMAIL, ADMIN_NAME, chefs, customers } from "./seed-data.ts";
 import {
-  ADMIN_EMAIL,
-  ADMIN_NAME,
-  DEMO_CHEF_PASSWORD,
-  DEMO_CUSTOMER_PASSWORD,
-  chefs,
-  customers,
-} from "./seed-data.ts";
-import { parsePostalPrefixes, stableUuid } from "./seed-lib.ts";
+  parsePostalPrefixes,
+  resolveDemoPasswords,
+  stableUuid,
+} from "./seed-lib.ts";
 import {
   addressColumns,
   phoneColumns,
@@ -34,7 +31,9 @@ Usage:
   npm run db:seed -- --hosted           seed the hosted project
   npm run db:seed -- --local --verify   only check that the seed is in place
 
---hosted needs NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY and HASH_PEPPER (SEED_ADMIN_PASSWORD optional, see below).
+--hosted needs NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, HASH_PEPPER, SEED_DEMO_CHEF_PASSWORD and
+SEED_DEMO_CUSTOMER_PASSWORD (each at least 12 characters, not the repo defaults). SEED_ADMIN_PASSWORD is optional.
+--local uses the built-in demo passwords (public, fine for a throwaway local stack).
 --local reads URL and key from \`supabase status\` (the stack must be running).
 SEED_ADMIN_PASSWORD is optional: without it the admin account is skipped.
 `;
@@ -152,7 +151,17 @@ function isoDay(offset: number): string {
 
 const DAYS_AHEAD = 21;
 
-async function seed(db: Db, pepper: string, adminPassword: string | undefined) {
+interface DemoPasswords {
+  chef: string;
+  customer: string;
+}
+
+async function seed(
+  db: Db,
+  pepper: string,
+  adminPassword: string | undefined,
+  demo: DemoPasswords,
+) {
   const prefixRows = parsePostalPrefixes(
     readFileSync(resolve(root, "supabase/seed.sql"), "utf8"),
   );
@@ -177,7 +186,7 @@ async function seed(db: Db, pepper: string, adminPassword: string | undefined) {
     const id = await ensureUser(
       db,
       c.email,
-      DEMO_CUSTOMER_PASSWORD,
+      demo.customer,
       "customer",
       c.displayName,
     );
@@ -199,13 +208,7 @@ async function seed(db: Db, pepper: string, adminPassword: string | undefined) {
 
   let dishCount = 0;
   for (const c of chefs) {
-    const id = await ensureUser(
-      db,
-      c.email,
-      DEMO_CHEF_PASSWORD,
-      "chef",
-      c.displayName,
-    );
+    const id = await ensureUser(db, c.email, demo.chef, "chef", c.displayName);
     must(
       await db.from("chefs").upsert(
         {
@@ -390,8 +393,9 @@ async function main() {
       );
     pepper = "local-dev-pepper";
   }
+  const demo = resolveDemoPasswords(local ? "local" : "hosted", process.env);
   console.log(`seeding ${local ? "LOCAL" : "HOSTED"} ${url}`);
-  await seed(db, pepper, adminPassword);
+  await seed(db, pepper, adminPassword, demo);
   console.log("done");
 }
 

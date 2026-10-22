@@ -487,6 +487,32 @@ describe("AdminBlocksView and AdminChatView", () => {
     await h.mount(<AdminBlocksView />);
     expect(h.text()).toMatch(/same verified phone number/);
     expect(h.text()).toMatch(/2 attempts/);
+    expect(h.text()).toMatch(/first on/);
+    expect(h.text()).not.toMatch(/last on/);
+  });
+
+  it("shows each hourly row's own attempts", async () => {
+    const row = (n: number, attempts: number, createdAt: string) => ({
+      id: id(n),
+      customer: person(3, "Priya Patel"),
+      reason: "address",
+      createdAt,
+      attempts,
+    });
+    routes(h.fetchMock, {
+      "GET /api/admin/free-trial-blocks": json(200, {
+        items: [
+          row(5, 4, "2026-10-20T11:00:00.000Z"),
+          row(6, 3, "2026-10-20T09:00:00.000Z"),
+        ],
+        nextCursor: null,
+      }),
+    });
+    await h.mount(<AdminBlocksView />);
+    const t = h.text();
+    expect(t).toMatch(/4 attempts/);
+    expect(t).toMatch(/3 attempts/);
+    expect(t).not.toMatch(/7 attempts/);
   });
 
   it("shows the chat read only, with no way to send", async () => {
