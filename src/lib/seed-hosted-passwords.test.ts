@@ -9,7 +9,7 @@ const BASE = {
   PATH: process.env.PATH ?? "",
   NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:1",
   SUPABASE_SECRET_KEY: "fake-key",
-  HASH_PEPPER: "fake-pepper",
+  HASH_PEPPER: "fake-pepper-0123456789-0123456789",
 };
 const GOOD_CHEF = "tester-chef-pw-123456";
 

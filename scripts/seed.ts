@@ -19,6 +19,7 @@ import {
   resolveDemoPasswords,
   stableUuid,
 } from "./seed-lib.ts";
+import { checkPepper } from "../src/lib/domain/pepper-rule.ts";
 import {
   addressColumns,
   phoneColumns,
@@ -31,7 +32,7 @@ Usage:
   npm run db:seed -- --hosted           seed the hosted project
   npm run db:seed -- --local --verify   only check that the seed is in place
 
---hosted needs NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, HASH_PEPPER, SEED_DEMO_CHEF_PASSWORD and
+--hosted needs NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, HASH_PEPPER (at least 32 characters, same as the app), SEED_DEMO_CHEF_PASSWORD and
 SEED_DEMO_CUSTOMER_PASSWORD (each at least 12 characters, not the repo defaults). SEED_ADMIN_PASSWORD is optional.
 --local uses the built-in demo passwords (public, fine for a throwaway local stack).
 --local reads URL and key from \`supabase status\` (the stack must be running).
@@ -383,15 +384,19 @@ async function main() {
   if (args.has("--verify")) return verify(db);
 
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || undefined;
-  let pepper = process.env.HASH_PEPPER ?? "";
-  if (!pepper) {
-    // A local throwaway stack may use a fixed pepper. A hosted project must use its real one,
+  let pepper: string;
+  if (hosted) {
+    // A hosted project must use the app's real pepper (same trim, same minimum length),
     // otherwise the seeded free-trial hashes would never match what the app computes.
-    if (hosted)
-      die(
-        "--hosted needs HASH_PEPPER in the environment (must match the app's pepper).",
+    const check = checkPepper(process.env.HASH_PEPPER);
+    if (!check.ok)
+      return die(
+        `--hosted: ${check.message} It must be the same value as the app.`,
       );
-    pepper = "local-dev-pepper";
+    pepper = check.pepper;
+  } else {
+    // A local throwaway stack may use a fixed pepper (trimmed like the app does).
+    pepper = process.env.HASH_PEPPER?.trim() || "local-dev-pepper";
   }
   const demo = resolveDemoPasswords(local ? "local" : "hosted", process.env);
   console.log(`seeding ${local ? "LOCAL" : "HOSTED"} ${url}`);
