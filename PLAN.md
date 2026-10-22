@@ -398,6 +398,9 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-156 | 2026-10-21 | "Let's test to finish the job. And then dont start a new job": finish T-052, T-098, T-099, T-100, T-101, T-103 and the notes PR; do not start T-102 or T-104 to T-107 | Jimmy |
 | D-157 | 2026-10-22 | "I need it done today"; session pace "Parallel (Recommended)" (T-101 Tester ran beside the merges) | Jimmy |
 | D-158 | 2026-10-22 | Hosted pushes: "Yes, both (Recommended)" for T-098 (`20261026100000`) and T-101 (`20261026110000`), with the grant check after (DBPUSH-T098-T101) | Jimmy |
+| D-159 | 2026-10-22 | "we can go all out for 1 hour" (13:23 to 14:23 UTC) | Jimmy |
+| D-160 | 2026-10-22 | WO-H4 lanes (multi-select, all four chosen): "T-102 Backend (Recommended)", "T-107 Frontend (Recommended)", "T-105 Backend docs/CSP LOWs", "T-106 + T-104 Tester" | Jimmy |
+| D-161 | 2026-10-22 | T-102 hosted Auth settings: "Local only, I'll do hosted (Recommended)" (Jimmy changes the hosted password minimum himself) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
