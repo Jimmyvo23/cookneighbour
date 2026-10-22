@@ -61,6 +61,7 @@ import { requireCaller } from "@/lib/server/caller";
 import {
   applyFreeTrialEvent,
   prepareFreeTrial,
+  estimateBlockReason,
   recordTrialBlock,
   trialBlockFromMessage,
   trialUsed,
@@ -413,15 +414,23 @@ const TRIAL_BLOCKERS = new Set<string>([
   "ADDRESS_NOT_SET",
 ]);
 
-/** Advisory free-trial answer for the estimate screen. Reserves nothing. */
+/**
+ * Advisory free-trial answer for the estimate screen. Reserves nothing. T-103 (D-153): when the
+ * caller asked for the trial and a customer, phone or address rule refuses it, the same admin block
+ * row POST /api/bookings writes is logged here (one row per customer and rule per window, counted),
+ * so the admin sees the attempt. A missing phone or address is not a rule match and is not logged.
+ */
 async function advisoryTrial(
+  admin: SupabaseClient,
   customerId: string,
+  askedForTrial: boolean,
 ): Promise<{ eligible: boolean; blocker: FreeTrialBlocker | null }> {
   try {
     const p = await prepareFreeTrial(customerId);
-    return p.eligible
-      ? { eligible: true, blocker: null }
-      : { eligible: false, blocker: "USED" };
+    if (p.eligible) return { eligible: true, blocker: null };
+    const reason = estimateBlockReason(askedForTrial, p);
+    if (reason) await recordTrialBlock(admin, customerId, reason);
+    return { eligible: false, blocker: "USED" };
   } catch (e) {
     if (e instanceof ApiFailure && TRIAL_BLOCKERS.has(e.code))
       return { eligible: false, blocker: e.code as FreeTrialBlocker };
@@ -449,7 +458,11 @@ export async function estimateRequest(
 ): Promise<BookingEstimateResponse> {
   const req = parseOrFail(body, "estimate");
   await sweepExpired(caller.admin, caller.userId);
-  const trial = await advisoryTrial(caller.userId);
+  const trial = await advisoryTrial(
+    caller.admin,
+    caller.userId,
+    req.useFreeTrial,
+  );
   const ev = await evaluate(
     caller.admin,
     req,
