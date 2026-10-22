@@ -448,10 +448,10 @@ describe("T-103: estimate block log", () => {
     await holdFreeTrial(a.id, booking(a.db, a.id), d);
     a.db.t.free_trial_blocks.length = 0;
 
-    // Same customer: refused, reason "customer".
+    // Same customer (D-154): refused, but the estimate does not log the customer's own trial.
     const p = await prepareFreeTrial(a.id, d);
-    expect(estimateBlockReason(true, p)).toBe("customer");
-    // Not asked for: nothing to log.
+    expect(p.eligible).toBe(false);
+    expect(estimateBlockReason(true, p)).toBeUndefined();
     expect(estimateBlockReason(false, p)).toBeUndefined();
 
     // A new account that shares the address.

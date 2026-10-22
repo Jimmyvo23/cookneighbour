@@ -322,12 +322,13 @@ export async function listAdminFreeTrialBlocks(
   if (customers.length) {
     const all = await a.admin
       .from("free_trial_blocks")
-      .select("customer_id, reason")
+      .select("customer_id, reason, attempts")
       .in("customer_id", customers);
     if (all.error) throw new Error("admin block count failed");
     for (const x of (all.data ?? []) as Row[]) {
       const k = `${x.customer_id}:${x.reason}`;
-      attempts.set(k, (attempts.get(k) ?? 0) + 1);
+      // T-103 (D-155): the stored counter, summed when several hourly rows exist.
+      attempts.set(k, (attempts.get(k) ?? 0) + Number(x.attempts ?? 1));
     }
   }
   const nm = await names(a.admin, customers);

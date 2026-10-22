@@ -106,22 +106,22 @@ describe("T-103 tester: which rule the estimate would log", () => {
     expect(p.reason).toBe("customer");
   });
 
-  it("own customer with a HELD claim (first booking pending) would log 'customer' on a second asked-for estimate", async () => {
+  it("D-154: own customer with a HELD claim (first booking pending) is refused but logs nothing from the estimate", async () => {
     const db = makeDb();
     const a = customer(db);
     await claim(db, a, "held");
     const p = await prepareFreeTrial(a, d(db));
     expect(p.eligible).toBe(false);
-    expect(estimateBlockReason(true, p)).toBe("customer");
+    expect(estimateBlockReason(true, p)).toBeUndefined();
   });
 
-  it("own customer with a CONSUMED claim logs 'customer'", async () => {
+  it("D-154: own customer with a CONSUMED claim logs nothing from the estimate", async () => {
     const db = makeDb();
     const a = customer(db);
     await claim(db, a, "consumed");
-    expect(estimateBlockReason(true, await prepareFreeTrial(a, d(db)))).toBe(
-      "customer",
-    );
+    expect(
+      estimateBlockReason(true, await prepareFreeTrial(a, d(db))),
+    ).toBeUndefined();
   });
 
   it("a RELEASED claim (declined or cancelled before a cooked day) blocks nothing and logs nothing", async () => {
@@ -157,12 +157,15 @@ describe("T-103 tester: log failure", () => {
     err.mockRestore();
   });
 
-  it("KNOWN GAP (low): a thrown rpc is NOT swallowed, so advisoryTrial would rethrow and the estimate would 500", async () => {
+  it("a thrown rpc is swallowed too (T-103 round 1), so the estimate still answers", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
     const db = {
       rpc: () => Promise.reject(new Error("network down")),
     } as unknown as SupabaseClient;
-    await expect(recordTrialBlock(db, randomUUID(), "address")).rejects.toThrow(
-      "network down",
-    );
+    await expect(
+      recordTrialBlock(db, randomUUID(), "address"),
+    ).resolves.toBeUndefined();
+    expect(err).toHaveBeenCalledOnce();
+    err.mockRestore();
   });
 });

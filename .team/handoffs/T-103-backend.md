@@ -18,3 +18,11 @@ From: backend  To: tester
 
 ## What the next agent needs
 Frontend needs no change: the estimate already sends `useFreeTrial` when the box is ticked. The admin list reads `attempts`.
+
+## Round 1 (fix round after Tester PASS with findings)
+- Merged origin/main; contract entry renumbered to v1.23 (main's v1.22 from T-097 kept).
+- D-155: `listAdminFreeTrialBlocks` now selects `attempts` and sums the stored counter per customer and rule. Tester's pinned API test updated to expect 3.
+- Low finding: `recordTrialBlock` now catches a thrown rpc too (applies to both estimate and booking-request paths; both were documented best effort). Tester's known-gap unit test now asserts it is swallowed.
+- D-154: `estimateBlockReason` returns only `phone` or `address`; own-customer trial is not logged from the estimate. POST /api/bookings still logs all rules. Tests, contract, domain-rules and README updated.
+- Verified: tsc, eslint, prettier clean; `npx vitest run` 3048 passed. API tests CI only.
+- Builder choice (unconfirmed): `recordTrialBlock` swallow applies to the booking path as well.

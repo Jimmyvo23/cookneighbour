@@ -63,7 +63,7 @@ describe("T-103: estimate block log, real database", () => {
     expect(r.text).not.toMatch(/hash|"phone"|"address"/i);
   });
 
-  it("customer rule: own second asked-for estimate while the first booking is pending logs 'customer'; asking with the box off logs nothing", async () => {
+  it("D-154: own second asked-for estimate while the first booking is pending is refused but logs nothing; box off logs nothing", async () => {
     const chef = await bookableChef();
     const a = await bookingCustomer();
     await bookOk(a, ask(chef, 6));
@@ -73,7 +73,7 @@ describe("T-103: estimate block log, real database", () => {
     const on = await estimate(a, ask(chef, 7));
     expect(on.status, on.text).toBe(200);
     expect(on.body.freeTrial).toEqual({ eligible: false, blocker: "USED" });
-    expect(await rowsOf(a.id)).toEqual([{ reason: "customer", attempts: 1 }]);
+    expect(await rowsOf(a.id)).toEqual([]);
   });
 
   it("a declined first booking releases the claim: the estimate is eligible and logs nothing", async () => {
@@ -115,9 +115,8 @@ describe("T-103: estimate block log, real database", () => {
     expect(await rowsOf(b.id)).toEqual([{ reason: "address", attempts: 10 }]);
   });
 
-  it("admin list `attempts` counts ROWS, not the counter column (found in T-103 Tester round)", async () => {
-    // Pins today's behaviour so a fix is a conscious change: after 3 refreshes in one window the
-    // column says 3 but the admin API says 1.
+  it("admin list `attempts` shows the stored counter (D-155, T-103 round 1)", async () => {
+    // After 3 refreshes in one window the column says 3 and so does the admin API.
     const chef = await bookableChef();
     const a = await bookingCustomer();
     await bookOk(a, ask(chef, 6));
@@ -134,6 +133,6 @@ describe("T-103: estimate block log, real database", () => {
       (x: { customer: { id: string } }) => x.customer.id === b.id,
     );
     expect(mine).toHaveLength(1);
-    expect(mine[0].attempts).toBe(1);
+    expect(mine[0].attempts).toBe(3);
   });
 });

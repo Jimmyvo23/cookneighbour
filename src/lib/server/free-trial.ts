@@ -208,12 +208,21 @@ export async function recordTrialBlock(
   customerId: string,
   reason: FreeTrialBlockReason,
 ) {
-  const r = await db.rpc("record_free_trial_block", {
-    p_customer: customerId,
-    p_reason: reason,
-    p_window_minutes: FREE_TRIAL_BLOCK_LOG_WINDOW_MINUTES,
-  });
-  if (r.error) console.error("free-trial: block log failed:", r.error.message);
+  try {
+    const r = await db.rpc("record_free_trial_block", {
+      p_customer: customerId,
+      p_reason: reason,
+      p_window_minutes: FREE_TRIAL_BLOCK_LOG_WINDOW_MINUTES,
+    });
+    if (r.error)
+      console.error("free-trial: block log failed:", r.error.message);
+  } catch (e) {
+    // T-103: a thrown call (network) is swallowed too, so a log failure never fails the estimate.
+    console.error(
+      "free-trial: block log failed:",
+      e instanceof Error ? e.message : "unknown",
+    );
+  }
 }
 
 export interface TrialPrecheck {
@@ -225,14 +234,16 @@ export interface TrialPrecheck {
 
 /**
  * T-103: the rule to log when an estimate that asked for the trial is refused, else undefined.
- * Only a customer, phone or address match has a `reason`; a missing phone or address throws before
- * this point, so it is never logged.
+ * D-154: only a phone or address match is logged from the estimate; the customer's own used or held
+ * trial (reason `customer`) is not (POST /api/bookings still logs every rule). A missing phone or
+ * address throws before this point, so it is never logged.
  */
 export function estimateBlockReason(
   askedForTrial: boolean,
   p: TrialPrecheck,
 ): FreeTrialBlockReason | undefined {
-  return askedForTrial && !p.eligible ? p.reason : undefined;
+  if (!askedForTrial || p.eligible) return undefined;
+  return p.reason === "phone" || p.reason === "address" ? p.reason : undefined;
 }
 
 /**
