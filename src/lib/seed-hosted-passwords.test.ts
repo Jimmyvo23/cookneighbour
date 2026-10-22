@@ -17,7 +17,11 @@ function seed(args: string[], extra: Record<string, string> = {}) {
   const r = spawnSync(
     process.execPath,
     ["--no-warnings", "scripts/seed.ts", ...args],
-    { env: { ...BASE, ...extra }, encoding: "utf8", timeout: 20000 },
+    {
+      env: { ...BASE, ...extra } as NodeJS.ProcessEnv,
+      encoding: "utf8",
+      timeout: 20000,
+    },
   );
   return { code: r.status, out: `${r.stdout}${r.stderr}` };
 }
