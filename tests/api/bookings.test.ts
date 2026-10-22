@@ -930,6 +930,68 @@ describe("free first booking (CLAUDE.md 6.6)", () => {
 });
 
 describe("POST /api/bookings/estimate", () => {
+  it("T-103: an estimate that asks for the trial and is refused logs one block row per customer and rule, with no private data", async () => {
+    const chef = await bookableChef();
+    const a = await bookingCustomer();
+    await bookOk(
+      a,
+      bookingBody(chef, { days: [dayBody(chef, 6)], useFreeTrial: true }),
+    );
+    // A new account with its own phone and the same home address.
+    const b = await bookingCustomer({ address: false });
+    const { PUT } = await import("@/app/api/me/address/route");
+    const put = await b.b.call(PUT, {
+      method: "PUT",
+      body: { line: a.line, city: "Mississauga", postalCode: "L5B 1A1" },
+    });
+    expect(put.status, put.text).toBe(200);
+    const body = bookingBody(chef, {
+      days: [dayBody(chef, 7)],
+      useFreeTrial: true,
+    });
+    const r1 = await estimate(b, body);
+    expect(r1.status, r1.text).toBe(200);
+    expect(r1.body.freeTrial).toEqual({ eligible: false, blocker: "USED" });
+    expect(r1.body.estimate.labourCents).toBe(
+      r1.body.estimate.labourBeforeWaiverCents,
+    );
+    expect(r1.text).not.toMatch(/hash/i);
+    // Asking again inside the window counts the attempt in the same row.
+    expect((await estimate(b, body)).status).toBe(200);
+    const rows = await svc
+      .from("free_trial_blocks")
+      .select("reason, attempts")
+      .eq("customer_id", b.id);
+    expect(rows.data).toEqual([{ reason: "address", attempts: 2 }]);
+    // Not asking for the trial writes nothing for another refused customer.
+    const own = await estimate(
+      a,
+      bookingBody(chef, { days: [dayBody(chef, 7)], useFreeTrial: false }),
+    );
+    expect(own.status).toBe(200);
+    const none = await svc
+      .from("free_trial_blocks")
+      .select("id")
+      .eq("customer_id", a.id);
+    expect(none.data).toEqual([]);
+  });
+
+  it("T-103: no block row when the customer has no saved address, and none when the trial is not asked for", async () => {
+    const chef = await bookableChef();
+    const c = await bookingCustomer({ address: false });
+    const r = await estimate(
+      c,
+      bookingBody(chef, { days: [dayBody(chef, 7)], useFreeTrial: true }),
+    );
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.freeTrial.blocker).toBe("ADDRESS_NOT_SET");
+    const rows = await svc
+      .from("free_trial_blocks")
+      .select("id")
+      .eq("customer_id", c.id);
+    expect(rows.data).toEqual([]);
+  });
+
   it("returns the estimate, the trial answer and the expiry without creating anything", async () => {
     const chef = await bookableChef({
       dishes: [{ key: "pho", minutes: 120, cost: 2500 }],
