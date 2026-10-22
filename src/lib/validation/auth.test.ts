@@ -89,9 +89,15 @@ describe("displayNameProblem (client-side, F1)", () => {
     expect(displayNameProblem("a".repeat(81))).toMatch(/80/);
   });
   it("refuses control characters and lone surrogates", () => {
-    expect(displayNameProblem("Mai\u0007Tran")).toMatch(/plain text/);
-    expect(displayNameProblem("Mai\u0000")).toMatch(/plain text/);
-    expect(displayNameProblem("Mai\ud800")).toMatch(/plain text/);
+    expect(displayNameProblem("Mai\u0007Tran")).toBe(
+      "Remove control or invalid characters.",
+    );
+    expect(displayNameProblem("Mai\u0000")).toBe(
+      "Remove control or invalid characters.",
+    );
+    expect(displayNameProblem("Mai\ud800")).toBe(
+      "Remove control or invalid characters.",
+    );
   });
   it("sign-up uses the same rule", () => {
     const e = validateSignUp({
@@ -100,6 +106,6 @@ describe("displayNameProblem (client-side, F1)", () => {
       role: "chef",
       displayName: "x\u0007",
     });
-    expect(e.displayName).toMatch(/plain text/);
+    expect(e.displayName).toBe("Remove control or invalid characters.");
   });
 });
