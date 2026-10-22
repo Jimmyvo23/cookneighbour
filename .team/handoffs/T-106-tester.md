@@ -38,3 +38,8 @@ New `e2e-mock/t052-panels-mock.spec.ts`: strict axe (WCAG A/AA + best-practice, 
 
 ## What the next agent needs
 Test-only change. Look at CI results for the supabase job in the PR (rerun evidence is in the PR comments).
+
+## CI evidence (PR #209, run 39794981686)
+- Attempt 1: all green, `supabase` 47 passed with no retry; "demo step 2" passed first try in 32.6 s, which is over the old 30 s cap (it would have failed before).
+- Attempts 2 and 3: `supabase` cancelled at the 25 min job limit with no test failure. Attempt 2 sat in `playwright install --with-deps` (slow azure.archive.ubuntu.com downloads, about 10 s per package). Attempt 3 install took 9 min, 40 of 47 tests had passed when the limit hit. This is the same "cancelled at 25m" seen on PR #206; it is runner/mirror slowness, not this test. Possible follow-up for the Planner: raise the `supabase` job `timeout-minutes` or cache browsers (not changed here, outside tests).
+- Attempt 4: all green.
