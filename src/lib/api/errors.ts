@@ -65,6 +65,20 @@ export function validationFailed(fields: Record<string, string>): ApiFailure {
   });
 }
 
+/**
+ * An Error for a failed database or storage call in a route that touches private data (T-102,
+ * LOW-6). The message holds only the fixed `label` and the error `code`, never the database
+ * message: unique-violation messages can name constraints and key values such as hashes.
+ */
+export function dbFailure(
+  label: string,
+  error: { code?: string | null } | null | undefined,
+): Error {
+  const code =
+    typeof error?.code === "string" && error.code ? error.code : "none";
+  return new Error(`${label} (code ${code.slice(0, 40)})`);
+}
+
 /** Runs a handler; converts ApiFailure to its JSON error and anything else to a generic 500. */
 export async function handle(fn: () => Promise<Response>): Promise<Response> {
   try {

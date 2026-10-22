@@ -1,7 +1,7 @@
 // Saved allergy profile (T-067, D-38): the customer's own intake answers, used to prefill the
 // booking form. Customers only. Read through the user-scoped client (row-level security: own row);
 // written by the server only, after the same validation as the booking intake (D-23).
-import { handle, json, validationFailed } from "@/lib/api/errors";
+import { handle, json, validationFailed, dbFailure } from "@/lib/api/errors";
 import { readJsonObject, requireJson } from "@/lib/api/request";
 import type { SavedIntakeResponse } from "@/lib/api/types";
 import { parseSavedIntake, readSavedIntake } from "@/lib/domain/savedIntake";
@@ -28,7 +28,7 @@ export function GET() {
       .select("saved_intake, saved_intake_at")
       .eq("profile_id", caller.userId)
       .maybeSingle();
-    if (error) throw new Error(`saved intake load failed: ${error.message}`);
+    if (error) throw dbFailure("saved intake load failed", error);
     return json(shape(data));
   });
 }
@@ -49,8 +49,7 @@ export function PUT(request: Request) {
       },
       { onConflict: "profile_id" },
     );
-    if (up.error)
-      throw new Error(`saved intake save failed: ${up.error.message}`);
+    if (up.error) throw dbFailure("saved intake save failed", up.error);
     return json<SavedIntakeResponse>({ intake: parsed.form, savedAt });
   });
 }
@@ -64,8 +63,7 @@ export function DELETE(request: Request) {
       .from("profile_private")
       .update({ saved_intake: null, saved_intake_at: null })
       .eq("profile_id", caller.userId);
-    if (up.error)
-      throw new Error(`saved intake clear failed: ${up.error.message}`);
+    if (up.error) throw dbFailure("saved intake clear failed", up.error);
     return json<SavedIntakeResponse>({ intake: null, savedAt: null });
   });
 }

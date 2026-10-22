@@ -1,8 +1,15 @@
-import { ApiFailure, handle, json, validationFailed } from "@/lib/api/errors";
+import {
+  ApiFailure,
+  dbFailure,
+  handle,
+  json,
+  validationFailed,
+} from "@/lib/api/errors";
 import { limiterKey, rateLimit } from "@/lib/api/rate-limit";
 import { clientIp, readJsonObject, rejectUnknownKeys } from "@/lib/api/request";
 import type { SignUpResponse } from "@/lib/api/types";
 import { Fields, isEmail } from "@/lib/api/validate";
+import { findContactDetails } from "@/lib/domain/contactDetails";
 import { loadProfile } from "@/lib/server/me";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +36,14 @@ export function POST(request: Request) {
     if (role !== "customer" && role !== "chef")
       f.errors.role = "Choose customer or chef.";
     const displayName = f.visibleText(body, "displayName", 1, 80);
+    // T-102 (LOW-3): the database trigger refuses contact details in a name, so say so here (422)
+    // instead of letting the sign-up fail with a generic error.
+    if (!f.errors.displayName && findContactDetails(displayName))
+      f.errors.displayName =
+        "Do not put a phone number, email or web address in your name.";
     f.done();
+    // T-102 (LOW-4): an email-only key next to the IP key. PLACEHOLDER, in memory.
+    rateLimit(limiterKey("signup-email", email), 10, 3600);
 
     const supabase = await createClient();
     const existing = await supabase.auth.getUser();
@@ -92,9 +106,7 @@ export function POST(request: Request) {
           { onConflict: "chef_id", ignoreDuplicates: true },
         );
       if (c1.error || c2.error)
-        throw new Error(
-          `chef rows failed: ${c1.error?.message ?? c2.error?.message}`,
-        );
+        throw dbFailure("chef rows failed", c1.error ?? c2.error);
     }
     const out: SignUpResponse = {
       user: await loadProfile(admin, user.id),

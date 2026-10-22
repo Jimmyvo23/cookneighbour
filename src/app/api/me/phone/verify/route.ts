@@ -1,4 +1,10 @@
-import { ApiFailure, handle, json, validationFailed } from "@/lib/api/errors";
+import {
+  ApiFailure,
+  handle,
+  json,
+  validationFailed,
+  dbFailure,
+} from "@/lib/api/errors";
 import { limiterKey, rateLimit } from "@/lib/api/rate-limit";
 import { readJsonObject, rejectUnknownKeys } from "@/lib/api/request";
 import type { PhoneVerifyResponse } from "@/lib/api/types";
@@ -25,7 +31,7 @@ export function POST(request: Request) {
       .select("phone_hash, phone_verified")
       .eq("profile_id", caller.userId)
       .maybeSingle();
-    if (cur.error) throw new Error(`phone lookup failed: ${cur.error.message}`);
+    if (cur.error) throw dbFailure("phone lookup failed", cur.error);
     if (!cur.data?.phone_hash)
       throw new ApiFailure(
         "PHONE_NOT_SUBMITTED",
@@ -44,7 +50,7 @@ export function POST(request: Request) {
             "PHONE_IN_USE",
             "This phone number cannot be used.",
           );
-        throw new Error(`verify failed: ${up.error.message}`);
+        throw dbFailure("verify failed", up.error);
       }
     }
     const out: PhoneVerifyResponse = { phoneVerified: true, mock: true };
