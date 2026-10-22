@@ -10,7 +10,12 @@
 // admin. Nothing here verifies a document.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ApiFailure, fieldsFailure, validationFailed } from "@/lib/api/errors";
+import {
+  ApiFailure,
+  dbFailure,
+  fieldsFailure,
+  validationFailed,
+} from "@/lib/api/errors";
 import { rejectUnknownKeys } from "@/lib/api/request";
 import type { ChefApplication, DocumentKind } from "@/lib/api/types";
 import { postalPrefix } from "@/lib/domain/address";
@@ -86,7 +91,7 @@ export async function loadState(
     ["profile_private", phone],
     ["dishes", dishes],
   ] as const)
-    if (r.error) throw new Error(`${what} load failed: ${r.error.message}`);
+    if (r.error) throw dbFailure(`${what} load failed`, r.error);
   if (!chef.data || !priv.data) return null;
   return {
     chef: chef.data as Row,
@@ -111,7 +116,7 @@ async function repairChefRows(
     .eq("id", userId)
     .single();
   if (profile.error || !profile.data)
-    throw new Error(`profile lookup failed: ${profile.error?.message}`);
+    throw dbFailure("profile lookup failed", profile.error);
   const c1 = await admin.from("chefs").upsert(
     {
       profile_id: userId,
@@ -120,15 +125,14 @@ async function repairChefRows(
     },
     { onConflict: "profile_id", ignoreDuplicates: true },
   );
-  if (c1.error) throw new Error(`chef row repair failed: ${c1.error.message}`);
+  if (c1.error) throw dbFailure("chef row repair failed", c1.error);
   const c2 = await admin
     .from("chef_private")
     .upsert(
       { chef_id: userId },
       { onConflict: "chef_id", ignoreDuplicates: true },
     );
-  if (c2.error)
-    throw new Error(`chef_private row repair failed: ${c2.error.message}`);
+  if (c2.error) throw dbFailure("chef_private row repair failed", c2.error);
 }
 
 /**
@@ -316,8 +320,7 @@ async function mutate(
           ),
         ),
       });
-      if (r.error)
-        throw new Error(`set_chef_kitchen_address failed: ${r.error.message}`);
+      if (r.error) throw dbFailure("set_chef_kitchen_address failed", r.error);
       const result = (r.data as { result: string }).result;
       if (result === "conflict") continue; // someone else changed the row: read again
       if (result === "kitchen_in_use")
@@ -333,7 +336,7 @@ async function mutate(
         .from("chefs")
         .update(step.chefColumns!)
         .eq("profile_id", chef.userId);
-      if (r.error) throw new Error(`chefs update failed: ${r.error.message}`);
+      if (r.error) throw dbFailure("chefs update failed", r.error);
     }
     if (!kitchen && !isEmpty(step.privColumns)) {
       const r = await chef.admin
@@ -342,8 +345,7 @@ async function mutate(
         .eq("chef_id", chef.userId)
         .eq("updated_at", s.priv.updated_at as string)
         .select("chef_id");
-      if (r.error)
-        throw new Error(`chef_private update failed: ${r.error.message}`);
+      if (r.error) throw dbFailure("chef_private update failed", r.error);
       if (r.data.length === 0) continue; // someone else changed the row: read again
     }
     if (step.afterWrite) await step.afterWrite(chef.admin);
@@ -402,7 +404,7 @@ export async function checkedUpdate(
       .from("postal_prefixes")
       .select("prefix")
       .in("prefix", [...prefixes]);
-    if (r.error) throw new Error(`prefix lookup failed: ${r.error.message}`);
+    if (r.error) throw dbFailure("prefix lookup failed", r.error);
     const known = new Set((r.data ?? []).map((x) => x.prefix as string));
     if (value.servicePostalPrefix && !known.has(value.servicePostalPrefix))
       errors.servicePostalPrefix = "Not a GTA postal code area.";
@@ -650,9 +652,7 @@ export async function submitApplication(
                 .eq("profile_id", chef.userId)
                 .eq("status", "rejected");
               if (r.error)
-                throw new Error(
-                  `chef status update failed: ${r.error.message}`,
-                );
+                throw dbFailure("chef status update failed", r.error);
             }
           : undefined,
       };

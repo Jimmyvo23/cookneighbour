@@ -1,4 +1,4 @@
-import { handle, json, validationFailed } from "@/lib/api/errors";
+import { handle, json, validationFailed, dbFailure } from "@/lib/api/errors";
 import { readJsonObject, rejectUnknownKeys } from "@/lib/api/request";
 import type { AddressResponse } from "@/lib/api/types";
 import { Fields } from "@/lib/api/validate";
@@ -28,8 +28,7 @@ export function PUT(request: Request) {
       .select("prefix")
       .eq("prefix", postalPrefix(postal as string))
       .maybeSingle();
-    if (pre.error)
-      throw new Error(`prefix lookup failed: ${pre.error.message}`);
+    if (pre.error) throw dbFailure("prefix lookup failed", pre.error);
     if (!pre.data)
       throw validationFailed({ postalCode: "Not a GTA postal code." });
 
@@ -41,7 +40,7 @@ export function PUT(request: Request) {
         { profile_id: caller.userId, ...cols },
         { onConflict: "profile_id" },
       );
-    if (up.error) throw new Error(`address save failed: ${up.error.message}`);
+    if (up.error) throw dbFailure("address save failed", up.error);
     const out: AddressResponse = {
       address: {
         line: cols.address_line,

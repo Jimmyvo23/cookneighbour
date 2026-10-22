@@ -159,13 +159,23 @@ describe("P3: who may upload where", () => {
     ).not.toBeNull();
   });
 
-  it("a customer can upload their own profile photo, but not into someone else's folder", async () => {
+  it("a customer cannot upload a profile photo at all (T-102, LOW-5: chefs only)", async () => {
     const c1 = await clientFor(fx.c1);
     expect(
       (await up(c1, "profile-photos", `${fx.c1.id}/me-${rand(3)}.png`)).error,
-    ).toBeNull();
+    ).not.toBeNull();
     expect(
       (await up(c1, "profile-photos", `${fx.h1.id}/me-${rand(3)}.png`)).error,
+    ).not.toBeNull();
+  });
+
+  it("a chef can upload a profile photo in their own folder only", async () => {
+    const h1 = await clientFor(fx.h1);
+    expect(
+      (await up(h1, "profile-photos", `${fx.h1.id}/me-${rand(3)}.png`)).error,
+    ).toBeNull();
+    expect(
+      (await up(h1, "profile-photos", `${fx.h2.id}/me-${rand(3)}.png`)).error,
     ).not.toBeNull();
   });
 
@@ -286,8 +296,7 @@ describe("F3 (T-031): kitchen photos are insert-only for the chef", () => {
     expect((await up(h2, "kitchen-photos", name)).error).not.toBeNull();
   });
 
-  it("DECISION: profile-photos and dish-photos stay owner-writable (no verified check depends on them)", async () => {
-    // Pinned on purpose; T-032 moved the dish rows to routes but kept this decision. See docs/data-model.md, Storage.
+  it("T-102 (LOW-5): profile-photos and dish-photos are insert-only for the chef: no overwrite, no delete", async () => {
     const h1 = await clientFor(fx.h1);
     for (const bucket of ["profile-photos", "dish-photos"]) {
       const name = `${fx.h1.id}/f3-${rand(4)}.png`;
@@ -296,12 +305,14 @@ describe("F3 (T-031): kitchen photos are insert-only for the chef", () => {
         contentType: "image/png",
         upsert: true,
       });
-      expect(over.error, `${bucket} overwrite`).toBeNull();
-      expect(await sizeOf(bucket, name)).toBe(9);
+      expect(over.error, `${bucket} overwrite`).not.toBeNull();
+      expect(await sizeOf(bucket, name), `${bucket} unchanged`).toBe(4);
       await h1.storage.from(bucket).remove([name]);
       expect(await canDownload(svc, bucket, name), `${bucket} delete`).toBe(
-        false,
+        true,
       );
+      // the service role (the routes) can still remove it
+      await svc.storage.from(bucket).remove([name]);
     }
   });
 });

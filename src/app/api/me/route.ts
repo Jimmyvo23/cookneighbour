@@ -1,4 +1,4 @@
-import { handle, json, validationFailed } from "@/lib/api/errors";
+import { handle, json, validationFailed, dbFailure } from "@/lib/api/errors";
 import { readJsonObject, rejectUnknownKeys } from "@/lib/api/request";
 import { Fields } from "@/lib/api/validate";
 import { requireCaller } from "@/lib/server/caller";
@@ -30,15 +30,14 @@ export function PATCH(request: Request) {
       .from("profiles")
       .update({ display_name: displayName })
       .eq("id", caller.userId);
-    if (p.error) throw new Error(`profile update failed: ${p.error.message}`);
+    if (p.error) throw dbFailure("profile update failed", p.error);
     if (caller.role === "chef") {
       // Denormalized copy for the public listing, same request.
       const c = await admin
         .from("chefs")
         .update({ display_name: displayName })
         .eq("profile_id", caller.userId);
-      if (c.error)
-        throw new Error(`chef name update failed: ${c.error.message}`);
+      if (c.error) throw dbFailure("chef name update failed", c.error);
     }
     return json(await loadProfile(admin, caller.userId));
   });
