@@ -8,7 +8,7 @@ test("home page shows the prototype heading", async ({ page }) => {
   );
 });
 
-// T-100: the real-stack run also checks the headers, (the live chat step in booking-real.spec.ts proves Realtime is not blocked).
+// T-100: the real-stack run also checks the headers (the live chat step in booking-real.spec.ts proves Realtime is not blocked).
 test("pages carry the security headers", async ({ request }) => {
   const res = await request.get("/");
   const h = res.headers();

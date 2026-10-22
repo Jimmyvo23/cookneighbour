@@ -46,6 +46,10 @@ With `cacheComponents` on, `server.ts` reads `cookies()`, so call it per request
 
 Local Supabase (`supabase/config.toml`) needs Docker. On a machine without Docker the RLS, API and real-stack end-to-end tests run only in CI. The schema lives in `supabase/migrations/`; after a merged migration, `npx supabase db push --linked` brings the hosted project up to date (ask the project owner first).
 
+### Security headers (T-100)
+
+`next.config.ts` sends the headers built in `src/lib/security-headers.ts`: a Content-Security-Policy with `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, a `Permissions-Policy` and a referrer policy, and turns off the `X-Powered-By` header. The Supabase host in `connect-src` (https and wss) comes from `NEXT_PUBLIC_SUPABASE_URL` **at build time**, so set it before `next build` (on Vercel, in the project's environment variables). To allow another host (for example `vercel.live` for Vercel preview comments), add it in `src/lib/security-headers.ts`. Inline scripts are still allowed (`script-src 'unsafe-inline'`, no nonce), so the CSP blocks framing but not an injected inline script.
+
 ## Demo data (T-030)
 
 All seed data is **fictional**: invented names, `@example.com` emails, 555-01xx phone numbers and made-up street addresses. ID, food-handler, police and kitchen statuses on chefs are **MOCK** values; nobody verified anything. Seeded chefs have no photos or uploaded documents.
@@ -55,7 +59,7 @@ All seed data is **fictional**: invented names, `@example.com` emails, 555-01xx 
 - The **admin** password is never in this repo. Set `SEED_ADMIN_PASSWORD` in `.env.local` (or the shell) before seeding; without it the admin account is skipped. Admin login: `admin@example.com`.
 - **Demo chef and customer passwords.** The local logins are unchanged (the demo passwords in `scripts/seed-data.ts` are used for `--local` only, on a throwaway local stack). Those passwords are public because the repo is public, so `--hosted` never uses them: it refuses to run unless `SEED_DEMO_CHEF_PASSWORD` and `SEED_DEMO_CUSTOMER_PASSWORD` are set (each at least 12 characters and different from the repo defaults). The script never prints password values.
 
-Demo logins (local and demo use only):
+Demo logins (local only; hosted uses your `SEED_DEMO_*` values):
 
 | Role     | Email                                                                                                                                                                                                                                                                                     | Password            |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
@@ -104,8 +108,11 @@ These are prototype limits, not bugs to hide. A real launch needs each one decid
 - **Email confirmation is off** in the local Supabase config; fine for the demo, not for a launch.
 - **Chat topics are open, chat data is not.** There are no Realtime Authorization policies, so anyone can broadcast on a chat topic, but the app listens only to database changes that RLS filters. Turn on private channels before adding broadcast or presence.
 - **`NEXT_PUBLIC_API_MOCK=1` must never be set on a deployment.** It turns the page guards off and shows fake data (the API routes still check access).
-- **Open security findings.** The T-053 review (`docs/security-review.md`) found no HIGH issues; its MED and LOW findings are tasks T-098 to T-102 and must be fixed (at least T-098 to T-100) before any deploy.
-- **Not verified yet:** hosted Auth settings (email confirmation, minimum password length, leaked-password protection, MFA), that hosted migrations and Storage settings match `main`, and Vercel environment variables.
+- **Open security findings.** The T-053 review (`docs/security-review.md`) found no HIGH issues. MED-1, MED-2, MED-4, LOW-1 and LOW-2 are fixed (T-098, T-099, T-101); MED-3 is partly fixed (T-100, inline scripts still allowed); LOW-3 to LOW-7 are fixed by T-102 (LOW-6 only partly: bookings, admin, groceries, messages and storage removal still log database messages); the hosted minimum password length of 8 is a dashboard step for the project owner.
+- **The contact filter can refuse normal text.** Number runs and dotted words such as "1 2 3 4 5 6 7 8 9 10", "Mr.Ly" or "kitchen.ca" read as a phone number or web address in names, bios, dishes and intake notes; the form says why and the user rewords it. An old saved allergy profile that now fails the filter loads as empty and must be entered again.
+- **Older text is not re-checked for contact details.** Display names, chef bios, dishes and intake notes saved before T-101 keep any phone number or email they contain until they are edited.
+- **Hosted demo accounts seeded before T-099** keep the old public passwords until `npm run db:seed -- --hosted` runs again with `SEED_DEMO_*` set.
+- **Not verified yet:** hosted Auth settings (email confirmation, minimum password length, leaked-password protection, MFA), hosted Storage settings (hosted migrations were checked against `main` on 2026-10-22: all 28 match), and Vercel environment variables.
 
 ## Open legal and business risks
 

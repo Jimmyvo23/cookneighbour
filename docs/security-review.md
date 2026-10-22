@@ -16,37 +16,55 @@ No HIGH findings. Deny-by-default holds: RLS is on for every table; execute is r
 - Where: `supabase/migrations/20261007221002_core_rls.sql:203` (insert grant on `reviews` for `authenticated`, never revoked); `supabase/migrations/20261022100000_reviews_reports.sql:42-57` (the policy still allows a direct insert). The checks exist only in the route: `src/lib/server/reviews.ts:106-120` (`findContactDetails`) and `src/lib/domain/reviews.ts:120` (`hasUnsafeText`).
 - Failure: a customer with a completed booking uses the publishable key and their own session to call `POST /rest/v1/reviews` with a comment such as "Book me direct 416 555 0199". The policy passes, and the comment shows on the public chef page through `GET /api/chefs/:id/reviews`. Bidi and zero-width text gets in the same way.
 - Fix: as T-046 did for `messages`: drop `reviews_insert_party`, revoke the insert grant, and let the route insert with the service role (or a service-role-only `create_review` function) after its checks. Add an RLS test that a browser insert fails with 42501.
+- Status: fixed by T-098 (PR #200, hosted 2026-10-22).
 
 **MED-2. Demo account passwords are in a public repo, and the seed script can load them into the hosted project.**
 - Where: `scripts/seed-data.ts:64-65` (`DEMO_CHEF_PASSWORD`, `DEMO_CUSTOMER_PASSWORD`), used by `scripts/seed.ts:180,205` including `--hosted`.
 - Failure: after a deploy with hosted seed data, anyone who reads the repo can sign in as a demo chef. If a real visitor books that chef and it is accepted, the attacker sees the visitor's phone and address. A demo customer login allows reviews and reports under that name. (The admin password comes from the environment and is safe.)
 - Fix: for `--hosted`, take demo passwords from environment variables or generate them and print them once; keep the constants for `--local` only.
+- Status: fixed by T-099 (PR #202). Re-seeding hosted with the new variables is a separate step for Jimmy.
 
 **MED-3. No security headers (no frame protection, no CSP).**
 - Where: `next.config.ts:3-14` has no `headers()`; there is no `vercel.json`; `src/proxy.ts` adds none.
 - Failure: once deployed, a hostile site can frame the app and trick a signed-in admin into clicking Approve or Reject, or a chef into Accept (clickjacking). No CSP means no second line of defence against a future XSS bug. Next.js also sends `X-Powered-By`.
 - Fix: `headers()` with `Content-Security-Policy` (`frame-ancestors 'none'`, self, the Supabase URL over https and wss, OpenStreetMap tiles), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, and `poweredByHeader: false`; a Playwright check on the response headers.
+- Status: partly fixed by T-100 (PR #204): framing is blocked; injected inline script is not (`script-src 'unsafe-inline'`, no nonce).
 
 **MED-4. Public text people write about themselves is not checked for contact details (product rule).**
 - Where: display name (`src/app/api/me/route.ts:24`, chef copy at 34-41), chef bio (`src/lib/server/chef-application.ts`), dish name and description (`src/lib/server/dishes.ts`). `findContactDetails` runs only on messages, decline/cancel/change reasons and customer reviews.
 - Failure: an approved chef sets their display name to "Anna 4165550199" or puts an email in the bio or a dish description; it shows on search cards and the chef page, so customers can book off the platform. A customer can put a phone number in their display name, which the chef sees on a request.
 - Fix (Jimmy decides): run `findContactDetails` on these fields with 422 `CONTACT_DETAILS_NOT_ALLOWED`, or record it as a known limit.
+- Status: fixed by T-101 (PR #205, D-147, hosted 2026-10-22). Text saved before T-101 is not re-checked.
 
 ## LOW
 
 **LOW-1. A party can file problem reports straight to the database.** `20261007221002_core_rls.sql:204` and `20261025100000_decide_booking_id_drop_admin_note.sql:10-17`. A direct insert skips the route's rate limit, `hasUnsafeText`, the T-089 empty-text rule and the `client_id` retry key. Only admins read reports, so the impact is spam or odd text in the admin queue. Fix: make the route the only writer, as in MED-1.
 
+Status: fixed by T-098 (PR #200).
+
 **LOW-2. The chef can read the customer's allergy and dietary notes on every booking indefinitely, even after decline, cancel or expiry.** `20261007221002_core_rls.sql:335-336` (`intake_forms_select_party` uses `is_booking_party` only). Intake notes are not contact-filtered (`src/lib/domain/bookingRequest.ts:178` checks unsafe characters only). The spec needs the chef to see the form before accepting, not afterwards forever. Fix (Jimmy decides): limit the chef's read to `requested` and the accepted statuses (or the D-52 window) and contact-filter the notes, or record it as a limit.
+
+Status: fixed by T-101 (PR #205, D-148).
 
 **LOW-3. Signing up directly with Supabase Auth skips the app's sign-up rules.** `20261007221001_core_schema.sql:99-115` (`handle_new_user` only trims and cuts `display_name` to 80 characters) and `supabase/config.toml:177` (`enable_signup = true`) and `:183` (minimum password length 6). A direct `/auth/v1/signup` call allows a 6-character password and a display name with bidi, invisible-only text or a phone number. Fix: apply the same rules in the trigger and set the minimum password length to 8 locally and on hosted; consider leaked-password protection on hosted.
 
+Status: fixed by T-102 (PR #207); the hosted minimum password length is Jimmy's dashboard step.
+
 **LOW-4. Login and sign-up rate limits trust a header the client controls.** `src/lib/api/request.ts:79-84` uses the first `x-forwarded-for` value (`src/app/api/auth/login/route.ts:23`, `signup/route.ts:14`). A new value per request resets the limit. The limiter is also in-memory per instance (`rate-limit.ts:1-8`, a known placeholder). Fix: use the platform's client IP on Vercel and add an email-only key, or move limits to the database.
+
+Status: fixed by T-102 (PR #207); the limiter is still in memory per instance.
 
 **LOW-5. Profile and dish photos can be replaced after admin approval, and public photo buckets accept uploads from any account.** `20261007221003_storage_buckets.sql:14-15` and `:75-96`. A chef can overwrite an approved photo in place; any customer can upload up to 5 MB per file into their own folder of `profile-photos` (free public image hosting); only the declared MIME type is checked. (Kitchen photos were already fixed in `20261008150000`.) Fix: insert-only for owners with a new path per file, optionally send changed public photos back for review, and limit `profile-photos` uploads to chefs if customers never show a photo.
 
+Status: fixed by T-102 (PR #207, hosted 2026-10-22).
+
 **LOW-6. Database error messages go to the server log.** `src/lib/api/errors.ts:76-79` logs `e.message`; routes such as `src/app/api/me/phone/route.ts:33,44,58` and `address/route.ts:32,44` pass Supabase messages into it. Unique-violation messages can name constraints and sometimes key values (hashes). Nothing reaches a response body. Fix: log `error.code` and a fixed label in the private-data routes.
 
+Status: partly fixed by T-102 (PR #207): `/api/me*`, free trial, chef application and the caller lookup log label and code only; bookings, admin, groceries, messages and `removeObject` still log messages.
+
 **LOW-7. `HASH_PEPPER` strength is not checked.** `src/lib/server/pepper.ts:4-7` checks only that it is not empty. With a short pepper the HMAC phone hashes are easy to brute-force (Canadian numbers are about 10^10 values). Fix: refuse a pepper shorter than 32 characters outside tests and document it in `.env.example`.
+
+Status: fixed by T-102 (PR #207); the hosted seed check is T-109.
 
 **LOW-8. Sign-up says when an email is already registered.** `src/app/api/auth/signup/route.ts:46-54,72-77` (409 `EMAIL_IN_USE`) lets anyone test whether an email has an account. Fix: accept for the prototype as a known limit, or answer the same way once email confirmation is on.
 
