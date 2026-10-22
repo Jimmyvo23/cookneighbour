@@ -18,7 +18,7 @@ function seed(args: string[], extra: Record<string, string> = {}) {
     process.execPath,
     ["--no-warnings", "scripts/seed.ts", ...args],
     {
-      env: { ...BASE, ...extra } as NodeJS.ProcessEnv,
+      env: { ...BASE, ...extra } as unknown as NodeJS.ProcessEnv,
       encoding: "utf8",
       timeout: 20000,
     },
