@@ -28,3 +28,12 @@ API tests were not run locally; CI is the check.
 
 ## What the next agent needs
 Decide finding 1 (and 3) before merge; renumber the contract version (finding 5).
+
+## Re-check round 1 (head 67e5a76 and my follow-up)
+Verdict: PASS.
+- My edited tests are correct and not weakened: the held and consumed own-customer cases now assert `undefined` from `estimateBlockReason` AND still assert `eligible === false` (refusal kept, only the log dropped); the API own-customer test still asserts 200 plus `USED` and now `rows == []`; the thrown-rpc test asserts resolves and one console.error; the attempts test asserts 3 (from 1). Phone, address, privacy and parallel (10) tests untouched.
+- `estimateBlockReason` returns only phone or address. `recordTrialBlock` swallows thrown calls and logs the message only. Admin list sums the stored column (`Number(x.attempts ?? 1)`).
+- Added API tests (CI): several hourly rows sum (3 + 4 = 7, phone 2); POST /api/bookings still logs `customer` on a second free-trial request (409 FREE_TRIAL_USED).
+- README, contract v1.23 and domain-rules agree with the code (phone/address only from the estimate, every refresh counts, list shows the stored count, POST still logs all rules). The T-097 changes arrived via the main merge only.
+- INFO: with several hourly rows, each row of the list shows the same summed total (pre-existing display pattern), so an admin who adds the rows would double count.
+- INFO: the swallow also covers the booking-request path (builder choice, unconfirmed); a failed log there still returns the clean 409.

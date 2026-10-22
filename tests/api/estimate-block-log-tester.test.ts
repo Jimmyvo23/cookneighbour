@@ -8,6 +8,7 @@ import {
   bookOk,
   bookableChef,
   bookingBody,
+  book,
   bookingCustomer,
   day,
   estimate,
@@ -134,5 +135,33 @@ describe("T-103: estimate block log, real database", () => {
     );
     expect(mine).toHaveLength(1);
     expect(mine[0].attempts).toBe(3);
+  });
+
+  it("round 1: several hourly rows sum their stored counters in the admin list (3 + 4 = 7)", async () => {
+    const c = await bookingCustomer();
+    const ins = await svc.from("free_trial_blocks").insert([
+      { customer_id: c.id, reason: "address", attempts: 3 },
+      { customer_id: c.id, reason: "address", attempts: 4 },
+      { customer_id: c.id, reason: "phone", attempts: 2 },
+    ]);
+    expect(ins.error).toBeNull();
+    const admin = await newAdmin();
+    const list = await adminBlocks(admin.b, "limit=50");
+    const mine = list.body.items.filter(
+      (x: { customer: { id: string } }) => x.customer.id === c.id,
+    );
+    expect(mine).toHaveLength(3);
+    for (const x of mine)
+      expect(x.attempts).toBe(x.reason === "address" ? 7 : 2);
+  });
+
+  it("round 1: POST /api/bookings still logs the customer's own rule (D-154 covers the estimate only)", async () => {
+    const chef = await bookableChef();
+    const a = await bookingCustomer();
+    await bookOk(a, ask(chef, 6));
+    const r = await book(a, ask(chef, 8));
+    expect(r.status, r.text).toBe(409);
+    expect(r.body.error.code).toBe("FREE_TRIAL_USED");
+    expect(await rowsOf(a.id)).toEqual([{ reason: "customer", attempts: 1 }]);
   });
 });
