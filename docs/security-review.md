@@ -48,13 +48,23 @@ Status: fixed by T-101 (PR #205, D-148).
 
 **LOW-3. Signing up directly with Supabase Auth skips the app's sign-up rules.** `20261007221001_core_schema.sql:99-115` (`handle_new_user` only trims and cuts `display_name` to 80 characters) and `supabase/config.toml:177` (`enable_signup = true`) and `:183` (minimum password length 6). A direct `/auth/v1/signup` call allows a 6-character password and a display name with bidi, invisible-only text or a phone number. Fix: apply the same rules in the trigger and set the minimum password length to 8 locally and on hosted; consider leaked-password protection on hosted.
 
+Status: fixed by T-102 (PR #207); the hosted minimum password length is Jimmy's dashboard step.
+
 **LOW-4. Login and sign-up rate limits trust a header the client controls.** `src/lib/api/request.ts:79-84` uses the first `x-forwarded-for` value (`src/app/api/auth/login/route.ts:23`, `signup/route.ts:14`). A new value per request resets the limit. The limiter is also in-memory per instance (`rate-limit.ts:1-8`, a known placeholder). Fix: use the platform's client IP on Vercel and add an email-only key, or move limits to the database.
+
+Status: fixed by T-102 (PR #207); the limiter is still in memory per instance.
 
 **LOW-5. Profile and dish photos can be replaced after admin approval, and public photo buckets accept uploads from any account.** `20261007221003_storage_buckets.sql:14-15` and `:75-96`. A chef can overwrite an approved photo in place; any customer can upload up to 5 MB per file into their own folder of `profile-photos` (free public image hosting); only the declared MIME type is checked. (Kitchen photos were already fixed in `20261008150000`.) Fix: insert-only for owners with a new path per file, optionally send changed public photos back for review, and limit `profile-photos` uploads to chefs if customers never show a photo.
 
+Status: fixed by T-102 (PR #207, hosted 2026-10-22).
+
 **LOW-6. Database error messages go to the server log.** `src/lib/api/errors.ts:76-79` logs `e.message`; routes such as `src/app/api/me/phone/route.ts:33,44,58` and `address/route.ts:32,44` pass Supabase messages into it. Unique-violation messages can name constraints and sometimes key values (hashes). Nothing reaches a response body. Fix: log `error.code` and a fixed label in the private-data routes.
 
+Status: partly fixed by T-102 (PR #207): `/api/me*`, free trial, chef application and the caller lookup log label and code only; bookings, admin, groceries, messages and `removeObject` still log messages.
+
 **LOW-7. `HASH_PEPPER` strength is not checked.** `src/lib/server/pepper.ts:4-7` checks only that it is not empty. With a short pepper the HMAC phone hashes are easy to brute-force (Canadian numbers are about 10^10 values). Fix: refuse a pepper shorter than 32 characters outside tests and document it in `.env.example`.
+
+Status: fixed by T-102 (PR #207); the hosted seed check is T-109.
 
 **LOW-8. Sign-up says when an email is already registered.** `src/app/api/auth/signup/route.ts:46-54,72-77` (409 `EMAIL_IN_USE`) lets anyone test whether an email has an account. Fix: accept for the prototype as a known limit, or answer the same way once email confirmation is on.
 

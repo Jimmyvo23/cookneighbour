@@ -18,6 +18,10 @@ The office only shows what agents report. Nothing updates on its own.
 
 ## 2. Agent reports
 
+- **Reviewers never `git checkout` in the main folder, and Testers never `supabase db reset` the shared local stack while other agents run.** Use `git show`/`git diff`, the task worktree or `git archive`. *(2026-10-22: a Reviewer left the main folder on a detached commit; a Tester's reset wiped the stack other agents used.)*
+- **Prove a "cannot do X" test with a bite test:** remove the protection locally and watch the test fail. *(T-105: the framing test passed with both frame headers removed, because Chromium blocked the loopback frame for another reason.)*
+- **A Planner merge that changes code gets a Reviewer glance and a doc grep.** *(T-102: the T-101 merge replaced a message the docs still quoted.)*
+
 - **Check a Tester's CI claim in the log.** T-099's Tester reported a Docker rate limit; the log had none, and the real failure was an unrelated flaky e2e (T-106).
 
 - An agent's final message is a **full report**: what changed, PR number, test results, what's next. Never "placeholder" or an empty hand-back. *(Two agents returned empty reports.)*
