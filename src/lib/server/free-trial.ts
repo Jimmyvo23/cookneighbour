@@ -224,6 +224,18 @@ export interface TrialPrecheck {
 }
 
 /**
+ * T-103: the rule to log when an estimate that asked for the trial is refused, else undefined.
+ * Only a customer, phone or address match has a `reason`; a missing phone or address throws before
+ * this point, so it is never logged.
+ */
+export function estimateBlockReason(
+  askedForTrial: boolean,
+  p: TrialPrecheck,
+): FreeTrialBlockReason | undefined {
+  return askedForTrial && !p.eligible ? p.reason : undefined;
+}
+
+/**
  * Like checkFreeTrialEligibility but also returns the applicant's hashes (for create_booking) and
  * the blocking rule (for the admin log). Throws the same clean 4xx errors.
  */
