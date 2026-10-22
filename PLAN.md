@@ -915,7 +915,9 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Migration first clashed with T-098 (same timestamp), renamed to `20261026110000`.
 - Known limit (README): text saved before T-101 is not re-checked.
 - Builder choices, not confirmed by Jimmy: the contact code is used only when every error is a contact error; sign-up filtered too; the intake filter also runs on the estimate and the saved profile; window = `requested` plus the D-52 statuses.
-- TESTER_T101
+- Tester PASS on content (bfc208c, cc6e97d; 28+ unit cases, RLS window +7/+8 days). First CI run cancelled at the 30-minute cap during the Playwright install (runner load), not the PR. Reviewer APPROVE 6343882836 on f7e2945.
+- Rulings: Tester LOW-2 (an old saved allergy profile that now fails the filter reads back as "nothing saved", nothing deleted, a new save gets a 422) and LOW-3 (a zero-width character inside a number in a display name gets the unsafe-character message, still refused) accepted as known limits. Reviewer LOW-A: the filter refuses some normal text ("1 2 3 4 5 6 7 8 9 10", "Mr.Ly", "Mom's kitchen.ca style"); the user sees a clear message and can reword; README known limit added.
+- Builder choices also: the chef bio uses the same filter as dish text; the admin still reads every intake form.
 
 ### T-103 — Log a free-trial block when the estimate refuses the trial (done 2026-10-22, PR #203 merged 1ef3643; no migration)
 - D-153, D-154, D-155. Tester PASS with findings 5b2e6ee (admin list ignored the attempts column, a thrown rpc failed the estimate) fixed in round 1 67e5a76. Reviewer APPROVE 6330772764; LOW display -> T-107.
