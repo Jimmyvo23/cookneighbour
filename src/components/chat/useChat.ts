@@ -71,6 +71,8 @@ export function useChat({
   const subRef = useRef<ChatSubscription | null>(null);
   const everLive = useRef(false);
   const firstLoadStarted = useRef(false);
+  // Changes when the hook unmounts or the booking changes: an older load must not write (T-096).
+  const epoch = useRef(0);
   const onClosedRef = useRef(onClosed);
   onClosedRef.current = onClosed;
   const nameRef = useRef(otherName);
@@ -112,7 +114,9 @@ export function useChat({
   }, [path]);
 
   const loadAll = useCallback(async (): Promise<Fetched> => {
+    const ep = epoch.current;
     const r = await fetchAll();
+    if (ep !== epoch.current) return r; // unmounted or another booking: write nothing
     if (r.status === "ok") apply((prev) => mergeServer(prev, r.items));
     else if (r.status === "hidden") {
       // Open and then hidden: say so (D-105) and tell the page. Hidden from the start: show nothing.
@@ -126,9 +130,27 @@ export function useChat({
     return r;
   }, [fetchAll, apply]);
 
+  /**
+   * A load that settles the phase (first, late or Retry; T-096). Rules: hidden/closed always win
+   * over an ok; an ok never undoes them; a failure only counts while nothing newer has worked
+   * (phase still loading), so a stale failure cannot bring the error box back over messages.
+   */
+  const settle = useCallback(async () => {
+    const ep = epoch.current;
+    const r = await loadAll();
+    if (ep !== epoch.current) return r;
+    const p = phaseRef.current;
+    if (p === "hidden" || p === "closed") return r;
+    if (r.status === "ok" && (p === "loading" || p === "error"))
+      setPhaseBoth("ready");
+    else if (r.status === "error" && p === "loading") setPhaseBoth("error");
+    return r;
+  }, [loadAll]);
+
   // Start: subscribe first, then load, so nothing between the two is missed (contract 7C).
   useEffect(() => {
     let cancelled = false;
+    epoch.current += 1;
     itemsRef.current = [];
     userIdRef.current = null;
     needsReload.current = false;
@@ -168,23 +190,15 @@ export function useChat({
               if (cancelled) return;
               if (st === "live") {
                 setLive("live");
-                // Events are best effort: load again after a drop, and once if the channel
-                // joined after the first load started (a message in that gap would be missed).
+                // Load again after a drop, and once if the channel joined after the first load
+                // started (a message in that gap would be missed).
                 const late = !everLive.current && firstLoadStarted.current;
                 everLive.current = true;
                 if (needsReload.current || late) {
                   needsReload.current = false;
                   // Events are best effort: load the history again after a drop. A late load
                   // also settles the phase (T-092): error -> ready when it works.
-                  void loadAll().then((r) => {
-                    if (cancelled) return;
-                    if (
-                      r.status === "ok" &&
-                      (phaseRef.current === "error" ||
-                        phaseRef.current === "loading")
-                    )
-                      setPhaseBoth("ready");
-                  });
+                  void settle();
                 }
               } else {
                 needsReload.current = true;
@@ -205,20 +219,16 @@ export function useChat({
       if (cancelled) return;
       // Set when the load STARTS: a channel that joins while the GET runs must load again (T-089).
       firstLoadStarted.current = true;
-      const r = await loadAll();
-      if (cancelled) return;
-      // Only while still loading: a later answer (the late load) may already have set the phase.
-      if (phaseRef.current !== "loading") return;
-      if (r.status === "ok") setPhaseBoth("ready");
-      else if (r.status === "error") setPhaseBoth("error");
+      await settle(); // only writes while still loading: a later answer may have settled it
     }
     void start();
     return () => {
       cancelled = true;
+      epoch.current += 1;
       subRef.current?.close();
       subRef.current = null;
     };
-  }, [bookingId, mock, connect, loadAll, apply]);
+  }, [bookingId, mock, connect, loadAll, settle, apply]);
 
   /** One try at POST. The same clientId is used again on a retry. */
   const post = useCallback(
@@ -355,11 +365,10 @@ export function useChat({
   );
 
   const reload = useCallback(async () => {
-    setPhaseBoth("loading");
-    const r = await loadAll();
-    if (r.status === "ok") setPhaseBoth("ready");
-    else if (r.status === "error") setPhaseBoth("error");
-  }, [loadAll]);
+    // Retry is only offered on the error box; a stale press must not undo a newer answer.
+    if (phaseRef.current === "error") setPhaseBoth("loading");
+    await settle();
+  }, [settle]);
 
   return {
     phase,
