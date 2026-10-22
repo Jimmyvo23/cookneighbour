@@ -10,6 +10,7 @@ import type {
 
 import { hasUnsafeText } from "@/lib/domain/chef-application";
 import { hasNoVisibleText, NO_VISIBLE_TEXT } from "@/lib/domain/text-fold";
+import { contactProblem } from "@/lib/domain/contactText";
 
 export type FieldErrors = Record<string, string>;
 
@@ -25,7 +26,7 @@ export function displayNameProblem(raw: unknown): string | null {
   if (name.length > 80) return "Use 80 characters or fewer.";
   if (hasUnsafeText(name)) return "Remove control or invalid characters.";
   if (hasNoVisibleText(name)) return NO_VISIBLE_TEXT;
-  return null;
+  return contactProblem(name); // D-147: no phone number, email or link in a public name
 }
 
 export function validateSignUp(

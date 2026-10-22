@@ -13,6 +13,7 @@ import type {
 import { normalizePostalCode } from "./address.ts";
 import { hasUnsafeText } from "./text-safety.ts";
 import { hasNoVisibleText, NO_VISIBLE_TEXT } from "./text-fold.ts";
+import { contactProblem } from "./contactText.ts";
 
 // ---------------------------------------------------------------------------
 // Limits (contract section 5; the bounds marked ASSUMPTION there are not requirements)
@@ -435,6 +436,8 @@ export function parseUpdateBody(body: Record<string, unknown>): {
     // Checked after trimming, like every other field (T-060 F3, F2: standard message).
     else if (hasUnsafeText(v.trim(), true))
       errors.bio = "Remove control or invalid characters.";
+    else if (contactProblem(v))
+      errors.bio = contactProblem(v) as string; // D-147
     else value.bio = v.trim() === "" ? null : v.trim();
   }
 
