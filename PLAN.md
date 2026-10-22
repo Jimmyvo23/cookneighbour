@@ -216,8 +216,9 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-105 | T-100 Reviewer LOWs: CSP check is `NODE_ENV !== "production"` (fails open on a stray `NODE_ENV=test` build); framing test has no positive control; `e2e/home.spec.ts` API_URL host check passes even if env reading broke. T-098 Reviewer doc nits: contract 7D says "policy" where it is now a trigger; stale text in `docs/data-model.md`; a future 42501 on the review insert needs its own errcode | backend | T-100, T-098 | done |
 | T-106 | Flaky `e2e/booking-real.spec.ts:154` (demo step 2: cancel not shown as "Cancelled", then the review heading missing on retry). Failed once on T-099, passed on re-run with no related change | tester | T-050 | done |
 | T-107 | T-103 Reviewer LOW (display): the admin blocks list puts the summed attempts on every hourly row ("7 attempts" twice = 14 when added up) and "last on" shows the row's first time | frontend | T-103 | done |
-| T-108 | CI: cache the Playwright browsers between runs and raise the `supabase` job limit to 35 minutes (`playwright install --with-deps` took 9-10 min on slow apt mirrors; 5+ runs cancelled at 25 min on 2026-10-22) | backend | T-084 | in progress |
+| T-108 | CI: cache the Playwright browsers between runs and raise the `supabase` job limit to 35 minutes (`playwright install --with-deps` took 9-10 min on slow apt mirrors; 5+ runs cancelled at 25 min on 2026-10-22) | backend | T-084 | done |
 | T-109 | `scripts/seed.ts --hosted` accepts a `HASH_PEPPER` shorter than 32 characters, which the app now refuses (T-102 Reviewer INFO); apply the same check in the seed | backend | T-102 | todo |
+| T-110 | CI headroom: the apt system-library download in `npx playwright install-deps` still takes up to 10.5 min on slow Ubuntu mirrors even with the T-108 browser cache (the `supabase` job reached 28m34s of 35). Options: cache the apt .deb files or run the jobs in the `mcr.microsoft.com/playwright` image. Needs Jimmy's choice | backend | T-108 | todo |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -952,3 +953,9 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - T-104: `e2e-mock/t052-panels-mock.spec.ts`, strict axe (WCAG A/AA plus best-practice) and keyboard focus checks for the pickup "Not yet" panel and the saved-profile delete panel at 375 px, desktop and 375 px dark. `aria-atomic` was not checked with a real screen reader.
 - Reviewer APPROVE 6346549205 (NIT: the delete test does not check the "deleted" notice; the unit test does). The other T-052 Reviewer NITs were not in the T-104 row and stay open.
 - Two of four CI attempts on this PR were cancelled at the 25-minute limit during `playwright install` -> T-108.
+
+### T-108 — Cache Playwright browsers in CI; 35-minute limits (done 2026-10-22, PR #210 merged 8f1437d; workflow only)
+- `actions/cache@v4` on `~/.cache/ms-playwright`, key `playwright-<OS>-<locked @playwright/test version>` (no restore-keys); a hit runs `install-deps chromium`, a miss the full `install --with-deps chromium`; the version read fails loudly if empty. `supabase` and `e2e-mock` `timeout-minutes` 25 -> 35; `checks` and the `ci` gate unchanged.
+- The cache does not fix the slow step: the apt download inside `install-deps` still took 12 s to 10.5 min. The raised limit is what stops the cancellations (run 39830636827: `supabase` 28m34s). Follow-up T-110.
+- Tester PASS with MED (e2e-mock also needed 35: 22m28s today; the builder's "under 20 min" was wrong) and LOW (empty version), fixed in round 1 4e8850e. Reviewer APPROVE 6348698278 (LOW PR body fixed before merge; NITs in the workflow header comments left as is).
+- Builder choice, not confirmed by Jimmy: no apt or container caching in this task (T-110).
