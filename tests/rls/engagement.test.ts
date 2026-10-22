@@ -145,40 +145,34 @@ describe("reviews (only after a completed booking)", () => {
 
   it("no review before the booking is completed", async () => {
     expectDenied(
-      await c1
+      await svc
         .from("reviews")
         .insert(review(b.acceptedC1H1, fx.c1.id, fx.h1.id, "customer"))
         .select("id"),
     );
     expectDenied(
-      await c1
+      await svc
         .from("reviews")
         .insert(review(b.requestedC1H1, fx.c1.id, fx.h1.id, "customer"))
         .select("id"),
     );
   });
 
-  it("a non-party cannot review; nobody can write as someone else or with the wrong role", async () => {
+  it("a non-party cannot review, and the role and subject must match the booking (a forged author is not a database question any more: only the route writes)", async () => {
     expectDenied(
-      await c2
+      await svc
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c2.id, fx.h1.id, "customer"))
         .select("id"),
     );
     expectDenied(
-      await c2
-        .from("reviews")
-        .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "customer"))
-        .select("id"),
-    );
-    expectDenied(
-      await c1
+      await svc
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "chef"))
         .select("id"),
     );
     expectDenied(
-      await c1
+      await svc
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c1.id, fx.h2.id, "customer"))
         .select("id"),
@@ -187,7 +181,7 @@ describe("reviews (only after a completed booking)", () => {
 
   it("the customer reviews the chef after completion; the cached rating updates; anon can read it", async () => {
     expectRows(
-      await c1
+      await svc
         .from("reviews")
         .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "customer"))
         .select("id"),
@@ -213,7 +207,7 @@ describe("reviews (only after a completed booking)", () => {
       .eq("id", own.data?.id as string);
     expectRows(pub, 1);
     // duplicate review for the same booking is rejected
-    const dup = await c1
+    const dup = await svc
       .from("reviews")
       .insert(review(b.completedC1H1, fx.c1.id, fx.h1.id, "customer"))
       .select("id");
@@ -222,7 +216,7 @@ describe("reviews (only after a completed booking)", () => {
 
   it("the chef's review of the customer is private: not visible to anon or strangers, visible to its two parties", async () => {
     expectRows(
-      await h1
+      await svc
         .from("reviews")
         .insert(review(b.completedC1H1, fx.h1.id, fx.c1.id, "chef"))
         .select("id"),
@@ -274,7 +268,7 @@ describe("reports (report-a-problem)", () => {
   });
 
   it("a party can file a report on their booking; a stranger cannot", async () => {
-    const ok = await c1
+    const ok = await svc
       .from("reports")
       .insert({
         booking_id: b.acceptedC1H1,
@@ -285,7 +279,7 @@ describe("reports (report-a-problem)", () => {
     expectRows(ok, 1);
     reportId = (ok.data as { id: string }[])[0].id;
     expectDenied(
-      await c2
+      await svc
         .from("reports")
         .insert({
           booking_id: b.acceptedC1H1,
@@ -295,7 +289,7 @@ describe("reports (report-a-problem)", () => {
         .select(),
     );
     expectDenied(
-      await c1
+      await svc
         .from("reports")
         .insert({
           booking_id: b.acceptedC1H1,
@@ -308,7 +302,7 @@ describe("reports (report-a-problem)", () => {
 
   it("a reporter cannot pre-resolve or add an admin note on insert", async () => {
     expectDenied(
-      await c1
+      await svc
         .from("reports")
         .insert({
           booking_id: b.acceptedC1H1,

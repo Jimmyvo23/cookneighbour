@@ -20,14 +20,13 @@ let cust: Person;
 let other: Person;
 let chef: Person;
 let cC: SupabaseClient;
-let cO: SupabaseClient;
 let bookingId: string;
 
 beforeAll(async () => {
   cust = await makeCustomer(svc, "t90-customer");
   other = await makeCustomer(svc, "t90-other");
   chef = await makeChef(svc, "t90-chef", { status: "approved" });
-  [cC, cO] = await Promise.all([cust, other].map(clientFor));
+  cC = await clientFor(cust);
   const b = await makeBooking(svc, {
     customer: cust,
     chef,
@@ -49,7 +48,7 @@ const RPC_ARGS = {
 describe("T-090: reports insert policy after the admin_note drop", () => {
   it("a non-party is refused", async () => {
     expectDenied(
-      await cO
+      await svc
         .from("reports")
         .insert({
           booking_id: bookingId,
@@ -68,7 +67,7 @@ describe("T-090: reports insert policy after the admin_note drop", () => {
       { resolved_at: new Date().toISOString() },
     ]) {
       expectDenied(
-        await cC
+        await svc
           .from("reports")
           .insert({
             booking_id: bookingId,
@@ -88,7 +87,7 @@ describe("T-090: reports insert policy after the admin_note drop", () => {
     expect(
       (await cC.from("reports").select("admin_note").limit(1)).error,
     ).not.toBeNull();
-    const ins = await cC
+    const ins = await svc
       .from("reports")
       .insert({
         booking_id: bookingId,
@@ -101,7 +100,7 @@ describe("T-090: reports insert policy after the admin_note drop", () => {
   });
 
   it("a plain party insert still works", async () => {
-    const ins = await cC
+    const ins = await svc
       .from("reports")
       .insert({
         booking_id: bookingId,
