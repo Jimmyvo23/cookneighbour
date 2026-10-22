@@ -34,7 +34,7 @@ No HIGH findings. Deny-by-default holds: RLS is on for every table; execute is r
 - Where: display name (`src/app/api/me/route.ts:24`, chef copy at 34-41), chef bio (`src/lib/server/chef-application.ts`), dish name and description (`src/lib/server/dishes.ts`). `findContactDetails` runs only on messages, decline/cancel/change reasons and customer reviews.
 - Failure: an approved chef sets their display name to "Anna 4165550199" or puts an email in the bio or a dish description; it shows on search cards and the chef page, so customers can book off the platform. A customer can put a phone number in their display name, which the chef sees on a request.
 - Fix (Jimmy decides): run `findContactDetails` on these fields with 422 `CONTACT_DETAILS_NOT_ALLOWED`, or record it as a known limit.
-- Status: fixed by T-101 (PR #205, D-147). Text saved before T-101 is not re-checked.
+- Status: fixed by T-101 (PR #205, D-147, hosted 2026-10-22). Text saved before T-101 is not re-checked.
 
 ## LOW
 

@@ -910,7 +910,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Tester PASS b975763 (prod build checked). Reviewer APPROVE 6330589804; LOWs -> T-105.
 - Builder choice, not confirmed by Jimmy: `script-src 'unsafe-inline'` (a per-request nonce would make every cacheComponents page dynamic); `'unsafe-eval'` in dev only.
 
-### T-101 — Contact filter on self text and intake read window (done 2026-10-22, PR #205 merged MERGE_T101; migration `20261026110000` pushed to hosted 2026-10-22, D-158)
+### T-101 — Contact filter on self text and intake read window (done 2026-10-22, PR #205 merged e87585c; migration `20261026110000` pushed to hosted 2026-10-22, D-158)
 - D-147: 422 `CONTACT_DETAILS_NOT_ALLOWED` on display name, chef bio, dish name and description, and booking intake notes. D-148: the chef reads the intake form only while `requested` and until the D-52 window ends. Closes MED-4 and LOW-2. Contract v1.25.
 - Migration first clashed with T-098 (same timestamp), renamed to `20261026110000`.
 - Known limit (README): text saved before T-101 is not re-checked.
