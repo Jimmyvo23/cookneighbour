@@ -1,5 +1,6 @@
 // Loads and maps the caller's own profile data. Explicit column lists: hashes and the full phone
 // number are never selected into a response.
+import { dbFailure } from "@/lib/api/errors";
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
@@ -35,7 +36,7 @@ export async function loadProfile(
     .select(PROFILE_COLUMNS)
     .eq("id", id)
     .single();
-  if (error || !data) throw new Error(`profile load failed: ${error?.message}`);
+  if (error || !data) throw dbFailure("profile load failed", error);
   return mapProfile(data);
 }
 
@@ -73,7 +74,7 @@ export async function loadMe(
     )
     .eq("profile_id", id)
     .maybeSingle();
-  if (error) throw new Error(`private load failed: ${error.message}`);
+  if (error) throw dbFailure("private load failed", error);
   const priv: MePrivate = {
     phoneMasked: pr?.phone_e164 ? maskPhone(pr.phone_e164 as string) : null,
     phoneVerified: Boolean(pr?.phone_verified),
@@ -93,7 +94,7 @@ export async function loadMe(
       .select(CHEF_COLUMNS)
       .eq("profile_id", id)
       .maybeSingle();
-    if (ce) throw new Error(`chef load failed: ${ce.message}`);
+    if (ce) throw dbFailure("chef load failed", ce);
     chef = c ? mapChef(c) : null;
   }
   return { profile, private: priv, chef };

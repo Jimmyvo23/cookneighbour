@@ -24,6 +24,7 @@ import { findAllergyConflicts } from "@/lib/domain/allergy";
 import { issuesToFields } from "@/lib/domain/bookingRequest";
 import { hasUnsafeText } from "@/lib/domain/text-safety";
 import { hasNoVisibleText, NO_VISIBLE_TEXT } from "@/lib/domain/text-fold";
+import { contactProblem } from "@/lib/domain/contactText";
 import { formatMinutes } from "@/lib/chef/dishes";
 
 export type FieldErrors = Record<string, string>;
@@ -180,6 +181,8 @@ export function intakeProblems(
       `Use ${INTAKE_ALLERGY_NOTES_MAX} characters or fewer for allergy notes.`;
   else if (hasUnsafeText(d.allergyNotes, true))
     e["intake.allergies"] = "Remove control or invalid characters.";
+  else if (contactProblem(d.allergyNotes))
+    e["intake.allergies"] = contactProblem(d.allergyNotes) as string;
   if (!d.noDietaryNeeds && !d.dietaryNotes.trim())
     e["intake.dietaryNotes"] =
       'Describe your dietary needs, or tick "I have no dietary needs".';
@@ -188,6 +191,8 @@ export function intakeProblems(
       `Use ${INTAKE_DIETARY_NOTES_MAX} characters or fewer for dietary notes.`;
   else if (hasUnsafeText(d.dietaryNotes, true))
     e["intake.dietaryNotes"] = "Remove control or invalid characters.";
+  else if (contactProblem(d.dietaryNotes))
+    e["intake.dietaryNotes"] = contactProblem(d.dietaryNotes) as string;
   return e;
 }
 

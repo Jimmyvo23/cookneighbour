@@ -1,6 +1,7 @@
 // API error type and response helpers (contract section 1). No secrets, hashes or stack traces
 // ever reach a response body.
 import type { ApiError, ApiErrorCode } from "./types";
+import { failureForFields } from "@/lib/domain/contactText";
 
 const STATUS: Record<ApiErrorCode, number> = {
   BAD_REQUEST: 400,
@@ -63,6 +64,29 @@ export function validationFailed(fields: Record<string, string>): ApiFailure {
   return new ApiFailure("VALIDATION_FAILED", "Check the highlighted fields.", {
     fields,
   });
+}
+
+/**
+ * An Error for a failed database or storage call in a route that touches private data (T-102,
+ * LOW-6). The message holds only the fixed `label` and the error `code`, never the database
+ * message: unique-violation messages can name constraints and key values such as hashes.
+ */
+export function dbFailure(
+  label: string,
+  error: { code?: string | null } | null | undefined,
+): Error {
+  const code =
+    typeof error?.code === "string" && error.code ? error.code : "none";
+  return new Error(`${label} (code ${code.slice(0, 40)})`);
+}
+
+/**
+ * 422 for field errors from a parser: CONTACT_DETAILS_NOT_ALLOWED when contact details in self text
+ * are the only problem (T-101, D-147/D-148), else VALIDATION_FAILED.
+ */
+export function fieldsFailure(fields: Record<string, string>): ApiFailure {
+  const f = failureForFields(fields);
+  return new ApiFailure(f.code, f.message, { fields });
 }
 
 /** Runs a handler; converts ApiFailure to its JSON error and anything else to a generic 500. */

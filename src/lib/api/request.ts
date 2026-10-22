@@ -76,9 +76,26 @@ export function rejectUnknownKeys(
   if (Object.keys(fields).length) throw validationFailed(fields);
 }
 
+/**
+ * The caller's IP for rate limits (T-102, LOW-4).
+ * On Vercel (`VERCEL=1`) only the platform's own headers are trusted: `x-vercel-forwarded-for`,
+ * then `x-real-ip`. Vercel sets both itself, so a client cannot choose them. A client-sent
+ * `x-forwarded-for` is never read there, because a new value per request would reset the limit.
+ * Anywhere else (local dev, CI, tests) there is no trusted proxy, so the first `x-forwarded-for`
+ * value is used; that keeps tests able to act as separate clients and is NOT safe on the internet.
+ */
 export function clientIp(request: Request): string {
-  const xff = request.headers.get("x-forwarded-for");
+  const h = request.headers;
+  if (process.env.VERCEL) {
+    return (
+      h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+      h.get("x-real-ip")?.trim() ||
+      "unknown"
+    );
+  }
   return (
-    xff?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown"
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    h.get("x-real-ip") ||
+    "unknown"
   );
 }

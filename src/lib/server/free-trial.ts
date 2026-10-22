@@ -23,7 +23,7 @@
 // MOCK: the trial waives chef labour in the prototype only; nobody pays the chef (Q-1).
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ApiFailure } from "@/lib/api/errors";
+import { ApiFailure, dbFailure } from "@/lib/api/errors";
 import { isUuid } from "@/lib/domain/admin-chefs";
 import {
   freeTrialEffect,
@@ -99,8 +99,7 @@ export async function loadTrialApplicant(
     .select("role")
     .eq("id", customerId)
     .maybeSingle();
-  if (prof.error)
-    throw new Error(`profile lookup failed: ${prof.error.message}`);
+  if (prof.error) throw dbFailure("profile lookup failed", prof.error);
   if (!prof.data) throw notFound("customer");
   if (prof.data.role !== "customer")
     throw new ApiFailure(
@@ -113,8 +112,7 @@ export async function loadTrialApplicant(
     .select("phone_e164, phone_verified, address_line, postal_code")
     .eq("profile_id", customerId)
     .maybeSingle();
-  if (priv.error)
-    throw new Error(`private lookup failed: ${priv.error.message}`);
+  if (priv.error) throw dbFailure("private lookup failed", priv.error);
   const row = priv.data;
 
   if (!row?.phone_e164)
@@ -165,7 +163,7 @@ export async function liveClaims(
     .or(
       `customer_id.eq.${a.customerId},phone_hash.eq.${a.phoneHash},address_hash.eq.${a.addressHash}`,
     );
-  if (r.error) throw new Error(`claims lookup failed: ${r.error.message}`);
+  if (r.error) throw dbFailure("claims lookup failed", r.error);
   return (r.data ?? []).map((c) => ({
     customerId: c.customer_id as string,
     phoneHash: c.phone_hash as string,
@@ -215,7 +213,10 @@ export async function recordTrialBlock(
       p_window_minutes: FREE_TRIAL_BLOCK_LOG_WINDOW_MINUTES,
     });
     if (r.error)
-      console.error("free-trial: block log failed:", r.error.message);
+      console.error(
+        "free-trial: block log failed:",
+        dbFailure("record_free_trial_block failed", r.error).message,
+      );
   } catch (e) {
     // T-103: a thrown call (network) is swallowed too, so a log failure never fails the estimate.
     console.error(
@@ -290,7 +291,7 @@ export async function holdFreeTrial(
     .select("customer_id, status")
     .eq("id", bookingId)
     .maybeSingle();
-  if (b.error) throw new Error(`booking lookup failed: ${b.error.message}`);
+  if (b.error) throw dbFailure("booking lookup failed", b.error);
   // Someone else's booking looks the same as a missing one.
   if (!b.data || b.data.customer_id !== customerId) throw notFound("booking");
   if (b.data.status !== "requested")
@@ -313,7 +314,7 @@ export async function holdFreeTrial(
     return { claimId: ins.data.id as string, bookingId, state: "held" };
 
   if (ins.error?.code !== "23505")
-    throw new Error(`claim insert failed: ${ins.error?.message}`);
+    throw dbFailure("claim insert failed", ins.error);
 
   const msg = ins.error.message ?? "";
   // Same booking asked twice: return the claim it already has (idempotent retry).
@@ -323,7 +324,7 @@ export async function holdFreeTrial(
       .select("id, customer_id, state")
       .eq("booking_id", bookingId)
       .maybeSingle();
-    if (ex.error) throw new Error(`claim lookup failed: ${ex.error.message}`);
+    if (ex.error) throw dbFailure("claim lookup failed", ex.error);
     if (ex.data?.customer_id === customerId && ex.data.state === "held")
       return { claimId: ex.data.id as string, bookingId, state: "held" };
     throw new ApiFailure(
@@ -370,7 +371,7 @@ export async function applyFreeTrialEvent(
     .select("state")
     .eq("booking_id", bookingId)
     .maybeSingle();
-  if (cur.error) throw new Error(`claim lookup failed: ${cur.error.message}`);
+  if (cur.error) throw dbFailure("claim lookup failed", cur.error);
   if (!cur.data) return { changed: false, state: null };
 
   // D-26 / D-37: a cancellation and a chef no-show depend on the cooked marker (freeTrialEffect
@@ -383,7 +384,7 @@ export async function applyFreeTrialEvent(
       .eq("booking_id", bookingId)
       .not("cooked_at", "is", null)
       .limit(1);
-    if (c.error) throw new Error(`cooked lookup failed: ${c.error.message}`);
+    if (c.error) throw dbFailure("cooked lookup failed", c.error);
     anyDayCooked = (c.data ?? []).length > 0;
   }
   const ctx = { anyDayCooked };
@@ -399,7 +400,7 @@ export async function applyFreeTrialEvent(
       .eq("booking_id", bookingId)
       .eq("state", "consumed")
       .select("state");
-    if (re.error) throw new Error(`claim update failed: ${re.error.message}`);
+    if (re.error) throw dbFailure("claim update failed", re.error);
     // Zero rows: a parallel call already released it; the outcome is the same.
     return { changed: (re.data ?? []).length === 1, state: "released" };
   }
@@ -414,7 +415,7 @@ export async function applyFreeTrialEvent(
     .eq("booking_id", bookingId)
     .eq("state", t.from)
     .select("state");
-  if (up.error) throw new Error(`claim update failed: ${up.error.message}`);
+  if (up.error) throw dbFailure("claim update failed", up.error);
   if (up.data && up.data.length === 1) return { changed: true, state: t.to };
 
   // Lost a race: someone changed the claim after our read. Judge the new state the same way.
@@ -423,7 +424,7 @@ export async function applyFreeTrialEvent(
     .select("state")
     .eq("booking_id", bookingId)
     .maybeSingle();
-  if (now.error) throw new Error(`claim lookup failed: ${now.error.message}`);
+  if (now.error) throw dbFailure("claim lookup failed", now.error);
   if (!now.data) return { changed: false, state: null };
   const again = transitionFreeTrial(
     now.data.state as FreeTrialState,

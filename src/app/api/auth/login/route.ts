@@ -21,6 +21,10 @@ export function POST(request: Request) {
     f.done();
     // PLACEHOLDER limit: 10 attempts per 15 minutes per IP and email (contract section 9). In-memory.
     rateLimit(limiterKey("login", clientIp(request), email), 10, 900);
+    // T-102 (LOW-4): an email-only key too, so a new IP per request cannot reset the limit for one
+    // account. PLACEHOLDER, in memory like the rest. Side effect: someone can slow down logins for an
+    // email they know (a known limit; Supabase Auth has its own limits as well).
+    rateLimit(limiterKey("login-email", email), 20, 900);
 
     const supabase = await createClient();
     const { data, error } = await supabase.auth.signInWithPassword({

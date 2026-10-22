@@ -41,6 +41,12 @@ Pure rules: `src/lib/domain/freeTrial.ts`. Server functions: `src/lib/server/fre
 - **Kitchen snapshot.** Accepting a chef's-home booking copies the chef's kitchen address onto the booking, in the same transaction and under the chef row lock. The customer is shown the copy; a later kitchen change never shows a new address to a past customer (review M4).
 - **N3 as one function.** `set_chef_kitchen_address` checks "no accepted chef's-home booking" and writes under one lock (chef row, then `chef_private`), so a concurrent accept cannot slip between check and write (review L4). A change switches chef's home off; an admin enables it again (D-21).
 
+## Self text and intake read window (T-101)
+
+- **D-147 (Jimmy: "Filter all self text").** Display name, chef bio, dish name and dish description go through the same contact filter as chat and reviews (`findContactDetails`): a phone number (T-088 shape), email or link is refused with 422 `CONTACT_DETAILS_NOT_ALLOWED`, and nothing is saved. The shared parsers run in the browser, the MOCK adapter and the server.
+- **D-148 (Jimmy: "Requested + contact window").** The chef reads the customer's allergy and dietary form while the booking is `requested`, and from acceptance until the D-52 window ends (00:00 Toronto on last visit day + 8, the window `get_booking_contact` uses). Not after decline, cancel or expiry, and not after the window. The customer always reads their own form; admin unchanged. The notes themselves are contact-filtered the same way.
+- **Known limit.** Text saved before T-101 is not migrated or re-checked. Seed data was checked (a unit test keeps it passing).
+
 ## Flagged bookings (T-064)
 
 - **D-53 freeze.** A booking with an open admin flag other than `no_day_cooked` (today `chef_rejected`, D-22) is frozen until an admin decides: no completion (manual or automatic), no chef action (cooked, no-show, pickup answers, receipts, cancel), and the neutral notice for the customer (`BookingDetail.frozen`). No refund or rebooking flow exists (payments are MOCK). D-65: the customer's cancel, no-show report and pickup proposal are refused too; D-66: the customer's receipt answers stay allowed; D-67: nothing unfreezes until T-048; D-68: rejecting the chef turns an open `no_day_cooked` flag into `chef_rejected`, so the booking freezes.

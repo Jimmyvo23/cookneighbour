@@ -129,3 +129,11 @@ describe("T-095", () => {
     expect(a.city).toBeTruthy();
   });
 });
+
+describe("U+0085 (NEL) counts as blank, like the database (T-102 F-2)", () => {
+  it("a value of only U+0085 has no visible text, with or without spaces", () => {
+    for (const v of ["\u0085", " \u0085 ", "\u0085\u0085"])
+      expect(hasNoVisibleText(v), JSON.stringify(v)).toBe(true);
+    expect(hasNoVisibleText("a\u0085")).toBe(false);
+  });
+});
