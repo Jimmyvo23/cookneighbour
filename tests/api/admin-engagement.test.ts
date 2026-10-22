@@ -762,7 +762,7 @@ describe("the admin lists", () => {
     expect(
       mine
         .filter((x: { reason: string }) => x.reason === "phone")
-        .every((x: { attempts: number }) => x.attempts === 2),
+        .every((x: { attempts: number }) => x.attempts === 1),
     ).toBe(true);
     expect(
       mine.find((x: { reason: string }) => x.reason === "address").attempts,

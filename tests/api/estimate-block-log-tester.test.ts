@@ -137,7 +137,7 @@ describe("T-103: estimate block log, real database", () => {
     expect(mine[0].attempts).toBe(3);
   });
 
-  it("round 1: several hourly rows sum their stored counters in the admin list (3 + 4 = 7)", async () => {
+  it("T-107: several hourly rows each show their own stored counter in the admin list (3 and 4, not 7)", async () => {
     const c = await bookingCustomer();
     const ins = await svc.from("free_trial_blocks").insert([
       { customer_id: c.id, reason: "address", attempts: 3 },
@@ -151,8 +151,15 @@ describe("T-103: estimate block log, real database", () => {
       (x: { customer: { id: string } }) => x.customer.id === c.id,
     );
     expect(mine).toHaveLength(3);
-    for (const x of mine)
-      expect(x.attempts).toBe(x.reason === "address" ? 7 : 2);
+    expect(
+      mine
+        .filter((x: { reason: string }) => x.reason === "address")
+        .map((x: { attempts: number }) => x.attempts)
+        .sort(),
+    ).toEqual([3, 4]);
+    expect(
+      mine.find((x: { reason: string }) => x.reason === "phone").attempts,
+    ).toBe(2);
   });
 
   it("round 1: POST /api/bookings still logs the customer's own rule (D-154 covers the estimate only)", async () => {
