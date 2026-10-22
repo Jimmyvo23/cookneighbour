@@ -62,6 +62,7 @@ import {
 import { CHANGE_REFUSALS } from "@/lib/domain/bookingChanges";
 import { MAX_OPEN_REQUESTS } from "@/lib/domain/config";
 import { findContactDetails } from "@/lib/domain/contactDetails";
+import { failureForFields } from "@/lib/domain/contactText";
 import { estimateBooking, type Estimate } from "@/lib/domain/pricing";
 import { weekday } from "@/lib/chef/calendar";
 import { messageRoute, type MockMessage } from "@/lib/mocks/mock-messages";
@@ -473,12 +474,10 @@ function parse(
       }),
     };
   const p = parseBookingBody(obj, mode);
-  if (!p.value)
-    return {
-      fail: fail(422, "VALIDATION_FAILED", "Check the highlighted fields.", {
-        fields: p.errors,
-      }),
-    };
+  if (!p.value) {
+    const f = failureForFields(p.errors);
+    return { fail: fail(422, f.code, f.message, { fields: p.errors }) };
+  }
   return { value: p.value };
 }
 

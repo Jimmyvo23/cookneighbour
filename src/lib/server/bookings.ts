@@ -20,7 +20,7 @@
 // MOCK: nothing here moves money. The platform fee is shown and never collected.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ApiFailure, validationFailed } from "@/lib/api/errors";
+import { ApiFailure, fieldsFailure, validationFailed } from "@/lib/api/errors";
 import { rejectUnknownKeys } from "@/lib/api/request";
 import type {
   BookingDetail,
@@ -444,7 +444,7 @@ function parseOrFail(
 ): ParsedBooking {
   rejectUnknownKeys(body, [...BOOKING_KEYS]);
   const p = parseBookingBody(body, mode);
-  if (!p.value) throw validationFailed(p.errors);
+  if (!p.value) throw fieldsFailure(p.errors);
   return p.value;
 }
 
