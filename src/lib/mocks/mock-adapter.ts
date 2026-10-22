@@ -21,6 +21,7 @@
 // The chef's side and the grocery routes (T-045) live in mock-booking-changes.ts.
 // Chef application rules reuse the real pure functions in src/lib/domain/chef-application.ts.
 // MOCK: files are never stored (see mockUploader); a path is accepted if its name is well formed.
+import { failureForFields } from "@/lib/domain/contactText";
 import type {
   AddressRequest,
   AddressResponse,
@@ -209,9 +210,9 @@ function fail(
   );
 }
 function validation(fields: Record<string, string>) {
-  return fail(422, "VALIDATION_FAILED", "Check the highlighted fields.", {
-    fields,
-  });
+  // T-101: contact details in self text are the same 422 code as the server's.
+  const f = failureForFields(fields);
+  return fail(422, f.code, f.message, { fields });
 }
 function rateLimited() {
   return fail(429, "RATE_LIMITED", "Too many attempts.", {

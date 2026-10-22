@@ -2,6 +2,7 @@
 // server imports, so they are unit-tested without a database and the routes stay thin.
 import { hasUnsafeText } from "./text-safety.ts";
 import { hasNoVisibleText, NO_VISIBLE_TEXT } from "./text-fold.ts";
+import { contactProblem } from "./contactText.ts";
 
 // ---------------------------------------------------------------------------
 // Limits (contract 5A and 5B). Decided by Jimmy: cook time, cost, servings, shelf life and its
@@ -112,6 +113,8 @@ export function parseDishBody(
   if (!need("name")) {
     const t = line(body.name, 1, NAME_MAX);
     if (t !== undefined && hasNoVisibleText(t)) errors.name = NO_VISIBLE_TEXT;
+    else if (t !== undefined && contactProblem(t))
+      errors.name = contactProblem(t) as string; // D-147
     else if (t !== undefined) value.name = t;
     else
       errors.name =
@@ -149,6 +152,8 @@ export function parseDishBody(
     else if (hasUnsafeText(v, true))
       errors.description =
         "Use plain text. Control characters are not allowed.";
+    else if (contactProblem(v))
+      errors.description = contactProblem(v) as string; // D-147
     else value.description = v.trim() === "" ? null : v.trim();
   }
 

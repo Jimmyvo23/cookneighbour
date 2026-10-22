@@ -6,7 +6,7 @@
 // checks. Every write is built from a whitelist of columns and filtered by chef_id = caller, never
 // by an id alone.
 import "server-only";
-import { ApiFailure, validationFailed } from "@/lib/api/errors";
+import { ApiFailure, fieldsFailure, validationFailed } from "@/lib/api/errors";
 import { rejectUnknownKeys } from "@/lib/api/request";
 import type {
   AvailabilityResponse,
@@ -109,7 +109,7 @@ async function checkedDish(
       probe = { bucket: c.bucket, path: c.path };
     }
   }
-  if (Object.keys(errors).length) throw validationFailed(errors);
+  if (Object.keys(errors).length) throw fieldsFailure(errors);
   if (probe && !(await objectExists(chef.admin, probe.bucket, probe.path)))
     throw validationFailed({
       photoPath: "Upload the photo first, then save its path.",
