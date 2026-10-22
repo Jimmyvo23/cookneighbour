@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-21 (T-050, T-060; T-060 also added a row of its own).
+Last updated: 2026-10-22 (T-099, T-101).
 
 ## 1. Office status (Planner and every agent)
 
@@ -17,6 +17,8 @@ The office only shows what agents report. Nothing updates on its own.
 - **Run `team-status` with the project root set** when working in a worktree: `CLAUDE_PROJECT_DIR="<main folder>" node .team/bin/team-status.mjs ...`. Without it the report goes to the worktree's own `.team/events.jsonl` and the office never shows it. *(The T-037 builder's and a reviewer's progress reports were lost this way.)*
 
 ## 2. Agent reports
+
+- **Check a Tester's CI claim in the log.** T-099's Tester reported a Docker rate limit; the log had none, and the real failure was an unrelated flaky e2e (T-106).
 
 - An agent's final message is a **full report**: what changed, PR number, test results, what's next. Never "placeholder" or an empty hand-back. *(Two agents returned empty reports.)*
 - The Planner never trusts a report alone. It checks the handoff file, `gh pr view <n>` and the CI result itself.
@@ -72,6 +74,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 
 ## 5. Supabase and secrets
 
+- **Parallel tasks with migrations need distinct timestamps in the brief.** T-098 and T-101 both used `20261026100000`; T-101 had to rename its file and renumber the contract.
 - **After merging a PR that adds a migration**, run `npx supabase db push` so hosted matches. Write it in the task's PLAN.md notes.
 - In auto mode the permission check refuses `npx supabase db push` ("production deploy") and a Reviewer agent that approves a PR ("self-approval"). Do not work around it: ask Jimmy to run the push (`npx supabase db push --linked` from the main folder, then check with `npx supabase migration list --linked`) and to choose how the PR gets reviewed. *(T-063: the merge went ahead on Jimmy's chat approval and the review ran after the merge.)*
 - Since T-043 the Reviewer agent can start in auto mode, but one GitHub account cannot approve its own PR. The Reviewer posts its verdict as a comment that starts with "APPROVE" or "REQUEST CHANGES". `main` protection requires only `ci`. For T-043 Jimmy approved the merge plan in chat, and the Planner merged on the Reviewer's APPROVE comment plus green CI. Since D-42 (2026-10-13) this is the standing rule inside an approved Work Order; hosted migrations, deploys and anything outside a Work Order still go to Jimmy.
