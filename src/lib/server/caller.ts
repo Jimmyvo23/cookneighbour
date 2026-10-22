@@ -3,7 +3,7 @@
 // The role comes from profiles.role in the database, never from JWT metadata.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ApiFailure } from "@/lib/api/errors";
+import { ApiFailure, dbFailure } from "@/lib/api/errors";
 import type { UserRole } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,7 +23,7 @@ export async function requireCaller(): Promise<Caller> {
     .select("role")
     .eq("id", data.user.id)
     .maybeSingle();
-  if (pe) throw new Error(`profile lookup failed: ${pe.message}`);
+  if (pe) throw dbFailure("profile lookup failed", pe);
   if (!profile) throw new ApiFailure("UNAUTHENTICATED", "Please sign in.");
   return { supabase, userId: data.user.id, role: profile.role as UserRole };
 }

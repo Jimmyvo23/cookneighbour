@@ -308,7 +308,7 @@ export async function listAdminFreeTrialBlocks(
   const res = await newestFirst(
     a.admin
       .from("free_trial_blocks")
-      .select("id, customer_id, reason, created_at"),
+      .select("id, customer_id, reason, attempts, created_at"),
     q,
   )
     .order("created_at", { ascending: false })
@@ -318,26 +318,14 @@ export async function listAdminFreeTrialBlocks(
   const rows = (res.data ?? []) as Row[];
   const page = rows.slice(0, q.limit);
   const customers = [...new Set(page.map((r) => r.customer_id as string))];
-  const attempts = new Map<string, number>();
-  if (customers.length) {
-    const all = await a.admin
-      .from("free_trial_blocks")
-      .select("customer_id, reason, attempts")
-      .in("customer_id", customers);
-    if (all.error) throw new Error("admin block count failed");
-    for (const x of (all.data ?? []) as Row[]) {
-      const k = `${x.customer_id}:${x.reason}`;
-      // T-103 (D-155): the stored counter, summed when several hourly rows exist.
-      attempts.set(k, (attempts.get(k) ?? 0) + Number(x.attempts ?? 1));
-    }
-  }
   const nm = await names(a.admin, customers);
   const items = page.map((r): AdminFreeTrialBlock => ({
     id: r.id as string,
     customer: person(nm, r.customer_id as string),
     reason: r.reason as AdminFreeTrialBlock["reason"],
     createdAt: iso(r.created_at),
-    attempts: attempts.get(`${r.customer_id}:${r.reason}`) ?? 1,
+    // T-107: this row's own counter (one row per customer, rule and hour); createdAt is its first attempt.
+    attempts: Number(r.attempts ?? 1),
   }));
   return pageOf(rows, q.limit, items);
 }

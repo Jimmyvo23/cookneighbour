@@ -1,7 +1,8 @@
 // Small field validators. Each returns the cleaned value or records a message in `fields`.
 import { hasUnsafeText } from "@/lib/domain/text-safety";
 import { hasNoVisibleText, NO_VISIBLE_TEXT } from "@/lib/domain/text-fold";
-import { validationFailed } from "./errors";
+import { fieldsFailure } from "./errors";
+import { contactProblem } from "@/lib/domain/contactText";
 
 export class Fields {
   readonly errors: Record<string, string> = {};
@@ -54,8 +55,22 @@ export class Fields {
       this.errors[key] = NO_VISIBLE_TEXT;
     return t;
   }
+  /** `visibleText` for public self text (display name): also refuses contact details (D-147). */
+  publicText(
+    body: Record<string, unknown>,
+    key: string,
+    min: number,
+    max: number,
+  ): string {
+    const t = this.visibleText(body, key, min, max);
+    if (!this.errors[key]) {
+      const c = contactProblem(t);
+      if (c) this.errors[key] = c;
+    }
+    return t;
+  }
   done(): void {
-    if (Object.keys(this.errors).length) throw validationFailed(this.errors);
+    if (Object.keys(this.errors).length) throw fieldsFailure(this.errors);
   }
 }
 
