@@ -1,7 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { chefs, customers } from "../../scripts/seed-data";
-import { parsePostalPrefixes, stableUuid } from "../../scripts/seed-lib";
+import {
+  DEMO_CHEF_PASSWORD,
+  DEMO_CUSTOMER_PASSWORD,
+} from "../../scripts/seed-data";
+import {
+  parsePostalPrefixes,
+  resolveDemoPasswords,
+  stableUuid,
+} from "../../scripts/seed-lib";
 import { addressHash, phoneHash } from "./domain/hash";
 import { addressColumns, phoneColumns } from "./domain/private-rows";
 
@@ -118,5 +126,79 @@ describe("seed helpers", () => {
       expect(seeded.address_hash).toBe(addressHash(typed, spaced, pepper));
       expect(seeded.postal_prefix).toBe(c.postalCode.slice(0, 3));
     }
+  });
+});
+
+describe("resolveDemoPasswords (T-099)", () => {
+  it("uses the built-in demo passwords for --local only", () => {
+    expect(resolveDemoPasswords("local", {})).toEqual({
+      chef: DEMO_CHEF_PASSWORD,
+      customer: DEMO_CUSTOMER_PASSWORD,
+    });
+  });
+
+  it("ignores the environment variables for --local", () => {
+    const env = {
+      SEED_DEMO_CHEF_PASSWORD: "another-long-password-1",
+      SEED_DEMO_CUSTOMER_PASSWORD: "another-long-password-2",
+    };
+    expect(resolveDemoPasswords("local", env).chef).toBe(DEMO_CHEF_PASSWORD);
+  });
+
+  it("takes both passwords from the environment for --hosted", () => {
+    expect(
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: "chef-password-from-env",
+        SEED_DEMO_CUSTOMER_PASSWORD: "customer-password-from-env",
+      }),
+    ).toEqual({
+      chef: "chef-password-from-env",
+      customer: "customer-password-from-env",
+    });
+  });
+
+  it("refuses --hosted when a variable is missing or empty, naming it", () => {
+    expect(() =>
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CUSTOMER_PASSWORD: "customer-password-from-env",
+      }),
+    ).toThrow(/SEED_DEMO_CHEF_PASSWORD/);
+    expect(() =>
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: "chef-password-from-env",
+        SEED_DEMO_CUSTOMER_PASSWORD: "",
+      }),
+    ).toThrow(/SEED_DEMO_CUSTOMER_PASSWORD/);
+  });
+
+  it("refuses --hosted passwords shorter than 12 characters without echoing them", () => {
+    const short = "short-pw-11"; // 11 chars
+    let message = "";
+    try {
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: short,
+        SEED_DEMO_CUSTOMER_PASSWORD: "customer-password-from-env",
+      });
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toMatch(/SEED_DEMO_CHEF_PASSWORD/);
+    expect(message).toMatch(/12/);
+    expect(message).not.toContain(short);
+  });
+
+  it("refuses --hosted passwords equal to the public built-in ones", () => {
+    expect(() =>
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: "chef-password-from-env",
+        SEED_DEMO_CUSTOMER_PASSWORD: DEMO_CUSTOMER_PASSWORD + "-and-more",
+      }),
+    ).not.toThrow();
+    expect(() =>
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: "chef-password-from-env",
+        SEED_DEMO_CUSTOMER_PASSWORD: DEMO_CUSTOMER_PASSWORD,
+      }),
+    ).toThrow(/SEED_DEMO_CUSTOMER_PASSWORD/);
   });
 });
