@@ -105,3 +105,42 @@ describe("refusal alert with blank text (T-089)", () => {
     expect((await refusalText("  Hi")).trimStart()).toBe(`Hi. ${STATUS}`);
   });
 });
+
+// T-052 (T-083 NIT-B): the status sentence arrives after the reload. It must be added as a new
+// child of a non-atomic alert, so a screen reader reads only the addition and not the whole alert
+// a second time. While the reload runs the alert holds the sentence alone.
+describe("refusal alert announcement markup (T-052)", () => {
+  it("is a non-atomic alert; the status sentence is a separate child added later", async () => {
+    let finish: (v: boolean) => void = () => {};
+    function Page() {
+      const { scope, alert } = useBookingRefusals(
+        () => new Promise<boolean>((r) => (finish = r)),
+      );
+      return (
+        <div>
+          <button onClick={() => scope.report("Already answered.")}>go</button>
+          {alert}
+        </div>
+      );
+    }
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => root!.render(<Page />));
+    await act(async () => {
+      host!.querySelector("button")!.click();
+    });
+    const el = host.querySelector('[data-testid="refusal"]')!;
+    expect(el.getAttribute("role")).toBe("alert");
+    expect(el.getAttribute("aria-atomic")).toBe("false");
+    expect(el.textContent).toBe("Already answered.");
+    expect(el.querySelector('[data-testid="refusal-status"]')).toBeNull();
+    await act(async () => finish(true));
+    const same = host.querySelector('[data-testid="refusal"]')!;
+    expect(same).toBe(el); // the same element: not announced as a new alert
+    expect(same.textContent).toBe(`Already answered. ${STATUS}`);
+    expect(
+      same.querySelector('[data-testid="refusal-status"]')?.textContent,
+    ).toBe(` ${STATUS}`);
+  });
+});

@@ -589,6 +589,8 @@ function CancelSection({
   const formRef = useRef<HTMLFormElement>(null);
   const scope = useId();
   const confirmRef = useRef<HTMLHeadingElement>(null);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  const goingBack = useRef(false);
   const alertId = useId();
   const late = isInsideLateWindow(firstDay, new Date());
   const reportRefusal = useReportRefusal();
@@ -601,6 +603,11 @@ function CancelSection({
   }, [tick]);
   useEffect(() => {
     if (open) confirmRef.current?.focus();
+    else if (goingBack.current) {
+      // "Keep my booking" removed the button that had focus: give focus back to the opener (T-052).
+      goingBack.current = false;
+      openerRef.current?.focus();
+    }
   }, [open]);
 
   async function cancel(e: React.FormEvent) {
@@ -644,6 +651,7 @@ function CancelSection({
         <p>
           <button
             type="button"
+            ref={openerRef}
             onClick={() => setOpen(true)}
             className={secondaryButtonCls}
           >
@@ -714,6 +722,7 @@ function CancelSection({
               <button
                 type="button"
                 onClick={() => {
+                  goingBack.current = true;
                   setOpen(false);
                   setError(null);
                   setFields({});
