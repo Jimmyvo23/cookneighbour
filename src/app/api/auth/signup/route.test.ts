@@ -65,3 +65,15 @@ describe("POST /api/auth/signup (T-102)", () => {
     );
   });
 });
+
+describe("POST /api/auth/signup blank names (T-102 F-2)", () => {
+  it("a name of only U+0085 is a 422 on displayName, not a database error", async () => {
+    const res = await call({ displayName: "\u0085" });
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error.fields.displayName).toBe(
+      "Enter at least one visible character.",
+    );
+    expect(signUp).not.toHaveBeenCalled();
+  });
+});

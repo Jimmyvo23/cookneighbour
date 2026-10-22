@@ -241,9 +241,6 @@ describe("LOW-3: seeded random parity with the app rules", () => {
       if (s.trim() === "") continue;
       const sql = (await sqlProblem(s.trim())) !== null;
       const app = appRefuses(s);
-      // Known gap F-1 (see the it.fails test below): a web address glued to a non-ASCII letter
-      // or digit is found by the app (JS \\b is ASCII only) but not by SQL (\\m is Unicode aware).
-      if (!sql && app && findContactDetails(s.trim()) === "url") continue;
       if (sql !== app)
         mismatches.push(
           `${JSON.stringify(s)} sql=${sql ? "refuse" : "accept"} app=${app ? "refuse" : "accept"}`,
@@ -280,8 +277,6 @@ describe("LOW-3: every Unicode code point gives the same answer in SQL and in th
         const sql = row.p !== null;
         const app = appRefuses(row.s);
         if (sql === app) continue;
-        if (!sql && app && findContactDetails(t) === "url") continue; // F-1
-        if (sql && !app && row.s === "\u0085") continue; // F-2
         mismatches.push(
           `U+${[...row.s].map((ch) => ch.codePointAt(0)!.toString(16)).join(" U+")} sql=${sql ? "refuse" : "accept"} app=${app ? "refuse" : "accept"}`,
         );
@@ -291,23 +286,17 @@ describe("LOW-3: every Unicode code point gives the same answer in SQL and in th
   }, 240_000);
 });
 
-describe("LOW-3: known parity gap F-1 (Low, reported to the builder)", () => {
-  // it.fails: passes while the gap exists and turns red once the SQL is fixed, so remove .fails then.
-  it.fails(
-    "a web address next to a non-ASCII letter or digit is refused by SQL like the app",
-    async () => {
-      for (const name of ["李x.ca", "x.ca李", "०१२x.ca", "x.ca٤١٦"]) {
-        expect(appRefuses(name), name).toBe(true);
-        expect(await sqlProblem(name), name).not.toBeNull();
-      }
-    },
-  );
+describe("LOW-3: parity of web-address boundaries (F-1, fixed in round 1)", () => {
+  it("a web address next to a non-ASCII letter or digit is refused by SQL like the app", async () => {
+    for (const name of ["李x.ca", "x.ca李", "०१२x.ca", "x.ca٤١٦"]) {
+      expect(appRefuses(name), name).toBe(true);
+      expect(await sqlProblem(name), name).not.toBeNull();
+    }
+  });
 });
 
-describe("LOW-3: known gap F-2 (Low): a name that is only U+0085 passes the app but not the trigger", () => {
-  // The app's hasNoVisibleText and trim() do not treat U+0085 (NEL) as blank; Postgres does. The
-  // route accepts the name, then Auth's trigger refuses it: the user sees a 500, not a 422.
-  it.fails("the app refuses a name that SQL calls invisible", async () => {
+describe("LOW-3: a name that is only U+0085 is refused by the app and the trigger (F-2, fixed in round 1)", () => {
+  it("the app refuses a name that SQL calls invisible", async () => {
     expect(await sqlProblem("\u0085")).not.toBeNull();
     expect(appRefuses("\u0085")).toBe(true);
   });

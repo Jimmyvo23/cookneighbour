@@ -48,7 +48,11 @@ begin
   -- contact details (same shapes as findContactDetails; look-alike dashes become '-')
   f := regexp_replace(f, '[‐-―−]', '-', 'g');
   if f ~ '[^\s@]+@[^\s@]+\.[^\s@]+' then return 'contact_details'; end if;
-  if f ~* '(\mhttps?://|\mwww\.)[^\s]+|\m[a-z0-9-]+(\.[a-z0-9-]+)*\.(com|ca|org|net|io|me|co|app|info|ly|gl)\M' then
+  -- JavaScript's \b is ASCII only and Postgres's \m and \M are Unicode aware, so the word boundaries
+  -- are spelled out with ASCII classes to give the same answer as the app (T-102 tester F-1).
+  -- A host name may start with a letter or digit after a non-word character, or (JavaScript quirk:
+  -- \b sits between a word character and a hyphen) with a hyphen right after a word character.
+  if f ~* '(^|[^a-zA-Z0-9_])(https?://|www\.)[^\s]+|(^|[^a-zA-Z0-9_])[a-z0-9][a-z0-9-]*(\.[a-z0-9-]+)*\.(com|ca|org|net|io|me|co|app|info|ly|gl)($|[^a-zA-Z0-9_])|[a-zA-Z0-9_]-[a-z0-9-]*(\.[a-z0-9-]+)*\.(com|ca|org|net|io|me|co|app|info|ly|gl)($|[^a-zA-Z0-9_])' then
     return 'contact_details';
   end if;
   f := regexp_replace(f, '\m[0-9]{4}-[0-9]{2}-[0-9]{2}\M', ' ', 'g');

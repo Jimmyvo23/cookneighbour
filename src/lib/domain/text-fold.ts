@@ -33,7 +33,14 @@ export const NO_VISIBLE_TEXT = "Enter at least one visible character.";
  * `hasUnsafeText`. Used for names and address lines (T-093); other free text is not checked with it.
  */
 export function hasNoVisibleText(text: string): boolean {
-  return foldText(text).trim() === "";
+  // U+0085 (NEL) is blank to the database (Postgres \s) but not to JavaScript trim(), so it is
+  // removed here too; otherwise a name of only U+0085 would pass the route and fail the sign-up
+  // trigger with a 500 (T-102 tester F-2).
+  return (
+    foldText(text)
+      .replace(/\u0085/g, "")
+      .trim() === ""
+  );
 }
 
 /**
