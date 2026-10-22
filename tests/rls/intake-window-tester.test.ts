@@ -25,13 +25,25 @@ async function bookingWith(name: string, status: string, lastDay: string) {
   const b = await makeBooking(svc, {
     customer: cust,
     chef,
-    dates: [dayPlus(lastDay, -1), lastDay],
+    dates: [dayPlus(todayTo, 40), dayPlus(todayTo, 41)],
     status,
   });
   const ins = await svc
     .from("intake_forms")
     .insert({ booking_id: b.id, allergies: "sesame", dietary_notes: "vegan" });
   expect(ins.error).toBeNull();
+  // Create with future dates (the table refuses past ones), then move them.
+  for (const [n, d] of [
+    [1, dayPlus(lastDay, -1)],
+    [2, lastDay],
+  ] as const) {
+    const r = await svc
+      .from("booking_days")
+      .update({ visit_date: d })
+      .eq("booking_id", b.id)
+      .eq("day_number", n);
+    expect(r.error).toBeNull();
+  }
   return { chef, cust, id: b.id };
 }
 const read = (c: SupabaseClient, id: string) =>
