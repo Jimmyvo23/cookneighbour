@@ -77,14 +77,14 @@ describe("review window (insert policy)", () => {
   it("13 days 23 hours after completion: allowed, for the customer and for the chef", async () => {
     const id = await booking("completed", 14 * DAY - 3_600_000);
     expectRows(
-      await cC
+      await svc
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
         .select("id"),
       1,
     );
     expectRows(
-      await cH
+      await svc
         .from("reviews")
         .insert(review(id, chef, cust, "chef"))
         .select("id"),
@@ -95,13 +95,13 @@ describe("review window (insert policy)", () => {
   it("14 days and 1 hour after completion: refused for both, nothing is written", async () => {
     const id = await booking("completed", 14 * DAY + 3_600_000);
     expectDenied(
-      await cC
+      await svc
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
         .select("id"),
     );
     expectDenied(
-      await cH
+      await svc
         .from("reviews")
         .insert(review(id, chef, cust, "chef"))
         .select("id"),
@@ -114,7 +114,7 @@ describe("review window (insert policy)", () => {
     for (const status of ["requested", "accepted", "declined", "cancelled"]) {
       const id = await booking(status);
       expectDenied(
-        await cC
+        await svc
           .from("reviews")
           .insert(review(id, cust, chef, "customer"))
           .select("id"),
@@ -122,22 +122,16 @@ describe("review window (insert policy)", () => {
     }
   });
 
-  it("a non-party cannot review, nobody writes as someone else, the role must match", async () => {
+  it("a non-party cannot review, and the role must match (a forged author is not a database question any more: only the route writes)", async () => {
     const id = await booking("completed", 1000);
     expectDenied(
-      await cO
+      await svc
         .from("reviews")
         .insert(review(id, other, chef, "customer"))
         .select("id"),
     );
     expectDenied(
-      await cO
-        .from("reviews")
-        .insert(review(id, cust, chef, "customer"))
-        .select("id"),
-    );
-    expectDenied(
-      await cC
+      await svc
         .from("reviews")
         .insert(review(id, cust, chef, "chef"))
         .select("id"),
@@ -147,13 +141,13 @@ describe("review window (insert policy)", () => {
   it("one review per author per booking (unique key), and a posted review is final", async () => {
     const id = await booking("completed", 1000);
     expectRows(
-      await cC
+      await svc
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
         .select("id"),
       1,
     );
-    const dup = await cC
+    const dup = await svc
       .from("reviews")
       .insert(review(id, cust, chef, "customer"))
       .select("id");
@@ -187,14 +181,14 @@ describe("who can read a review", () => {
   it("a customer's review of an approved chef is public; a chef's review of a customer is customer + admin only", async () => {
     const id = await booking("completed", 1000);
     expectRows(
-      await cC
+      await svc
         .from("reviews")
         .insert(review(id, cust, chef, "customer"))
         .select("id"),
       1,
     );
     expectRows(
-      await cH
+      await svc
         .from("reviews")
         .insert(review(id, chef, cust, "chef"))
         .select("id"),
@@ -263,13 +257,13 @@ describe("reports", () => {
       reporter_id: cust.id,
       description: "first",
     };
-    const first = await cC.from("reports").insert(mine).select("id");
+    const first = await svc.from("reports").insert(mine).select("id");
     expectRows(first, 1);
-    const second = await cC.from("reports").insert(mine).select("id");
+    const second = await svc.from("reports").insert(mine).select("id");
     expect(second.error?.code).toBe("23505");
     expect(second.error?.message).toContain("reports_one_open_per_reporter");
     expectRows(
-      await cH
+      await svc
         .from("reports")
         .insert({
           booking_id: id,
@@ -287,12 +281,12 @@ describe("reports", () => {
       .eq("id", rid)
       .select();
     expect(close.error).toBeNull();
-    expectRows(await cC.from("reports").insert(mine).select("id"), 1);
+    expectRows(await svc.from("reports").insert(mine).select("id"), 1);
   });
 
   it("the other party and strangers cannot read a report; the reporter and admin can", async () => {
     const id = await booking("accepted");
-    const ins = await cC
+    const ins = await svc
       .from("reports")
       .insert({ booking_id: id, reporter_id: cust.id, description: "x" })
       .select("id");
@@ -306,7 +300,7 @@ describe("reports", () => {
 
   it("nobody updates a report from a browser, the reporter or the admin; client_id is not a browser column", async () => {
     const id = await booking("accepted");
-    const ins = await cC
+    const ins = await svc
       .from("reports")
       .insert({ booking_id: id, reporter_id: cust.id, description: "x" })
       .select("id");
@@ -319,6 +313,7 @@ describe("reports", () => {
           .eq("id", rid)
           .select(),
       );
+    // T-098: no browser insert at all, with or without client_id (the route is the only writer).
     const withKey = await cC
       .from("reports")
       .insert({

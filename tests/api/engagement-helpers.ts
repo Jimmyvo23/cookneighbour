@@ -140,9 +140,10 @@ export interface Fixture {
 
 /** A requested booking. `trial` asks for the free first booking. */
 export async function requestedBooking(
-  o: { trial?: boolean; offsets?: number[] } = {},
+  o: { trial?: boolean; offsets?: number[]; chef?: TestChef } = {},
 ): Promise<Fixture> {
-  const chef = await bookableChef({ dishes: [{ key: "pho", shelf: 2 }] });
+  const chef =
+    o.chef ?? (await bookableChef({ dishes: [{ key: "pho", shelf: 2 }] }));
   const cust = await bookingCustomer();
   const offsets = o.offsets ?? [3];
   const r = await bookOk(
@@ -159,7 +160,7 @@ export async function requestedBooking(
 }
 
 export async function acceptedBooking(
-  o: { trial?: boolean; offsets?: number[] } = {},
+  o: { trial?: boolean; offsets?: number[]; chef?: TestChef } = {},
 ): Promise<Fixture> {
   const f = await requestedBooking(o);
   const a = await accept(f.chef.b, f.id);
@@ -169,10 +170,16 @@ export async function acceptedBooking(
 
 /** An accepted booking whose visits are due and cooked, completed by the chef. */
 export async function completedBooking(
-  o: { trial?: boolean } = {},
+  o: {
+    trial?: boolean;
+    offsets?: number[];
+    chef?: TestChef;
+    /** Days to move the visit back (default 3 = today); more puts it in the past. */
+    shift?: number;
+  } = {},
 ): Promise<Fixture> {
   const f = await acceptedBooking(o);
-  await shiftDays(f.id, 3);
+  await shiftDays(f.id, o.shift ?? 3);
   const c = await cooked(f.chef.b, f.id, 1);
   expect(c.status, c.text).toBe(200);
   const d = await complete(f.chef.b, f.id);
