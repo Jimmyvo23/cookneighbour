@@ -27,3 +27,6 @@ From: backend  To: tester
 ## What the next agent needs
 - Builder choices (unconfirmed by Jimmy): used triggers rather than a SECURITY DEFINER `create_review` function, so the route code and error mapping stay as they were; the reports route needed no code change.
 - Tester: confirm CI `supabase` job is green, and that the review route still returns the same texts (contact filter, window_closed, already_reviewed, retry 200).
+
+## Merge with main
+Merged `origin/main` (T-097). Only the `docs/api-contract.md` version header conflicted. My entry is renumbered v1.23 and sits in front of main's v1.22 (T-097) entry; both are kept. Nothing else conflicted.
