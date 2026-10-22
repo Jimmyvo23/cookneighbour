@@ -40,14 +40,41 @@ test("no CSP violation across home, auth, chef apply and admin pages", async ({
 });
 
 test("a hostile page cannot frame the app", async ({ page, baseURL }) => {
-  await page.route("http://evil.test/", (r) =>
-    r.fulfill({
-      contentType: "text/html",
-      body: `<iframe id="f" src="${baseURL}/login"></iframe>`,
-    }),
+  // Positive controls so the test cannot pass vacuously: (1) /login really shows the Email
+  // field when opened top level (also warms the dev compile); (2) a frameable control iframe
+  // on the same hostile page does load, so the page, iframes and our wait all work.
+  await page.goto("/login");
+  await expect(page.getByLabel("Email")).toBeVisible();
+
+  await page.route("http://evil.test/**", (r) =>
+    r.request().url().endsWith("/control")
+      ? r.fulfill({ contentType: "text/html", body: "<p>control-ok</p>" })
+      : r.fulfill({
+          contentType: "text/html",
+          body: `<iframe id="ctl" src="http://evil.test/control"></iframe>
+<iframe id="f" src="${baseURL}/login"></iframe>`,
+        }),
   );
   await page.goto("http://evil.test/");
-  await page.waitForTimeout(1500);
+  await expect(page.locator("iframe")).toHaveCount(2);
+  await expect(page.frameLocator("#ctl").getByText("control-ok")).toBeVisible();
+  // Wait until the target frame has navigated away from about:blank, then check it.
+  await expect
+    .poll(
+      () =>
+        page
+          .frames()
+          .find(
+            (f) =>
+              f.name() === "" &&
+              f !== page.mainFrame() &&
+              !f.url().startsWith("http://evil.test/control") &&
+              f.url() !== "about:blank",
+          )
+          ?.url() ?? "",
+      { timeout: 10_000 },
+    )
+    .not.toBe("");
   const framed = page.frames().find((f) => f.url().startsWith(baseURL!));
   // Blocked frames never reach a loaded app page.
   const hasForm = framed ? await framed.getByLabel("Email").count() : 0;

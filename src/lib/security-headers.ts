@@ -39,6 +39,21 @@ function supabaseOrigins(url: string | undefined, dev: boolean) {
   return { http: [...new Set(http)], ws: [...new Set(ws)] };
 }
 
+/**
+ * Reads the CSP options from the environment. Fails closed: dev extras ('unsafe-eval' and the
+ * local Supabase hosts) only when NODE_ENV is exactly "development". A stray NODE_ENV=test or an
+ * unset value gets the production policy. (T-105, T-100 Reviewer LOW.)
+ */
+export function cspOptionsFromEnv(env: {
+  NODE_ENV?: string;
+  NEXT_PUBLIC_SUPABASE_URL?: string;
+}): CspOptions {
+  return {
+    supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
+    dev: env.NODE_ENV === "development",
+  };
+}
+
 export function buildCsp({ supabaseUrl, dev }: CspOptions): string {
   const supa = supabaseOrigins(supabaseUrl, dev);
   const directives: Record<string, string[]> = {
