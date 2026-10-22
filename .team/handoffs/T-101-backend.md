@@ -15,7 +15,7 @@ From: backend  To: tester
 - Seed data: every seeded name, bio, dish name and description passes the filter; no seed text changed.
 
 ## Known gaps or risks
-- API and RLS tests were not run locally (CI only); the migration was not run through pglite.
+- API and RLS tests ran only in CI (all green on the final run; round 1 failed only the function-privilege snapshot, fixed by adding `can_read_intake`).
 - Text saved before this change is not re-checked or migrated. Hosted data could already hold a phone number, email or link in a display name, bio, dish text or saved intake. A saved allergy profile that now fails the filter reads as "nothing saved". Approximate hosted pre-check (read only, regex is looser than the real filter): `select 'chefs' t, profile_id::text id, bio v from public.chefs where bio ~* '(@|https?://|www\.|[0-9]{3}[^0-9]{0,3}[0-9]{3}[^0-9]{0,3}[0-9]{4})' union all select 'dishes', id::text, name||' '||coalesce(description,'') from public.dishes where name||' '||coalesce(description,'') ~* '(@|https?://|www\.|[0-9]{3}[^0-9]{0,3}[0-9]{3}[^0-9]{0,3}[0-9]{4})' union all select 'profiles', id::text, display_name from public.profiles where display_name ~* '(@|https?://|www\.|[0-9]{3}[^0-9]{0,3}[0-9]{3}[^0-9]{0,3}[0-9]{4})';` Hosted needs `npx supabase db push` (Jimmy).
 - After the window, the chef's booking detail shows empty allergy and dietary text (shape unchanged). Frontend may want a "no longer shared" line; no new field was added.
 
