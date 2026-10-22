@@ -174,18 +174,7 @@ describe("database-level guarantees", () => {
         (c) => `${role} reviews.${c} select`,
       ),
     ),
-    ...[
-      "author_id",
-      "author_role",
-      "booking_id",
-      "comment",
-      "rating",
-      "subject_id",
-    ].map((c) => `authenticated reviews.${c} insert`),
-    // T-046: no insert column on messages any more (send_message is the only writer).
-    ...["booking_id", "category", "description", "reporter_id"].map(
-      (c) => `authenticated reports.${c} insert`,
-    ),
+    // T-046: no insert column on messages; T-098: none on reviews or reports either (route only).
     "authenticated notifications.read_at update",
   ].sort();
   const expectedFunctions: string[] = [
@@ -206,7 +195,7 @@ describe("database-level guarantees", () => {
     "is_booking_chef",
     "is_booking_party",
     "is_chef",
-    // T-048: the review window (14) used by the insert policy on reviews.
+    // T-048: the review window (14); still executable by authenticated (T-098: the insert policy is gone, harmless).
     "review_window_days",
     "shares_booking_with",
     "storage_booking_id",

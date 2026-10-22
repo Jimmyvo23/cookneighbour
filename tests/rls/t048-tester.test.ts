@@ -78,27 +78,27 @@ describe("review window: tight edges (30 seconds either side of 14 x 24 h)", () 
     const inside = await booking("completed", 14 * DAY - 30_000);
     const past = await booking("completed", 14 * DAY + 30_000);
     expectRows(
-      await cC
+      await svc
         .from("reviews")
         .insert(row(inside, cust, chef, "customer"))
         .select("id"),
       1,
     );
     expectRows(
-      await cH
+      await svc
         .from("reviews")
         .insert(row(inside, chef, cust, "chef"))
         .select("id"),
       1,
     );
     expectDenied(
-      await cC
+      await svc
         .from("reviews")
         .insert(row(past, cust, chef, "customer"))
         .select("id"),
     );
     expectDenied(
-      await cH
+      await svc
         .from("reviews")
         .insert(row(past, chef, cust, "chef"))
         .select("id"),
@@ -112,13 +112,13 @@ describe("review window: tight edges (30 seconds either side of 14 x 24 h)", () 
     async (status) => {
       const id = await booking(status);
       expectDenied(
-        await cC
+        await svc
           .from("reviews")
           .insert(row(id, cust, chef, "customer"))
           .select("id"),
       );
       expectDenied(
-        await cH
+        await svc
           .from("reviews")
           .insert(row(id, chef, cust, "chef"))
           .select("id"),
@@ -136,7 +136,7 @@ describe("review window: tight edges (30 seconds either side of 14 x 24 h)", () 
       .eq("id", id);
     expect(up.error).toBeNull();
     expectDenied(
-      await cC
+      await svc
         .from("reviews")
         .insert(row(id, cust, chef, "customer"))
         .select("id"),
@@ -147,7 +147,7 @@ describe("review window: tight edges (30 seconds either side of 14 x 24 h)", () 
 describe("review visibility by role", () => {
   it("a chef's review of a customer is hidden from anon, another customer and another chef, however they filter", async () => {
     const id = await booking("completed");
-    const ins = await cH
+    const ins = await svc
       .from("reviews")
       .insert(row(id, chef, cust, "chef"))
       .select("id");
@@ -184,7 +184,7 @@ describe("review visibility by role", () => {
   ])("F-2: no browser role can read reviews.%s", (column) => {
     it(`column ${column}`, async () => {
       const id = await booking("completed");
-      const ins = await cC
+      const ins = await svc
         .from("reviews")
         .insert(row(id, cust, chef, "customer"))
         .select("id");
@@ -202,7 +202,7 @@ describe("review visibility by role", () => {
 
   it("F-2: anon still reads the safe columns of a public review, and a select * is refused", async () => {
     const id = await booking("completed");
-    const ins = await cC
+    const ins = await svc
       .from("reviews")
       .insert(row(id, cust, chef, "customer"))
       .select("id");
@@ -221,28 +221,16 @@ describe("review visibility by role", () => {
 });
 
 describe("reports: insert rules", () => {
-  it("a non-party cannot report, nobody reports as someone else, and a report cannot start closed or with a note", async () => {
+  it("a non-party cannot report, and a report cannot start closed (a forged reporter id is not a database question any more: only the route writes)", async () => {
     const id = await booking("accepted");
     const base = { booking_id: id, description: "tester" };
     expectDenied(
-      await cO
+      await svc
         .from("reports")
         .insert({ ...base, reporter_id: other.id })
         .select(),
     );
-    expectDenied(
-      await cO
-        .from("reports")
-        .insert({ ...base, reporter_id: cust.id })
-        .select(),
-    );
-    expectDenied(
-      await cH
-        .from("reports")
-        .insert({ ...base, reporter_id: cust.id })
-        .select(),
-    );
-    const closed = await cC
+    const closed = await svc
       .from("reports")
       .insert({ ...base, reporter_id: cust.id, status: "resolved" })
       .select();
@@ -258,7 +246,7 @@ describe("reports: insert rules", () => {
     "a party can report a %s booking directly, and the other party then reads nothing",
     async (status) => {
       const id = await booking(status);
-      const ins = await cC
+      const ins = await svc
         .from("reports")
         .insert({ booking_id: id, reporter_id: cust.id, description: "t" })
         .select("id");
