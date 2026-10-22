@@ -1,4 +1,10 @@
-import { ApiFailure, handle, json, validationFailed } from "@/lib/api/errors";
+import {
+  ApiFailure,
+  dbFailure,
+  handle,
+  json,
+  validationFailed,
+} from "@/lib/api/errors";
 import { limiterKey, rateLimit } from "@/lib/api/rate-limit";
 import { clientIp, readJsonObject, rejectUnknownKeys } from "@/lib/api/request";
 import type { SignUpResponse } from "@/lib/api/types";
@@ -30,6 +36,8 @@ export function POST(request: Request) {
       f.errors.role = "Choose customer or chef.";
     const displayName = f.publicText(body, "displayName", 1, 80);
     f.done();
+    // T-102 (LOW-4): an email-only key next to the IP key. PLACEHOLDER, in memory.
+    rateLimit(limiterKey("signup-email", email), 10, 3600);
 
     const supabase = await createClient();
     const existing = await supabase.auth.getUser();
@@ -92,9 +100,7 @@ export function POST(request: Request) {
           { onConflict: "chef_id", ignoreDuplicates: true },
         );
       if (c1.error || c2.error)
-        throw new Error(
-          `chef rows failed: ${c1.error?.message ?? c2.error?.message}`,
-        );
+        throw dbFailure("chef rows failed", c1.error ?? c2.error);
     }
     const out: SignUpResponse = {
       user: await loadProfile(admin, user.id),

@@ -41,7 +41,7 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon,
       SUPABASE_SECRET_KEY: service,
       // Throwaway test pepper. Only hashes in the throwaway local database use it.
-      HASH_PEPPER: "e2e-test-pepper-not-a-secret",
+      HASH_PEPPER: "e2e-test-pepper-not-a-secret-0000",
     },
   },
 });

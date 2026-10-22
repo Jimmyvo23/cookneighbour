@@ -67,6 +67,20 @@ export function validationFailed(fields: Record<string, string>): ApiFailure {
 }
 
 /**
+ * An Error for a failed database or storage call in a route that touches private data (T-102,
+ * LOW-6). The message holds only the fixed `label` and the error `code`, never the database
+ * message: unique-violation messages can name constraints and key values such as hashes.
+ */
+export function dbFailure(
+  label: string,
+  error: { code?: string | null } | null | undefined,
+): Error {
+  const code =
+    typeof error?.code === "string" && error.code ? error.code : "none";
+  return new Error(`${label} (code ${code.slice(0, 40)})`);
+}
+
+/**
  * 422 for field errors from a parser: CONTACT_DETAILS_NOT_ALLOWED when contact details in self text
  * are the only problem (T-101, D-147/D-148), else VALIDATION_FAILED.
  */

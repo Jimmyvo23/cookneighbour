@@ -1,4 +1,10 @@
-import { ApiFailure, handle, json, validationFailed } from "@/lib/api/errors";
+import {
+  ApiFailure,
+  handle,
+  json,
+  validationFailed,
+  dbFailure,
+} from "@/lib/api/errors";
 import { limiterKey, rateLimit } from "@/lib/api/rate-limit";
 import { clientIp, readJsonObject, rejectUnknownKeys } from "@/lib/api/request";
 import type { PhoneSubmitResponse } from "@/lib/api/types";
@@ -29,8 +35,7 @@ export function POST(request: Request) {
       .select("phone_hash, phone_verified")
       .eq("profile_id", caller.userId)
       .maybeSingle();
-    if (current.error)
-      throw new Error(`phone lookup failed: ${current.error.message}`);
+    if (current.error) throw dbFailure("phone lookup failed", current.error);
 
     // Another account already verified this number (contract section 8). The message does not say who.
     const taken = await admin
@@ -40,8 +45,7 @@ export function POST(request: Request) {
       .eq("phone_verified", true)
       .neq("profile_id", caller.userId)
       .limit(1);
-    if (taken.error)
-      throw new Error(`phone check failed: ${taken.error.message}`);
+    if (taken.error) throw dbFailure("phone check failed", taken.error);
     if (taken.data.length > 0)
       throw new ApiFailure("PHONE_IN_USE", "This phone number cannot be used.");
 
@@ -55,7 +59,7 @@ export function POST(request: Request) {
       },
       { onConflict: "profile_id" },
     );
-    if (up.error) throw new Error(`phone save failed: ${up.error.message}`);
+    if (up.error) throw dbFailure("phone save failed", up.error);
 
     const out: PhoneSubmitResponse = {
       phoneMasked: maskPhone(phone),
