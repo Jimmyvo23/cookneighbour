@@ -52,10 +52,13 @@ describe("T-098: the review author comes from the session, never from the body",
     const rows = await svc
       .from("reviews")
       .select("author_id, subject_id, author_role, booking_id")
-      .eq("booking_id", f.id)
-      .order("author_role");
+      .eq("booking_id", f.id);
     expect(rows.error).toBeNull();
-    expect(rows.data).toEqual([
+    // Sorted here: the database orders an enum by declaration, not by name.
+    const sorted = [...(rows.data ?? [])].sort((x, y) =>
+      String(x.author_role).localeCompare(String(y.author_role)),
+    );
+    expect(sorted).toEqual([
       {
         author_id: f.chef.id,
         subject_id: f.cust.id,
