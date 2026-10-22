@@ -247,7 +247,7 @@ describe("T-098 tester: catalog (privileges, definer functions, trigger order)",
         for (const t of ["reviews", "reports"]) {
           const r = await client.query(
             `select p as priv, has_table_privilege($1, $2, p) as tbl,
-                    has_any_column_privilege($1, $2, p) as col
+                    (p in ('INSERT','UPDATE','REFERENCES') and has_any_column_privilege($1, $2, p)) as col
                from unnest(array['INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p`,
             [role, `public.${t}`],
           );
