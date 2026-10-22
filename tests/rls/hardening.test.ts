@@ -301,7 +301,7 @@ describe("B2 (T-028): routes are the only writers of chef data; path rules hold 
   });
 });
 
-describe("P4: clients cannot set server-managed columns on messages, reviews, reports", () => {
+describe("P4: clients cannot insert messages, reviews or reports (T-098: route only)", () => {
   let c1: SupabaseClient;
   beforeAll(async () => {
     c1 = await clientFor(fx.c1);
@@ -330,7 +330,10 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
       );
   });
 
-  it("reviews: created_at, id and author_display_name are refused", async () => {
+  // T-098: reviews and reports have no browser insert either (the routes are the only writers), so
+  // every column, server-managed or not, is refused with 42501. The rules a row must meet (party,
+  // status, window, open report) are tested through the service role in reviews-reports.test.ts.
+  it("reviews: no insert works, with or without server-managed columns", async () => {
     const base = {
       booking_id: b.completedC1H1,
       author_id: fx.c1.id,
@@ -338,52 +341,35 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
       author_role: "customer",
       rating: 4,
     };
-    expectCode(
-      await c1
-        .from("reviews")
-        .insert({ ...base, created_at: "2001-01-01T00:00:00Z" })
-        .select("id"),
-      "42501",
-    );
-    expectCode(
-      await c1
-        .from("reviews")
-        .insert({ ...base, author_display_name: "Someone Else" })
-        .select("id"),
-      "42501",
-    );
-    expectCode(
-      await c1
-        .from("reviews")
-        .insert({ ...base, id: crypto.randomUUID() })
-        .select("id"),
-      "42501",
-    );
-    // The allowed insert (same columns, no extras) is covered in engagement.test.ts.
+    for (const extra of [
+      {},
+      { created_at: "2001-01-01T00:00:00Z" },
+      { author_display_name: "Someone Else" },
+      { id: crypto.randomUUID() },
+    ])
+      expectCode(
+        await c1
+          .from("reviews")
+          .insert({ ...base, ...extra })
+          .select("id"),
+        "42501",
+      );
   });
 
-  it("reports: status, created_at, resolved_at are refused; valid categories work and a bogus one is rejected", async () => {
-    // T-048: one open report per reporter per booking, so this test uses a booking no other test
-    // reports on and closes each report (service role) before it files the next.
+  it("reports: no insert works, with or without server-managed columns", async () => {
     const base = {
       booking_id: b.acceptedChefHomeC1H1,
       reporter_id: fx.c1.id,
       description: "p4 report",
     };
-    const close = async (res: { data: unknown }) => {
-      const id = (res.data as { id: string }[])[0].id;
-      const up = await svc
-        .from("reports")
-        .update({ status: "dismissed" })
-        .eq("id", id)
-        .select();
-      expect(up.error).toBeNull();
-    };
     for (const extra of [
+      {},
+      { category: "safety" },
       { status: "open" },
       { created_at: "2001-01-01T00:00:00Z" },
       { resolved_at: "2001-01-01T00:00:00Z" },
-    ]) {
+      { client_id: crypto.randomUUID() },
+    ])
       expectCode(
         await c1
           .from("reports")
@@ -391,9 +377,9 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
           .select(),
         "42501",
       );
-    }
+    // The service role (the route) still takes every category, and a bogus one is rejected.
     expectCode(
-      await c1
+      await svc
         .from("reports")
         .insert({ ...base, category: "bogus" })
         .select(),
@@ -406,14 +392,20 @@ describe("P4: clients cannot set server-managed columns on messages, reviews, re
       "payment",
       "other",
     ]) {
-      const res = await c1
+      const res = await svc
         .from("reports")
         .insert({ ...base, category })
         .select("id");
       expectRows(res, 1);
-      await close(res);
+      const id = (res.data as { id: string }[])[0].id;
+      const up = await svc
+        .from("reports")
+        .update({ status: "dismissed" })
+        .eq("id", id)
+        .select();
+      expect(up.error).toBeNull();
     }
-    const dflt = await c1.from("reports").insert(base).select("id, category");
+    const dflt = await svc.from("reports").insert(base).select("id, category");
     expectRows(dflt, 1);
     expect((dflt.data as { category: string }[])[0].category).toBe("other");
   });

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AccountBar } from "@/components/AccountBar";
+import { SkipLink, SkipTarget } from "@/components/SkipLink";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,11 +27,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <SkipLink />
         {/* usePathname() in AccountBar needs a Suspense boundary on routes with dynamic segments
             (/admin/chefs/[id]); the bar streams in after the page shell. */}
         <Suspense fallback={null}>
           <AccountBar />
         </Suspense>
+        <SkipTarget />
         {children}
       </body>
     </html>

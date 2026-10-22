@@ -27,8 +27,10 @@ export function hasInvisibleText(text: string): boolean {
 export const NO_VISIBLE_TEXT = "Enter at least one visible character.";
 
 /**
- * True when nothing visible is left after the fold and a trim: empty, spaces only, or only
- * joiners. Used for names and address lines (T-093); other free text is not checked with it.
+ * True when nothing visible is left after the fold and a trim: empty, spaces only, only joiners,
+ * only accent marks (U+0300-036F), or only spacing accents that NFKC turns into a space plus an
+ * accent mark (for example U+00B4). U+200B, U+2060 and bidi controls are refused earlier by
+ * `hasUnsafeText`. Used for names and address lines (T-093); other free text is not checked with it.
  */
 export function hasNoVisibleText(text: string): boolean {
   return foldText(text).trim() === "";
