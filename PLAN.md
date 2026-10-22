@@ -942,7 +942,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Known limits: the limiter is still in memory per instance; chefs can upload unlimited new photos; bookings, admin, groceries, messages and `removeObject` still log database or storage messages (LOW-6 partly fixed).
 - **Jimmy's own hosted step (D-161):** set the minimum password length to 8 in the hosted Supabase dashboard (optionally leaked-password protection).
 
-### T-105 — T-100 and T-098 Reviewer follow-ups (done 2026-10-22, PR #208 merged MERGE_T105; no migration)
+### T-105 — T-100 and T-098 Reviewer follow-ups (done 2026-10-22, PR #208 merged 5f5f508; no migration)
 - The CSP now fails closed: the dev allowances (`'unsafe-eval'`, 127.0.0.1) only when `NODE_ENV === "development"` (`cspOptionsFromEnv`); test, empty, unset and "Development" get the production policy. The weak `API_URL` e2e check moved to unit tests. Contract §7D and `docs/data-model.md` name the T-098 triggers.
 - Tester PASS 7ab15e5 with a HIGH it fixed itself: the framing test passed with both frame headers removed, because Chromium's Local Network Access checks blocked the loopback frame. That one test file now turns those checks off and asserts Chromium's `frame-ancestors` / `X-Frame-Options` refusal; bite test: both headers removed fails, either one alone passes. Round 1 2196e77 (contract 7D wording). Reviewer APPROVE 6346536021 (NITs: comma in `e2e/home.spec.ts:11`, stray ")" in `docs/data-model.md:182`).
 - Builder choices, not confirmed by Jimmy: unit tests instead of the e2e host check; the framing test waits for the control frame, the page load and 1.5 s; Chromium's Local Network Access checks are off in that one test file.
