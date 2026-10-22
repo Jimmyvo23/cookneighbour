@@ -1,6 +1,6 @@
-import { dbFailure } from "@/lib/api/errors";
 // Loads and maps the caller's own profile data. Explicit column lists: hashes and the full phone
 // number are never selected into a response.
+import { dbFailure } from "@/lib/api/errors";
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {

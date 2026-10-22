@@ -42,3 +42,9 @@ From: backend  To: tester
 - **F-3** LOW-6 widened: `dbFailure` now used in `src/lib/server/free-trial.ts` (all lookups, claim insert/update, the block log line), `src/lib/server/chef-application.ts` (loaders, row repair, kitchen address, chefs/chef_private update, status update) and `src/lib/server/caller.ts`. The unique-violation message in `holdFreeTrial` is still read to tell which index failed (logic), but never logged or thrown. New test `src/lib/server/t102-no-db-message-in-logs.test.ts` spies on all console methods. Other routes (bookings, admin, groceries, messages...) still log messages; not part of this round.
 - The Tester's `it.fails` tests for F-1 and F-2 are plain `it` now (comments updated); the skip-lists for the two gaps in the parity tests were removed.
 - Local results after `supabase db reset`: lint and typecheck clean, unit 3092 pass (3 expected fail), RLS 31 files 456 pass, API 46 files 857 pass.
+
+## Round 2 (docs only, Reviewer REQUEST CHANGES on 19d0ec2)
+- `docs/api-contract.md` section 1: U+0085 (NEL) listed as blank for the no-visible-character rule; `foldText`, `addressKey` and the contact filter unchanged, so no stored hash changes.
+- `docs/api-contract.md` rule 9: `free-trial.ts`, `chef-application.ts`, `caller.ts` listed as label plus code; remaining gap named (bookings, admin, groceries, messages routes and `removeObject` in `src/lib/server/storage.ts`).
+- `docs/data-model.md`: the stale "Postgres \s and JS trim() differ" note replaced: U+0085 was the only mismatch found by the all-code-point check, now fixed.
+- NIT: `src/lib/server/me.ts` import moved below the header comment (no code change). The migration's own header comment still mentions the `\s` difference; it was left alone (migration file, comment only).
