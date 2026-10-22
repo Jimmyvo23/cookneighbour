@@ -45,15 +45,17 @@ export function resolveDemoPasswords(
     return { chef: DEMO_CHEF_PASSWORD, customer: DEMO_CUSTOMER_PASSWORD };
   const read = (name: string, publicDefault: string): string => {
     const value = env[name] ?? "";
-    if (!value)
+    // Checks use the trimmed value; the value itself is used as given (never silently changed).
+    const trimmed = value.trim();
+    if (!trimmed)
       throw new Error(
         `--hosted needs ${name} in the environment (the built-in demo passwords are public and are never used on hosted).`,
       );
-    if (value.length < MIN_HOSTED_DEMO_PASSWORD_LENGTH)
+    if (trimmed.length < MIN_HOSTED_DEMO_PASSWORD_LENGTH)
       throw new Error(
         `${name} must be at least ${MIN_HOSTED_DEMO_PASSWORD_LENGTH} characters.`,
       );
-    if (value === publicDefault)
+    if (trimmed === publicDefault)
       throw new Error(
         `${name} must not be the built-in demo password from the repo. Choose your own.`,
       );

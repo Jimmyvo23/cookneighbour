@@ -20,3 +20,9 @@ From: backend  To: tester
 
 ## What the next agent needs
 Nothing else; no API or schema change.
+
+## Round 1
+- Tester LOW fixed: `resolveDemoPasswords` now checks the trimmed value. Whitespace-only is treated as missing, the 12-character minimum applies to the trimmed value, and a value whose trim equals the repo default is rejected.
+- Builder choice (unconfirmed): a valid value is used exactly as given, not trimmed, so the password is never silently changed. A password with surrounding spaces is therefore allowed if its trimmed form is valid.
+- Tests added in `src/lib/seed-data.test.ts` (whitespace cases and as-given). The Tester's tests did not pin the old behaviour, so they are unchanged.
+- The `supabase` job failure on `e2e/booking-real.spec.ts:154` is outside this change; spec untouched.

@@ -201,4 +201,38 @@ describe("resolveDemoPasswords (T-099)", () => {
       }),
     ).toThrow(/SEED_DEMO_CUSTOMER_PASSWORD/);
   });
+
+  it("rejects whitespace-only values and judges length and the default on the trimmed value", () => {
+    const ok = "customer-password-from-env";
+    expect(() =>
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: " ".repeat(14),
+        SEED_DEMO_CUSTOMER_PASSWORD: ok,
+      }),
+    ).toThrow(/SEED_DEMO_CHEF_PASSWORD/);
+    // 11 characters plus padding is still too short.
+    expect(() =>
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: "  short-pw-11  ",
+        SEED_DEMO_CUSTOMER_PASSWORD: ok,
+      }),
+    ).toThrow(/12/);
+    // Padding around the repo default is still the repo default.
+    expect(() =>
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: ` ${DEMO_CHEF_PASSWORD}\n`,
+        SEED_DEMO_CUSTOMER_PASSWORD: ok,
+      }),
+    ).toThrow(/SEED_DEMO_CHEF_PASSWORD/);
+  });
+
+  it("uses a valid value exactly as given (no silent trimming)", () => {
+    const padded = "  chef-password-from-env ";
+    expect(
+      resolveDemoPasswords("hosted", {
+        SEED_DEMO_CHEF_PASSWORD: padded,
+        SEED_DEMO_CUSTOMER_PASSWORD: "customer-password-from-env",
+      }).chef,
+    ).toBe(padded);
+  });
 });
