@@ -899,7 +899,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Tester PASS fe623ae (INFO every 42501 maps to `window_closed`). Reviewer APPROVE 6330631070; doc nits -> T-105.
 - Builder choices, not confirmed by Jimmy: triggers instead of `create_*` functions; `review_window_days()` stays executable by `authenticated` (a constant, no data).
 
-### T-099 — Hosted seed takes demo passwords from the environment (done 2026-10-22, PR #202 merged MERGE_T099; no migration)
+### T-099 — Hosted seed takes demo passwords from the environment (done 2026-10-22, PR #202 merged 76f89d8; no migration)
 - `npm run db:seed -- --hosted` reads `SEED_DEMO_CHEF_PASSWORD` and `SEED_DEMO_CUSTOMER_PASSWORD` (min 12, trimmed check, repo default refused); `--local` keeps the constants. Closes MED-2.
 - Tester PASS 85a4579; CI went red once on `e2e/booking-real.spec.ts:154` (unrelated, passed on re-run -> T-106). The Tester's "Docker rate limit" claim was not in the log (lesson added). Round 1 a741c2b (whitespace-only passwords). Reviewer APPROVE 6330796298.
 - Builder choices, not confirmed by Jimmy: no "generate and print once" option; the value is used as given.
@@ -917,6 +917,6 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Builder choices, not confirmed by Jimmy: the contact code is used only when every error is a contact error; sign-up filtered too; the intake filter also runs on the estimate and the saved profile; window = `requested` plus the D-52 statuses.
 - TESTER_T101
 
-### T-103 — Log a free-trial block when the estimate refuses the trial (done 2026-10-22, PR #203 merged MERGE_T103; no migration)
+### T-103 — Log a free-trial block when the estimate refuses the trial (done 2026-10-22, PR #203 merged 1ef3643; no migration)
 - D-153, D-154, D-155. Tester PASS with findings 5b2e6ee (admin list ignored the attempts column, a thrown rpc failed the estimate) fixed in round 1 67e5a76. Reviewer APPROVE 6330772764; LOW display -> T-107.
 - Builder choice, not confirmed by Jimmy: reuse `record_free_trial_block` with its 60-minute dedupe (not one row per Toronto day). INFO: the booking form ticks "use free trial" by default, so a refresh with other errors also counts as an attempt (fits D-155).
