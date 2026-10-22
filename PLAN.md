@@ -215,7 +215,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-104 | T-052 Reviewer NITs, tests only: browser checks for the pickup "Not yet" and intake-delete panels; note that `aria-atomic` was not checked with a real screen reader (VoiceOver risk) | tester | T-052 | todo |
 | T-105 | T-100 Reviewer LOWs: CSP check is `NODE_ENV !== "production"` (fails open on a stray `NODE_ENV=test` build); framing test has no positive control; `e2e/home.spec.ts` API_URL host check passes even if env reading broke. T-098 Reviewer doc nits: contract 7D says "policy" where it is now a trigger; stale text in `docs/data-model.md`; a future 42501 on the review insert needs its own errcode | backend | T-100, T-098 | todo |
 | T-106 | Flaky `e2e/booking-real.spec.ts:154` (demo step 2: cancel not shown as "Cancelled", then the review heading missing on retry). Failed once on T-099, passed on re-run with no related change | tester | T-050 | todo |
-| T-107 | T-103 Reviewer LOW (display): the admin blocks list puts the summed attempts on every hourly row ("7 attempts" twice = 14 when added up) and "last on" shows the row's first time | frontend | T-103 | todo |
+| T-107 | T-103 Reviewer LOW (display): the admin blocks list puts the summed attempts on every hourly row ("7 attempts" twice = 14 when added up) and "last on" shows the row's first time | frontend | T-103 | done |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -920,3 +920,8 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 ### T-103 — Log a free-trial block when the estimate refuses the trial (done 2026-10-22, PR #203 merged 1ef3643; no migration)
 - D-153, D-154, D-155. Tester PASS with findings 5b2e6ee (admin list ignored the attempts column, a thrown rpc failed the estimate) fixed in round 1 67e5a76. Reviewer APPROVE 6330772764; LOW display -> T-107.
 - Builder choice, not confirmed by Jimmy: reuse `record_free_trial_block` with its 60-minute dedupe (not one row per Toronto day). INFO: the booking form ticks "use free trial" by default, so a refresh with other errors also counts as an attempt (fits D-155).
+
+### T-107 — Per-row attempts on the admin free-trial blocks list (done 2026-10-22, PR #206 merged 2414fa4; no migration, response shape unchanged)
+- Each hourly block row shows its own `attempts`; the label is "N attempts, first on {date}" (`createdAt` is the first attempt). Built on the T-103 branch; after the T-103 squash merge the Planner kept T-107's side of the three conflicts (main matched the T-103 base for those files).
+- First CI attempt failed on the known `e2e/booking-real.spec.ts:154` flake (T-106), passed on rerun. Tester PASS a20de1f (INFO no browser axe check on `/admin/free-trial-blocks`). Reviewer APPROVE 6343544588; LOW "one row per hour" wording fixed in this notes PR.
+- Builder choices, not confirmed by Jimmy: the "first on" wording; `last_attempt_at` is not returned, so admins cannot see the latest attempt in a row (a `lastAttemptAt` field would be a small later task).

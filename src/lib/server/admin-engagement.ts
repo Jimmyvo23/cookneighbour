@@ -324,7 +324,7 @@ export async function listAdminFreeTrialBlocks(
     customer: person(nm, r.customer_id as string),
     reason: r.reason as AdminFreeTrialBlock["reason"],
     createdAt: iso(r.created_at),
-    // T-107: this row's own counter (one row per customer, rule and hour); createdAt is its first attempt.
+    // T-107: this row's own counter (a new row starts after 60 minutes with no attempt); createdAt is its first attempt.
     attempts: Number(r.attempts ?? 1),
   }));
   return pageOf(rows, q.limit, items);
