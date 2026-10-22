@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildCsp, securityHeaders } from "./security-headers";
+import {
+  buildCsp,
+  cspOptionsFromEnv,
+  securityHeaders,
+} from "./security-headers";
 
 const SUPA = "https://abc.supabase.co";
 
@@ -62,5 +66,33 @@ describe("securityHeaders", () => {
       "camera=(), microphone=(), geolocation=()",
     );
     expect(h["Content-Security-Policy"]).toContain("frame-ancestors 'none'");
+  });
+});
+
+describe("cspOptionsFromEnv", () => {
+  it("is dev only when NODE_ENV is exactly development (fails closed)", () => {
+    expect(cspOptionsFromEnv({ NODE_ENV: "development" }).dev).toBe(true);
+    for (const v of ["production", "test", "", undefined, "Development"])
+      expect(cspOptionsFromEnv({ NODE_ENV: v }).dev, String(v)).toBe(false);
+  });
+  it("a NODE_ENV=test build gets no unsafe-eval and no local hosts", () => {
+    const csp = buildCsp(
+      cspOptionsFromEnv({ NODE_ENV: "test", NEXT_PUBLIC_SUPABASE_URL: SUPA }),
+    );
+    expect(csp).not.toContain("unsafe-eval");
+    expect(csp).not.toContain("127.0.0.1");
+  });
+  it("uses NEXT_PUBLIC_SUPABASE_URL from the environment", () => {
+    const csp = buildCsp(
+      cspOptionsFromEnv({
+        NODE_ENV: "production",
+        NEXT_PUBLIC_SUPABASE_URL: "https://env-host.supabase.co",
+      }),
+    );
+    expect(csp).toContain("https://env-host.supabase.co");
+    expect(csp).toContain("wss://env-host.supabase.co");
+    expect(
+      buildCsp(cspOptionsFromEnv({ NODE_ENV: "production" })),
+    ).not.toContain("env-host");
   });
 });

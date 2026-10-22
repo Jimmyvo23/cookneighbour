@@ -39,19 +39,53 @@ test("no CSP violation across home, auth, chef apply and admin pages", async ({
   expect(problems).toEqual([]);
 });
 
+// T-105 Tester: current Chromium blocks a public page framing a loopback URL on its own
+// (net::ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS), whatever headers the app sends, which made
+// this test pass with the frame headers removed. The flag below turns that check off so only
+// the app's own headers decide, and the console assertion further down proves it was them.
+test.use({
+  launchOptions: {
+    args: [
+      "--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessForNavigations",
+    ],
+  },
+});
+
 test("a hostile page cannot frame the app", async ({ page, baseURL }) => {
-  await page.route("http://evil.test/", (r) =>
-    r.fulfill({
-      contentType: "text/html",
-      body: `<iframe id="f" src="${baseURL}/login"></iframe>`,
-    }),
+  const consoleText: string[] = [];
+  page.on("console", (m) => consoleText.push(m.text()));
+  // Positive controls so the test cannot pass vacuously: (1) /login really shows the Email
+  // field when opened top level (also warms the dev compile); (2) a frameable control iframe
+  // on the same hostile page does load, so the page, iframes and our wait all work.
+  await page.goto("/login");
+  await expect(page.getByLabel("Email")).toBeVisible();
+
+  await page.route("http://evil.test/**", (r) =>
+    r.request().url().endsWith("/control")
+      ? r.fulfill({ contentType: "text/html", body: "<p>control-ok</p>" })
+      : r.fulfill({
+          contentType: "text/html",
+          body: `<iframe id="ctl" src="http://evil.test/control"></iframe>
+<iframe id="f" src="${baseURL}/login"></iframe>`,
+        }),
   );
   await page.goto("http://evil.test/");
+  await expect(page.locator("iframe")).toHaveCount(2);
+  await expect(page.frameLocator("#ctl").getByText("control-ok")).toBeVisible();
+  // Both iframes were requested together; the control has loaded, so give the app frame the
+  // same load event, then a short settle. A blocked frame stays about:blank or an error page
+  // (its URL is not reliable), so the check below looks for the form itself.
+  await page.waitForLoadState("load");
   await page.waitForTimeout(1500);
   const framed = page.frames().find((f) => f.url().startsWith(baseURL!));
   // Blocked frames never reach a loaded app page.
   const hasForm = framed ? await framed.getByLabel("Email").count() : 0;
   expect(hasForm).toBe(0);
+  // Positive proof the browser refused because of our headers (X-Frame-Options or
+  // frame-ancestors), not because of some other block.
+  expect(consoleText.join("\n")).toMatch(
+    /(Framing|Refused to (frame|display))[^\n]*(frame-ancestors|X-Frame-Options)/i,
+  );
 });
 
 test("API routes, 404s and static assets carry the headers", async ({
