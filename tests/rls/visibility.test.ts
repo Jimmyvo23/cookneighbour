@@ -185,6 +185,8 @@ describe("database-level guarantees", () => {
     // T-046 (D-94): policy helper of the party select policy on messages ("is this chat open to
     // read": requested, accepted or completed, not a stale request). send_message is service-only.
     "booking_chat_open",
+    // T-101 (D-148): policy helper of the intake_forms select policy (customer always, chef in the window).
+    "can_read_intake",
     "can_view_kitchen_photos",
     "get_booking_contact",
     // T-064 (D-53): "is this booking frozen" for the two parties only; says nothing about the reason.

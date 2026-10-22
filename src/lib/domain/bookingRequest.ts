@@ -20,6 +20,7 @@ import { ALLERGEN_CHOICES } from "./dishes.ts";
 import type { BookingIssue, LocationType } from "./bookingValidation.ts";
 import { hasUnsafeText } from "./text-safety.ts";
 import { hasNoVisibleText, NO_VISIBLE_TEXT } from "./text-fold.ts";
+import { contactProblem } from "./contactText.ts";
 
 export const BOOKING_KEYS = [
   "chefId",
@@ -176,6 +177,11 @@ export function parseIntake(v: unknown): IntakeResult {
     if (t.length > max)
       invalid[`intake.${key}`] = `Use ${max} characters or fewer.`;
     else if (hasUnsafeText(t, true)) invalid[`intake.${key}`] = UNSAFE;
+    else {
+      // D-148: the chef reads these notes before accepting, so no contact details.
+      const c = contactProblem(t);
+      if (c) invalid[`intake.${key}`] = c;
+    }
     return t;
   };
   const allergyNotes = optionalText("allergyNotes", INTAKE_ALLERGY_NOTES_MAX);

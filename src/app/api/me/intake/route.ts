@@ -1,7 +1,7 @@
 // Saved allergy profile (T-067, D-38): the customer's own intake answers, used to prefill the
 // booking form. Customers only. Read through the user-scoped client (row-level security: own row);
 // written by the server only, after the same validation as the booking intake (D-23).
-import { handle, json, validationFailed, dbFailure } from "@/lib/api/errors";
+import { dbFailure, fieldsFailure, handle, json } from "@/lib/api/errors";
 import { readJsonObject, requireJson } from "@/lib/api/request";
 import type { SavedIntakeResponse } from "@/lib/api/types";
 import { parseSavedIntake, readSavedIntake } from "@/lib/domain/savedIntake";
@@ -38,7 +38,7 @@ export function PUT(request: Request) {
     const caller = await requireCustomer();
     const body = await readJsonObject(request);
     const parsed = parseSavedIntake(body);
-    if (!parsed.ok) throw validationFailed(parsed.fields);
+    if (!parsed.ok) throw fieldsFailure(parsed.fields);
     const savedAt = new Date().toISOString();
     // Only the caller's own row (id from the session, never the body).
     const up = await createAdminClient().from("profile_private").upsert(

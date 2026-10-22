@@ -10,7 +10,12 @@
 // admin. Nothing here verifies a document.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ApiFailure, dbFailure, validationFailed } from "@/lib/api/errors";
+import {
+  ApiFailure,
+  dbFailure,
+  fieldsFailure,
+  validationFailed,
+} from "@/lib/api/errors";
 import { rejectUnknownKeys } from "@/lib/api/request";
 import type { ChefApplication, DocumentKind } from "@/lib/api/types";
 import { postalPrefix } from "@/lib/domain/address";
@@ -417,7 +422,7 @@ export async function checkedUpdate(
       errors.photoPath = "Upload the photo first, then save its path.";
   }
 
-  if (Object.keys(errors).length) throw validationFailed(errors);
+  if (Object.keys(errors).length) throw fieldsFailure(errors);
   return value;
 }
 

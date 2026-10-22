@@ -9,7 +9,6 @@ import { limiterKey, rateLimit } from "@/lib/api/rate-limit";
 import { clientIp, readJsonObject, rejectUnknownKeys } from "@/lib/api/request";
 import type { SignUpResponse } from "@/lib/api/types";
 import { Fields, isEmail } from "@/lib/api/validate";
-import { findContactDetails } from "@/lib/domain/contactDetails";
 import { loadProfile } from "@/lib/server/me";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -35,12 +34,7 @@ export function POST(request: Request) {
     const role = body.role;
     if (role !== "customer" && role !== "chef")
       f.errors.role = "Choose customer or chef.";
-    const displayName = f.visibleText(body, "displayName", 1, 80);
-    // T-102 (LOW-3): the database trigger refuses contact details in a name, so say so here (422)
-    // instead of letting the sign-up fail with a generic error.
-    if (!f.errors.displayName && findContactDetails(displayName))
-      f.errors.displayName =
-        "Do not put a phone number, email or web address in your name.";
+    const displayName = f.publicText(body, "displayName", 1, 80);
     f.done();
     // T-102 (LOW-4): an email-only key next to the IP key. PLACEHOLDER, in memory.
     rateLimit(limiterKey("signup-email", email), 10, 3600);
