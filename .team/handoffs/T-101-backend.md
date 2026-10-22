@@ -5,8 +5,8 @@ From: backend  To: tester
 ## What changed
 - Branch: `feature/T-101-self-text-intake` (from main 81ca381). Pull request: see PR title "T-101: Contact filter on self text and intake read window".
 - D-147: new `src/lib/domain/contactText.ts` (`contactProblem`, `failureForFields`, shared message "Remove phone numbers, email addresses and links."). Filter added to: `displayNameProblem` (browser + MOCK), `Fields.publicText` (server sign-up and `PATCH /api/me`), `parseUpdateBody` bio, `parseDishBody` name and description, `parseIntake` notes, browser `intakeProblems`. Routes answer 422 `CONTACT_DETAILS_NOT_ALLOWED` through `fieldsFailure` (`src/lib/api/errors.ts`) when contact details are the only field problem, else `VALIDATION_FAILED`. MOCK adapter and mock bookings use `failureForFields` too.
-- D-148: migration `supabase/migrations/20261026100000_intake_read_window.sql`: `can_read_intake(booking)` (SECURITY DEFINER) and a replaced `intake_forms_select_party`. Customer always; chef when `requested` or `booking_contact_open` (accepted, completed, no-shows, until 00:00 Toronto on last day + 8); admin policy untouched.
-- Docs: api-contract v1.23, domain-rules, data-model.
+- D-148: migration `supabase/migrations/20261026110000_intake_read_window.sql`: `can_read_intake(booking)` (SECURITY DEFINER) and a replaced `intake_forms_select_party`. Customer always; chef when `requested` or `booking_contact_open` (accepted, completed, no-shows, until 00:00 Toronto on last day + 8); admin policy untouched.
+- Docs: api-contract v1.25, domain-rules, data-model.
 - Tests: `src/lib/domain/contactText.test.ts` (unit, includes a seed-data check), `tests/api/self-text-contact.test.ts`, `tests/rls/intake-window.test.ts`.
 
 ## How to verify
@@ -22,3 +22,6 @@ From: backend  To: tester
 ## What the next agent needs
 - Builder choices, unconfirmed by Jimmy: contact error only when every field error is the contact message (a mixed failure stays `VALIDATION_FAILED`); the chef's bio uses the same filter as dish text; sign-up display name is filtered too; the intake filter applies to estimate and the saved allergy profile as well as booking create; the admin keeps reading all intake forms; the window reuses `booking_contact_open`, so `requested` plus the D-52 statuses only.
 - Test ideas: estimate with phone notes, RLS at last day + 7 vs + 8 for each accepted status, chef detail after decline.
+
+## Round note (renumbering)
+Migration renamed to `20261026110000_intake_read_window.sql` (T-098 owns `20261026100000`). Contract entry renumbered to v1.25 (v1.23 is claimed by T-098 and T-103). Merged origin/main; the Planner may tidy numbering in the notes PR.
