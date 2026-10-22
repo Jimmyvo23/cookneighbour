@@ -14,7 +14,7 @@ concurrency:
 
 # T-084: one 21 to 24.5 minute job was close to the 25 minute limit. It is now three jobs that
 # run at the same time, plus a tiny gate job named `ci`. No test was removed, no limit raised.
-# T-108: the `supabase` job limit is now 35 minutes (slow apt mirror made the Playwright install
+# T-108: the `supabase` and `e2e-mock` job limits are now 35 minutes (slow apt mirror made the Playwright install
 # take 9 to 10+ minutes) and the Playwright browser download is cached.
 jobs:
   # Lint, types, formatting, unit tests and build. No Supabase needed.
@@ -91,7 +91,10 @@ jobs:
       # On a hit only the system libraries are installed; on a miss the full install runs.
       - name: Read Playwright version
         id: pw
-        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
+        run: |
+          v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
         id: pw-cache
         uses: actions/cache@v4
@@ -129,7 +132,7 @@ jobs:
   e2e-mock:
     name: e2e-mock
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
 
@@ -143,7 +146,10 @@ jobs:
       # On a hit only the system libraries are installed; on a miss the full install runs.
       - name: Read Playwright version
         id: pw
-        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
+        run: |
+          v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
         id: pw-cache
         uses: actions/cache@v4

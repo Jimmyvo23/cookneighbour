@@ -7,7 +7,7 @@ From: backend  To: tester
 - Pull request: #210
 - Files: `.github/workflows/ci.yml` only (README does not describe CI timing).
 - `supabase` and `e2e-mock`: read the locked `@playwright/test` version (1.63.0) from package-lock.json, `actions/cache@v4` on `~/.cache/ms-playwright` with key `playwright-<OS>-<version>`. Miss: `npx playwright install --with-deps chromium`. Hit: `npx playwright install-deps chromium`.
-- `supabase` `timeout-minutes` 25 -> 35. `checks`, `e2e-mock` stay 25 (e2e-mock ran 13 min; no evidence of need). `ci` gate unchanged.
+- `supabase` `timeout-minutes` 25 -> 35. `checks` stays 25. `ci` gate unchanged.
 
 ## How to verify
 `gh run view <id> --json jobs` on run 39817506333 (attempt 1 = cache miss for e2e-mock, hit for supabase; attempt 2 = hit for both). Final `ci` passes.
@@ -23,3 +23,7 @@ Install step timings (CI):
 
 ## What the next agent needs
 No code or tests changed. Check the YAML and the two runs above.
+
+## Round 1
+- Correction: my earlier claim that e2e-mock stayed under 20 min was wrong (22m28s in 39785235773, 22m25s in 39823076748, 21m55s in 39787845436; apt install-deps alone 651s/515s on cache hits). `e2e-mock` `timeout-minutes` is now 35 too.
+- Version-read step now assigns to a variable and fails with `::error::could not read @playwright/test version` if empty (both jobs), so the key can never be `playwright-Linux-`.
