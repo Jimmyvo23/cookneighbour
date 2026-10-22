@@ -920,7 +920,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Migration first clashed with T-098 (same timestamp), renamed to `20261026110000`.
 - Known limit (README): text saved before T-101 is not re-checked.
 - Builder choices, not confirmed by Jimmy: the contact code is used only when every error is a contact error; sign-up filtered too; the intake filter also runs on the estimate and the saved profile; window = `requested` plus the D-52 statuses.
-- Tester PASS on content (bfc208c, cc6e97d; 28+ unit cases, RLS window +7/+8 days). First CI run cancelled at the 30-minute cap during the Playwright install (runner load), not the PR. Reviewer APPROVE 6343882836 on f7e2945.
+- Tester PASS on content (bfc208c, cc6e97d; 28+ unit cases, RLS window +7/+8 days). CI: run 39785721089 on bfc208c failed in the Tester's own new `tests/rls/intake-window-tester.test.ts` (2 tests: "visit date is in the past"; the Tester's `makeBooking` used past dates), fixed in cc6e97d; run 39787845436 on cc6e97d was then cancelled at the 25-minute limit during the Playwright install (runner load, not the PR); later runs passed after one more infra rerun. Reviewer APPROVE 6343882836 on f7e2945.
 - Rulings: Tester LOW-2 (an old saved allergy profile that now fails the filter reads back as "nothing saved", nothing deleted, a new save gets a 422) and LOW-3 (a zero-width character inside a number in a display name gets the unsafe-character message, still refused) accepted as known limits. Reviewer LOW-A: the filter refuses some normal text ("1 2 3 4 5 6 7 8 9 10", "Mr.Ly", "Mom's kitchen.ca style"); the user sees a clear message and can reword; README known limit added.
 - Builder choices also: the chef bio uses the same filter as dish text; the admin still reads every intake form.
 
@@ -930,7 +930,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 
 ### T-107 — Per-row attempts on the admin free-trial blocks list (done 2026-10-22, PR #206 merged 2414fa4; no migration, response shape unchanged)
 - Each hourly block row shows its own `attempts`; the label is "N attempts, first on {date}" (`createdAt` is the first attempt). Built on the T-103 branch; after the T-103 squash merge the Planner kept T-107's side of the three conflicts (main matched the T-103 base for those files).
-- First CI attempt failed on the known `e2e/booking-real.spec.ts:154` flake (T-106), passed on rerun. Tester PASS a20de1f (INFO no browser axe check on `/admin/free-trial-blocks`). Reviewer APPROVE 6343544588; LOW "one row per hour" wording fixed in this notes PR.
+- First CI attempt (run 39786886882): `e2e/booking-real.spec.ts:154` timed out once and passed on Playwright's own retry (T-106), then the `supabase` job was cancelled at the 25-minute limit during the real-stack e2e step; the second attempt passed. Tester PASS a20de1f (INFO no browser axe check on `/admin/free-trial-blocks`). Reviewer APPROVE 6343544588; LOW "one row per hour" wording fixed in this notes PR.
 - Builder choices, not confirmed by Jimmy: the "first on" wording; `last_attempt_at` is not returned, so admins cannot see the latest attempt in a row (a `lastAttemptAt` field would be a small later task).
 
 ### T-102 — Security hardening LOW-3 to LOW-7 (done 2026-10-22, PR #207 merged 42b182a; migration `20261027100000_security_hardening_low3_low5.sql` pushed to hosted 2026-10-22, D-162)
