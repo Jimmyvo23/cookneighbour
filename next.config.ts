@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { securityHeaders } from "./src/lib/security-headers";
+import { cspOptionsFromEnv, securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -7,10 +7,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders({
-          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-          dev: process.env.NODE_ENV !== "production",
-        }),
+        headers: securityHeaders(cspOptionsFromEnv(process.env)),
       },
     ];
   },

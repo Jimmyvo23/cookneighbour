@@ -98,6 +98,9 @@ function phone() {
   return `${rnd(200, 999)}${rnd(200, 999)}${String(line).padStart(4, "0")}`;
 }
 
+/** Wait for steps that call the API and may compile a page first (T-106); the default is 5 s. */
+const SLOW_STEP_MS = 20_000;
+
 /**
  * A signed-in customer with a verified (MOCK) phone and a home address, on `request`'s cookie jar.
  * The street number is random: the free first booking is tied to the address, so customers of
@@ -148,7 +151,10 @@ async function fillAndReview(
   await page.getByRole("checkbox", { name: "I have no allergies" }).check();
   await page.getByRole("checkbox", { name: "I have no dietary needs" }).check();
   await page.getByRole("button", { name: "Review my request" }).click();
-  await expect(page.getByTestId("review-heading")).toBeVisible();
+  // The estimate call and the first dev-server compile of the page can take a while on a shared CI runner.
+  await expect(page.getByTestId("review-heading")).toBeVisible({
+    timeout: SLOW_STEP_MS,
+  });
 }
 
 test("demo step 2: a customer books 2 days with the free first booking; addresses stay private; a second booking is full price", async ({
@@ -156,6 +162,9 @@ test("demo step 2: a customer books 2 days with the free first booking; addresse
   playwright,
   baseURL,
 }) => {
+  // T-106: this journey takes 23 to 28 s on a CI runner (dev server compiles each page on first
+  // visit), so the 30 s default made it fail at random. The steps are the same; only the budget grows.
+  test.setTimeout(120_000);
   const name = `E2E Book ${uniq()}`;
   const { chef, chefCtx, dates } = await approvedChefWithDays(
     playwright,
@@ -250,7 +259,9 @@ test("demo step 2: a customer books 2 days with the free first booking; addresse
   await page.getByRole("button", { name: "Cancel this booking" }).click();
   await expect(page.getByTestId("free-cancel-note")).toBeVisible();
   await page.getByRole("button", { name: "Yes, cancel this booking" }).click();
-  await expect(page.getByTestId("status")).toContainText("Cancelled");
+  await expect(page.getByTestId("status")).toContainText("Cancelled", {
+    timeout: SLOW_STEP_MS,
+  });
   await expect(page.getByTestId("cancel-timing")).toContainText("on-time");
 
   await chefCtx.dispose();
