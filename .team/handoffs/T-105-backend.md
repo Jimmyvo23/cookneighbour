@@ -18,3 +18,6 @@ From: backend  To: tester
 
 ## What the next agent needs
 Check the framing test fails if the `X-Frame-Options`/`frame-ancestors` headers are removed (temporarily) to confirm it is not vacuous.
+
+## Round 1
+Docs only, `docs/api-contract.md`: line 603 now "trigger `reviews_a_guard_insert` (function `reviews_guard_insert`)" and "the trigger falls back to the booking's `updated_at`"; line 616 double full stop fixed. The only remaining "policy" in 7D is "replaces the policy `reviews_insert_party`", which is correct history.
