@@ -13,7 +13,7 @@ From: backend  To: tester
 
 ## Known gaps or risks
 - Builder choice: item 3 resolved by moving the assertion to a unit test (the e2e dev server adds the local host anyway), not by keeping a weaker e2e check.
-- Builder choice: the blocked-frame wait polls for the frame to leave about:blank (Chromium shows a chrome-error URL); if CI shows flakiness, look here first.
+- Builder choice: the first CI run failed because a blocked frame never leaves about:blank in Playwright, so the wait is the control frame plus load plus a 1.5 s settle (the old settle), not a poll on the frame URL.
 - e2e dev servers run NODE_ENV=development, so e2e behaviour is unchanged; Vitest (`test`) gets the production policy.
 
 ## What the next agent needs

@@ -58,23 +58,11 @@ test("a hostile page cannot frame the app", async ({ page, baseURL }) => {
   await page.goto("http://evil.test/");
   await expect(page.locator("iframe")).toHaveCount(2);
   await expect(page.frameLocator("#ctl").getByText("control-ok")).toBeVisible();
-  // Wait until the target frame has navigated away from about:blank, then check it.
-  await expect
-    .poll(
-      () =>
-        page
-          .frames()
-          .find(
-            (f) =>
-              f.name() === "" &&
-              f !== page.mainFrame() &&
-              !f.url().startsWith("http://evil.test/control") &&
-              f.url() !== "about:blank",
-          )
-          ?.url() ?? "",
-      { timeout: 10_000 },
-    )
-    .not.toBe("");
+  // Both iframes were requested together; the control has loaded, so give the app frame the
+  // same load event, then a short settle. A blocked frame stays about:blank or an error page
+  // (its URL is not reliable), so the check below looks for the form itself.
+  await page.waitForLoadState("load");
+  await page.waitForTimeout(1500);
   const framed = page.frames().find((f) => f.url().startsWith(baseURL!));
   // Blocked frames never reach a loaded app page.
   const hasForm = framed ? await framed.getByLabel("Email").count() : 0;
