@@ -170,7 +170,8 @@
   --color-tint: var(--tint);
   --color-goldwash: var(--gold-wash);
   --color-herb: var(--herb);
-  --font-sans: var(--font-body), "Atkinson Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    var(--font-body), "Atkinson Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-heading), Georgia, "Times New Roman", serif;
 }
 
@@ -178,10 +179,7 @@
    barely moves when the real font arrives. */
 @font-face {
   font-family: "Atkinson Fallback";
-  src:
-    local("Arial"),
-    local("Helvetica"),
-    local("Liberation Sans");
+  src: local("Arial"), local("Helvetica"), local("Liberation Sans");
   size-adjust: 98.5%;
 }
 

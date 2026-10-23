@@ -499,9 +499,7 @@ function DishEditor({
           hint={`How many days after cooking the meal should be eaten. ${LIMITS.shelfLifeDays[0]} to ${LIMITS.shelfLifeDays[1]}; 2 is the usual default. This is not food-safety advice.`}
         />
         <fieldset className="flex flex-col gap-2">
-          <legend className="font-bold">
-            Allergens in this dish
-          </legend>
+          <legend className="font-bold">Allergens in this dish</legend>
           <p className={hintCls}>
             Tick every allergen this dish contains. Add any others below.
           </p>
