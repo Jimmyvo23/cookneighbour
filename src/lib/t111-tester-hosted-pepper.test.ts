@@ -10,7 +10,7 @@ describe("T-111 tester: --hosted never falls back to LOCAL_TEST_PEPPER", () => {
   it("the constant is used exactly once in seed.ts, after the import, in the local else-branch", () => {
     const uses = src.split("LOCAL_TEST_PEPPER").length - 1;
     expect(uses).toBe(2); // import + the --local fallback
-    const hostedStart = src.indexOf("checkPepper(process.env.HASH_PEPPER)");
+    const hostedStart = src.indexOf("checkPepper(process.env.HASH_PEPPER,");
     const elseIdx = src.indexOf("} else {", hostedStart);
     const useIdx = src.lastIndexOf("LOCAL_TEST_PEPPER");
     expect(hostedStart).toBeGreaterThan(-1);
