@@ -122,6 +122,9 @@ for (const vp of VIEWPORTS) {
 
     test("chef: apply, availability, dishes, bookings", async ({ page }) => {
       await signUpChef(page, "Test Chef");
+      // Scan only once the apply page is showing, not the page that is being left (T-113).
+      await expect(page).toHaveURL(/\/chef\/apply$/);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await axeClean(page, "/chef/apply");
       for (const path of [
         "/chef/availability",
@@ -153,13 +156,15 @@ for (const vp of VIEWPORTS) {
       await axeClean(page, "/admin/chefs");
       await openChef(page, "Linh Nguyen");
       await axeClean(page, "/admin/chefs/[id]");
-      for (const path of [
-        "/admin",
-        "/admin/bookings",
-        "/admin/reports",
-        "/admin/free-trial-blocks",
-      ]) {
+      for (const [path, finalUrl] of [
+        // /admin redirects on the client: scan only once the final page is showing.
+        ["/admin", /\/admin\/chefs$/],
+        ["/admin/bookings", /\/admin\/bookings$/],
+        ["/admin/reports", /\/admin\/reports$/],
+        ["/admin/free-trial-blocks", /\/admin\/free-trial-blocks$/],
+      ] as const) {
         await openPage(page, path);
+        await expect(page).toHaveURL(finalUrl);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await axeClean(page, path);
       }
