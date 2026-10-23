@@ -6,6 +6,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { AccountBar } from "@/components/AccountBar";
+import { PotMark } from "@/components/Ornaments";
 import { SkipLink, SkipTarget } from "@/components/SkipLink";
 
 // Fonts are downloaded at build time and served from our own domain (CSP stays 'self').
@@ -43,25 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <header className="site-header">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
             <p className="inline-flex min-h-11 items-center gap-2 font-display text-xl font-bold text-link">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 32 32"
-                className="size-7 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {/* A simple cooking pot with a lid and two puffs of steam: drawn for this project. */}
-                <path d="M6 15h20v6a6 6 0 0 1-6 6h-8a6 6 0 0 1-6-6z" />
-                <path d="M3 15h3M26 15h3" />
-                <path d="M9 12.5c0-1.6 1.2-2.2 3.8-2.2h6.4c2.6 0 3.8.6 3.8 2.2" />
-                <path
-                  d="M13 7c-1-1.4 1-2.4 0-4M19 7c-1-1.4 1-2.4 0-4"
-                  stroke="var(--gold)"
-                />
-              </svg>
+              <PotMark />
               CookNeighbour
             </p>
             <Suspense fallback={null}>

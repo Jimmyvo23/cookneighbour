@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { isMockEnabled } from "@/lib/api/client";
+import { Star } from "@/components/Ornaments";
 import type { PublicChefSearchItem } from "@/lib/api/types";
 import {
   chefPath,
@@ -12,6 +13,13 @@ import {
   rateText,
   ratingText,
 } from "@/lib/search/search";
+
+/** Each cuisine always gets the same warm tint (five tints, picked from the name). */
+function chipClass(name: string): string {
+  let h = 0;
+  for (const ch of name.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) % 5;
+  return `chip-${h + 1}`;
+}
 
 function ChefPhoto({ name, path }: { name: string; path: string }) {
   // MOCK photo paths are made up: never ask a real storage project for them.
@@ -26,9 +34,9 @@ function ChefPhoto({ name, path }: { name: string; path: string }) {
       <img
         src={url}
         alt={`Photo of ${name}`}
-        width={80}
-        height={80}
-        className="size-20 shrink-0 rounded-full border-2 border-gold object-cover"
+        width={112}
+        height={112}
+        className="size-24 object-cover sm:size-28"
         onError={() => setFailed(true)}
       />
     );
@@ -39,7 +47,7 @@ function ChefPhoto({ name, path }: { name: string; path: string }) {
     <div
       aria-hidden="true"
       data-testid="chef-photo-fallback"
-      className="flex size-20 shrink-0 items-center justify-center rounded-full border-2 border-gold bg-[var(--gold-wash)] font-display text-3xl font-bold text-goldtext"
+      className="flex size-24 items-center justify-center bg-[var(--gold-wash)] font-display text-5xl font-bold text-goldtext sm:size-28"
     >
       {name.trim().charAt(0).toUpperCase() || "?"}
     </div>
@@ -63,13 +71,15 @@ export function ResultCard({
     <li
       data-testid="chef-result"
       data-selected={selected ? "true" : undefined}
-      className={`card flex gap-4 p-4 sm:gap-5 sm:p-5 ${
+      className={`chef-card flex gap-4 p-4 sm:gap-6 sm:p-6 ${
         selected ? "!border-2 !border-primary !bg-[var(--tint)]" : ""
       }`}
     >
-      <ChefPhoto name={item.displayName} path={item.photoPath} />
-      <div className="flex min-w-0 flex-1 flex-col gap-1 [overflow-wrap:anywhere]">
-        <h3 className="text-xl">
+      <div className="polaroid self-start">
+        <ChefPhoto name={item.displayName} path={item.photoPath} />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-2 [overflow-wrap:anywhere]">
+        <h3 className="text-2xl">
           <Link
             href={chefPath(item.id)}
             data-chef-link={item.id}
@@ -88,20 +98,29 @@ export function ResultCard({
             </span>
           </p>
         )}
-        <p className="text-[0.9375rem]">
+        <p className="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-[0.9375rem]">
           <span className="font-bold text-muted">Cuisines:</span>{" "}
-          {item.cuisines.length ? item.cuisines.join(", ") : "not listed"}
+          {item.cuisines.length
+            ? item.cuisines.map((c, i) => (
+                <span key={`${c}-${i}`}>
+                  {i > 0 && <span className="sr-only">, </span>}
+                  <span className={`chip ${chipClass(c)}`}>{c}</span>
+                </span>
+              ))
+            : "not listed"}
         </p>
         <p className="text-[0.9375rem]">
           <span className="font-bold text-muted">Languages:</span>{" "}
           {item.languages.length ? item.languages.join(", ") : "not listed"}
         </p>
-        <p className="text-[0.9375rem]">
-          <span className="text-base font-bold">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+          <span className="price-tag">
             {rateText(item.hourlyRateCents, item.currency)}
           </span>
-          {" · "}
-          {ratingText(item.ratingAvg, item.reviewCount)}
+          <span className="rating-badge">
+            {item.reviewCount > 0 && <Star />}
+            {ratingText(item.ratingAvg, item.reviewCount)}
+          </span>
         </p>
         <p className="text-[0.9375rem]">
           {item.serviceCity ? `Works around ${item.serviceCity}` : ""}

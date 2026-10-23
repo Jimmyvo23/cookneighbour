@@ -46,6 +46,38 @@
   /* focus ring */
   --focus: #1f4e8c;
   --shadow: 0 1px 2px rgb(74 47 20 / 8%), 0 6px 18px -6px rgb(74 47 20 / 18%);
+  /* round 2: saffron, herb green, tomato, and the hero tablecloth */
+  --saffron: #f2b632;
+  --star: #9a5f00;
+  --on-saffron: #2b211c;
+  --herb: #2d5a28;
+  --herb-wash: #e1eed3;
+  --hero: #9e1f2a;
+  --hero-ink: #fff8ee;
+  --hero-ink-soft: #ffe9c4;
+  --gingham: rgb(255 255 255 / 10%);
+  --glow: 0 0 0 rgb(0 0 0 / 0%);
+  --art-red: #c8333b;
+  --art-red-dark: #7a1620;
+  --art-gold: #e2a829;
+  --art-herb: #4c8a3f;
+  --art-herb-dark: #2d5a28;
+  --art-herb-light: #7fb36a;
+  --art-cream: #fff4df;
+  --art-steam: #c58b1f;
+  --art-wood: #d9a066;
+  --art-wood-dark: #8a5a2b;
+  --art-plate: #fff1cf;
+  --chip1-bg: #fbddd6;
+  --chip1-ink: #8a1f1a;
+  --chip2-bg: #fcebb8;
+  --chip2-ink: #6b4a00;
+  --chip3-bg: #dfedd0;
+  --chip3-ink: #2d5a28;
+  --chip4-bg: #f3dce8;
+  --chip4-ink: #6e1f4a;
+  --chip5-bg: #f6dcc4;
+  --chip5-ink: #7a3a0e;
   color-scheme: light;
 }
 
@@ -78,6 +110,37 @@
     --mock-edge: #e3b54f;
     --focus: #8cb8f0;
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 20px -8px rgb(0 0 0 / 50%);
+    --saffron: #f2c14e;
+    --star: #f2c14e;
+    --on-saffron: #1f1612;
+    --herb: #bfe5a8;
+    --herb-wash: #26391f;
+    --hero: #5e141c;
+    --hero-ink: #fff4e0;
+    --hero-ink-soft: #ffd98a;
+    --gingham: rgb(255 196 100 / 9%);
+    --glow: 0 0 22px rgb(242 193 78 / 28%);
+    --art-red: #e0525a;
+    --art-red-dark: #4a0f16;
+    --art-gold: #f2c14e;
+    --art-herb: #6fb35e;
+    --art-herb-dark: #1f3f1b;
+    --art-herb-light: #9ed486;
+    --art-cream: #fff4df;
+    --art-steam: #fff4df;
+    --art-wood: #c8914f;
+    --art-wood-dark: #5b3a18;
+    --art-plate: #3b2a1a;
+    --chip1-bg: #4a2220;
+    --chip1-ink: #ffc9c0;
+    --chip2-bg: #4a3813;
+    --chip2-ink: #ffd98a;
+    --chip3-bg: #26391f;
+    --chip3-ink: #bfe5a8;
+    --chip4-bg: #4a2338;
+    --chip4-ink: #f5c2db;
+    --chip5-bg: #4a2e1a;
+    --chip5-ink: #f7c99b;
     color-scheme: dark;
   }
 }
@@ -97,6 +160,8 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-saffron: var(--saffron);
+  --color-herb: var(--herb);
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-heading), Georgia, "Times New Roman", serif;
 }
@@ -297,5 +362,350 @@
     font-weight: 700;
     line-height: 1.2;
     padding: 0;
+  }
+}
+
+/* ===== Round 2: the table is set (hero, recipe cards, motion) ===== */
+@layer components {
+  /* A red-and-white tablecloth with the gold double rule of a recipe card along its edge. */
+  .hero {
+    position: relative;
+    background-color: var(--hero);
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        var(--gingham) 0 28px,
+        transparent 28px 56px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        var(--gingham) 0 28px,
+        transparent 28px 56px
+      );
+    color: var(--hero-ink);
+    padding: 2.5rem 0 7rem;
+  }
+  /* A scalloped lace edge hangs below the cloth. */
+  .hero::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 14px;
+    background: radial-gradient(
+        circle at 50% 0,
+        var(--hero) 0 11px,
+        transparent 11.5px
+      )
+      0 0 / 28px 14px repeat-x;
+  }
+  .hero h1 {
+    color: var(--hero-ink);
+    font-size: clamp(2.5rem, 7vw, 4.75rem);
+    line-height: 1.04;
+    text-shadow: 0 2px 0 rgb(0 0 0 / 18%);
+  }
+  .hero .title-rule {
+    border-color: var(--saffron);
+    width: 7rem;
+    margin-top: 1rem;
+  }
+  .hero-tagline {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    line-height: 1.35;
+    color: var(--hero-ink-soft);
+  }
+  .hero-art {
+    filter: drop-shadow(0 18px 24px rgb(0 0 0 / 28%));
+    animation: float 7s ease-in-out infinite;
+  }
+  /* The order slip: a recipe card laid over the cloth, with a stitched gold border. */
+  .recipe-card {
+    position: relative;
+    background: var(--surface);
+    border-radius: 1.25rem;
+    box-shadow:
+      var(--shadow),
+      var(--glow),
+      0 0 0 1px var(--line);
+  }
+  .recipe-card::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: 2px dashed var(--gold);
+    border-radius: 0.9rem;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  .control-lg {
+    min-height: 3.5rem;
+    font-size: 1.125rem;
+    border-width: 2px;
+  }
+  .btn-lg {
+    min-height: 3.5rem;
+    width: 100%;
+    font-size: 1.25rem;
+    border-radius: 0.75rem;
+    box-shadow:
+      0 6px 14px -4px rgb(142 31 38 / 55%),
+      var(--glow);
+  }
+  .btn-lg:hover {
+    transform: translateY(-2px);
+  }
+  .btn-lg:active {
+    transform: translateY(0);
+  }
+  .btn,
+  .btn-secondary {
+    transition:
+      background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* Radio tiles: the checked one is washed red. */
+  .tile {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    gap: 0.625rem;
+    border: 2px solid var(--line);
+    border-radius: 0.75rem;
+    background: var(--surface);
+    padding: 0.5rem 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      border-color 160ms,
+      background-color 160ms,
+      transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .tile:hover {
+    border-color: var(--link);
+    transform: translateY(-1px);
+  }
+  .tile:has(:checked) {
+    border-color: var(--link);
+    background: var(--tint);
+  }
+  .tile:has(:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  /* Cuisine chips: each cuisine gets its own warm tint. */
+  .chip {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.125rem 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+  .chip-1 {
+    background: var(--chip1-bg);
+    color: var(--chip1-ink);
+  }
+  .chip-2 {
+    background: var(--chip2-bg);
+    color: var(--chip2-ink);
+  }
+  .chip-3 {
+    background: var(--chip3-bg);
+    color: var(--chip3-ink);
+  }
+  .chip-4 {
+    background: var(--chip4-bg);
+    color: var(--chip4-ink);
+  }
+  .chip-5 {
+    background: var(--chip5-bg);
+    color: var(--chip5-ink);
+  }
+  /* A chef card is a recipe card with a polaroid photo taped on. */
+  .chef-card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    transition:
+      transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .chef-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 14px 30px -10px rgb(74 47 20 / 35%),
+      var(--glow);
+  }
+  .chef-card:nth-child(2) {
+    animation-delay: 70ms;
+  }
+  .chef-card:nth-child(3) {
+    animation-delay: 140ms;
+  }
+  .chef-card:nth-child(n + 4) {
+    animation-delay: 200ms;
+  }
+  .polaroid {
+    position: relative;
+    flex-shrink: 0;
+    background: #fffdf8;
+    padding: 0.5rem 0.5rem 1.5rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 6px 14px -4px rgb(74 47 20 / 40%);
+    transform: rotate(-3deg);
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .chef-card:nth-child(even) .polaroid {
+    transform: rotate(2.5deg);
+  }
+  .chef-card:hover .polaroid {
+    transform: rotate(0deg) scale(1.04);
+  }
+  /* A strip of tape holds the photo. */
+  .polaroid::before {
+    content: "";
+    position: absolute;
+    top: -0.55rem;
+    left: 50%;
+    width: 3.25rem;
+    height: 1.1rem;
+    translate: -50% 0;
+    background: rgb(226 168 41 / 70%);
+    transform: rotate(-4deg);
+  }
+  .price-tag {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    background: var(--saffron);
+    color: var(--on-saffron);
+    padding: 0.25rem 0.875rem 0.25rem 1.5rem;
+    font-weight: 800;
+    font-size: 1.0625rem;
+    line-height: 1.4;
+    clip-path: polygon(0.9rem 0, 100% 0, 100% 100%, 0.9rem 100%, 0 50%);
+  }
+  .price-tag::before {
+    content: "";
+    position: absolute;
+    left: 0.7rem;
+    top: 50%;
+    width: 0.45rem;
+    height: 0.45rem;
+    translate: 0 -50%;
+    border-radius: 50%;
+    background: var(--paper);
+    box-shadow: inset 0 1px 1px rgb(0 0 0 / 35%);
+  }
+  .rating-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 999px;
+    background: var(--herb-wash);
+    color: var(--herb);
+    padding: 0.125rem 0.75rem 0.125rem 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+  }
+  .rating-badge svg {
+    color: var(--star);
+  }
+  .skeleton {
+    background: linear-gradient(
+      100deg,
+      var(--sunken) 30%,
+      var(--surface) 50%,
+      var(--sunken) 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: 0.5rem;
+  }
+  .steam {
+    stroke: var(--art-steam);
+    opacity: 0.85;
+    stroke-dasharray: 60;
+    animation: steam 3.2s ease-in-out infinite;
+  }
+  .steam-2 {
+    animation-delay: 0.9s;
+  }
+  .steam-3 {
+    animation-delay: 1.8s;
+  }
+  .sparkle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: twinkle 3.4s ease-in-out infinite;
+  }
+  .section-rule {
+    border: 0;
+    border-top: 2px dashed var(--line);
+  }
+  @keyframes steam {
+    0% {
+      stroke-dashoffset: 60;
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    35% {
+      opacity: 0.9;
+    }
+    100% {
+      stroke-dashoffset: -30;
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+  }
+  @keyframes float {
+    50% {
+      transform: translateY(-8px) rotate(0.8deg);
+    }
+  }
+  @keyframes twinkle {
+    50% {
+      opacity: 0.35;
+      transform: scale(0.6) rotate(20deg);
+    }
+  }
+  /* Moves only, no fade: a fading card would read as low contrast to a checker mid-animation. */
+  @keyframes rise {
+    from {
+      transform: translateY(14px);
+    }
+  }
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-art,
+  .steam,
+  .sparkle,
+  .skeleton,
+  .chef-card {
+    animation: none !important;
+  }
+  .steam {
+    stroke-dashoffset: 0;
+    opacity: 0.8;
+  }
+  .btn-lg:hover,
+  .chef-card:hover,
+  .tile:hover,
+  .chef-card:hover .polaroid {
+    transform: none;
   }
 }

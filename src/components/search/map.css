@@ -50,3 +50,11 @@
 .leaflet-container .leaflet-control-attribution {
   background: rgb(255 255 255 / 92%);
 }
+
+/* The map sits in a rounded frame on the paper. */
+.leaflet-container {
+  border-radius: 1rem;
+  border: 2px solid var(--line);
+  background: var(--sunken);
+  font-family: var(--font-body), system-ui, sans-serif;
+}

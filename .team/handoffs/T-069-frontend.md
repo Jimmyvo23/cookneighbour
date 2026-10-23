@@ -34,3 +34,28 @@ Light / dark:
 
 ## What the next agent needs
 Phase 2 (after Jimmy approves): convert remaining pages to the tokens (`bg-surface`, `text-muted`, `.card`, `.btn`, `.control`, `.hint`, `.error-text`, `.tag`, `.mock-badge`), then Impeccable audit and polish. Open choice: should the header name link home (adds one Tab stop and needs an edit to `chef-detail-tester.spec.ts`).
+
+---
+
+# Round 2 (Jimmy: "more eye catch and fun")
+
+## What changed
+- `/search` now has a hero: a red gingham tablecloth band (pure CSS) with a scalloped lace edge, the big serif headline, the approved positioning line from PRODUCT.md as supporting text (the only new copy), and an original SVG hero picture (pot with a gold heart on a plate, wooden spoon, basil, sparkles; no people). The form is a stitched-border "recipe card" laid over the cloth: Where, The food and a big Find chefs button share one row; the other filters sit below in a quieter area (radio tiles, language, allergens, price panel). On a phone the Find chefs button comes after all filters (CSS order).
+- `src/components/Ornaments.tsx` (new, drawn by me): PotMark (header logo, steam loops), HeroArt, SprigMark, EmptyPlate, Star. Aria-hidden. Colours from `--art-*` tokens, with a separate dark palette.
+- Chef cards are recipe cards: taped polaroid photo, serif name, cuisine chips in five warm tints (tomato, saffron, herb, berry, terracotta; picked by cuisine name), saffron price tag, herb-green rating badge. Hover lifts the card and straightens the photo. Skeleton loading cards with a steaming pot, a friendly empty state (plate and cutlery) and an idle state with the plate.
+- New tokens: saffron, herb, hero red, gingham, five chip pairs, art palette, a gold glow in dark mode. Motion: steam, hero float, sparkle, cards rise (movement only, no fade), all off under `prefers-reduced-motion`.
+- Touched: `globals.css`, `layout.tsx` (PotMark), `forms.tsx` (SubmitButton takes a className), `SearchView.tsx`, `ResultCard.tsx`, `map.css` (framed map), `Ornaments.tsx`.
+- Fonts unchanged (Libre Caslon Text, Atkinson Hyperlegible Next, both OFL).
+
+## Tests
+- No test edited. lint 0 errors, typecheck ok, vitest 3240 passed, e2e-mock 376 passed, `impeccable detect` exit 0.
+- Found by axe on the way: a fade-in on cards read as low contrast mid-animation, so the card entrance uses movement only.
+- Cuisines are now chips; each has a visually hidden ", " before it so the text still reads "Cuisines: Vietnamese, Thai". The "$28/hour · 4.8 out of 5" dot separator is gone (price tag and badge are separate elements; same strings).
+
+## Contrast (computed, light / dark)
+chips 6.5 to 8.3 / 8.1 to 9.3; saffron price tag ink 8.61 / 10.59; rating badge herb on wash 6.67 / 8.88; hero cream text on the lightest gingham square 4.6+ / 8.3; tagline is large text. Star icon and gold art are decoration (the rating is also written out).
+
+## Known gaps
+- The hero picture is hidden below 640 px to keep the phone page short; the phone view still has the gingham and headline.
+- Gingham text contrast is computed on the overlap square; axe passes but cannot measure gradients, so the Tester should eyeball the hero at 375 px.
+- Other pages keep the round 1 look until Jimmy approves this sample.

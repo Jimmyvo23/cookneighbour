@@ -69,12 +69,14 @@ export function FormAlert({
 export function SubmitButton({
   busy,
   children,
+  className = "",
 }: {
   busy: boolean;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <button type="submit" disabled={busy} className="btn">
+    <button type="submit" disabled={busy} className={`btn ${className}`}>
       {busy ? "Please wait..." : children}
     </button>
   );

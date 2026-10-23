@@ -41,6 +41,12 @@ import { FormAlert, SubmitButton } from "@/components/forms";
 import { ResultCard } from "@/components/search/ResultCard";
 import { ResultsMap } from "@/components/search/ResultsMap";
 import { secondaryButtonCls } from "@/components/chef/parts";
+import {
+  EmptyPlate,
+  HeroArt,
+  PotMark,
+  SprigMark,
+} from "@/components/Ornaments";
 import Link from "next/link";
 
 type Results =
@@ -339,119 +345,93 @@ export function SearchView() {
   const anywhere = !values.postalCode.trim() && !values.city.trim();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:py-10">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-3xl sm:text-4xl">
-          Find a home cook
-          <span className="title-rule" aria-hidden="true" />
-        </h1>
-        <p className="max-w-prose text-lg text-muted">
-          Everything is optional. Tell us where you are and what you would like
-          to eat, and we list approved home cooks, nearest first.
-        </p>
+    <main className="flex w-full flex-1 flex-col">
+      <div className="hero">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-6 px-4 lg:grid-cols-[1.25fr_0.75fr]">
+          <div className="flex flex-col gap-4">
+            <h1>
+              Find a home cook
+              <span className="title-rule" aria-hidden="true" />
+            </h1>
+            <p className="hero-tagline max-w-xl">
+              Home-cooked food from your own culture, made by a neighbour.
+            </p>
+            <p className="max-w-prose text-lg text-[var(--hero-ink)]">
+              Everything is optional. Tell us where you are and what you would
+              like to eat, and we list approved home cooks, nearest first.
+            </p>
+          </div>
+          <HeroArt className="hero-art mx-auto hidden max-h-80 w-full max-w-md sm:block lg:max-h-none lg:max-w-lg" />
+        </div>
       </div>
 
-      <form
-        ref={formRef}
-        onSubmit={onSubmit}
-        noValidate
-        aria-label="Search for a chef"
-        className="card flex flex-col gap-8 p-5 sm:p-8"
-      >
-        <FormAlert message={formError} id={alertId} />
-
-        <fieldset className="flex flex-col gap-4">
-          <legend className="group-title mb-3">Where</legend>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Postal code"
-              name="postalCode"
-              hint="Greater Toronto Area only, for example L5B 1A1 or just L5B."
-              error={errors.postalCode}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="text"
-                  autoComplete="postal-code"
-                  value={values.postalCode}
-                  onChange={(e) => set("postalCode", e.target.value)}
-                  className={inputCls}
-                />
-              )}
-            </Field>
-            <Field
-              label="Or a city"
-              name="city"
-              hint={
-                prefixesFailed
-                  ? "The list of cities could not be loaded. Use a postal code."
-                  : "Use a postal code or a city, not both."
-              }
-              error={errors.city}
-            >
-              {(p) => (
-                <select
-                  {...p}
-                  value={values.city}
-                  onChange={(e) => set("city", e.target.value)}
-                  disabled={!prefixes}
-                  className={inputCls}
-                >
-                  <option value="">
-                    {prefixes ? "No city chosen" : "Loading cities..."}
-                  </option>
-                  {cities.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </Field>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-12">
+        <form
+          ref={formRef}
+          onSubmit={onSubmit}
+          noValidate
+          aria-label="Search for a chef"
+          className="recipe-card relative z-10 -mt-[4.5rem] grid items-start gap-6 p-6 sm:p-9 lg:grid-cols-[1.35fr_1fr_0.7fr] lg:[&_.hint]:min-h-[3em]"
+        >
+          <div className="-mb-6 lg:col-span-full has-[.alert-box]:mb-0">
+            <FormAlert message={formError} id={alertId} />
           </div>
-          {anywhere && (
-            <p className="hint">
-              With no postal code or city we list all approved chefs, best rated
-              first, without distances.
-            </p>
-          )}
-          <fieldset className="flex flex-col gap-2">
-            <legend className="font-bold">
-              Where should the cooking happen?
-            </legend>
-            <label className="flex min-h-11 items-center gap-2">
-              <input
-                type="radio"
-                name="locationType"
-                data-field="locationType"
-                checked={values.locationType === "customer_home"}
-                onChange={() => set("locationType", "customer_home")}
-                className="size-5"
-              />
-              At my home
-            </label>
-            <label className="flex min-h-11 items-center gap-2">
-              <input
-                type="radio"
-                name="locationType"
-                checked={values.locationType === "chef_home"}
-                onChange={() => set("locationType", "chef_home")}
-                className="size-5"
-              />
-              At the chef&apos;s home
-            </label>
-            <p className="hint">
-              {values.locationType === "customer_home"
-                ? 'Chefs who cannot reach you but cook at their own home are still listed, marked "Chef\'s home only".'
-                : "Only chefs whose kitchen an admin has approved are listed, wherever they are. The kitchen review is a MOCK check in this prototype."}
-            </p>
-          </fieldset>
-        </fieldset>
 
-        <fieldset className="flex flex-col gap-4 border-t border-line pt-7">
-          <legend className="group-title mb-3 pt-0">The food</legend>
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* Where, The food and the button share one row on wide screens. */}
+          <fieldset className="flex flex-col gap-3">
+            <legend className="group-title mb-3">Where</legend>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Postal code"
+                name="postalCode"
+                hint="Greater Toronto Area only, for example L5B 1A1 or just L5B."
+                error={errors.postalCode}
+              >
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    autoComplete="postal-code"
+                    value={values.postalCode}
+                    onChange={(e) => set("postalCode", e.target.value)}
+                    className={`${inputCls} control-lg`}
+                  />
+                )}
+              </Field>
+              <Field
+                label="Or a city"
+                name="city"
+                hint={
+                  prefixesFailed
+                    ? "The list of cities could not be loaded. Use a postal code."
+                    : "Use a postal code or a city, not both."
+                }
+                error={errors.city}
+              >
+                {(p) => (
+                  <select
+                    {...p}
+                    value={values.city}
+                    onChange={(e) => set("city", e.target.value)}
+                    disabled={!prefixes}
+                    className={`${inputCls} control-lg`}
+                  >
+                    <option value="">
+                      {prefixes ? "No city chosen" : "Loading cities..."}
+                    </option>
+                    {cities.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+            </div>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-3">
+            <legend className="group-title mb-3">The food</legend>
             <Field
               label="Cuisine"
               name="cuisine"
@@ -464,294 +444,384 @@ export function SearchView() {
                   type="text"
                   value={values.cuisine}
                   onChange={(e) => set("cuisine", e.target.value)}
-                  className={inputCls}
+                  className={`${inputCls} control-lg`}
                 />
               )}
             </Field>
-            <Field
-              label="Language the chef speaks (optional)"
-              name="language"
-              error={errors.language}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="text"
-                  value={values.language}
-                  onChange={(e) => set("language", e.target.value)}
-                  className={inputCls}
-                />
-              )}
-            </Field>
-          </div>
-          <fieldset
-            data-field="avoidAllergens"
-            tabIndex={-1}
-            aria-describedby={`${alertId}-allergens-note${errors.avoidAllergens ? ` ${alertId}-allergens-error` : ""}`}
-            className="flex flex-col gap-1"
-          >
-            <legend className="font-bold">Allergens to avoid (optional)</legend>
-            <p id={`${alertId}-allergens-note`} className="hint">
-              We show chefs who have at least one dish without any allergen you
-              tick. This is a shortcut, not an allergy guarantee: you will fill
-              in an allergy form when you book. Diets such as vegetarian or
-              halal are not supported yet.
-            </p>
-            {errors.avoidAllergens && (
-              <p id={`${alertId}-allergens-error`} className="error-text">
-                {errors.avoidAllergens}
-              </p>
-            )}
-            <div className="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-3">
-              {ALLERGEN_CHOICES.map((a) => (
-                <label
-                  key={a.value}
-                  className="flex min-h-11 items-center gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={values.avoidAllergens.includes(a.value)}
-                    onChange={(e) =>
-                      set(
-                        "avoidAllergens",
-                        e.target.checked
-                          ? [...values.avoidAllergens, a.value]
-                          : values.avoidAllergens.filter((x) => x !== a.value),
-                      )
-                    }
-                    className="size-5"
-                  />
-                  {a.label}
-                </label>
-              ))}
-            </div>
           </fieldset>
-        </fieldset>
 
-        <fieldset className="flex flex-col gap-4 rounded-lg bg-sunken p-4 sm:p-5">
-          <legend className="mb-1 px-1 font-display text-lg font-bold text-muted">
-            Price and date
-          </legend>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field
-              label="Lowest hourly rate ($)"
-              name="minRate"
-              error={errors.minRate}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="text"
-                  inputMode="decimal"
-                  value={values.minRate}
-                  onChange={(e) => set("minRate", e.target.value)}
-                  className={inputCls}
-                />
-              )}
-            </Field>
-            <Field
-              label="Highest hourly rate ($)"
-              name="maxRate"
-              error={errors.maxRate}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="text"
-                  inputMode="decimal"
-                  value={values.maxRate}
-                  onChange={(e) => set("maxRate", e.target.value)}
-                  className={inputCls}
-                />
-              )}
-            </Field>
-            <Field
-              label="Day you need a chef (optional)"
-              name="date"
-              hint={
-                window_ ? `From ${window_.min} to ${window_.max}.` : undefined
-              }
-              error={errors.date}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="date"
-                  min={window_?.min}
-                  max={window_?.max}
-                  value={values.date}
-                  onChange={(e) => set("date", e.target.value)}
-                  className={inputCls}
-                />
-              )}
-            </Field>
+          {/* On a phone the button comes last (after the filters); here it sits in the hero row. */}
+          <div className="order-last lg:order-none lg:self-end">
+            <SubmitButton busy={results.kind === "loading"} className="btn-lg">
+              Find chefs
+            </SubmitButton>
           </div>
-          <p className="hint">
-            The day filter shows chefs who marked that day as free and are not
-            already booked on it. Same-day booking is not possible.
-          </p>
-        </fieldset>
 
-        <div>
-          <SubmitButton busy={results.kind === "loading"}>
-            Find chefs
-          </SubmitButton>
-        </div>
-      </form>
+          {anywhere && (
+            <p className="hint lg:col-span-full">
+              With no postal code or city we list all approved chefs, best rated
+              first, without distances.
+            </p>
+          )}
 
-      <section
-        aria-labelledby={`${alertId}-results`}
-        className="flex flex-col gap-4"
-      >
-        <h2
-          id={`${alertId}-results`}
-          ref={headingRef}
-          tabIndex={-1}
-          className="text-2xl"
-        >
-          Results
-        </h2>
-        <p role="status" data-testid="results-status" className="font-bold">
-          {results.kind === "loading" && "Searching..."}
-          {ready &&
-            (ready.items.length === 0
-              ? "No chefs match this search."
-              : `Showing ${ready.items.length} ${ready.items.length === 1 ? "chef" : "chefs"}${ready.nextCursor ? ". More are available." : "."}`)}
-        </p>
+          <hr className="section-rule lg:col-span-full" />
 
-        {results.kind === "idle" && (
-          <p className="hint">Press &quot;Find chefs&quot; to see results.</p>
-        )}
+          <div className="grid gap-8 lg:col-span-full lg:grid-cols-[1fr_1.35fr]">
+            <div className="flex flex-col gap-6">
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1 font-bold">
+                  Where should the cooking happen?
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <label className="tile">
+                    <input
+                      type="radio"
+                      name="locationType"
+                      data-field="locationType"
+                      checked={values.locationType === "customer_home"}
+                      onChange={() => set("locationType", "customer_home")}
+                      className="size-5"
+                    />
+                    At my home
+                  </label>
+                  <label className="tile">
+                    <input
+                      type="radio"
+                      name="locationType"
+                      checked={values.locationType === "chef_home"}
+                      onChange={() => set("locationType", "chef_home")}
+                      className="size-5"
+                    />
+                    At the chef&apos;s home
+                  </label>
+                </div>
+                <p className="hint">
+                  {values.locationType === "customer_home"
+                    ? 'Chefs who cannot reach you but cook at their own home are still listed, marked "Chef\'s home only".'
+                    : "Only chefs whose kitchen an admin has approved are listed, wherever they are. The kitchen review is a MOCK check in this prototype."}
+                </p>
+              </fieldset>
 
-        {ready && ready.items.length === 0 && (
-          <div data-testid="empty-state" className="card p-5">
-            <p className="font-bold">No approved chefs match.</p>
-            <ul className="mt-2 list-disc pl-5">
-              <li>Remove the price, day or allergen filters.</li>
-              <li>Try a bigger area, such as the whole city.</li>
-              <li>
-                Try &quot;At the chef&apos;s home&quot; if you can travel to a
-                kitchen.
-              </li>
-            </ul>
-          </div>
-        )}
-
-        {ready && ready.items.length > 0 && (
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-            <div className="flex min-w-0 flex-1 flex-col gap-4">
-              <ol
-                ref={listRef}
-                aria-label={resultsOrderLabel(ready.query)}
-                className="flex flex-col gap-3"
+              <Field
+                label="Language the chef speaks (optional)"
+                name="language"
+                error={errors.language}
               >
-                {ready.items.map((item) => (
-                  <ResultCard
-                    key={item.id}
-                    item={item}
-                    mapOpen={mapOpen && pins.length > 0}
-                    selected={
-                      activeCity !== null &&
-                      item.serviceCity?.trim().toLowerCase() ===
-                        activeCity.trim().toLowerCase()
-                    }
-                    onShowOnMap={(city) =>
-                      setActiveCity((c) => (c === city ? null : city))
-                    }
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    value={values.language}
+                    onChange={(e) => set("language", e.target.value)}
+                    className={inputCls}
                   />
-                ))}
-              </ol>
-              {moreError && (
-                <p role="alert" className="error-text">
-                  {moreError}
+                )}
+              </Field>
+            </div>
+
+            <fieldset
+              data-field="avoidAllergens"
+              tabIndex={-1}
+              aria-describedby={`${alertId}-allergens-note${errors.avoidAllergens ? ` ${alertId}-allergens-error` : ""}`}
+              className="flex flex-col gap-1"
+            >
+              <legend className="font-bold">
+                Allergens to avoid (optional)
+              </legend>
+              <p id={`${alertId}-allergens-note`} className="hint">
+                We show chefs who have at least one dish without any allergen
+                you tick. This is a shortcut, not an allergy guarantee: you will
+                fill in an allergy form when you book. Diets such as vegetarian
+                or halal are not supported yet.
+              </p>
+              {errors.avoidAllergens && (
+                <p id={`${alertId}-allergens-error`} className="error-text">
+                  {errors.avoidAllergens}
                 </p>
               )}
-              {ready.nextCursor && (
+              <div className="grid gap-x-4 sm:grid-cols-2">
+                {ALLERGEN_CHOICES.map((a) => (
+                  <label
+                    key={a.value}
+                    className="flex min-h-11 items-center gap-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={values.avoidAllergens.includes(a.value)}
+                      onChange={(e) =>
+                        set(
+                          "avoidAllergens",
+                          e.target.checked
+                            ? [...values.avoidAllergens, a.value]
+                            : values.avoidAllergens.filter(
+                                (x) => x !== a.value,
+                              ),
+                        )
+                      }
+                      className="size-5"
+                    />
+                    {a.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+
+          <fieldset className="flex flex-col gap-4 rounded-xl bg-sunken p-4 sm:p-5 lg:col-span-full">
+            <legend className="mb-1 px-1 font-display text-lg font-bold text-muted">
+              Price and date
+            </legend>
+            <div className="grid items-end gap-4 sm:grid-cols-3">
+              <Field
+                label="Lowest hourly rate ($)"
+                name="minRate"
+                error={errors.minRate}
+              >
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    inputMode="decimal"
+                    value={values.minRate}
+                    onChange={(e) => set("minRate", e.target.value)}
+                    className={inputCls}
+                  />
+                )}
+              </Field>
+              <Field
+                label="Highest hourly rate ($)"
+                name="maxRate"
+                error={errors.maxRate}
+              >
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    inputMode="decimal"
+                    value={values.maxRate}
+                    onChange={(e) => set("maxRate", e.target.value)}
+                    className={inputCls}
+                  />
+                )}
+              </Field>
+              <Field
+                label="Day you need a chef (optional)"
+                name="date"
+                hint={
+                  window_ ? `From ${window_.min} to ${window_.max}.` : undefined
+                }
+                error={errors.date}
+              >
+                {(p) => (
+                  <input
+                    {...p}
+                    type="date"
+                    min={window_?.min}
+                    max={window_?.max}
+                    value={values.date}
+                    onChange={(e) => set("date", e.target.value)}
+                    className={inputCls}
+                  />
+                )}
+              </Field>
+            </div>
+            <p className="hint">
+              The day filter shows chefs who marked that day as free and are not
+              already booked on it. Same-day booking is not possible.
+            </p>
+          </fieldset>
+        </form>
+
+        <section
+          aria-labelledby={`${alertId}-results`}
+          className="flex flex-col gap-4"
+        >
+          <div className="flex items-center gap-3">
+            <h2
+              id={`${alertId}-results`}
+              ref={headingRef}
+              tabIndex={-1}
+              className="text-3xl"
+            >
+              Results
+            </h2>
+            <SprigMark className="h-8 w-14 shrink-0" />
+          </div>
+          <p role="status" data-testid="results-status" className="font-bold">
+            {results.kind === "loading" && "Searching..."}
+            {ready &&
+              (ready.items.length === 0
+                ? "No chefs match this search."
+                : `Showing ${ready.items.length} ${ready.items.length === 1 ? "chef" : "chefs"}${ready.nextCursor ? ". More are available." : "."}`)}
+          </p>
+
+          {results.kind === "loading" && (
+            <div aria-hidden="true" className="flex flex-col gap-4">
+              <PotMark className="size-14 self-start" />
+              {[0, 1].map((i) => (
+                <div key={i} className="chef-card flex gap-5 p-5">
+                  <div className="skeleton size-32 shrink-0" />
+                  <div className="flex flex-1 flex-col gap-3">
+                    <div className="skeleton h-7 w-2/3" />
+                    <div className="skeleton h-5 w-1/3" />
+                    <div className="skeleton h-5 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {results.kind === "idle" && (
+            <div className="flex items-center gap-4">
+              <EmptyPlate className="size-24 shrink-0" />
+              <p className="hint">
+                Press &quot;Find chefs&quot; to see results.
+              </p>
+            </div>
+          )}
+
+          {ready && ready.items.length === 0 && (
+            <div
+              data-testid="empty-state"
+              className="card flex flex-col items-start gap-3 p-6 sm:flex-row sm:items-center sm:gap-6"
+            >
+              <EmptyPlate className="size-28 shrink-0" />
+              <div>
+                <p className="font-display text-xl font-bold">
+                  No approved chefs match.
+                </p>
+                <ul className="mt-2 list-disc pl-5">
+                  <li>Remove the price, day or allergen filters.</li>
+                  <li>Try a bigger area, such as the whole city.</li>
+                  <li>
+                    Try &quot;At the chef&apos;s home&quot; if you can travel to
+                    a kitchen.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {ready && ready.items.length > 0 && (
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+              <div className="flex min-w-0 flex-1 flex-col gap-4">
+                <ol
+                  ref={listRef}
+                  aria-label={resultsOrderLabel(ready.query)}
+                  className="flex flex-col gap-5"
+                >
+                  {ready.items.map((item) => (
+                    <ResultCard
+                      key={item.id}
+                      item={item}
+                      mapOpen={mapOpen && pins.length > 0}
+                      selected={
+                        activeCity !== null &&
+                        item.serviceCity?.trim().toLowerCase() ===
+                          activeCity.trim().toLowerCase()
+                      }
+                      onShowOnMap={(city) =>
+                        setActiveCity((c) => (c === city ? null : city))
+                      }
+                    />
+                  ))}
+                </ol>
+                {moreError && (
+                  <p role="alert" className="error-text">
+                    {moreError}
+                  </p>
+                )}
+                {ready.nextCursor && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={loadMore}
+                      aria-disabled={moreBusy}
+                      className={secondaryButtonCls}
+                    >
+                      {moreBusy ? "Loading..." : "Load more"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:w-[26rem] lg:shrink-0">
                 <div>
                   <button
                     type="button"
-                    onClick={loadMore}
-                    aria-disabled={moreBusy}
+                    onClick={() => setMapOpen((o) => !o)}
+                    aria-expanded={mapOpen}
+                    aria-controls={mapId}
                     className={secondaryButtonCls}
                   >
-                    {moreBusy ? "Loading..." : "Load more"}
+                    {mapOpen ? "Hide map" : "Show map"}
                   </button>
                 </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:w-[26rem] lg:shrink-0">
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setMapOpen((o) => !o)}
-                  aria-expanded={mapOpen}
-                  aria-controls={mapId}
-                  className={secondaryButtonCls}
+                <div
+                  id={mapId}
+                  hidden={!mapOpen}
+                  className="flex flex-col gap-3"
                 >
-                  {mapOpen ? "Hide map" : "Show map"}
-                </button>
-              </div>
-              <div id={mapId} hidden={!mapOpen} className="flex flex-col gap-3">
-                {mapOpen &&
-                  (prefixes ? (
-                    <>
-                      <ResultsMap
-                        pins={pins}
-                        origin={origin}
-                        activeCity={activeCity}
-                        onSelect={(city) =>
-                          setActiveCity((c) => (c === city ? null : city))
-                        }
-                      />
-                      <p className="hint">
-                        A number is how many of these chefs work around a city.
-                        Pins are at the middle of the city&apos;s postal areas,
-                        never at a home or kitchen.
-                        {origin &&
-                          ` The orange dot is your search area (${origin.label}).`}
-                      </p>
-                      <div aria-live="polite" data-testid="map-selection">
-                        {selectedPin ? (
-                          <div className="rounded-lg border-2 border-primary bg-surface p-3">
-                            <p className="font-semibold">
-                              {selectedPin.city}: {selectedPin.items.length}{" "}
-                              {selectedPin.items.length === 1
-                                ? "chef"
-                                : "chefs"}
+                  {mapOpen &&
+                    (prefixes ? (
+                      <>
+                        <ResultsMap
+                          pins={pins}
+                          origin={origin}
+                          activeCity={activeCity}
+                          onSelect={(city) =>
+                            setActiveCity((c) => (c === city ? null : city))
+                          }
+                        />
+                        <p className="hint">
+                          A number is how many of these chefs work around a
+                          city. Pins are at the middle of the city&apos;s postal
+                          areas, never at a home or kitchen.
+                          {origin &&
+                            ` The orange dot is your search area (${origin.label}).`}
+                        </p>
+                        <div aria-live="polite" data-testid="map-selection">
+                          {selectedPin ? (
+                            <div className="rounded-lg border-2 border-primary bg-surface p-3">
+                              <p className="font-semibold">
+                                {selectedPin.city}: {selectedPin.items.length}{" "}
+                                {selectedPin.items.length === 1
+                                  ? "chef"
+                                  : "chefs"}
+                              </p>
+                              <ul className="mt-1 list-disc pl-5">
+                                {selectedPin.items.map((i) => (
+                                  <li key={i.id}>
+                                    <Link
+                                      href={chefPath(i.id)}
+                                      className="underline"
+                                    >
+                                      {i.displayName}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : (
+                            <p className="hint">
+                              Select a pin to mark its chefs in the list.
                             </p>
-                            <ul className="mt-1 list-disc pl-5">
-                              {selectedPin.items.map((i) => (
-                                <li key={i.id}>
-                                  <Link
-                                    href={chefPath(i.id)}
-                                    className="underline"
-                                  >
-                                    {i.displayName}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : (
-                          <p className="hint">
-                            Select a pin to mark its chefs in the list.
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <p role="status" className="card p-4">
-                      {prefixesFailed
-                        ? "The map could not be set up. The list has everything you need."
-                        : "Loading the map..."}
-                    </p>
-                  ))}
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <p role="status" className="card p-4">
+                        {prefixesFailed
+                          ? "The map could not be set up. The list has everything you need."
+                          : "Loading the map..."}
+                      </p>
+                    ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
