@@ -234,7 +234,7 @@ function Calendar({
         <table
           role="grid"
           aria-labelledby={headingId}
-          className="w-full table-fixed border-separate border-spacing-1"
+          className="-mx-2 w-[calc(100%+1rem)] table-fixed border-separate border-spacing-0.5"
         >
           <thead>
             <tr>
@@ -357,7 +357,7 @@ function DayButton({
       data-day={day}
       onClick={onToggle}
       onKeyDown={onKeyDown}
-      className={`flex min-h-11 w-full flex-col items-center justify-center rounded-md border-2 text-sm font-medium ${
+      className={`flex min-h-11 min-w-11 w-full flex-col items-center justify-center rounded-md border-2 text-sm font-medium ${
         selected
           ? "border-primary bg-primary text-[var(--on-primary)]"
           : "border-edge bg-surface text-ink hover:bg-sunken "

@@ -436,7 +436,7 @@ function ReviewForm({
       </fieldset>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={commentId} className="text-sm font-medium">
+        <label htmlFor={commentId} className="font-bold">
           Comment (optional)
         </label>
         <textarea

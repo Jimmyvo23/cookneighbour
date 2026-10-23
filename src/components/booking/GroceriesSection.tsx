@@ -631,7 +631,7 @@ function UploadFields({
       </h4>
       <Alert id={sec.alertId} message={sec.error} />
       <div className="flex flex-col gap-1">
-        <label htmlFor={fileId} className="text-sm font-medium">
+        <label htmlFor={fileId} className="font-bold">
           Receipt file ({RECEIPT_ALLOWED_TEXT})
         </label>
         <input

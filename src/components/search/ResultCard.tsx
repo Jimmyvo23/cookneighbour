@@ -104,6 +104,7 @@ export function ResultCard({
           <span className="price-tag">
             {rateText(item.hourlyRateCents, item.currency)}
           </span>
+          <span className="sr-only">, </span>
           <span className="rating-badge">
             {item.reviewCount > 0 && <Star />}
             {ratingText(item.ratingAvg, item.reviewCount)}

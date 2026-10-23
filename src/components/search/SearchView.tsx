@@ -373,12 +373,12 @@ export function SearchView() {
           aria-label="Search for a chef"
           className="recipe-card relative z-10 -mt-[4.5rem] grid items-start gap-6 p-6 sm:p-9 lg:grid-cols-[1.35fr_1fr_0.7fr] lg:[&_.hint]:min-h-[3em]"
         >
-          <div className="-mb-6 lg:col-span-full has-[.alert-box]:mb-0">
+          <div className="-mb-6 lg:col-span-full lg:row-start-1 has-[.alert-box]:mb-0">
             <FormAlert message={formError} id={alertId} />
           </div>
 
           {/* Where, The food and the button share one row on wide screens. */}
-          <fieldset className="flex flex-col gap-3">
+          <fieldset className="flex flex-col gap-3 lg:col-start-1 lg:row-start-2">
             <legend className="group-title mb-3">Where</legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
@@ -430,7 +430,7 @@ export function SearchView() {
             </div>
           </fieldset>
 
-          <fieldset className="flex flex-col gap-3">
+          <fieldset className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2">
             <legend className="group-title mb-3">The food</legend>
             <Field
               label="Cuisine"
@@ -450,23 +450,16 @@ export function SearchView() {
             </Field>
           </fieldset>
 
-          {/* On a phone the button comes last (after the filters); here it sits in the hero row. */}
-          <div className="order-last lg:order-none lg:self-end">
-            <SubmitButton busy={results.kind === "loading"} className="btn-lg">
-              Find chefs
-            </SubmitButton>
-          </div>
-
           {anywhere && (
-            <p className="hint lg:col-span-full">
+            <p className="hint lg:col-span-full lg:row-start-3">
               With no postal code or city we list all approved chefs, best rated
               first, without distances.
             </p>
           )}
 
-          <hr className="section-rule lg:col-span-full" />
+          <hr className="section-rule lg:col-span-full lg:row-start-4" />
 
-          <div className="grid gap-8 lg:col-span-full lg:grid-cols-[1fr_1.35fr]">
+          <div className="grid gap-8 lg:col-span-full lg:row-start-5 lg:grid-cols-[1fr_1.35fr]">
             <div className="flex flex-col gap-6">
               <fieldset className="flex flex-col gap-2">
                 <legend className="mb-1 font-bold">
@@ -567,11 +560,11 @@ export function SearchView() {
             </fieldset>
           </div>
 
-          <fieldset className="flex flex-col gap-4 rounded-xl bg-sunken p-4 sm:p-5 lg:col-span-full">
+          <fieldset className="flex flex-col gap-4 rounded-xl bg-sunken p-4 sm:p-5 lg:col-span-full lg:row-start-6">
             <legend className="mb-1 px-1 font-display text-lg font-bold text-muted">
               Price and date
             </legend>
-            <div className="grid items-end gap-4 sm:grid-cols-3">
+            <div className="grid items-start gap-4 sm:grid-cols-3 [&_.hint]:order-last">
               <Field
                 label="Lowest hourly rate ($)"
                 name="minRate"
@@ -630,6 +623,14 @@ export function SearchView() {
               already booked on it. Same-day booking is not possible.
             </p>
           </fieldset>
+
+          {/* Last in the DOM, so Tab ends on it (as on every other form). On wide screens it is
+              placed in the hero row by grid position, not by order. */}
+          <div className="lg:col-start-3 lg:row-start-2 lg:self-end">
+            <SubmitButton busy={results.kind === "loading"} className="btn-lg">
+              Find chefs
+            </SubmitButton>
+          </div>
         </form>
 
         <section

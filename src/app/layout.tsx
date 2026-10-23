@@ -25,6 +25,8 @@ const body = Atkinson_Hyperlegible_Next({
   variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
+  // No size metrics for this face in Next: globals.css has its own scaled fallback ("Atkinson Fallback").
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {

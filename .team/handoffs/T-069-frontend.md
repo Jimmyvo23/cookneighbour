@@ -85,3 +85,18 @@ ink on notice gold 13.31 / 11.42; ink on notice herb 13.42 / 11.25; status gold 
 
 ## Results
 lint 0 errors, typecheck ok, vitest 3240 passed, e2e-mock 376 passed, `impeccable detect` exit 0 (one finding on `.day`'s thick top border was fixed). Impeccable audit and polish were done by hand against `audit.md` and `polish.md`: no horizontal scroll at 375 px on any page (checked by image width), tap targets 44 px, reduced motion keeps a static alternative, every colour from tokens. Helper agents skipped per D-44.
+
+## Fix round 1 (after the Tester BLOCK)
+
+Tests added: `e2e-mock/t069-fix1-mock.spec.ts` (5 tests).
+
+- **M1 (blocking, fixed).** `src/components/search/SearchView.tsx`: the Find chefs wrapper is now the last child of the form (after "Price and date"); on wide screens it is placed in the hero row with `lg:col-start-3 lg:row-start-2`. No `order-*` on it. Every other row got an explicit `lg:row-start-*` so the grid stays stable. Test: "Tab order on /search follows the visual order at 375 px / 1280 px" (375: no Tab stop moves up the page and the button is the lowest; 1280: the button is the last stop in the form).
+- **L1 (fixed).** `globals.css`: `float`, `steam` and `twinkle` run 3 cycles instead of `infinite` (still off under `prefers-reduced-motion`). The only remaining `infinite` is the `shimmer` loading skeleton, which ends when data arrives. Test: "decorative animations are finite" (no running animation with Infinity iterations on /search).
+- **L2 (fixed).** `--hero-ink-soft` `#ffe9c4` -> `#fff3dc` and a faint text shadow on hero text. Computed against the lightest gingham square (hero red + 10% white): 5.88:1 (4.84:1 even on a double-lit square). Axe tests at 375 px cover it.
+- **L3 (fixed).** `src/app/error.tsx`: the alert block has `tabIndex=-1`, and focus moves to it on mount.
+- **L4 (fixed).** `src/components/booking/parts.tsx` `Choice`: row `min-h-11` and the label `min-h-11` (with -my-2 so spacing is unchanged), so the row text is a 44 px hit area (the box itself stays 20 px; a stretched-label overlay was tried and blocked clicks on the input, so it was dropped); `src/components/chef/AvailabilityView.tsx`: day buttons `min-w-11`, table widened with `-mx-2`. Tests: "availability day buttons are at least 44 px at 375 px", "allergy checkbox rows are at least 44 px at 375 px".
+- **L5 (fixed).** sr-only ", " between price tag and rating badge in `ResultCard.tsx` and `ChefDetailView.tsx`. Covered by existing search/chef-detail tests (text assertions unchanged and green).
+- **L6 (fixed).** Labels bold at full size in dish form, booking, report, review, admin and chef forms; `input[type=file]` and its button styled with the button tokens (`globals.css`); Price-and-date grid aligned to the top with hints under the fields; Atkinson fallback: `adjustFontFallback: false` in `layout.tsx` plus a scaled `Atkinson Fallback` font-face (98.5%, an estimate, not measured by me) in `globals.css`. The Next dev warning about missing font override values still prints; it is now harmless because we supply our own fallback.
+
+Builder choices for Jimmy to confirm: animations stop after 3 cycles (not a pause button); hero text now has a soft shadow; the 98.5% fallback size is an estimate.
+Info items not acted on: the `document-title` flake in `helpers.ts` (separate task), PRODUCT.md tagline clause.

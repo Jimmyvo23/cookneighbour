@@ -55,7 +55,7 @@
   --herb-wash: #e1eed3;
   --hero: #9e1f2a;
   --hero-ink: #fff8ee;
-  --hero-ink-soft: #ffe9c4;
+  --hero-ink-soft: #fff3dc;
   --gingham: rgb(255 255 255 / 10%);
   --glow: 0 0 0 rgb(0 0 0 / 0%);
   --art-red: #c8333b;
@@ -170,8 +170,19 @@
   --color-tint: var(--tint);
   --color-goldwash: var(--gold-wash);
   --color-herb: var(--herb);
-  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body), "Atkinson Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-heading), Georgia, "Times New Roman", serif;
+}
+
+/* While the body font loads, Arial is scaled to Atkinson's width (98.5% is an estimate), so the text
+   barely moves when the real font arrives. */
+@font-face {
+  font-family: "Atkinson Fallback";
+  src:
+    local("Arial"),
+    local("Helvetica"),
+    local("Liberation Sans");
+  size-adjust: 98.5%;
 }
 
 @layer base {
@@ -220,6 +231,27 @@
   input[type="checkbox"],
   input[type="radio"] {
     accent-color: var(--primary);
+  }
+  /* The native file button wears the button tokens. */
+  input[type="file"] {
+    max-width: 100%;
+    color: var(--ink);
+    font: inherit;
+  }
+  input[type="file"]::file-selector-button {
+    margin-right: 0.75rem;
+    min-height: 2.75rem;
+    cursor: pointer;
+    border: 2px solid var(--link);
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--link);
+    padding: 0.375rem 1rem;
+    font: inherit;
+    font-weight: 700;
+  }
+  input[type="file"]::file-selector-button:hover {
+    background: var(--tint);
   }
   input::placeholder {
     color: var(--muted);
@@ -457,6 +489,10 @@
     width: 7rem;
     margin-top: 1rem;
   }
+  .hero-tagline,
+  .hero p {
+    text-shadow: 0 1px 2px rgb(0 0 0 / 30%);
+  }
   .hero-tagline {
     font-family: var(--font-display);
     font-style: italic;
@@ -466,7 +502,7 @@
   }
   .hero-art {
     filter: drop-shadow(0 18px 24px rgb(0 0 0 / 28%));
-    animation: float 7s ease-in-out infinite;
+    animation: float 7s ease-in-out 3;
   }
   /* The order slip: a recipe card laid over the cloth, with a stitched gold border. */
   .recipe-card {
@@ -680,7 +716,7 @@
     stroke: var(--art-steam);
     opacity: 0.85;
     stroke-dasharray: 60;
-    animation: steam 3.2s ease-in-out infinite;
+    animation: steam 3.2s ease-in-out 3;
   }
   .steam-2 {
     animation-delay: 0.9s;
@@ -691,7 +727,7 @@
   .sparkle {
     transform-box: fill-box;
     transform-origin: center;
-    animation: twinkle 3.4s ease-in-out infinite;
+    animation: twinkle 3.4s ease-in-out 3;
   }
   .section-rule {
     border: 0;

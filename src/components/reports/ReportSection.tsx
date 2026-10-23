@@ -328,7 +328,7 @@ function ReportForm({
         {error}
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor={catId} className="text-sm font-medium">
+        <label htmlFor={catId} className="font-bold">
           What is it about?
         </label>
         <select
@@ -353,7 +353,7 @@ function ReportForm({
         )}
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor={descId} className="text-sm font-medium">
+        <label htmlFor={descId} className="font-bold">
           What happened?
         </label>
         <textarea

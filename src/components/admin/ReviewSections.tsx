@@ -311,7 +311,7 @@ function CheckSelect({
         <MockBadge>MOCK</MockBadge>
         <span>Now: {checkStatusLabel(current)}</span>
       </p>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label} result to record
       </label>
       {hint && (

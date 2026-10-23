@@ -878,7 +878,7 @@ function FormStep({
           hours.
         </p>
         <div className="flex flex-col gap-1">
-          <label htmlFor={dayCountId} className="text-sm font-medium">
+          <label htmlFor={dayCountId} className="font-bold">
             How many days?
           </label>
           <select
@@ -1180,7 +1180,7 @@ function DayFields({
     >
       <legend className="px-1 text-base font-semibold">Day {n}</legend>
       <div className="flex flex-col gap-1">
-        <label htmlFor={dateId} className="text-sm font-medium">
+        <label htmlFor={dateId} className="font-bold">
           Date for day {n}
         </label>
         <select

@@ -48,7 +48,7 @@ export function Input({
       .join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label}
       </label>
       {hint && (
@@ -91,7 +91,7 @@ export function TextArea({
       .join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label}
       </label>
       {hint && (
@@ -188,7 +188,7 @@ export function Choice({
   const auto = useId();
   const cid = id ?? auto;
   return (
-    <div className="-mx-2 flex items-start gap-3 rounded-xl px-2 py-1 transition-colors has-[:checked]:bg-tint">
+    <div className="-mx-2 flex min-h-11 items-start gap-3 rounded-xl px-2 py-2 transition-colors has-[:checked]:bg-tint">
       <input
         id={cid}
         type={type}
@@ -202,7 +202,7 @@ export function Choice({
         className="mt-1 size-5 shrink-0 accent-primary"
       />
       <div className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
-        <label htmlFor={cid} className="min-h-6 font-medium">
+        <label htmlFor={cid} className="-my-2 min-h-11 py-2 font-medium">
           {label}
         </label>
         {description && (

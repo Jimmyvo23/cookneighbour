@@ -192,7 +192,7 @@ export function AdminReportsView() {
       intro="Only the person who sent a report and admins can read it; the other person is never told."
     >
       <div className="flex flex-col gap-1 self-start">
-        <label htmlFor={filterId} className="text-sm font-medium">
+        <label htmlFor={filterId} className="font-bold">
           Show
         </label>
         <select
@@ -354,7 +354,7 @@ export function AdminBookingsView() {
         className="card flex flex-wrap items-end gap-4 p-4"
       >
         <div className="flex flex-col gap-1">
-          <label htmlFor={sid} className="text-sm font-medium">
+          <label htmlFor={sid} className="font-bold">
             Status
           </label>
           <select

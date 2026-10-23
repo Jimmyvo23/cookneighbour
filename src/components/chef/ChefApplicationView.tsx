@@ -885,7 +885,7 @@ function UploadControl({
       }}
     >
       <Alert id={s.alertId} message={s.error} />
-      <label htmlFor={inputId} className="text-sm font-medium">
+      <label htmlFor={inputId} className="font-bold">
         {label}
       </label>
       <p id={hintId} className={hintCls}>

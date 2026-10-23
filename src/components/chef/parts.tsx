@@ -146,7 +146,7 @@ export function TextAreaField({
       .join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label}
       </label>
       {hint && (

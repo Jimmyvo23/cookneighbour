@@ -305,6 +305,7 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
             <span className="price-tag">
               {rateText(chef.hourlyRateCents, chef.currency)}
             </span>
+            <span className="sr-only">, </span>
             <span className="rating-badge">
               {chef.reviewCount > 0 && <Star />}
               {ratingText(chef.ratingAvg, chef.reviewCount)}

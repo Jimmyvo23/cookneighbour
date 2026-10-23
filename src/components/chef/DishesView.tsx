@@ -499,7 +499,7 @@ function DishEditor({
           hint={`How many days after cooking the meal should be eaten. ${LIMITS.shelfLifeDays[0]} to ${LIMITS.shelfLifeDays[1]}; 2 is the usual default. This is not food-safety advice.`}
         />
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium">
+          <legend className="font-bold">
             Allergens in this dish
           </legend>
           <p className={hintCls}>
@@ -533,7 +533,7 @@ function DishEditor({
           hint="Separate with commas, for example celery, lupin. Up to 14 allergens in total."
         />
         <div className="flex flex-col gap-1">
-          <label htmlFor={fileId} className="text-sm font-medium">
+          <label htmlFor={fileId} className="font-bold">
             Dish photo
           </label>
           <p id={fileHintId} className={hintCls}>
