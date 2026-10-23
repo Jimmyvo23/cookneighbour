@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { addDays, torontoToday } from "@/lib/domain/dishes";
 import { retryIfDayRolled } from "./midnight";
 
@@ -62,5 +62,32 @@ describe("retryIfDayRolled (T-115)", () => {
       ),
     ).rejects.toThrow("real bug");
     expect(n).toBe(2);
+  });
+
+  it("attaches the first error as the cause when the second attempt also fails", async () => {
+    const first = new Error("first");
+    let n = 0;
+    const err = await retryIfDayRolled(
+      async () => {
+        throw ++n === 1 ? first : new Error("second");
+      },
+      clock("2026-10-22", "2026-10-23"),
+    ).catch((e: Error) => e);
+    expect(err.message).toBe("second");
+    expect(err.cause).toBe(first);
+  });
+
+  it("warns once when it retries", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let n = 0;
+    await retryIfDayRolled(
+      async () => {
+        if (++n === 1) throw new Error("boom");
+      },
+      clock("2026-10-22", "2026-10-23"),
+    );
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain("boom");
+    warn.mockRestore();
   });
 });

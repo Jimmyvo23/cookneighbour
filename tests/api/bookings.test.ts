@@ -1496,84 +1496,96 @@ describe("booked dates in public data (A-19, D-27, D-22)", () => {
       expect((await bookingRow(r.id)).status).toBe("requested"); // public reads never write
     }));
 
-  it("D-22: a chef cannot clear a booked date (409 DATE_BOOKED), nothing else in the request is saved", async () => {
-    const chef = await bookableChef({ ticked: [2, 3, 4] });
-    const c = await bookingCustomer();
-    const r = await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 3)] }));
-    const { putAvailability } = await import("./dish-helpers");
-    const put = (body: object) =>
-      chef.b.call(putAvailability, { method: "PUT", body });
-    let x = await put({ remove: [day(3), day(4)], add: [day(10)] });
-    expect(x.status, x.text).toBe(409);
-    expect(x.body.error.code).toBe("DATE_BOOKED");
-    expect(x.body.error.dates).toEqual([day(3)]);
-    const days = await svc
-      .from("availability")
-      .select("day")
-      .eq("chef_id", chef.id)
-      .order("day");
-    expect((days.data ?? []).map((v) => v.day)).toEqual([
-      day(2),
-      day(3),
-      day(4),
-    ]); // day 4 and day 10 untouched
-    // An accepted booking blocks too.
-    await accept(chef.b, r.id);
-    x = await put({ remove: [day(3)] });
-    expect(x.status).toBe(409);
-    // A free date can be cleared.
-    x = await put({ remove: [day(4)] });
-    expect(x.status, x.text).toBe(200);
-    expect(x.body.days).not.toContain(day(4));
-  });
+  it("D-22: a chef cannot clear a booked date (409 DATE_BOOKED), nothing else in the request is saved", () =>
+    retryIfDayRolled(async () => {
+      const chef = await bookableChef({ ticked: [2, 3, 4] });
+      const c = await bookingCustomer();
+      const r = await bookOk(
+        c,
+        bookingBody(chef, { days: [dayBody(chef, 3)] }),
+      );
+      const { putAvailability } = await import("./dish-helpers");
+      const put = (body: object) =>
+        chef.b.call(putAvailability, { method: "PUT", body });
+      let x = await put({ remove: [day(3), day(4)], add: [day(10)] });
+      expect(x.status, x.text).toBe(409);
+      expect(x.body.error.code).toBe("DATE_BOOKED");
+      expect(x.body.error.dates).toEqual([day(3)]);
+      const days = await svc
+        .from("availability")
+        .select("day")
+        .eq("chef_id", chef.id)
+        .order("day");
+      expect((days.data ?? []).map((v) => v.day)).toEqual([
+        day(2),
+        day(3),
+        day(4),
+      ]); // day 4 and day 10 untouched
+      // An accepted booking blocks too.
+      await accept(chef.b, r.id);
+      x = await put({ remove: [day(3)] });
+      expect(x.status).toBe(409);
+      // A free date can be cleared.
+      x = await put({ remove: [day(4)] });
+      expect(x.status, x.text).toBe(200);
+      expect(x.body.days).not.toContain(day(4));
+    }));
 
-  it("a declined or expired booking no longer blocks clearing the date", async () => {
-    const chef = await bookableChef({ ticked: [2, 3] });
-    const a = await bookingCustomer();
-    const b = await bookingCustomer();
-    const r1 = await bookOk(a, bookingBody(chef, { days: [dayBody(chef, 2)] }));
-    const r2 = await bookOk(b, bookingBody(chef, { days: [dayBody(chef, 3)] }));
-    await decline(chef.b, r1.id);
-    await makeStale(r2.id); // expired but not swept: the route sweeps first
-    const { putAvailability } = await import("./dish-helpers");
-    const x = await chef.b.call(putAvailability, {
-      method: "PUT",
-      body: { remove: [day(2), day(3)] },
-    });
-    expect(x.status, x.text).toBe(200);
-    expect(x.body.days).toEqual([]);
-  });
-
-  it("clearing a date while it is being booked: either the booking or the clear wins, never both", async () => {
-    const chef = await bookableChef({ ticked: [2] });
-    const c = await bookingCustomer();
-    const { putAvailability } = await import("./dish-helpers");
-    const [booked, cleared] = await Promise.all([
-      book(c, bookingBody(chef, { days: [dayBody(chef, 2)] })),
-      chef.b.call(putAvailability, {
+  it("a declined or expired booking no longer blocks clearing the date", () =>
+    retryIfDayRolled(async () => {
+      const chef = await bookableChef({ ticked: [2, 3] });
+      const a = await bookingCustomer();
+      const b = await bookingCustomer();
+      const r1 = await bookOk(
+        a,
+        bookingBody(chef, { days: [dayBody(chef, 2)] }),
+      );
+      const r2 = await bookOk(
+        b,
+        bookingBody(chef, { days: [dayBody(chef, 3)] }),
+      );
+      await decline(chef.b, r1.id);
+      await makeStale(r2.id); // expired but not swept: the route sweeps first
+      const { putAvailability } = await import("./dish-helpers");
+      const x = await chef.b.call(putAvailability, {
         method: "PUT",
-        body: { remove: [day(2)] },
-      }),
-    ]);
-    const avail = await svc
-      .from("availability")
-      .select("day")
-      .eq("chef_id", chef.id);
-    const rows = await svc
-      .from("booking_days")
-      .select("id")
-      .eq("chef_id", chef.id);
-    if (booked.status === 201) {
-      expect(cleared.status, cleared.text).toBe(409);
-      expect(avail.data).toHaveLength(1);
-      expect(rows.data).toHaveLength(1);
-    } else {
-      expect(booked.status, booked.text).toBe(422);
-      expect(booked.body.error.issues[0].code).toBe("CHEF_UNAVAILABLE");
-      expect(cleared.status).toBe(200);
-      expect(rows.data).toEqual([]);
-    }
-  });
+        body: { remove: [day(2), day(3)] },
+      });
+      expect(x.status, x.text).toBe(200);
+      expect(x.body.days).toEqual([]);
+    }));
+
+  it("clearing a date while it is being booked: either the booking or the clear wins, never both", () =>
+    retryIfDayRolled(async () => {
+      const chef = await bookableChef({ ticked: [2] });
+      const c = await bookingCustomer();
+      const { putAvailability } = await import("./dish-helpers");
+      const [booked, cleared] = await Promise.all([
+        book(c, bookingBody(chef, { days: [dayBody(chef, 2)] })),
+        chef.b.call(putAvailability, {
+          method: "PUT",
+          body: { remove: [day(2)] },
+        }),
+      ]);
+      const avail = await svc
+        .from("availability")
+        .select("day")
+        .eq("chef_id", chef.id);
+      const rows = await svc
+        .from("booking_days")
+        .select("id")
+        .eq("chef_id", chef.id);
+      if (booked.status === 201) {
+        expect(cleared.status, cleared.text).toBe(409);
+        expect(avail.data).toHaveLength(1);
+        expect(rows.data).toHaveLength(1);
+      } else {
+        expect(booked.status, booked.text).toBe(422);
+        expect(booked.body.error.issues[0].code).toBe("CHEF_UNAVAILABLE");
+        expect(cleared.status).toBe(200);
+        expect(rows.data).toEqual([]);
+      }
+    }));
 });
 
 describe("search avoidAllergens uses the booking synonym map (D-31)", () => {
@@ -1602,21 +1614,22 @@ describe("search avoidAllergens uses the booking synonym map (D-31)", () => {
 });
 
 describe("public date helpers are limited to the public window (review finding 1)", () => {
-  it("a rejected chef's booked dates and a booking outside the window are not public", async () => {
-    const chef = await bookableChef({ ticked: [3] });
-    const c = await bookingCustomer();
-    await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 3)] }));
-    const { publicSearch } = await import("./booking-helpers");
-    const anon = new Browser();
-    expect((await publicSearch(anon, `date=${day(3)}`)).status).toBe(200);
-    await setChef(chef.id, { status: "rejected" });
-    const { publicDetail } = await import("./booking-helpers");
-    expect((await publicDetail(anon, chef.id)).status).toBe(404);
-    const r = await svc.rpc("chef_booked_dates", {
-      p_chef: chef.id,
-      p_from: day(1),
-      p_to: day(30),
-    });
-    expect(r.data).toEqual([]); // no helper answers for a rejected chef
-  });
+  it("a rejected chef's booked dates and a booking outside the window are not public", () =>
+    retryIfDayRolled(async () => {
+      const chef = await bookableChef({ ticked: [3] });
+      const c = await bookingCustomer();
+      await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 3)] }));
+      const { publicSearch } = await import("./booking-helpers");
+      const anon = new Browser();
+      expect((await publicSearch(anon, `date=${day(3)}`)).status).toBe(200);
+      await setChef(chef.id, { status: "rejected" });
+      const { publicDetail } = await import("./booking-helpers");
+      expect((await publicDetail(anon, chef.id)).status).toBe(404);
+      const r = await svc.rpc("chef_booked_dates", {
+        p_chef: chef.id,
+        p_from: day(1),
+        p_to: day(30),
+      });
+      expect(r.data).toEqual([]); // no helper answers for a rejected chef
+    }));
 });

@@ -24,3 +24,11 @@ Fix: `retryIfDayRolled(body)` runs the body; if it throws AND the Toronto date c
 
 ## What the next agent needs
 Confirm assertions are unchanged (diff is indentation plus the wrapper). Consider a follow-up to wrap the listed siblings.
+
+## Round 1 (reviewer findings)
+Wrapped with `retryIfDayRolled` (assertions unchanged; `diff -w` shows only the wrapper plus prettier reflow):
+- `tests/api/bookings.test.ts`: D-22 clear-booked-date, "declined or expired booking no longer blocks clearing", the clear-vs-book race (ticks only [2]), "rejected chef's booked dates ... not public" (books day(3)). Left unwrapped as the Reviewer showed they are unaffected: the D-27 test (~260) and ~278.
+- `tests/api/bookings-tester.test.ts`: the D-19 `it.each([2,3,4,6])` cases (each case retries on its own).
+- `tests/api/search.test.ts`: GET /api/chefs/:id "returns active dishes ... bookable dates inside the window only" (`t` is now read inside the body).
+Re-run safety: every wrapped body creates its own chef(s), customer(s) and tag at the top, so a second attempt has fresh ids; no shared-date exact lists (all lists are filtered to the test's own chef). A leftover first-attempt chef is a different chef so no unique-rule clash.
+NIT done: `retryIfDayRolled` now logs a `console.warn` when it retries, and the second error gets the first as `cause` (if it is an Error without one). Two new unit tests (cause, warn). Vitest: 3206 passed, 3 expected fail; lint and typecheck clean.

@@ -7,6 +7,7 @@ import { GET as searchRoute } from "@/app/api/chefs/route";
 import { GET as detailRoute } from "@/app/api/chefs/[id]/route";
 import { GET as prefixRoute } from "@/app/api/reference/postal-prefixes/route";
 import { makeBooking } from "../rls/helpers";
+import { retryIfDayRolled } from "../support/midnight";
 import { Browser, freshLimits, rand, type Reply } from "./harness";
 import {
   newAdmin,
@@ -563,61 +564,62 @@ describe("no private data", () => {
 });
 
 describe("GET /api/chefs/:id", () => {
-  it("returns active dishes oldest first and bookable dates inside the window only", async () => {
-    const chef = await pub({
-      dishes: [{ name: "First" }, { name: "Gone", active: false }],
-    });
-    await createDish(chef, {
-      name: "Second",
-      cuisine: "Vietnamese",
-      cookMinutes: 90,
-      servings: 4,
-      allergens: ["Soy"],
-      ingredientCostCents: 1500,
-      description: "Good.",
-    });
-    const t = today();
-    const inside = [addDays(t, 1), addDays(t, 2), addDays(t, 180)];
-    // Today is ticked too, but D-27 hides it: nobody can book the same day.
-    await putDays(chef, { add: [t, ...inside] });
-    // rows the route would refuse, written by the service role: past, beyond the window, unavailable
-    await svc.from("availability").insert([
-      { chef_id: chef.id, day: addDays(t, -1) },
-      { chef_id: chef.id, day: addDays(t, 181) },
-      { chef_id: chef.id, day: addDays(t, 5), available: false },
-    ]);
-    const other = await pub();
-    await putDays(other, { add: [addDays(t, 7)] });
+  it("returns active dishes oldest first and bookable dates inside the window only", () =>
+    retryIfDayRolled(async () => {
+      const chef = await pub({
+        dishes: [{ name: "First" }, { name: "Gone", active: false }],
+      });
+      await createDish(chef, {
+        name: "Second",
+        cuisine: "Vietnamese",
+        cookMinutes: 90,
+        servings: 4,
+        allergens: ["Soy"],
+        ingredientCostCents: 1500,
+        description: "Good.",
+      });
+      const t = today();
+      const inside = [addDays(t, 1), addDays(t, 2), addDays(t, 180)];
+      // Today is ticked too, but D-27 hides it: nobody can book the same day.
+      await putDays(chef, { add: [t, ...inside] });
+      // rows the route would refuse, written by the service role: past, beyond the window, unavailable
+      await svc.from("availability").insert([
+        { chef_id: chef.id, day: addDays(t, -1) },
+        { chef_id: chef.id, day: addDays(t, 181) },
+        { chef_id: chef.id, day: addDays(t, 5), available: false },
+      ]);
+      const other = await pub();
+      await putDays(other, { add: [addDays(t, 7)] });
 
-    const r = await detail(anon(), chef.id);
-    expect(r.status, r.text).toBe(200);
-    expect(r.body.dishes.map((d: { name: string }) => d.name)).toEqual([
-      "First",
-      "Second",
-    ]);
-    expect(r.body.dishes[1]).toMatchObject({
-      cuisine: "Vietnamese",
-      cookMinutes: 90,
-      servings: 4,
-      allergens: ["soy"],
-      ingredientCostCents: 1500,
-      description: "Good.",
-      shelfLifeDays: 2,
-    });
-    expect(r.body.bookableDates).toEqual(inside);
-    expect(r.body.today).toBe(t);
-    expect(r.body.firstBookableDay).toBe(addDays(t, 1));
-    expect(r.body.lastBookableDay).toBe(addDays(t, 180));
-    expect(r.body).toMatchObject({
-      id: chef.id,
-      bio: "A friendly home cook.",
-      serviceCity: "Mississauga",
-      hourlyRateCents: 2500,
-      currency: "CAD",
-      locationOptions: ["customer_home"],
-    });
-    expect(r.headers.get("cache-control")).toBe("no-store");
-  });
+      const r = await detail(anon(), chef.id);
+      expect(r.status, r.text).toBe(200);
+      expect(r.body.dishes.map((d: { name: string }) => d.name)).toEqual([
+        "First",
+        "Second",
+      ]);
+      expect(r.body.dishes[1]).toMatchObject({
+        cuisine: "Vietnamese",
+        cookMinutes: 90,
+        servings: 4,
+        allergens: ["soy"],
+        ingredientCostCents: 1500,
+        description: "Good.",
+        shelfLifeDays: 2,
+      });
+      expect(r.body.bookableDates).toEqual(inside);
+      expect(r.body.today).toBe(t);
+      expect(r.body.firstBookableDay).toBe(addDays(t, 1));
+      expect(r.body.lastBookableDay).toBe(addDays(t, 180));
+      expect(r.body).toMatchObject({
+        id: chef.id,
+        bio: "A friendly home cook.",
+        serviceCity: "Mississauga",
+        hourlyRateCents: 2500,
+        currency: "CAD",
+        locationOptions: ["customer_home"],
+      });
+      expect(r.headers.get("cache-control")).toBe("no-store");
+    }));
 
   it("answers 404 for a non-uuid, an unknown id and an uppercase uuid of nobody", async () => {
     const unknown = await detail(anon(), randomUUID());
