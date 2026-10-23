@@ -31,3 +31,10 @@ I first tried `NEXT_PHASE` for "production build"; it is undefined when next.con
 ## What the next agent needs
 - Tester: try odd values (" 1", "true"), each Vercel name alone, and check the browser bundle for `NEXT_PUBLIC_MOCK_BLOCKED:"1"` after a `VERCEL=1` build. Confirm e2e-mock and the `ci` gate stay green.
 - Reviewer: README text against the code; whether refusing "0" and the ALLOW_MOCK_BUILD rule are wanted (unconfirmed by Jimmy).
+
+## Round 1
+Tester PASS at c10a510 with three doc findings, all fixed (docs only, no code change):
+- LOW-1 `README.md` (known limits): the "other hosts have no such guard" sentence now says a production build or `next start` with the flag at `1` stops unless `ALLOW_MOCK_BUILD=1` is set, and that a host that sets that variable, or `next dev`, is not protected.
+- LOW-2 `README.md` (env var list): now says the app looks for any of the Vercel system variables listed in `src/lib/mock-guard.ts`.
+- LOW-3 `.env.example`: one comment line about `ALLOW_MOCK_BUILD` (local production mock builds only, never on Vercel); no value that enables it.
+Checks: `prettier --check .` and `npm run lint` clean.

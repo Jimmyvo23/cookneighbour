@@ -119,7 +119,7 @@ Set these three kinds of names in Vercel (Project > Settings > Environment Varia
 
 Do **not** set these on Vercel:
 
-- `NEXT_PUBLIC_API_MOCK`: leave it unset (or empty). `1` turns on the mock adapter and switches page guards off. Since T-118 the build refuses to start on Vercel if this name is set to any value, and the app ignores it there at runtime too (it looks for `VERCEL`, `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_REGION`, `NEXT_PUBLIC_VERCEL_ENV`). Still leave it unset.
+- `NEXT_PUBLIC_API_MOCK`: leave it unset (or empty). `1` turns on the mock adapter and switches page guards off. Since T-118 the build refuses to start on Vercel if this name is set to any value, and the app ignores it there at runtime too (it looks for any of the Vercel system variables listed in `src/lib/mock-guard.ts`). Still leave it unset.
 - `SEED_ADMIN_PASSWORD`, `SEED_DEMO_CHEF_PASSWORD`, `SEED_DEMO_CUSTOMER_PASSWORD`: used only by the seed script on your own machine.
 - `VERCEL`, `NODE_ENV`, `CI`: Vercel sets them. The app uses `VERCEL` to trust only Vercel's own IP headers and to refuse the public test pepper.
 
@@ -173,7 +173,7 @@ These are prototype limits, not bugs to hide. A real launch needs each one decid
 - **Sign-up says when an email is already registered** (409 `EMAIL_IN_USE`), so anyone can test whether an email has an account (T-053 LOW-8).
 - **Email confirmation is off** in the local Supabase config; fine for the demo, not for a launch.
 - **Chat topics are open, chat data is not.** There are no Realtime Authorization policies, so anyone can broadcast on a chat topic, but the app listens only to database changes that RLS filters. Turn on private channels before adding broadcast or presence.
-- **`NEXT_PUBLIC_API_MOCK=1` must never be set on a deployment.** It turns the page guards off and shows fake data (the API routes still check access). T-118 makes a Vercel build fail when it is set and ignores it at runtime on Vercel; other hosts have no such guard.
+- **`NEXT_PUBLIC_API_MOCK=1` must never be set on a deployment.** It turns the page guards off and shows fake data (the API routes still check access). T-118 makes a Vercel build fail when it is set and ignores it at runtime on Vercel. On any other host, a production build or `next start` with the flag at `1` still stops unless `ALLOW_MOCK_BUILD=1` is also set; a host that sets that variable, or a development server (`next dev`), is not protected.
 - **Open security findings.** The T-053 review (`docs/security-review.md`) found no HIGH issues. MED-1, MED-2, MED-4, LOW-1 and LOW-2 are fixed (T-098, T-099, T-101); MED-3 is partly fixed (T-100, inline scripts still allowed); LOW-3 to LOW-7 are fixed by T-102 (LOW-6 only partly: bookings, admin, groceries, messages and storage removal still log database messages); the hosted minimum password length of 8 is a dashboard step for the project owner.
 - **The contact filter can refuse normal text.** Number runs and dotted words such as "1 2 3 4 5 6 7 8 9 10", "Mr.Ly" or "kitchen.ca" read as a phone number or web address in names, bios, dishes and intake notes; the form says why and the user rewords it. An old saved allergy profile that now fails the filter loads as empty and must be entered again.
 - **Older text is not re-checked for contact details.** Display names, chef bios, dishes and intake notes saved before T-101 keep any phone number or email they contain until they are edited.
