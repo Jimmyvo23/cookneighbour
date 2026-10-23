@@ -85,6 +85,8 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - Never read, print or check the prefix of any key in `.env.local`. To check keys, run `npm run db:check` or ask Jimmy. *(A safety check blocked an attempt to read key prefixes.)*
 - A 401 from Supabase usually means a wrongly copied key: Jimmy copies it again and we run `npm run db:check`.
 - Loading seed data into hosted needs Jimmy's `SEED_ADMIN_PASSWORD` and his OK.
+- **Docs about test values must say where they must never go (T-111).** The Planner's fix-round brief asked for a README line telling people to put the public test pepper in `.env.local`, which also holds the hosted config; the Reviewer caught it (MEDIUM). A public test value is a fallback for CI and throwaway stacks only; docs say "never in `.env.local` or any hosted environment".
+- **After `gh pr update-branch`, a green PR can fail on unrelated flaky e2e tests (T-110).** Read the failing log first; if the update brought only notes and the same code passed before, re-run the failed job and open a flake task (T-113).
 
 ## 6. Sessions and usage
 
