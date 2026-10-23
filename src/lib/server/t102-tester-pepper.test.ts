@@ -71,8 +71,9 @@ describe("the e2e placeholder pepper in playwright.config.ts passes the 32 chara
   it("is at least 32 characters (next start runs with NODE_ENV=production)", async () => {
     const { readFileSync } = await import("node:fs");
     const text = readFileSync("playwright.config.ts", "utf8");
-    const m = /HASH_PEPPER:\s*"([^"]+)"/.exec(text);
-    expect(m, "HASH_PEPPER literal found").not.toBeNull();
-    expect(m![1].length).toBeGreaterThanOrEqual(MIN_PEPPER_LENGTH);
+    // T-111: the config uses the shared constant; its length is checked here too.
+    expect(text).toMatch(/HASH_PEPPER:\s*LOCAL_TEST_PEPPER\b/);
+    const { LOCAL_TEST_PEPPER } = await import("../domain/local-test-pepper");
+    expect(LOCAL_TEST_PEPPER.length).toBeGreaterThanOrEqual(MIN_PEPPER_LENGTH);
   });
 });
