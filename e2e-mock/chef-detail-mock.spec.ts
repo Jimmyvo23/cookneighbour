@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PNG, blockStorage, expectNoAxeViolations } from "./helpers";
+import {
+  PNG,
+  blockStorage,
+  expectNoAxeViolations,
+  hideDevOverlay,
+} from "./helpers";
 
 // T-041, MOCK mode: the public chef page against the mock adapter (src/lib/mocks/mock-search.ts).
 // Every chef is made up. Ids: Mai Tran (approved, both locations) ...1001; a hidden chef (only an
@@ -9,6 +14,7 @@ const NADIA = "00000000-0000-4000-8000-000000001050";
 
 let storageRequests: string[] = [];
 test.beforeEach(async ({ page }) => {
+  await hideDevOverlay(page);
   storageRequests = [];
   // MOCK photo paths are made up: a developer's .env.local must never make the page ask hosted storage.
   storageRequests = await blockStorage(page);
@@ -19,9 +25,6 @@ test.beforeEach(async ({ page }) => {
 
 async function open(page: Page, id: string) {
   await page.goto(`/chefs/${id}`);
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
 }
 const noOverflow = (page: Page) =>
   page.evaluate(

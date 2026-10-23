@@ -3,6 +3,7 @@ import {
   blockStorage,
   dayPlus,
   expectNoAxeViolations,
+  hideDevOverlay,
   loginAdmin,
   signUpCustomer,
 } from "./helpers";
@@ -15,14 +16,9 @@ const MAI = "00000000-0000-4000-8000-000000001001";
 const KEY = "cookneighbour-mock-api-state";
 
 test.beforeEach(async ({ page }) => {
+  await hideDevOverlay(page);
   await blockStorage(page);
 });
-
-async function hideOverlay(page: Page) {
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
-}
 
 async function fillRest(page: Page, day: number) {
   await page.getByLabel("Date for day 1").selectOption(dayPlus(day));
@@ -69,7 +65,6 @@ test("a failed profile save after booking keeps the booking and shows the notice
   }, KEY);
   await signUpCustomer(page);
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await fillRest(page, 5);
   await page.getByRole("checkbox", { name: "I have no allergies" }).check();
   await page.getByRole("checkbox", { name: "I have no dietary needs" }).check();
@@ -106,7 +101,6 @@ test("a new booking after an unsaved edit starts again from the saved profile (M
   await expect(page.getByTestId("profile-status")).toContainText("Saved");
 
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await fillRest(page, 5);
   // Change the answers, do not ask to save them.
   await page.getByLabel("Other allergies or details").fill("Changed here");
@@ -115,7 +109,6 @@ test("a new booking after an unsaved edit starts again from the saved profile (M
 
   // Back to the form page in the same tab through the app: the sent state offers another visit.
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await expect(page.getByLabel("Other allergies or details")).toHaveValue(
     "Carries an EpiPen",
   );
@@ -138,7 +131,6 @@ test("Book another visit button refills from the profile just saved, not the one
   await expect(page.getByTestId("profile-status")).toContainText("Saved");
 
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await fillRest(page, 5);
   await page.getByLabel("Other allergies or details").fill("Sesame too");
   await page
@@ -197,7 +189,6 @@ test("Book another visit still works when the profile save fails, and refills fr
   await expect(page.getByTestId("profile-status")).toContainText("Saved");
 
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await fillRest(page, 5);
   await page.getByLabel("Other allergies or details").fill("Sesame too");
   await page
@@ -224,7 +215,6 @@ test("a note with a control character is refused next to the field and the profi
 }) => {
   await signUpCustomer(page);
   await page.goto("/allergies");
-  await hideOverlay(page);
   await page.getByLabel("Other allergies or details").fill("bad \u0001 text");
   await page.getByRole("checkbox", { name: "I have no dietary needs" }).check();
   await page.getByRole("button", { name: "Save profile" }).click();

@@ -167,6 +167,20 @@ export function vis(page: Page, testId: string) {
 const overlayHidden = new WeakSet<Page>();
 
 /**
+ * Hides the Next.js dev overlay in every document this page loads (idempotent). Call it before the
+ * first `goto`, for example in `beforeEach`. See `openPage` for why this is an init script.
+ */
+export async function hideDevOverlay(page: Page) {
+  if (overlayHidden.has(page)) return;
+  overlayHidden.add(page);
+  await page.addInitScript(() => {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync("nextjs-portal { display: none !important; }");
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  });
+}
+
+/**
  * Opens the page and hides the Next.js dev overlay, which would sit over buttons at the bottom.
  * The rule is added with an init script (a constructable stylesheet, so a CSP cannot block it), not
  * with `page.addStyleTag` after `goto`: a page that redirects on the client (/admin to /admin/chefs)
@@ -174,14 +188,7 @@ const overlayHidden = new WeakSet<Page>();
  * every document the page loads, so a navigation in flight cannot lose it.
  */
 export async function openPage(page: Page, path: string) {
-  if (!overlayHidden.has(page)) {
-    overlayHidden.add(page);
-    await page.addInitScript(() => {
-      const sheet = new CSSStyleSheet();
-      sheet.replaceSync("nextjs-portal { display: none !important; }");
-      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
-    });
-  }
+  await hideDevOverlay(page);
   await page.goto(path);
 }
 

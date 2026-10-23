@@ -1,18 +1,21 @@
 import { expect, test } from "@playwright/test";
-import { blockStorage, dayPlus, signUpCustomer } from "./helpers";
+import {
+  blockStorage,
+  dayPlus,
+  hideDevOverlay,
+  signUpCustomer,
+} from "./helpers";
 
 // T-043 tester additions, MOCK mode. Dates offered, 1 to 3 days, booked dates hidden, same date twice.
 const MAI = "00000000-0000-4000-8000-000000001001";
 
 test.beforeEach(async ({ page }) => {
+  await hideDevOverlay(page);
   await blockStorage(page);
 });
 
 async function open(page: import("@playwright/test").Page) {
   await page.goto(`/chefs/${MAI}/book`);
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }
 

@@ -26,6 +26,17 @@ const VIEWPORTS = [
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"];
 
 async function axeClean(page: Page, label: string) {
+  // T-116: Next streams the page <title> (route metadata) after the body, and on a client-side
+  // move to a new page the head is updated a moment after the h1 shows. A slow machine (or the dev
+  // server under load) reaches axe in between and sees no title (`document-title`). Wait for the
+  // title to exist; the `document-title` rule itself still runs.
+  await expect(page).toHaveTitle(/\S/);
+  // The same for the Suspense fallback of the guarded pages (/bookings and others): a bare
+  // "Loading..." line outside any landmark (a `region` finding) shows until the page guard
+  // resolves, and a stale h1 from the page before can satisfy the test's own h1 wait.
+  await expect(
+    page.getByText("Loading...", { exact: true }).filter({ visible: true }),
+  ).toHaveCount(0);
   const r = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   expect(
     r.violations.map(

@@ -3,6 +3,7 @@ import {
   blockStorage,
   dayPlus,
   expectNoAxeViolations,
+  hideDevOverlay,
   signUpChef,
   signUpCustomer,
 } from "./helpers";
@@ -12,6 +13,7 @@ import {
 const MAI = "00000000-0000-4000-8000-000000001001";
 
 test.beforeEach(async ({ page }) => {
+  await hideDevOverlay(page);
   await blockStorage(page);
 });
 
@@ -22,15 +24,8 @@ const noOverflow = (page: Page) =>
       document.documentElement.clientWidth,
   );
 
-async function hideOverlay(page: Page) {
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
-}
-
 async function saveProfile(page: Page) {
   await page.goto("/allergies");
-  await hideOverlay(page);
   await expect(page.getByTestId("saved-state")).toContainText(
     "Nothing is saved yet",
   );
@@ -56,7 +51,6 @@ test("save, reload, edit and delete the profile (MOCK)", async ({ page }) => {
   await expectNoAxeViolations(page);
 
   await page.reload();
-  await hideOverlay(page);
   await expect(page.getByTestId("saved-state")).toContainText("Saved on");
   await expect(page.getByRole("checkbox", { name: "Mustard" })).toBeChecked();
   await expect(page.getByLabel("Other allergies or details")).toHaveValue(
@@ -106,7 +100,6 @@ test("T-076: the replace box un-ticks itself when the answers match the profile 
   await signUpCustomer(page);
   await saveProfile(page);
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await expect(page.getByTestId("prefilled-note")).toBeVisible();
   const notes = page.getByLabel("Other allergies or details");
   await notes.fill("Mustard, severe");
@@ -128,7 +121,6 @@ test("a saved profile prefills the booking, edits stay per booking, and can repl
   await saveProfile(page);
 
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await expect(page.getByTestId("prefilled-note")).toContainText(
     "Filled in from your saved allergy profile",
   );
@@ -161,7 +153,6 @@ test("a saved profile prefills the booking, edits stay per booking, and can repl
 
   // Second booking, ticked: the profile is replaced.
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await expect(page.getByTestId("prefilled-note")).toBeVisible();
   await page.getByLabel("Other allergies or details").fill("Mustard, severe");
   await page
@@ -185,7 +176,6 @@ test("first booking with no profile can save the answers (MOCK)", async ({
 }) => {
   await signUpCustomer(page);
   await page.goto(`/chefs/${MAI}/book`);
-  await hideOverlay(page);
   await expect(page.getByTestId("prefilled-note")).toHaveCount(0);
   await fillRest(page);
   await page.getByRole("checkbox", { name: "I have no allergies" }).check();
