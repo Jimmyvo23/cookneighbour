@@ -78,7 +78,7 @@ chips 6.5 to 8.3 / 8.1 to 9.3; saffron price tag ink 8.61 / 10.59; rating badge 
 - Phone: the `/search` hero shows a small picture instead of none.
 
 ## Test edits (one)
-- `e2e-mock/chef-detail-tester.spec.ts` "keyboard: the Back link is the first Tab stop": one more `Tab` (3 before the Back link instead of 2, plus the one that follows) because the header name is now a link and is a new first stop. Pure order change; assertion about focus unchanged. No axe or accessibility assertion was touched or weakened.
+- `e2e-mock/chef-detail-tester.spec.ts` "keyboard: the Back link is the first Tab stop": one more `Tab` press (5 instead of 4) because the header name is now a link and is a new stop before the Back link. Pure order change; the focus assertion is unchanged. No axe or accessibility assertion was touched or weakened.
 
 ## Contrast (computed; light / dark)
 ink on notice gold 13.31 / 11.42; ink on notice herb 13.42 / 11.25; status gold 5.34 / 7.09; status herb 6.67 / 8.88; status red (ink on danger-bg) 12.92 / 12.39; saffron button ink 8.61 / 10.59; dark button outline vs paper 7.59 (light 8.21); star on rating badge 4.33 (decoration, rating is written out) and 5.15 on surface; link on the tablecloth-tinted page 7.59, muted text 6.72 / 9.17; stamp link on surface 8.70 / 8.02. Gingham patterns were checked by hand on the lightest overlap square (see round 2).
