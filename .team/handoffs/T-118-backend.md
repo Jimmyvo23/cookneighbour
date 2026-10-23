@@ -38,3 +38,10 @@ Tester PASS at c10a510 with three doc findings, all fixed (docs only, no code ch
 - LOW-2 `README.md` (env var list): now says the app looks for any of the Vercel system variables listed in `src/lib/mock-guard.ts`.
 - LOW-3 `.env.example`: one comment line about `ALLOW_MOCK_BUILD` (local production mock builds only, never on Vercel); no value that enables it.
 Checks: `prettier --check .` and `npm run lint` clean.
+
+## Round 2
+Reviewer APPROVED at 98ed19f with two README findings and one INFO, fixed (docs only):
+- LOW-1 `README.md` env section: now says two flags are also inlined, `NEXT_PUBLIC_API_MOCK` and `NEXT_PUBLIC_MOCK_BLOCKED` (set to `1` by the build on Vercel; not a secret).
+- LOW-2 `README.md` env list and known limits: both now say the Vercel refusal and runtime ignore work only while "Enable access to System Environment Variables" is on; if off, only the `ALLOW_MOCK_BUILD` rule stops a `1`.
+- INFO-2 `docs/security-review.md` item 5: kept the historical text, added an "Addressed by T-118" note pointing at `isMockEnabled()` in `src/lib/api/client.ts` and `src/lib/mock-guard.ts`.
+Checks: `prettier --check .` and `npm run lint` clean.
