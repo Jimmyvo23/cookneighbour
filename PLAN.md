@@ -218,8 +218,10 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-107 | T-103 Reviewer LOW (display): the admin blocks list puts the summed attempts on every hourly row ("7 attempts" twice = 14 when added up) and "last on" shows the row's first time | frontend | T-103 | done |
 | T-108 | CI: cache the Playwright browsers between runs and raise the `supabase` job limit to 35 minutes (`playwright install --with-deps` took 9-10 min on slow apt mirrors; 5+ runs cancelled at 25 min on 2026-10-22) | backend | T-084 | done |
 | T-109 | `scripts/seed.ts --hosted` accepts a `HASH_PEPPER` shorter than 32 characters, which the app now refuses (T-102 Reviewer INFO); apply the same check in the seed | backend | T-102 | done |
-| T-110 | CI headroom: the apt system-library download in `npx playwright install-deps` still takes up to 10.5 min on slow Ubuntu mirrors even with the T-108 browser cache (the `supabase` job reached 28m34s of 35). Options: cache the apt .deb files or run the jobs in the `mcr.microsoft.com/playwright` image. Needs Jimmy's choice | backend | T-108 | todo |
-| T-111 | Pre-existing (found in T-109 testing): CI seeds `--local` with the `local-dev-pepper` fallback but the e2e app uses `e2e-test-pepper-not-a-secret-0000` (`playwright.config.ts:44`), so seeded customers' phone and address hashes never match in e2e. Demo step 5 passes only because tests create their own users. Fix: one shared 32+ character local pepper, or the CI seed passes the same pepper; optional e2e that signs up with a seeded phone and expects 409 | backend | T-109 | todo |
+| T-110 | CI headroom: the apt system-library download in `npx playwright install-deps` still takes up to 10.5 min on slow Ubuntu mirrors even with the T-108 browser cache (the `supabase` job reached 28m34s of 35). Options: cache the apt .deb files or run the jobs in the `mcr.microsoft.com/playwright` image. Needs Jimmy's choice | backend | T-108 | done |
+| T-111 | Pre-existing (found in T-109 testing): CI seeds `--local` with the `local-dev-pepper` fallback but the e2e app uses `e2e-test-pepper-not-a-secret-0000` (`playwright.config.ts:44`), so seeded customers' phone and address hashes never match in e2e. Demo step 5 passes only because tests create their own users. Fix: one shared 32+ character local pepper, or the CI seed passes the same pepper; optional e2e that signs up with a seeded phone and expects 409 | backend | T-109 | done |
+| T-112 | T-111 Reviewer INFO-2 (pre-existing): neither `scripts/seed.ts --hosted` nor the app (`src/lib/server/pepper.ts` `getHashPepper`) refuses `HASH_PEPPER` equal to the public `LOCAL_TEST_PEPPER`; a one-line refusal would close it (care: the e2e app also runs with `NODE_ENV=production`). Needs Jimmy's choice | backend | T-111 | todo |
+| T-113 | Flaky e2e-mock: `e2e-mock/t052-a11y-mock.spec.ts:149` (axe at desktop, admin pages) failed both tries with `page.addStyleTag: Execution context was destroyed` (navigation race), and `e2e-mock/admin-t036-tester-mock.spec.ts:279` was flaky, on T-110 run 39888495979 after a PLAN.md-only branch update; the re-run passed. Wait for the page to settle before axe | tester | T-110 | todo |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -410,6 +412,10 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-164 | 2026-10-22 | CI time limit: "Cache + raise to 35 min (Recommended)" -> T-108 (WO-T108) | Jimmy |
 | D-165 | 2026-10-22 | Next tasks: T-109, T-110, T-055 deploy; pace "One at a time (Recommended)"; hosted password minimum 8: "Not yet, I'll do it" | Jimmy |
 | D-166 | 2026-10-22 | "finsih the current one, dont start new": finish T-109, then stop (T-110 and WO-7/T-055 not started) | Jimmy |
+| D-167 | 2026-10-22 | Pace: "Several in parallel"; next: "T-110 CI speed"; parallel set: "T-110 + T-111 (Recommended)" | Jimmy |
+| D-168 | 2026-10-22 | T-110 approach: "Playwright container (Recommended)"; WO-T110 "Approve (Recommended)" | Jimmy |
+| D-169 | 2026-10-22 | WO-T111 "Approve (Recommended)" (one shared 32+ character local test pepper replaces the `local-dev-pepper` fallback) | Jimmy |
+| D-170 | 2026-10-22 | Hosted Supabase minimum password length 8 (D-161): "Done"; T-109 builder choices (seed trims the pepper; `--local` keeps a fallback): "Confirm both (Recommended)" | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -966,4 +972,17 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 ### T-109 — Hosted seed refuses a short HASH_PEPPER (done 2026-10-22, PR #213 merged 192288d; no migration)
 - `src/lib/domain/pepper-rule.ts` (`MIN_PEPPER_LENGTH = 32`, `checkPepper`) is shared by the app and `scripts/seed.ts`; the seed check runs before any password or database step.
 - Tester PASS on 8f7f74f. Reviewer APPROVE on 8f7f74f. The Tester found the pre-existing pepper mismatch between the CI seed and the e2e app -> T-111.
-- Builder choices, not confirmed by Jimmy: the seed trims the pepper for `--local` and `--hosted`; `--local` keeps the 16-character `local-dev-pepper` fallback with no 32 minimum locally.
+- Builder choices, confirmed by Jimmy in D-170: the seed trims the pepper for `--local` and `--hosted`; `--local` keeps a fallback (T-111 replaced its value).
+
+### T-110 — Playwright in the official container image in CI (done 2026-10-22, PR #215 merged 9b31974; workflow only)
+- `e2e-mock` runs in `mcr.microsoft.com/playwright:v1.63.0-noble` via `container:` (`--user 1001`); `supabase` stays on the host (`supabase start` needs its Docker) and runs only its Playwright step via `docker run --network host` as the runner user, passing the five Supabase variables by name. T-108 browser cache and `install-deps` steps removed. `checks`, the `ci` gate and the 35-minute limits unchanged.
+- A guard (first step in both jobs) fails CI unless the locked `@playwright/test` version, `env.PLAYWRIGHT_IMAGE` and the `container.image` line all match. When upgrading Playwright, change both tag copies with the lockfile.
+- Times: `supabase` 17m45s to 20m18s (was 28m34s), `e2e-mock` 10m33s to 12m08s. Test counts unchanged (e2e-mock 376, real e2e 47, RLS 467, API routes 876).
+- Tester PASS (LOW: guard checked only one tag copy; NIT: guard ran late), fixed in round 1 37b64f4. Reviewer APPROVE 37b64f4 (ran seven bad-tag cases locally; NITs: tag not digest pinned, `supabase` e2e uses the image's own Node, guard copied in both jobs, artifact upload not yet seen under the non-root user). After `update-branch`, e2e-mock failed on unrelated flaky tests; re-run passed -> T-113.
+- Builder choices, not confirmed by Jimmy: `noble` image; `setup-node` 24 inside the e2e-mock container; containers run as the runner user, not root; limits stay 35.
+
+### T-111 — One shared local test pepper for seed and e2e (done 2026-10-22, PR #216 merged c734862; no migration)
+- `src/lib/domain/local-test-pepper.ts` exports `LOCAL_TEST_PEPPER` (`local-test-pepper-not-a-secret-0000`, 35 characters, public). `scripts/seed.ts --local` falls back to it only when no `HASH_PEPPER` is set; `playwright.config.ts` gives it to the e2e app. `--hosted` unchanged.
+- New e2e `e2e/auth-real.spec.ts:215`: a new account with seeded customer1's phone gets 409 `PHONE_IN_USE` (would have passed with 200 on old main).
+- Tester PASS (added `src/lib/t111-tester-hosted-pepper.test.ts`; LOW: no local-run docs) -> README/.env.example line. Reviewer REQUEST CHANGES MEDIUM-1: that line told people to put the public constant in `.env.local`, which also holds the hosted config (caused by the Planner's fix-round brief) -> rewritten: never put the constant in `.env.local` or any hosted/Vercel environment. Reviewer APPROVE f1a86f3. INFO-2 -> T-112.
+- Builder choices, not confirmed by Jimmy: the pepper value; the test lives in `auth-real.spec.ts`; it checks only the phone block (not address or free trial); the T-102 Tester test was updated to read the constant.
