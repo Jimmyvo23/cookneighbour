@@ -2,7 +2,7 @@
 
 Mistakes we already paid for once, and the habit that prevents each one. Every agent reads this before starting a task. Add to it when a new mistake costs time.
 
-Last updated: 2026-10-22 (T-099, T-101).
+Last updated: 2026-10-23 (T-116).
 
 ## 1. Office status (Planner and every agent)
 
@@ -72,6 +72,7 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - When the main folder is busy on another branch, the agent works in a git worktree. `team-status` is still run from the main project folder.
 - Never push to `main`, never force-push. Never loosen branch protection to go faster.
 - **Installers that write `.claude/settings.local.json` write to the checkout that runs them.** In a worktree the hook lands in the worktree and the session (which loads the main folder's settings) never sees it. Have the builder put the block in its handoff; the Planner places it in the main folder after merge and Jimmy's OK. *(T-068 Impeccable hook.)*
+- **e2e-mock always uses port 3101 (`playwright.mock.config.ts`).** In parallel work only one worktree may run it locally; another worktree's run would reuse that server and test the wrong code. Give the e2e-mock run to one agent and let CI cover the others (T-115/T-116/T-118, 2026-10-23).
 - **Several agents at once share one GitHub rate limit.** With four agents polling `gh pr checks`, one hit the limit (2026-10-21). Poll about every 60 s. `gh run watch` refreshes every 3 s by default, so pass `--interval 60`.
 - On macOS, `sed -i` needs an empty suffix: `sed -i '' 's/a/b/' file`. *(GNU-style `sed -i` failed during T-040.)*
 - If `gh pr checks <n> --watch` says "no checks reported" right after a push, or returns at once, use `gh run watch <run id> --exit-status` on the new run instead. *(T-073 round 2; again in T-084.)*
