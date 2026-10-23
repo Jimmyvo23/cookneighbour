@@ -129,6 +129,33 @@ jobs:
             -v "$PWD":/work -w /work "$PLAYWRIGHT_IMAGE" \
             npm run test:e2e
 
+      # T-121 bite test: the seeded demo-step-1 spec must FAIL when no seeded chef has a photo (A-20 hides
+      # them). The job clears every photo_path on the throwaway stack (service role, key never printed), runs
+      # only that spec and requires it to fail on the "SEEDED-LISTED" check. Runs last: it changes data.
+      - name: Bite test - demo step 1 fails without seeded photos
+        run: |
+          set -a
+          eval "$(supabase status -o env)"
+          set +a
+          KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
+          curl -fsS -X PATCH "$API_URL/rest/v1/chefs?photo_path=not.is.null" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+            -d '{"photo_path": null}'
+          set +e
+          docker run --rm --network host --ipc=host --init \
+            --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI=true \
+            -e API_URL -e ANON_KEY -e SERVICE_ROLE_KEY -e PUBLISHABLE_KEY -e SECRET_KEY \
+            -v "$PWD":/work -w /work "$PLAYWRIGHT_IMAGE" \
+            npx playwright test e2e/seed-photos-real.spec.ts --retries=0 --reporter=list \
+            > bite.log 2>&1
+          code=$?
+          set -e
+          tail -n 40 bite.log
+          if [ "$code" -eq 0 ]; then echo "::error::bite test: the seeded spec PASSED without photos, so it proves nothing"; exit 1; fi
+          grep -q "SEEDED-LISTED" bite.log || { echo "::error::bite test failed for another reason, not the missing photos"; exit 1; }
+          echo "Bite test ok: the spec fails without photos"
+
       - name: Upload Playwright report (real routes)
         if: failure()
         uses: actions/upload-artifact@v4
