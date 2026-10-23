@@ -2,7 +2,8 @@
 // Runs on the server before any private UI is sent, so it does not rely on client code.
 // Identity comes from getUser() and the role from profiles.role (see caller.ts), never from the
 // client. In MOCK API mode (NEXT_PUBLIC_API_MOCK=1) there is no server session, so the guard is
-// skipped and only the client layer applies. That mode never holds real data.
+// skipped and only the client layer applies. That mode never holds real data, and isMockEnabled()
+// is always false on Vercel (T-118), so a hosted deployment cannot skip this guard.
 import "server-only";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";

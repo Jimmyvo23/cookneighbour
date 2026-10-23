@@ -1,9 +1,24 @@
+import { mockAllowed } from "@/lib/mock-guard";
 import type { ApiError, ApiErrorCode, BookingIssue } from "@/lib/api/types";
 
-/** MOCK switch. The mock adapter runs only when NEXT_PUBLIC_API_MOCK is exactly "1".
- *  Unset, blank or anything else means the real routes (also in development). */
+/** MOCK switch. The mock adapter runs only when NEXT_PUBLIC_API_MOCK is exactly "1" and the code
+ *  is not on Vercel (T-118: fails closed, see src/lib/mock-guard.ts). Unset, blank or anything
+ *  else means the real routes (also in development).
+ *  Each variable is written out in full so Next.js can inline it into the browser bundle. */
 export function isMockEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_API_MOCK === "1";
+  return mockAllowed({
+    NEXT_PUBLIC_API_MOCK: process.env.NEXT_PUBLIC_API_MOCK,
+    NEXT_PUBLIC_MOCK_BLOCKED: process.env.NEXT_PUBLIC_MOCK_BLOCKED,
+    NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
+    NEXT_PUBLIC_VERCEL_URL: process.env.NEXT_PUBLIC_VERCEL_URL,
+    // Server only (undefined in the browser, where the two NEXT_PUBLIC_ names above apply).
+    VERCEL: process.env.VERCEL,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    VERCEL_TARGET_ENV: process.env.VERCEL_TARGET_ENV,
+    VERCEL_URL: process.env.VERCEL_URL,
+    VERCEL_REGION: process.env.VERCEL_REGION,
+    VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID,
+  });
 }
 
 export class ApiClientError extends Error {
