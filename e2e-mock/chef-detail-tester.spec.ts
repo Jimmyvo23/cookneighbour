@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PNG, blockStorage } from "./helpers";
+import { PNG, blockStorage, hideDevOverlay } from "./helpers";
 
 // Tester (T-041), MOCK mode: what "Back to the search" remembers (sessionStorage key
 // cookneighbour.search), tampered saved data, tabs, and keyboard order on the chef page.
@@ -7,6 +7,7 @@ const MAI = "00000000-0000-4000-8000-000000001001";
 const KEY = "cookneighbour.search";
 
 test.beforeEach(async ({ page }) => {
+  await hideDevOverlay(page);
   await blockStorage(page);
   await page.route("https://tile.openstreetmap.org/**", (route) =>
     route.fulfill({ contentType: "image/png", body: PNG.buffer }),
@@ -172,9 +173,6 @@ test("keyboard: the Back link is the first Tab stop in the chef page content and
   page,
 }) => {
   await page.goto(`/chefs/${MAI}`);
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   // The skip link (T-052) and the site header (Log in, Sign up) come first, then the Back link,
   // before any page content.
@@ -192,9 +190,6 @@ test("chef page: every interactive element is reachable by Tab and the tab title
   page,
 }) => {
   await page.goto(`/chefs/${MAI}`);
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
   await expect(page.getByTestId("dish").first()).toBeVisible();
   const seen = new Set<string>();
   for (let i = 0; i < 20; i++) {

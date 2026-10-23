@@ -1,10 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PNG, expectNoAxeViolations, blockStorage } from "./helpers";
+import {
+  PNG,
+  blockStorage,
+  expectNoAxeViolations,
+  hideDevOverlay,
+} from "./helpers";
 
 // MOCK mode. The mock adapter plays the server (src/lib/mocks/mock-search.ts): eight real-looking
 // chefs plus fourteen fillers, all made up. Map tiles come from OpenStreetMap; the tests answer
 // them with a one-pixel picture so no run depends on the network.
 test.beforeEach(async ({ page }) => {
+  await hideDevOverlay(page);
   // MOCK photo paths are made up: a developer's .env.local must never make the page ask hosted storage.
   await blockStorage(page);
   await page.route("https://tile.openstreetmap.org/**", (route) =>
@@ -15,9 +21,6 @@ test.beforeEach(async ({ page }) => {
 async function openSearch(page: Page) {
   await page.goto("/search");
   // Next's development badge sits at the bottom left and can cover a button the test must click.
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
   await expect(
     page.getByRole("heading", { level: 1, name: "Find a home cook" }),
   ).toBeVisible();

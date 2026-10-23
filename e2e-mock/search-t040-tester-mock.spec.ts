@@ -1,14 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   PNG,
+  blockStorage,
   expectNoAxeViolations,
+  hideDevOverlay,
   loginAdmin,
   openChef,
-  blockStorage,
 } from "./helpers";
 
 // Tester (T-040), MOCK mode. Edge cases on top of search-mock.spec.ts. Everything is made up.
 test.beforeEach(async ({ page }) => {
+  await hideDevOverlay(page);
   // MOCK chefs have made-up photo paths. If a developer's .env.local holds a Supabase URL the page
   // would ask that project's public storage for them (T-040 finding F-1); keep the tests offline.
   await blockStorage(page);
@@ -19,9 +21,6 @@ test.beforeEach(async ({ page }) => {
 
 async function openSearch(page: Page) {
   await page.goto("/search");
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
   await expect(
     page.getByRole("heading", { level: 1, name: "Find a home cook" }),
   ).toBeVisible();
