@@ -3,6 +3,7 @@
 // behind, notifications carry no personal data, the D-19 expiry rule is checked on both sides of
 // its switch-over, and expiry happens from plain reads. Every chef and customer is new.
 import { beforeEach, describe, expect, it } from "vitest";
+import { retryIfDayRolled } from "../support/midnight";
 import { torontoStartOfDay } from "@/lib/domain/cancellation";
 import { PUT as addressRoute } from "@/app/api/me/address/route";
 import { freshLimits } from "./harness";
@@ -274,21 +275,22 @@ describe("notifications carry no personal data", () => {
 describe("D-19 expiry on both sides of the switch-over", () => {
   it.each([2, 3, 4, 6])(
     "first visit in %i days: expiry is the earlier of 72 hours and 00:00 Toronto on day 1",
-    async (offset) => {
-      const chef = await bookableChef({ ticked: [offset] });
-      const c = await bookingCustomer();
-      const r = await bookOk(
-        c,
-        bookingBody(chef, { days: [dayBody(chef, offset)] }),
-      );
-      const created = new Date(r.body.createdAt).getTime();
-      const expires = new Date(r.body.expiresAt).getTime();
-      const midnight = torontoStartOfDay(day(offset)).getTime();
-      const expected = Math.min(created + 72 * 3600_000, midnight);
-      expect(Math.abs(expires - expected)).toBeLessThan(10_000);
-      expect(expires).toBeLessThanOrEqual(created + 72 * 3600_000 + 10_000);
-      expect(expires).toBeLessThanOrEqual(midnight);
-    },
+    (offset) =>
+      retryIfDayRolled(async () => {
+        const chef = await bookableChef({ ticked: [offset] });
+        const c = await bookingCustomer();
+        const r = await bookOk(
+          c,
+          bookingBody(chef, { days: [dayBody(chef, offset)] }),
+        );
+        const created = new Date(r.body.createdAt).getTime();
+        const expires = new Date(r.body.expiresAt).getTime();
+        const midnight = torontoStartOfDay(day(offset)).getTime();
+        const expected = Math.min(created + 72 * 3600_000, midnight);
+        expect(Math.abs(expires - expected)).toBeLessThan(10_000);
+        expect(expires).toBeLessThanOrEqual(created + 72 * 3600_000 + 10_000);
+        expect(expires).toBeLessThanOrEqual(midnight);
+      }),
   );
 
   it("a multi-day request expires on its earliest day, whatever order was sent", async () => {
