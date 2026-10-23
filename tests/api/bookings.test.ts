@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { POST as createRoute } from "@/app/api/bookings/route";
 import { torontoStartOfDay } from "@/lib/domain/cancellation";
+import { retryIfDayRolled } from "../support/midnight";
 import { freshLimits } from "./harness";
 import {
   accept,
@@ -1441,51 +1442,59 @@ describe("reading bookings", () => {
 });
 
 describe("booked dates in public data (A-19, D-27, D-22)", () => {
-  it("a booked date leaves bookableDates and the search date filter; today never shows", async () => {
-    const tag = `Bk${Math.random().toString(36).slice(2, 8)}`;
-    const chef = await bookableChef({ ticked: [0, 1, 2, 3], cuisine: tag });
-    const c = await bookingCustomer();
-    const anon = new Browser();
-    let d = await (
-      await import("./booking-helpers")
-    ).publicDetail(anon, chef.id);
-    expect(d.status, d.text).toBe(200);
-    expect(d.body.bookableDates).toEqual([day(1), day(2), day(3)]);
-    expect(d.body.firstBookableDay).toBe(day(1));
-    const { publicSearch } = await import("./booking-helpers");
-    const has = async (date: string) =>
-      (
-        (await publicSearch(anon, `date=${date}&cuisine=${tag}`)).body
-          .items as { id: string }[]
-      ).some((i) => i.id === chef.id);
-    expect(await has(day(2))).toBe(true);
-    const r = await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 2)] }));
-    d = await (await import("./booking-helpers")).publicDetail(anon, chef.id);
-    expect(d.body.bookableDates).toEqual([day(1), day(3)]);
-    expect(await has(day(2))).toBe(false);
-    expect(await has(day(3))).toBe(true);
-    // The public page says that the date is taken, not who took it.
-    expect(JSON.stringify(d.body)).not.toContain(c.id);
-    // Declining brings the date back.
-    await decline(chef.b, r.id);
-    d = await (await import("./booking-helpers")).publicDetail(anon, chef.id);
-    expect(d.body.bookableDates).toEqual([day(1), day(2), day(3)]);
-    expect(await has(day(2))).toBe(true);
-    // Searching for today is refused (D-27).
-    const t = await publicSearch(anon, `date=${today()}`);
-    expect(t.status).toBe(422);
-  });
+  it("a booked date leaves bookableDates and the search date filter; today never shows", () =>
+    retryIfDayRolled(async () => {
+      const tag = `Bk${Math.random().toString(36).slice(2, 8)}`;
+      const chef = await bookableChef({ ticked: [0, 1, 2, 3], cuisine: tag });
+      const c = await bookingCustomer();
+      const anon = new Browser();
+      let d = await (
+        await import("./booking-helpers")
+      ).publicDetail(anon, chef.id);
+      expect(d.status, d.text).toBe(200);
+      expect(d.body.bookableDates).toEqual([day(1), day(2), day(3)]);
+      expect(d.body.firstBookableDay).toBe(day(1));
+      const { publicSearch } = await import("./booking-helpers");
+      const has = async (date: string) =>
+        (
+          (await publicSearch(anon, `date=${date}&cuisine=${tag}`)).body
+            .items as { id: string }[]
+        ).some((i) => i.id === chef.id);
+      expect(await has(day(2))).toBe(true);
+      const r = await bookOk(
+        c,
+        bookingBody(chef, { days: [dayBody(chef, 2)] }),
+      );
+      d = await (await import("./booking-helpers")).publicDetail(anon, chef.id);
+      expect(d.body.bookableDates).toEqual([day(1), day(3)]);
+      expect(await has(day(2))).toBe(false);
+      expect(await has(day(3))).toBe(true);
+      // The public page says that the date is taken, not who took it.
+      expect(JSON.stringify(d.body)).not.toContain(c.id);
+      // Declining brings the date back.
+      await decline(chef.b, r.id);
+      d = await (await import("./booking-helpers")).publicDetail(anon, chef.id);
+      expect(d.body.bookableDates).toEqual([day(1), day(2), day(3)]);
+      expect(await has(day(2))).toBe(true);
+      // Searching for today is refused (D-27).
+      const t = await publicSearch(anon, `date=${today()}`);
+      expect(t.status).toBe(422);
+    }));
 
-  it("an expired request that nobody has swept yet does not hide the date", async () => {
-    const chef = await bookableChef({ ticked: [2, 3] });
-    const c = await bookingCustomer();
-    const r = await bookOk(c, bookingBody(chef, { days: [dayBody(chef, 2)] }));
-    await makeStale(r.id);
-    const { publicDetail } = await import("./booking-helpers");
-    const d = await publicDetail(new Browser(), chef.id);
-    expect(d.body.bookableDates).toEqual([day(2), day(3)]);
-    expect((await bookingRow(r.id)).status).toBe("requested"); // public reads never write
-  });
+  it("an expired request that nobody has swept yet does not hide the date", () =>
+    retryIfDayRolled(async () => {
+      const chef = await bookableChef({ ticked: [2, 3] });
+      const c = await bookingCustomer();
+      const r = await bookOk(
+        c,
+        bookingBody(chef, { days: [dayBody(chef, 2)] }),
+      );
+      await makeStale(r.id);
+      const { publicDetail } = await import("./booking-helpers");
+      const d = await publicDetail(new Browser(), chef.id);
+      expect(d.body.bookableDates).toEqual([day(2), day(3)]);
+      expect((await bookingRow(r.id)).status).toBe("requested"); // public reads never write
+    }));
 
   it("D-22: a chef cannot clear a booked date (409 DATE_BOOKED), nothing else in the request is saved", async () => {
     const chef = await bookableChef({ ticked: [2, 3, 4] });
