@@ -217,8 +217,9 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-106 | Flaky `e2e/booking-real.spec.ts:154` (demo step 2: cancel not shown as "Cancelled", then the review heading missing on retry). Failed once on T-099, passed on re-run with no related change | tester | T-050 | done |
 | T-107 | T-103 Reviewer LOW (display): the admin blocks list puts the summed attempts on every hourly row ("7 attempts" twice = 14 when added up) and "last on" shows the row's first time | frontend | T-103 | done |
 | T-108 | CI: cache the Playwright browsers between runs and raise the `supabase` job limit to 35 minutes (`playwright install --with-deps` took 9-10 min on slow apt mirrors; 5+ runs cancelled at 25 min on 2026-10-22) | backend | T-084 | done |
-| T-109 | `scripts/seed.ts --hosted` accepts a `HASH_PEPPER` shorter than 32 characters, which the app now refuses (T-102 Reviewer INFO); apply the same check in the seed | backend | T-102 | todo |
+| T-109 | `scripts/seed.ts --hosted` accepts a `HASH_PEPPER` shorter than 32 characters, which the app now refuses (T-102 Reviewer INFO); apply the same check in the seed | backend | T-102 | done |
 | T-110 | CI headroom: the apt system-library download in `npx playwright install-deps` still takes up to 10.5 min on slow Ubuntu mirrors even with the T-108 browser cache (the `supabase` job reached 28m34s of 35). Options: cache the apt .deb files or run the jobs in the `mcr.microsoft.com/playwright` image. Needs Jimmy's choice | backend | T-108 | todo |
+| T-111 | Pre-existing (found in T-109 testing): CI seeds `--local` with the `local-dev-pepper` fallback but the e2e app uses `e2e-test-pepper-not-a-secret-0000` (`playwright.config.ts:44`), so seeded customers' phone and address hashes never match in e2e. Demo step 5 passes only because tests create their own users. Fix: one shared 32+ character local pepper, or the CI seed passes the same pepper; optional e2e that signs up with a seeded phone and expects 409 | backend | T-109 | todo |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -407,6 +408,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-162 | 2026-10-22 | T-102 hosted migration `20261027100000`: "Yes, push after merge (Recommended)" (DBPUSH-T102) | Jimmy |
 | D-163 | 2026-10-22 | `HASH_PEPPER` length for T-102's 32-character rule: "It's 32+ already" | Jimmy |
 | D-164 | 2026-10-22 | CI time limit: "Cache + raise to 35 min (Recommended)" -> T-108 (WO-T108) | Jimmy |
+| D-165 | 2026-10-22 | Next tasks: T-109, T-110, T-055 deploy; pace "One at a time (Recommended)"; hosted password minimum 8: "Not yet, I'll do it" | Jimmy |
+| D-166 | 2026-10-22 | "finsih the current one, dont start new": finish T-109, then stop (T-110 and WO-7/T-055 not started) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -959,3 +962,8 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - The cache does not fix the slow step: the apt download inside `install-deps` still took 12 s to 10.5 min. The raised limit is what stops the cancellations (run 39830636827: `supabase` 28m34s). Follow-up T-110.
 - Tester PASS with MED (e2e-mock also needed 35: 22m28s today; the builder's "under 20 min" was wrong) and LOW (empty version), fixed in round 1 4e8850e. Reviewer APPROVE 6348698278 (LOW PR body fixed before merge; NITs in the workflow header comments left as is).
 - Builder choice, not confirmed by Jimmy: no apt or container caching in this task (T-110).
+
+### T-109 — Hosted seed refuses a short HASH_PEPPER (done 2026-10-22, PR #213 merged 192288d; no migration)
+- `src/lib/domain/pepper-rule.ts` (`MIN_PEPPER_LENGTH = 32`, `checkPepper`) is shared by the app and `scripts/seed.ts`; the seed check runs before any password or database step.
+- Tester PASS on 8f7f74f. Reviewer APPROVE on 8f7f74f. The Tester found the pre-existing pepper mismatch between the CI seed and the e2e app -> T-111.
+- Builder choices, not confirmed by Jimmy: the seed trims the pepper for `--local` and `--hosted`; `--local` keeps the 16-character `local-dev-pepper` fallback with no 32 minimum locally.
