@@ -389,7 +389,9 @@ async function main() {
   if (hosted) {
     // A hosted project must use the app's real pepper (same trim, same minimum length),
     // otherwise the seeded free-trial hashes would never match what the app computes.
-    const check = checkPepper(process.env.HASH_PEPPER);
+    const check = checkPepper(process.env.HASH_PEPPER, {
+      forbidPublicTestPepper: true,
+    });
     if (!check.ok)
       return die(
         `--hosted: ${check.message} It must be the same value as the app.`,
