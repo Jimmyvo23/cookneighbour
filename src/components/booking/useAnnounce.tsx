@@ -4,8 +4,7 @@
 // announced and focused again (T-045 round 3, L4).
 import { useEffect, useRef, useState } from "react";
 
-export const NOTICE_BOX_CLS =
-  "rounded-md border-2 border-emerald-800 bg-emerald-50 p-3 font-semibold text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50";
+export const NOTICE_BOX_CLS = "notice-ok p-3 font-semibold";
 
 export function useAnnounce() {
   const [last, setLast] = useState<{ text: string; id: number } | null>(null);

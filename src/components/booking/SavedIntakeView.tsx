@@ -31,7 +31,7 @@ import {
 } from "@/components/booking/parts";
 import { NOTICE_BOX_CLS, useAnnounce } from "@/components/booking/useAnnounce";
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
+const linkCls = "font-medium underline";
 
 type State =
   | { kind: "loading" }
@@ -285,7 +285,7 @@ export function SavedIntakeView() {
               <div
                 role="group"
                 aria-label="Confirm delete"
-                className="flex flex-col gap-3 rounded-md border-2 border-red-700 p-3"
+                className="flex flex-col gap-3 rounded-md border-2 border-danger p-3"
               >
                 <p ref={confirmRef} tabIndex={-1} data-testid="confirm-delete">
                   Delete your saved allergy profile? The booking form will be

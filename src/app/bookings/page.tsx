@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { LoadingFallback } from "@/components/LoadingFallback";
 import { BookingList } from "@/components/booking/BookingList";
 import { requireCustomerPage } from "@/lib/server/page-guard";
 
@@ -16,13 +17,7 @@ async function Guarded() {
 
 export default function Page() {
   return (
-    <Suspense
-      fallback={
-        <p className="p-4" role="status">
-          Loading...
-        </p>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <Guarded />
     </Suspense>
   );

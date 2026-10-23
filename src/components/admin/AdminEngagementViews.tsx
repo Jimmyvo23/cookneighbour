@@ -49,10 +49,8 @@ const money = (cents: number, currency: string) =>
     cents / 100,
   );
 
-const selectCls =
-  "min-h-11 rounded-md border border-zinc-400 bg-white px-3 text-base text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100";
-const itemCls =
-  "flex flex-col gap-2 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700";
+const selectCls = "control";
+const itemCls = "card flex flex-col gap-2 p-4";
 
 export const DEFAULT_MOCK_LINE = "Made-up data in this prototype.";
 
@@ -74,16 +72,11 @@ function Shell({
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8 [overflow-wrap:anywhere]">
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
       {mock && (
-        <p
-          data-testid="admin-mock-line"
-          className="text-sm text-zinc-700 dark:text-zinc-300"
-        >
+        <p data-testid="admin-mock-line" className="hint">
           <MockBadge>MOCK</MockBadge> {mockLine}
         </p>
       )}
-      {intro && (
-        <p className="text-sm text-zinc-700 dark:text-zinc-300">{intro}</p>
-      )}
+      {intro && <p className="hint">{intro}</p>}
       {children}
     </main>
   );
@@ -142,11 +135,7 @@ function ResultNotice({ r }: { r: AdminDecisionResponse | null }) {
     <p
       role="status"
       data-testid="decision-result"
-      className={
-        r
-          ? "rounded-md border border-emerald-800 bg-emerald-50 p-3 text-sm text-emerald-950"
-          : "sr-only"
-      }
+      className={r ? "notice-ok p-3 text-sm" : "sr-only"}
     >
       {r &&
         `Decision saved. The booking is now: ${statusText(r.booking.status)}.${trial ? ` ${trial}` : ""}`}
@@ -311,7 +300,7 @@ export function AdminReportsView() {
                       </button>
                       <Link
                         href={`/admin/bookings/${r.bookingId}/chat`}
-                        className="inline-flex min-h-11 items-center text-emerald-800 underline dark:text-emerald-300"
+                        className="inline-flex min-h-11 items-center underline"
                       >
                         Read the chat
                       </Link>
@@ -362,7 +351,7 @@ export function AdminBookingsView() {
       <form
         aria-label="Filter bookings"
         onSubmit={(e) => e.preventDefault()}
-        className="flex flex-wrap items-end gap-4 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700"
+        className="card flex flex-wrap items-end gap-4 p-4"
       >
         <div className="flex flex-col gap-1">
           <label htmlFor={sid} className="text-sm font-medium">
@@ -386,7 +375,7 @@ export function AdminBookingsView() {
             ))}
           </select>
         </div>
-        <label className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-400 px-3 py-2">
+        <label className="flex min-h-11 items-center gap-3 rounded-md border border-edge px-3 py-2">
           <input
             type="checkbox"
             className="size-5 shrink-0"
@@ -434,10 +423,7 @@ export function AdminBookingsView() {
                   {b.openReportCount > 0 && (
                     <p className="text-sm">
                       Open reports: {b.openReportCount}{" "}
-                      <Link
-                        href="/admin/reports"
-                        className="text-emerald-800 underline dark:text-emerald-300"
-                      >
+                      <Link href="/admin/reports" className="underline">
                         Go to reports
                       </Link>
                     </p>
@@ -445,7 +431,7 @@ export function AdminBookingsView() {
                   {b.flag && (
                     <p
                       data-testid="booking-flag"
-                      className="rounded-md border border-amber-700 bg-amber-50 p-2 text-sm text-amber-950"
+                      className="notice p-2 text-sm"
                     >
                       <strong>
                         {flagIsOpen ? "Open flag" : "Flag resolved"}:
@@ -486,7 +472,7 @@ export function AdminBookingsView() {
                     ))}
                   <Link
                     href={`/admin/bookings/${b.id}/chat`}
-                    className="inline-flex min-h-11 items-center self-start text-emerald-800 underline dark:text-emerald-300"
+                    className="inline-flex min-h-11 items-center self-start underline"
                   >
                     Read the chat
                     <span className="sr-only">
@@ -552,7 +538,7 @@ export function AdminChatView({ bookingId }: { bookingId: string }) {
       <p className={infoBoxCls}>Read only. Admins cannot send messages.</p>
       <Link
         href="/admin/bookings"
-        className="inline-flex min-h-11 items-center self-start text-emerald-800 underline dark:text-emerald-300"
+        className="inline-flex min-h-11 items-center self-start underline"
       >
         Back to bookings
       </Link>

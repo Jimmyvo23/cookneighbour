@@ -13,6 +13,8 @@ import {
   formatMinutes,
 } from "@/lib/chef/dishes";
 import { MockBadge } from "@/components/MockBadge";
+import { CuisineChips } from "@/components/chips";
+import { EmptyPlate, PotMark, Star } from "@/components/Ornaments";
 import { PublicReviews } from "@/components/reviews/PublicReviews";
 import {
   allergenText,
@@ -30,9 +32,8 @@ type State =
   | { kind: "error" }
   | { kind: "ready"; chef: PublicChefDetail };
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
-const sectionCls =
-  "flex flex-col gap-3 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700";
+const linkCls = "font-medium underline";
+const sectionCls = "card flex flex-col gap-3 p-4";
 
 /** MOCK photo paths are made up: never ask a real storage project for them. */
 const storageBase = () =>
@@ -47,9 +48,9 @@ function ChefPhoto({ name, path }: { name: string; path: string }) {
       <img
         src={url}
         alt={`Photo of ${name}`}
-        width={112}
-        height={112}
-        className="size-28 shrink-0 rounded-full object-cover"
+        width={144}
+        height={144}
+        className="size-28 object-cover sm:size-36"
         onError={() => setFailed(true)}
       />
     );
@@ -58,7 +59,7 @@ function ChefPhoto({ name, path }: { name: string; path: string }) {
     <div
       aria-hidden="true"
       data-testid="chef-photo-fallback"
-      className="flex size-28 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-4xl font-semibold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
+      className="flex size-28 items-center justify-center bg-[var(--gold-wash)] font-display text-6xl font-bold text-goldtext sm:size-36"
     >
       {name.trim().charAt(0).toUpperCase() || "?"}
     </div>
@@ -76,7 +77,7 @@ function DishImage({ dish }: { dish: PublicDish }) {
         alt={`Photo of ${dish.name}`}
         width={96}
         height={96}
-        className="size-24 shrink-0 rounded-md object-cover"
+        className="size-24 object-cover"
         onError={() => setFailed(true)}
       />
     );
@@ -86,7 +87,7 @@ function DishImage({ dish }: { dish: PublicDish }) {
       role="img"
       aria-label={`No photo to show for ${dish.name}`}
       data-testid="dish-photo-fallback"
-      className="flex size-24 shrink-0 items-center justify-center rounded-md border border-dashed border-zinc-500 p-1 text-center text-xs text-zinc-700 dark:text-zinc-300"
+      className="flex size-24 items-center justify-center bg-sunken p-1 text-center text-xs text-muted"
     >
       Photo not available
     </div>
@@ -96,13 +97,12 @@ function DishImage({ dish }: { dish: PublicDish }) {
 function Dish({ dish, currency }: { dish: PublicDish; currency: string }) {
   const cost = formatDollars(dish.ingredientCostCents);
   return (
-    <li
-      data-testid="dish"
-      className="flex gap-4 rounded-md border border-zinc-300 p-3 dark:border-zinc-700"
-    >
-      <DishImage dish={dish} />
+    <li data-testid="dish" className="chef-card flex gap-4 p-4 sm:gap-5">
+      <div className="polaroid self-start">
+        <DishImage dish={dish} />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1 [overflow-wrap:anywhere]">
-        <h3 className="text-base font-semibold">{dish.name}</h3>
+        <h3 className="text-xl">{dish.name}</h3>
         {dish.description && <p className="text-sm">{dish.description}</p>}
         <p className="text-sm">
           <span className="font-medium">Cuisine:</span> {dish.cuisine}
@@ -119,13 +119,10 @@ function Dish({ dish, currency }: { dish: PublicDish; currency: string }) {
         </p>
         <p className="text-sm">
           <span className="font-medium">Eat by:</span>{" "}
-          {eatByText(dish.shelfLifeDays)}
+          <span className="stamp">{eatByText(dish.shelfLifeDays)}</span>
         </p>
         {/* Allergens are words in a box with a heading word, never only a colour. */}
-        <p
-          data-testid="dish-allergens"
-          className="mt-1 rounded-md border-2 border-amber-700 bg-amber-50 px-2 py-1 text-sm font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-50"
-        >
+        <p data-testid="dish-allergens" className="allergen mt-1 self-start">
           <span aria-hidden="true">&#9888; </span>
           {allergenText(dish.allergens)}
         </p>
@@ -138,7 +135,7 @@ function Dates({ chef }: { chef: PublicChefDetail }) {
   const groups = groupDatesByMonth(chef.bookableDates);
   return (
     <>
-      <p className="text-sm text-zinc-700 dark:text-zinc-300">
+      <p className="hint">
         {windowText(chef.firstBookableDay, chef.lastBookableDay)} These are the
         days the chef marked as available and has not been booked on. Same-day
         booking is not possible.
@@ -153,9 +150,9 @@ function Dates({ chef }: { chef: PublicChefDetail }) {
             <details
               key={g.month}
               open={i === 0}
-              className="rounded-md border border-zinc-300 p-3 dark:border-zinc-700"
+              className="rounded-xl border-2 border-line bg-surface p-3"
             >
-              <summary className="min-h-11 cursor-pointer py-2 font-medium">
+              <summary className="min-h-11 cursor-pointer py-2 font-display text-lg font-bold">
                 {g.label} ({g.dates.length}{" "}
                 {g.dates.length === 1 ? "day" : "days"})
               </summary>
@@ -164,11 +161,7 @@ function Dates({ chef }: { chef: PublicChefDetail }) {
                 className="mt-2 flex flex-wrap gap-2"
               >
                 {g.dates.map((d) => (
-                  <li
-                    key={d}
-                    data-testid="bookable-date"
-                    className="rounded-md border border-zinc-400 px-2 py-1 text-sm"
-                  >
+                  <li key={d} data-testid="bookable-date" className="day">
                     <time dateTime={d}>{shortDayLabel(d)}</time>
                   </li>
                 ))}
@@ -234,20 +227,25 @@ export function ChefDetailView({ id }: { id: string }) {
   }, [state]);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
       <BackLink />
 
       {state.kind === "loading" && (
-        <p role="status" data-testid="loading">
-          Loading the chef...
-        </p>
+        <div className="flex items-center gap-4">
+          <PotMark className="size-14" />
+          <p role="status" data-testid="loading">
+            Loading the chef...
+          </p>
+        </div>
       )}
 
       {state.kind === "notFound" && (
-        <div data-testid="not-found" className="flex flex-col gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Chef not found
-          </h1>
+        <div
+          data-testid="not-found"
+          className="flex flex-col items-start gap-3"
+        >
+          <EmptyPlate className="size-28" />
+          <h1 className="text-2xl">Chef not found</h1>
           <p>
             We could not find this chef. The link may be wrong, or the chef is
             not available to book right now.
@@ -266,15 +264,13 @@ export function ChefDetailView({ id }: { id: string }) {
           data-testid="load-error"
           className="flex flex-col gap-3"
         >
-          <h1 className="text-2xl font-semibold tracking-tight">
-            The chef page did not load
-          </h1>
+          <h1 className="text-2xl">The chef page did not load</h1>
           <p>Something went wrong on our side or the connection dropped.</p>
           <p>
             <button
               type="button"
               onClick={() => void load()}
-              className="min-h-11 rounded-md border-2 border-emerald-800 px-4 font-semibold text-emerald-900 hover:bg-emerald-50 dark:text-emerald-200 dark:hover:bg-emerald-950"
+              className="btn-secondary"
             >
               Try again
             </button>
@@ -294,21 +290,25 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
   const hasChefHome = chef.locationOptions.includes("chef_home");
   return (
     <>
-      <header className="flex items-center gap-4">
-        <ChefPhoto name={chef.displayName} path={chef.photoPath} />
-        <div className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
-          <h1 className="text-2xl font-semibold tracking-tight">
+      <header className="band flex flex-col items-center gap-5 sm:flex-row">
+        <div className="polaroid">
+          <ChefPhoto name={chef.displayName} path={chef.photoPath} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-3 [overflow-wrap:anywhere]">
+          <h1 className="hero-title text-3xl sm:text-5xl">
             {chef.displayName}
           </h1>
-          <p>
-            <span className="font-semibold">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="price-tag">
               {rateText(chef.hourlyRateCents, chef.currency)}
             </span>
-            {" · "}
-            {ratingText(chef.ratingAvg, chef.reviewCount)}
+            <span className="rating-badge">
+              {chef.reviewCount > 0 && <Star />}
+              {ratingText(chef.ratingAvg, chef.reviewCount)}
+            </span>
           </p>
           {chef.serviceCity && (
-            <p className="text-sm">
+            <p className="text-[var(--hero-ink)]">
               Works around {chef.serviceCity}, up to {chef.serviceRadiusKm} km
               away
             </p>
@@ -317,15 +317,15 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
       </header>
 
       <section aria-labelledby="about-h" className={sectionCls}>
-        <h2 id="about-h" className="text-lg font-semibold">
+        <h2 id="about-h" className="text-2xl">
           About
         </h2>
         <p className="[overflow-wrap:anywhere] whitespace-pre-line">
           {chef.bio}
         </p>
-        <p className="text-sm">
+        <p className="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-sm">
           <span className="font-medium">Cuisines:</span>{" "}
-          {chef.cuisines.length ? chef.cuisines.join(", ") : "not listed"}
+          <CuisineChips items={chef.cuisines} />
         </p>
         <p className="text-sm">
           <span className="font-medium">Languages:</span>{" "}
@@ -334,7 +334,7 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
       </section>
 
       <section aria-labelledby="where-h" className={sectionCls}>
-        <h2 id="where-h" className="text-lg font-semibold">
+        <h2 id="where-h" className="text-2xl">
           Where the chef can cook
         </h2>
         <ul className="list-disc pl-5" data-testid="location-options">
@@ -343,7 +343,7 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
           ))}
         </ul>
         {hasChefHome && (
-          <p className="text-sm text-zinc-700 dark:text-zinc-300">
+          <p className="hint">
             The chef&apos;s kitchen was reviewed by an admin{" "}
             <MockBadge>MOCK check</MockBadge> Nothing was inspected for real.
             The address is not shown here.
@@ -352,14 +352,14 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
       </section>
 
       <section aria-labelledby="dishes-h" className={sectionCls}>
-        <h2 id="dishes-h" className="text-lg font-semibold">
+        <h2 id="dishes-h" className="text-2xl">
           Dishes
         </h2>
-        <p className="text-sm text-zinc-700 dark:text-zinc-300">
+        <p className="hint">
           Costs are estimates. Always read the allergens: you will also fill in
           an allergy form when booking opens.
         </p>
-        <ul aria-label="Dishes on the menu" className="flex flex-col gap-3">
+        <ul aria-label="Dishes on the menu" className="flex flex-col gap-5">
           {chef.dishes.map((d) => (
             <Dish key={d.id} dish={d} currency={chef.currency} />
           ))}
@@ -367,7 +367,7 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
       </section>
 
       <section aria-labelledby="dates-h" className={sectionCls}>
-        <h2 id="dates-h" className="text-lg font-semibold">
+        <h2 id="dates-h" className="text-2xl">
           Available days
         </h2>
         <Dates chef={chef} />
@@ -376,12 +376,12 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
       <PublicReviews chefId={chef.id} />
 
       <section aria-labelledby="book-h" className={sectionCls}>
-        <h2 id="book-h" className="text-lg font-semibold">
+        <h2 id="book-h" className="text-2xl">
           Book this chef
         </h2>
         {chef.bookableDates.length > 0 ? (
           <>
-            <p id={hintId} className="text-sm text-zinc-700 dark:text-zinc-300">
+            <p id={hintId} className="hint">
               Pick 1 to 3 days and the dishes for each day, then review the
               estimate. Nothing is sent or charged until you confirm on the last
               step. You need to be logged in as a customer.
@@ -391,7 +391,7 @@ function Ready({ chef, hintId }: { chef: PublicChefDetail; hintId: string }) {
                 href={`/chefs/${encodeURIComponent(chef.id)}/book`}
                 aria-describedby={hintId}
                 data-testid="book-link"
-                className="inline-flex min-h-11 items-center rounded-md bg-emerald-800 px-4 font-semibold text-white hover:bg-emerald-900"
+                className="btn"
               >
                 Book {chef.displayName}
               </Link>

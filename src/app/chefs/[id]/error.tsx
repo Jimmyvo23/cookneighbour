@@ -18,7 +18,7 @@ export default function ChefError({
           <button
             type="button"
             onClick={() => reset()}
-            className="min-h-11 rounded-md border-2 border-emerald-800 px-4 font-semibold text-emerald-900 hover:bg-emerald-50 dark:text-emerald-200 dark:hover:bg-emerald-950"
+            className="btn-secondary"
           >
             Try again
           </button>

@@ -131,7 +131,7 @@ export function PerDayEstimate({
             <li
               key={d.date}
               data-testid="per-day-row"
-              className="rounded-md border border-zinc-300 p-3 text-sm dark:border-zinc-700"
+              className="rounded-xl border-2 border-line p-3 text-sm "
             >
               <p className="font-semibold">
                 Day {i + 1}:{" "}
@@ -164,7 +164,7 @@ export function PerDayEstimate({
   );
 }
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
+const linkCls = "font-medium underline";
 
 export function BookingFlow({ chefId }: { chefId: string }) {
   const router = useRouter();
@@ -641,7 +641,7 @@ export function BookingFlow({ chefId }: { chefId: string }) {
               <div
                 role="status"
                 data-testid="sent-panel"
-                className="flex flex-col gap-3 rounded-md border-2 border-emerald-800 bg-emerald-50 p-3 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50"
+                className="flex flex-col gap-3 notice-ok p-3"
               >
                 <p className="font-semibold">
                   Your request was sent. Nothing was charged.
@@ -1175,7 +1175,7 @@ function DayFields({
   const dishErr = errors[dishKey];
   return (
     <fieldset
-      className="flex flex-col gap-3 rounded-md border border-zinc-300 p-3 dark:border-zinc-700"
+      className="flex flex-col gap-3 rounded-xl border-2 border-line p-3 "
       data-testid="day"
     >
       <legend className="px-1 text-base font-semibold">Day {n}</legend>
@@ -1286,7 +1286,7 @@ function DishPick({
   return (
     <li
       data-testid="dish-pick"
-      className="flex flex-col gap-2 rounded-md border border-zinc-300 p-3 dark:border-zinc-700"
+      className="flex flex-col gap-2 rounded-xl border-2 border-line p-3 "
     >
       <div className="flex items-start gap-3">
         <input
@@ -1295,7 +1295,7 @@ function DishPick({
           checked={quantity > 0}
           aria-describedby={`${id}-info`}
           onChange={(e) => onChange(e.target.checked ? 1 : 0)}
-          className="mt-1 size-5 shrink-0 accent-emerald-800"
+          className="mt-1 size-5 shrink-0 accent-primary"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-1 [overflow-wrap:anywhere]">
           <label htmlFor={id} className="font-semibold">
@@ -1316,9 +1316,9 @@ function DishPick({
               {currency === "CAD" ? "" : ` ${currency}`}
               {" · "}
               <span className="font-medium">Eat by:</span>{" "}
-              {eatByText(dish.shelfLifeDays)}
+              <span className="stamp">{eatByText(dish.shelfLifeDays)}</span>
             </p>
-            <p className="rounded-md border-2 border-amber-700 bg-amber-50 px-2 py-1 font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-50">
+            <p className="allergen self-start">
               <span aria-hidden="true">&#9888; </span>
               {allergenText(dish.allergens)}
             </p>
@@ -1342,7 +1342,7 @@ function DishPick({
               const v = Math.trunc(Number(e.target.value));
               onChange(Number.isFinite(v) && v >= 1 ? v : 1);
             }}
-            className="min-h-11 w-20 rounded-md border border-zinc-400 bg-white px-2 text-base text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+            className="control !w-20"
           />
         </div>
       )}
@@ -1437,7 +1437,7 @@ function ReviewStep({
             <li
               key={d.date}
               data-testid="review-day"
-              className="rounded-md border border-zinc-300 p-3 dark:border-zinc-700"
+              className="rounded-xl border-2 border-line p-3 "
             >
               <p className="font-semibold">
                 Day {i + 1}:{" "}
@@ -1494,10 +1494,7 @@ function ReviewStep({
           location={location}
         />
         {trialApplied && (
-          <p
-            data-testid="trial-applied"
-            className="font-medium text-emerald-900 dark:text-emerald-300"
-          >
+          <p data-testid="trial-applied" className="font-medium text-success">
             Free first booking applied: the chef&apos;s labour is free.
           </p>
         )}

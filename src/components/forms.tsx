@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useState } from "react";
+import { PotMark } from "@/components/Ornaments";
 import { ApiClientError, formatRetry } from "@/lib/api/client";
 import type { FieldErrors } from "@/lib/validation/auth";
 
@@ -90,9 +91,12 @@ export function Page({
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-4 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      {children}
+    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-8 sm:py-12">
+      <h1>{title}</h1>
+      <div className="recipe-card relative mt-6 flex flex-col gap-5 p-6 sm:p-8">
+        <PotMark className="absolute -top-14 right-6 size-20" />
+        {children}
+      </div>
     </main>
   );
 }

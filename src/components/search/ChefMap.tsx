@@ -140,7 +140,7 @@ export default function ChefMap({
       role="region"
       aria-label="Map of the cities where these chefs work. The list of results has the same information."
       data-testid="chef-map"
-      className="h-80 w-full rounded-lg border border-zinc-400 lg:h-[28rem]"
+      className="h-80 w-full rounded-lg border border-edge lg:h-[28rem]"
     />
   );
 }

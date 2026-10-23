@@ -61,7 +61,7 @@ import {
   warnBoxCls,
 } from "@/components/booking/parts";
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
+const linkCls = "font-medium underline";
 
 type State =
   | { kind: "loading" }
@@ -248,7 +248,7 @@ function Ready({
           <p
             role="status"
             data-testid="sent-banner"
-            className="rounded-md border-2 border-emerald-800 bg-emerald-50 p-3 font-semibold text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50"
+            className="notice-ok p-3 font-semibold"
           >
             Your request was sent to {b.chef.displayName}. Nothing was charged.
           </p>
@@ -276,7 +276,7 @@ function Ready({
         </p>
         {b.isFreeTrial && (
           <p data-testid="trial-label">
-            <span className="rounded-md border-2 border-emerald-800 px-2 py-0.5 text-sm font-bold text-emerald-900 dark:text-emerald-200">
+            <span className="rounded-md border-2 border-primary px-2 py-0.5 text-sm font-bold text-success ">
               Free first booking
             </span>{" "}
             <span className={hintCls}>
@@ -309,7 +309,7 @@ function Ready({
             <li
               key={d.dayNumber}
               data-testid="day"
-              className="rounded-md border border-zinc-300 p-3 dark:border-zinc-700"
+              className="rounded-xl border-2 border-line p-3 "
             >
               <p className="font-semibold">
                 Day {d.dayNumber}:{" "}

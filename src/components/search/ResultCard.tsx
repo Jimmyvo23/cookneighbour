@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { isMockEnabled } from "@/lib/api/client";
 import { Star } from "@/components/Ornaments";
+import { CuisineChips } from "@/components/chips";
 import type { PublicChefSearchItem } from "@/lib/api/types";
 import {
   chefPath,
@@ -13,13 +14,6 @@ import {
   rateText,
   ratingText,
 } from "@/lib/search/search";
-
-/** Each cuisine always gets the same warm tint (five tints, picked from the name). */
-function chipClass(name: string): string {
-  let h = 0;
-  for (const ch of name.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) % 5;
-  return `chip-${h + 1}`;
-}
 
 function ChefPhoto({ name, path }: { name: string; path: string }) {
   // MOCK photo paths are made up: never ask a real storage project for them.
@@ -100,14 +94,7 @@ export function ResultCard({
         )}
         <p className="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-[0.9375rem]">
           <span className="font-bold text-muted">Cuisines:</span>{" "}
-          {item.cuisines.length
-            ? item.cuisines.map((c, i) => (
-                <span key={`${c}-${i}`}>
-                  {i > 0 && <span className="sr-only">, </span>}
-                  <span className={`chip ${chipClass(c)}`}>{c}</span>
-                </span>
-              ))
-            : "not listed"}
+          <CuisineChips items={item.cuisines} />
         </p>
         <p className="text-[0.9375rem]">
           <span className="font-bold text-muted">Languages:</span>{" "}

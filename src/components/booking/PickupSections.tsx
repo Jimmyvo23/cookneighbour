@@ -140,7 +140,7 @@ export function CustomerPickups({
           {b.isFreeTrial ? ", and your free first booking counts as used" : ""}.
         </p>
       )}
-      <ul className="flex flex-col divide-y divide-zinc-300 dark:divide-zinc-700">
+      <ul className="flex flex-col divide-y divide-line ">
         {b.days.map((d) => (
           <li
             key={d.dayNumber}
@@ -452,7 +452,7 @@ export function ChefPickups({
           ? PICKUPS_PAUSED
           : "After you mark a day as cooked, the customer proposes a pickup time and you accept or decline it. They may propose again until the end of that day's pickup deadline. The customer can also confirm that they picked the meals up; after that you cannot mark that pickup as missed."}
       </p>
-      <ul className="flex flex-col divide-y divide-zinc-300 dark:divide-zinc-700">
+      <ul className="flex flex-col divide-y divide-line ">
         {b.days.map((d) => (
           <li
             key={d.dayNumber}
@@ -637,7 +637,7 @@ function MissedPickup({
   return (
     <div
       data-testid="missed-pickup"
-      className="flex flex-col gap-3 border-t border-zinc-300 pt-4 dark:border-zinc-700"
+      className="flex flex-col gap-3 border-t border-line pt-4 "
     >
       <h3 className="text-base font-semibold">The meals were not picked up</h3>
       <p>

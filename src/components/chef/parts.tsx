@@ -109,11 +109,7 @@ export function Alert({ id, message }: { id: string; message: string | null }) {
       id={id}
       tabIndex={-1}
       role="alert"
-      className={
-        message
-          ? "rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
-          : "sr-only"
-      }
+      className={message ? "alert-box" : "sr-only"}
     >
       {message}
     </div>
@@ -124,11 +120,7 @@ export function Notice({ message }: { message: string | null }) {
   return (
     <p
       role="status"
-      className={
-        message
-          ? "text-sm font-medium text-emerald-900 dark:text-emerald-300"
-          : "sr-only"
-      }
+      className={message ? "text-sm font-medium text-success" : "sr-only"}
     >
       {message}
     </p>
@@ -168,14 +160,11 @@ export function TextAreaField({
         rows={4}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className="rounded-md border border-zinc-400 bg-white px-3 py-2 text-base text-zinc-900 aria-[invalid=true]:border-red-700 dark:bg-zinc-900 dark:text-zinc-100"
+        className="control"
         {...input}
       />
       {error && (
-        <p
-          id={`${id}-error`}
-          className="text-sm font-medium text-red-700 dark:text-red-400"
-        >
+        <p id={`${id}-error`} className="error-text">
           {error}
         </p>
       )}
@@ -203,7 +192,7 @@ export function CheckboxRow({
   return (
     <label
       htmlFor={id}
-      className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-400 px-3 py-2"
+      className="flex min-h-11 items-center gap-3 rounded-md border border-edge px-3 py-2"
     >
       <input
         id={id}

@@ -34,7 +34,7 @@ import {
 } from "@/components/forms";
 import { MockBadge } from "@/components/MockBadge";
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
+const linkCls = "font-medium underline";
 
 export function SignUpForm() {
   const router = useRouter();
@@ -82,7 +82,7 @@ export function SignUpForm() {
           ).map(([v, l]) => (
             <label
               key={v}
-              className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-400 px-3"
+              className="flex min-h-11 items-center gap-3 rounded-md border border-edge px-3"
             >
               <input
                 type="radio"
@@ -95,10 +95,7 @@ export function SignUpForm() {
             </label>
           ))}
           {f.errors.role && (
-            <p
-              id="field-role-error"
-              className="text-sm font-medium text-red-700"
-            >
+            <p id="field-role-error" className="error-text">
               {f.errors.role}
             </p>
           )}
@@ -309,7 +306,7 @@ export function AddressForm() {
   });
   return (
     <Page title="Your home address">
-      <p className="text-zinc-700 dark:text-zinc-300">
+      <p className="text-muted ">
         This address is private. It is used only for the free-trial rule (one
         free booking per home) and for your bookings. A chef sees it only after
         they accept a booking at your home.

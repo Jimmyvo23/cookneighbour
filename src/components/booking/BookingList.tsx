@@ -2,6 +2,7 @@
 // "My bookings" (T-043): the customer's own bookings, newest first, from GET /api/bookings. A list
 // never carries an address, phone number or allergy text (contract section 7A).
 import Link from "next/link";
+import { EmptyPlate } from "@/components/Ornaments";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import type { BookingListResponse, BookingSummary } from "@/lib/api/types";
@@ -14,7 +15,7 @@ import { hintCls, secondaryButtonCls } from "@/components/chef/parts";
 import { STATUS_TEXT } from "@/components/booking/BookingDetailView";
 import { OnHoldMarker } from "@/components/booking/parts";
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
+const linkCls = "font-medium underline";
 
 type State =
   | { kind: "loading" }
@@ -108,20 +109,19 @@ export function BookingList() {
             answer at once. Waiting now: {waiting}.
           </p>
           {state.items.length === 0 ? (
-            <p data-testid="empty">
-              You have no bookings yet.{" "}
-              <Link href="/search" className={linkCls}>
-                Search for a home cook
-              </Link>
-            </p>
+            <div className="card flex items-center gap-5 p-5">
+              <EmptyPlate className="size-24 shrink-0" />
+              <p data-testid="empty">
+                You have no bookings yet.{" "}
+                <Link href="/search" className={linkCls}>
+                  Search for a home cook
+                </Link>
+              </p>
+            </div>
           ) : (
             <ul aria-label="Your bookings" className="flex flex-col gap-3">
               {state.items.map((b) => (
-                <li
-                  key={b.id}
-                  data-testid="booking-item"
-                  className="rounded-lg border border-zinc-300 p-4 dark:border-zinc-700"
-                >
+                <li key={b.id} data-testid="booking-item" className="card p-4">
                   <p className="font-semibold [overflow-wrap:anywhere]">
                     <Link
                       href={`/bookings/${encodeURIComponent(b.id)}`}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import {
   Atkinson_Hyperlegible_Next,
   Libre_Caslon_Text,
@@ -43,10 +44,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             (/admin/chefs/[id]); the bar streams in after the page shell. */}
         <header className="site-header">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
-            <p className="inline-flex min-h-11 items-center gap-2 font-display text-xl font-bold text-link">
+            <Link
+              href="/"
+              className="inline-flex min-h-11 items-center gap-2 font-display text-xl font-bold text-link no-underline"
+            >
               <PotMark />
               CookNeighbour
-            </p>
+            </Link>
             <Suspense fallback={null}>
               <AccountBar />
             </Suspense>
