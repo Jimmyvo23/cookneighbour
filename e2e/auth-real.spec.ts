@@ -208,3 +208,18 @@ test("a phone number verified by another account is refused (409)", async ({
     "This phone number cannot be used.",
   );
 });
+
+// T-111: the seed and this app share LOCAL_TEST_PEPPER, so a seeded demo customer's verified phone
+// (customer1, +14165550101) hashes the same here and a new account cannot claim it. Needs the
+// CI step that seeds the stack (`db:seed -- --local`).
+test("a seeded demo customer's phone number is refused (409)", async ({
+  request,
+}) => {
+  await apiSignUp(request, email("seedclash"), "Seed Clash");
+  const r = await request.post("/api/me/phone", {
+    headers: json,
+    data: { phone: "4165550101" },
+  });
+  expect(r.status()).toBe(409);
+  expect(JSON.stringify(await r.json())).toContain("PHONE_IN_USE");
+});

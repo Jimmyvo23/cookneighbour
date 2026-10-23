@@ -20,6 +20,7 @@ import {
   stableUuid,
 } from "./seed-lib.ts";
 import { checkPepper } from "../src/lib/domain/pepper-rule.ts";
+import { LOCAL_TEST_PEPPER } from "../src/lib/domain/local-test-pepper.ts";
 import {
   addressColumns,
   phoneColumns,
@@ -396,7 +397,7 @@ async function main() {
     pepper = check.pepper;
   } else {
     // A local throwaway stack may use a fixed pepper (trimmed like the app does).
-    pepper = process.env.HASH_PEPPER?.trim() || "local-dev-pepper";
+    pepper = process.env.HASH_PEPPER?.trim() || LOCAL_TEST_PEPPER;
   }
   const demo = resolveDemoPasswords(local ? "local" : "hosted", process.env);
   console.log(`seeding ${local ? "LOCAL" : "HOSTED"} ${url}`);

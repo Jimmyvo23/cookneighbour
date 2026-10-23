@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { LOCAL_TEST_PEPPER } from "./src/lib/domain/local-test-pepper";
 
 // Default e2e run: the app talks to the REAL API routes backed by a local Supabase stack.
 // The stack's URL and keys come from `eval "$(supabase status -o env)"` (public local defaults,
@@ -41,7 +42,7 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon,
       SUPABASE_SECRET_KEY: service,
       // Throwaway test pepper. Only hashes in the throwaway local database use it.
-      HASH_PEPPER: "e2e-test-pepper-not-a-secret-0000",
+      HASH_PEPPER: LOCAL_TEST_PEPPER,
     },
   },
 });
