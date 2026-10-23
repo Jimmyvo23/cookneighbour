@@ -3,6 +3,7 @@ import {
   blockStorage,
   dayPlus,
   expectNoAxeViolations,
+  hideDevOverlay,
   setMockHooks,
   signUpCustomer,
 } from "./helpers";
@@ -16,18 +17,12 @@ const LINH = "00000000-0000-4000-8000-000000001002";
 const NADIA = "00000000-0000-4000-8000-000000001050";
 
 test.beforeEach(async ({ page }) => {
+  await hideDevOverlay(page);
   await blockStorage(page);
 });
 
-async function hideOverlay(page: Page) {
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
-}
-
 async function openBooking(page: Page, id = MAI) {
   await page.goto(`/chefs/${id}/book`);
-  await hideOverlay(page);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }
 
@@ -107,7 +102,6 @@ test("happy path: a 2-day free-trial booking at the customer's home (MOCK)", asy
   await page.goto(`/chefs/${MAI}`);
   await page.getByTestId("book-link").click();
   await expect(page).toHaveURL(new RegExp(`/chefs/${MAI}/book$`));
-  await hideOverlay(page);
   await expect(
     page.getByRole("heading", { level: 1, name: "Book Mai Tran (MOCK)" }),
   ).toBeVisible();

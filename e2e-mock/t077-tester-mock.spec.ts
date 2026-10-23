@@ -21,10 +21,7 @@ test("T-076: keyboard only, Delete moves focus to the question and a delete land
   page,
 }) => {
   await signUpCustomer(page);
-  await page.goto("/allergies");
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
+  await openPage(page, "/allergies");
   await page.getByRole("checkbox", { name: "I have no allergies" }).check();
   await page.getByRole("checkbox", { name: "I have no dietary needs" }).check();
   await page.getByRole("button", { name: "Save profile" }).click();
