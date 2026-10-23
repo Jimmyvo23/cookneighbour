@@ -96,6 +96,71 @@ Run the app (`npm run dev`) against a seeded stack. Use two browsers (or one nor
 
 The whole path runs automatically in CI: `e2e/demo-path-real.spec.ts` (steps 1 to 5, including live chat and the review after a completed visit).
 
+## Deploy (Vercel, prototype)
+
+This is a prototype with **seed data only**. Nothing real is charged or verified: payments, ID checks, police checks and SMS are all **MOCK**. Do not put real people's data in it. Only the project owner enters env var values; this section lists **names only**.
+
+### Rules for this deploy
+
+- Free Vercel Hobby project, connected to the GitHub repo. Only `main` deploys (`vercel.json` turns off automatic deployments for every other branch, using Vercel's `git.deploymentEnabled`, see https://vercel.com/docs/project-configuration/git-configuration).
+- Set every env var for the **Production** environment only. Preview and Development get none, so a pull-request build can never hold the hosted database keys.
+- Env var values are typed by the project owner in the Vercel dashboard. They never go in chat, issues, commits or this file.
+
+### Env var checklist
+
+Set these three kinds of names in Vercel (Project > Settings > Environment Variables, tick **Production** only).
+
+| Name                                   | Needed                      | Reaches the browser?   | Rule                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------- | --------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Required, at **build** time | Yes (public by design) | The hosted project URL (`https://...supabase.co`). Also sets the Supabase host in the Content-Security-Policy, so it must exist before the build; if you add it later, redeploy.                                                                                                                                  |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Required, at **build** time | Yes (public by design) | The `sb_publishable_...` key only.                                                                                                                                                                                                                                                                                |
+| `SUPABASE_SECRET_KEY`                  | Required, runtime           | **No**, server only    | The `sb_secret_...` key. Bypasses row-level security. Never give it a `NEXT_PUBLIC_` name.                                                                                                                                                                                                                        |
+| `HASH_PEPPER`                          | Required, runtime           | **No**, server only    | There is ONE hosted pepper: a secret of at least 32 characters (`openssl rand -hex 32`), never the public test pepper (the app refuses it on Vercel). The same value goes into Vercel and into the environment you use for `--hosted` seeding. Changing it later invalidates every stored phone and address hash. |
+
+Do **not** set these on Vercel:
+
+- `NEXT_PUBLIC_API_MOCK`: leave it unset (or empty). `1` turns on the mock adapter and switches page guards off.
+- `SEED_ADMIN_PASSWORD`, `SEED_DEMO_CHEF_PASSWORD`, `SEED_DEMO_CUSTOMER_PASSWORD`: used only by the seed script on your own machine.
+- `VERCEL`, `NODE_ENV`, `CI`: Vercel sets them. The app uses `VERCEL` to trust only Vercel's own IP headers and to refuse the public test pepper.
+
+Only the two `NEXT_PUBLIC_SUPABASE_` names carry values into the browser bundle; neither is a secret. `NEXT_PUBLIC_API_MOCK` is also inlined, but as empty when unset (harmless). A build with no env vars at all succeeds (checked on 2026-10-23), but the result has empty Supabase settings and a Content-Security-Policy without the Supabase host, so set the variables before the first production build.
+
+### Steps
+
+1. **Check the database.** The newest migration is `20261027100000`. Run `npx supabase migration list --linked` from the main folder; if any later migration appears, run `npx supabase db push --linked` first.
+2. **Create the project.** Vercel dashboard > Add New > Project > import the GitHub repo. Framework preset **Next.js**. Leave build command, output directory and install command on their defaults. Root directory: the repo root.
+3. **Add the four env vars** from the table, Production only, before pressing Deploy.
+4. **Production branch** (Settings > Git): `main`. After the first deploy open a test pull request and confirm Vercel does **not** build it. If it does, turn previews off in the dashboard (Settings > Git, or an Ignored Build Step) and tell the Planner.
+5. **Supabase Auth URLs** (Supabase dashboard > Authentication > URL Configuration). The app signs in with email and password through its own routes; it sends no email links, so there are no callback pages. Still set:
+   - **Site URL** = your Vercel production URL (`https://<project>.vercel.app`).
+   - **Redirect URLs** = add `https://<project>.vercel.app/**`. Keep the existing local entry if you still run locally.
+   - **Sign In / Providers > Email:** leave "Confirm email" **off** for the demo (the app has no "check your email" step, and Supabase's built-in email sender allows only a few emails per hour).
+   - Set the minimum password length to 8 (still an open step from the security review).
+6. **Re-seed the hosted database yourself** from your machine. The environment the scripts read (for example `.env.local`) must hold the **hosted** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`, not a local-stack setup (`scripts/seed.ts` and `npm run db:check` use them). Also set:
+   - `HASH_PEPPER`: the same value you gave Vercel.
+   - `SEED_DEMO_CHEF_PASSWORD` and `SEED_DEMO_CUSTOMER_PASSWORD`: required by `--hosted`, at least 12 characters each.
+   - `SEED_ADMIN_PASSWORD`: needed to create the admin account (without it the admin is skipped, and the smoke test needs the admin).
+
+   Then run `npm run db:seed -- --hosted` and `npm run db:check`.
+
+7. **Smoke test** on the Vercel URL:
+   - The home page and `/search` load with no console errors; the map shows tiles.
+   - Search "Mississauga" + Vietnamese finds a seeded chef.
+   - Sign up a new customer; log out and log in again.
+   - Log in as the seeded customer: a booking estimate shows, and the MOCK labels are visible.
+   - (The seeded demo emails are listed in `scripts/seed-data.ts`; the admin is `admin@example.com`. Passwords are the ones you set; none are in the repo.)
+   - Log in as the seeded admin: the pending-chef queue and the free-trial blocks list open.
+   - Open a booking and send a chat message (checks Realtime).
+   - Response headers include `Content-Security-Policy` and `X-Frame-Options: DENY`.
+   - There is no "MOCK API" badge on the pages.
+
+### Known deploy limits
+
+- Expired booking requests are cleaned up lazily when someone reads bookings, not by a scheduler.
+- The map uses the public OpenStreetMap tile server, which allows light use only. Fine for a demo; not for traffic.
+- Realtime chat topics are open (see Known limits).
+- Anyone who finds the URL can sign up. It is a prototype: keep it to seed data.
+
 ## Known limits
 
 These are prototype limits, not bugs to hide. A real launch needs each one decided.
@@ -113,7 +178,7 @@ These are prototype limits, not bugs to hide. A real launch needs each one decid
 - **The contact filter can refuse normal text.** Number runs and dotted words such as "1 2 3 4 5 6 7 8 9 10", "Mr.Ly" or "kitchen.ca" read as a phone number or web address in names, bios, dishes and intake notes; the form says why and the user rewords it. An old saved allergy profile that now fails the filter loads as empty and must be entered again.
 - **Older text is not re-checked for contact details.** Display names, chef bios, dishes and intake notes saved before T-101 keep any phone number or email they contain until they are edited.
 - **Hosted demo accounts seeded before T-099** keep the old public passwords until `npm run db:seed -- --hosted` runs again with `SEED_DEMO_*` set.
-- **Not verified yet:** hosted Auth settings (email confirmation, minimum password length, leaked-password protection, MFA), hosted Storage settings (hosted migrations were checked against `main` on 2026-10-22: all 28 match), and Vercel environment variables.
+- **Not verified yet:** hosted Auth settings (email confirmation, minimum password length, leaked-password protection, MFA), hosted Storage settings (hosted migrations were checked against `main` on 2026-10-22: all 28 match), and Vercel environment variables (checklist in Deploy, above).
 
 ## Open legal and business risks
 
