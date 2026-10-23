@@ -10,6 +10,7 @@
 // customer once the chef accepts, and it is locked while that booking is accepted (409
 // `kitchen_in_use`). The payment is MOCK; nothing is charged or paid.
 import Link from "next/link";
+import { statusClass } from "@/components/chips";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiClientError, apiFetch } from "@/lib/api/client";
 import { RefusalProvider, useBookingRefusals } from "@/components/refusal";
@@ -205,7 +206,7 @@ function Ready({
         <h1 className="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]">
           Booking from {b.customer.displayName}
         </h1>
-        <p data-testid="status" className="text-lg font-semibold">
+        <p data-testid="status" className={`${statusClass(b.status)} text-lg`}>
           <span className="sr-only">Status: </span>
           {CHEF_STATUS_TEXT[b.status]}
         </p>

@@ -5,7 +5,7 @@ import { pageTitle } from "@/lib/app-info";
 export default function Home() {
   return (
     <main className="flex flex-1 flex-col">
-      <div className="hero !pb-20">
+      <div className="hero flex flex-1 items-center !pb-20">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-6 px-4 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="flex flex-col items-start gap-5">
             <h1 className="hero-title text-4xl sm:text-6xl">

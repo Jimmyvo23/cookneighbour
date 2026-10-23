@@ -59,3 +59,29 @@ chips 6.5 to 8.3 / 8.1 to 9.3; saffron price tag ink 8.61 / 10.59; rating badge 
 - The hero picture is hidden below 640 px to keep the phone page short; the phone view still has the gingham and headline.
 - Gingham text contrast is computed on the overlap square; axe passes but cannot measure gradients, so the Tester should eyeball the hero at 375 px.
 - Other pages keep the round 1 look until Jimmy approves this sample.
+
+---
+
+# Phase 2 (Jimmy: "Yes, do all pages")
+
+## What changed
+- Every page now uses the tokens. All old zinc, emerald, indigo, amber and red Tailwind colours are gone from `src` (grep is empty). Notices use `.notice` (gold), `.notice-ok` (herb) and `.alert-box`; inputs use `.control`; buttons `.btn`, `.btn-secondary`, `.btn-gold`.
+- The whole site sits on a faint red-and-white tablecloth. Page titles (h1) are a gingham ribbon with a gold double edge (`main h1`, except `.hero-title`).
+- Home `/`: full-height gingham hero with the pot picture, the positioning line and a gold button.
+- Chef detail: gingham band with a taped polaroid, price tag and rating badge; dishes are recipe cards with a polaroid photo, an "eat by" stamp and allergen chips; available days are little calendar tiles; cuisine chips.
+- Booking flow: estimate is a paper receipt with torn edge, dotted leaders and a serif total; MOCK payment stays a loud gold notice; dish allergens are chips, "Eat by" is a stamp; chosen options are washed red.
+- Bookings: status pills (waiting = gold, accepted/completed = herb, other = red), empty states with the plate.
+- Auth pages (`Page` in forms.tsx): the form is a stitched recipe card with a steaming pot peeking over its edge.
+- New: `src/app/not-found.tsx`, `src/app/error.tsx`, `LoadingFallback` (steaming pot, text stays exactly "Loading..."), `chips.tsx` (cuisine chips, status pills).
+- Chef and admin pages get the same tokens, ribbons and cards; admin stays calm (no illustration).
+- Open choices (builder defaults, to be confirmed by Jimmy): smaller hero picture on phones: yes; header name is now a link home; "Price and date" stays open; dark primary button has a lighter outline (`--btn-edge`).
+- Phone: the `/search` hero shows a small picture instead of none.
+
+## Test edits (one)
+- `e2e-mock/chef-detail-tester.spec.ts` "keyboard: the Back link is the first Tab stop": one more `Tab` (3 before the Back link instead of 2, plus the one that follows) because the header name is now a link and is a new first stop. Pure order change; assertion about focus unchanged. No axe or accessibility assertion was touched or weakened.
+
+## Contrast (computed; light / dark)
+ink on notice gold 13.31 / 11.42; ink on notice herb 13.42 / 11.25; status gold 5.34 / 7.09; status herb 6.67 / 8.88; status red (ink on danger-bg) 12.92 / 12.39; saffron button ink 8.61 / 10.59; dark button outline vs paper 7.59 (light 8.21); star on rating badge 4.33 (decoration, rating is written out) and 5.15 on surface; link on the tablecloth-tinted page 7.59, muted text 6.72 / 9.17; stamp link on surface 8.70 / 8.02. Gingham patterns were checked by hand on the lightest overlap square (see round 2).
+
+## Results
+lint 0 errors, typecheck ok, vitest 3240 passed, e2e-mock 376 passed, `impeccable detect` exit 0 (one finding on `.day`'s thick top border was fixed). Impeccable audit and polish were done by hand against `audit.md` and `polish.md`: no horizontal scroll at 375 px on any page (checked by image width), tap targets 44 px, reduced motion keeps a static alternative, every colour from tokens. Helper agents skipped per D-44.

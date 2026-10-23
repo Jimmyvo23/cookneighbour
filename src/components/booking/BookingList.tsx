@@ -2,6 +2,7 @@
 // "My bookings" (T-043): the customer's own bookings, newest first, from GET /api/bookings. A list
 // never carries an address, phone number or allergy text (contract section 7A).
 import Link from "next/link";
+import { statusClass } from "@/components/chips";
 import { EmptyPlate } from "@/components/Ornaments";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
@@ -133,7 +134,9 @@ export function BookingList() {
                       </span>
                     </Link>
                   </p>
-                  <p className="text-sm">{STATUS_TEXT[b.status]}</p>
+                  <p className={`${statusClass(b.status)} text-sm`}>
+                    {STATUS_TEXT[b.status]}
+                  </p>
                   {b.frozen && <OnHoldMarker />}
                   {summaryAllDatesPast(b.status, b.dates, today) && (
                     <p className="text-sm">

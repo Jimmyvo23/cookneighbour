@@ -174,8 +174,9 @@ test("keyboard: the Back link is the first Tab stop in the chef page content and
 }) => {
   await page.goto(`/chefs/${MAI}`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  // The skip link (T-052) and the site header (Log in, Sign up) come first, then the Back link,
-  // before any page content.
+  // The skip link (T-052) and the site header (the CookNeighbour home link since T-069, then
+  // Log in, Sign up) come first, then the Back link, before any page content.
+  await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");

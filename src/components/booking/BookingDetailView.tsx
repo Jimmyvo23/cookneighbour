@@ -7,6 +7,7 @@
 // receives and says when something is shared later. Nothing here ever shows a phone number or the
 // chef's kitchen address before acceptance. The payment is MOCK and nothing is charged.
 import Link from "next/link";
+import { statusClass } from "@/components/chips";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiClientError, apiFetch } from "@/lib/api/client";
@@ -270,7 +271,7 @@ function Ready({
         <h1 className="text-2xl font-semibold tracking-tight">
           Booking with {b.chef.displayName}
         </h1>
-        <p data-testid="status" className="text-lg font-semibold">
+        <p data-testid="status" className={`${statusClass(b.status)} text-lg`}>
           <span className="sr-only">Status: </span>
           {STATUS_TEXT[b.status]}
         </p>

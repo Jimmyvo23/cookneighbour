@@ -97,7 +97,10 @@ function DishImage({ dish }: { dish: PublicDish }) {
 function Dish({ dish, currency }: { dish: PublicDish; currency: string }) {
   const cost = formatDollars(dish.ingredientCostCents);
   return (
-    <li data-testid="dish" className="chef-card flex gap-4 p-4 sm:gap-5">
+    <li
+      data-testid="dish"
+      className="chef-card flex flex-col gap-4 p-4 sm:flex-row sm:gap-5"
+    >
       <div className="polaroid self-start">
         <DishImage dish={dish} />
       </div>

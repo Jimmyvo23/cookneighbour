@@ -3,6 +3,7 @@
 // GET /api/bookings, grouped by what the chef has to do. A list never carries an address, phone
 // number or allergy text (contract section 7A): the customer's answers are on the request page.
 import Link from "next/link";
+import { statusClass } from "@/components/chips";
 import { EmptyPlate } from "@/components/Ornaments";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
@@ -195,7 +196,7 @@ function Group({
                 </Link>
               </p>
               {b.status !== "requested" && (
-                <p className="text-sm font-medium">
+                <p className={`${statusClass(b.status)} text-sm`}>
                   {CHEF_STATUS_TEXT[b.status]}
                 </p>
               )}

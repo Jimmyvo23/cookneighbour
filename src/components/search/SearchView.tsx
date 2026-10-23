@@ -361,7 +361,7 @@ export function SearchView() {
               like to eat, and we list approved home cooks, nearest first.
             </p>
           </div>
-          <HeroArt className="hero-art mx-auto hidden max-h-80 w-full max-w-md sm:block lg:max-h-none lg:max-w-lg" />
+          <HeroArt className="hero-art mx-auto w-full max-w-[11rem] sm:max-w-md lg:max-w-lg" />
         </div>
       </div>
 

@@ -838,10 +838,9 @@
     align-items: center;
     justify-content: center;
     border: 2px solid var(--line);
-    border-top: 6px solid var(--link);
     border-radius: 0.5rem;
-    background: var(--surface);
-    padding: 0.25rem 0.75rem;
+    background: linear-gradient(var(--link) 0 6px, var(--surface) 6px);
+    padding: 0.5rem 0.75rem 0.25rem;
     font-weight: 700;
   }
   /* A stamp for the "eat by" promise. */
@@ -865,5 +864,31 @@
     padding: 0 0.75rem;
     font-size: 0.9375rem;
     font-weight: 700;
+  }
+}
+
+@layer components {
+  .status {
+    display: inline-block;
+    align-self: flex-start;
+    border-radius: 999px;
+    padding: 0.125rem 0.875rem;
+    font-weight: 700;
+    border: 2px solid transparent;
+  }
+  .status-wait {
+    background: var(--gold-wash);
+    color: var(--goldtext);
+    border-color: var(--goldtext);
+  }
+  .status-good {
+    background: var(--herb-wash);
+    color: var(--herb);
+    border-color: var(--herb);
+  }
+  .status-bad {
+    background: var(--danger-bg);
+    color: var(--ink);
+    border-color: var(--danger);
   }
 }

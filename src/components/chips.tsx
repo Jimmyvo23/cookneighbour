@@ -19,3 +19,11 @@ export function CuisineChips({ items }: { items: string[] }) {
     </>
   );
 }
+
+/** A booking status as a coloured pill. The words carry the meaning; the tint only helps. */
+export function statusClass(status: string): string {
+  if (status === "requested") return "status status-wait";
+  if (status === "accepted" || status === "completed")
+    return "status status-good";
+  return "status status-bad";
+}
