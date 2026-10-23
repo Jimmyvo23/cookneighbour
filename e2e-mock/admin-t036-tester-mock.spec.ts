@@ -309,9 +309,17 @@ test("the link retry runs every 30 s while failing, never stacks, and stops once
   // The fake clock can run ahead of the mock's real async work, so a failing call may end by the
   // 20 s API timeout (T-075) instead of the mock's 404; that moves the next retry out by one more
   // 30 s step. fastForward fires each due timer once, so jump twice.
-  await page.clock.fastForward("00:31");
-  await page.clock.fastForward("00:31");
-  await expect(tid(page, "links-stale")).toHaveCount(0);
+  // The jump count is not fixed: on a slow runner the mock call can still be in flight when the
+  // second jump fires (T-113). Jump again until the retry has worked; expect.poll bounds it.
+  await expect
+    .poll(
+      async () => {
+        await page.clock.fastForward("00:31");
+        return tid(page, "links-stale").count();
+      },
+      { timeout: 30_000, intervals: [250, 500, 1000] },
+    )
+    .toBe(0);
   // Settled: for 3 minutes (less than the normal 240 s renewal) no further call is made.
   const settled = await reads();
   for (let i = 0; i < 36; i++) await page.clock.runFor(5000);

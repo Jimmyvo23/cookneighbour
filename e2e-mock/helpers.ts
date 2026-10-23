@@ -164,12 +164,25 @@ export function vis(page: Page, testId: string) {
   return page.getByTestId(testId).filter({ visible: true });
 }
 
-/** Opens the page and hides the Next.js dev overlay, which would sit over buttons at the bottom. */
+const overlayHidden = new WeakSet<Page>();
+
+/**
+ * Opens the page and hides the Next.js dev overlay, which would sit over buttons at the bottom.
+ * The rule is added with an init script (a constructable stylesheet, so a CSP cannot block it), not
+ * with `page.addStyleTag` after `goto`: a page that redirects on the client (/admin to /admin/chefs)
+ * destroyed the execution context between the two calls (T-113). The init script runs again in
+ * every document the page loads, so a navigation in flight cannot lose it.
+ */
 export async function openPage(page: Page, path: string) {
+  if (!overlayHidden.has(page)) {
+    overlayHidden.add(page);
+    await page.addInitScript(() => {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync("nextjs-portal { display: none !important; }");
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    });
+  }
   await page.goto(path);
-  await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }",
-  });
 }
 
 /** Shows the made-up bookings to a customer (MOCK hook; see src/lib/mocks/mock-booking-changes.ts). */
