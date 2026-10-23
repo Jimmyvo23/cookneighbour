@@ -15,7 +15,16 @@ concurrency:
 # T-084: one 21 to 24.5 minute job was close to the 25 minute limit. It is now three jobs that
 # run at the same time, plus a tiny gate job named `ci`. No test was removed, no limit raised.
 # T-108: the `supabase` and `e2e-mock` job limits are now 35 minutes (slow apt mirror made the Playwright install
-# take 9 to 10+ minutes) and the Playwright browser download is cached.
+# take 9 to 10+ minutes).
+# T-110: Playwright runs in the official `mcr.microsoft.com/playwright` image (browsers and system libraries are
+# already inside), so nothing is downloaded with apt. The image tag must equal the locked @playwright/test version;
+# a step in each job fails the run if package-lock.json and the tag disagree. To upgrade Playwright, change the
+# tag in the two places marked PLAYWRIGHT_IMAGE together with package-lock.json. ubuntu-latest is Ubuntu 24.04 = noble.
+env:
+  # PLAYWRIGHT_IMAGE (1 of 2): used by the `supabase` job. The `e2e-mock` job repeats the tag in `container.image`
+  # because the `env` context is not allowed there. Both are checked against package-lock.json.
+  PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
+
 jobs:
   # Lint, types, formatting, unit tests and build. No Supabase needed.
   checks:
@@ -44,6 +53,23 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
+
+      - name: Check the Playwright image tag matches package-lock.json
+        env:
+          IMAGE_TAG: ${{ env.PLAYWRIGHT_IMAGE }}
+        run: |
+          v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
+          case "$IMAGE_TAG" in
+            *":v$v-"*) ;;
+            *) echo "::error::env.PLAYWRIGHT_IMAGE ($IMAGE_TAG) does not match locked @playwright/test $v. Update ci.yml."; exit 1 ;;
+          esac
+          # The e2e-mock container.image line is a second copy of the tag; it must be identical.
+          copy="$(sed -n 's/^ *image: *\(mcr\.microsoft\.com\/playwright:[^ ]*\) *$/\1/p' .github/workflows/ci.yml)"
+          if [ "$copy" != "$IMAGE_TAG" ]; then
+            echo "::error::container.image in ci.yml ('$copy') differs from env.PLAYWRIGHT_IMAGE ($IMAGE_TAG). Change both."; exit 1
+          fi
+          echo "Playwright $v matches $IMAGE_TAG in both places"
 
       - uses: actions/setup-node@v5
         with:
@@ -87,35 +113,21 @@ jobs:
           npm run db:seed -- --local   # second run proves it is idempotent
           npm run db:seed -- --local --verify
 
-      # T-108: cache the browser download. Key = OS + the locked @playwright/test version.
-      # On a hit only the system libraries are installed; on a miss the full install runs.
-      - name: Read Playwright version
-        id: pw
-        run: |
-          v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
-          test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
-        id: pw-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install Playwright browser and system libraries
-        if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - name: Install Playwright system libraries (browser cached)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
-      # T-057: e2e against the REAL routes. The app is started by Playwright with the local
-      # Supabase URL and keys from `supabase status` (public local defaults, never repo secrets),
-      # a throwaway HASH_PEPPER set in playwright.config.ts, and NEXT_PUBLIC_API_MOCK blank.
+      # T-057: e2e against the REAL routes. The app is started by Playwright (inside the official image,
+      # on the host network so it reaches the local Supabase on 127.0.0.1) with the local Supabase URL and
+      # keys from `supabase status` (public local defaults, never repo secrets), a throwaway HASH_PEPPER
+      # set in playwright.config.ts, and NEXT_PUBLIC_API_MOCK blank. Runs as the runner user so files
+      # written to the workspace (.next, reports) stay owned by it.
       - name: Playwright e2e (real routes) and smoke test
         run: |
           set -a
           eval "$(supabase status -o env)"
           set +a
-          npm run test:e2e
+          docker run --rm --network host --ipc=host --init \
+            --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI=true \
+            -e API_URL -e ANON_KEY -e SERVICE_ROLE_KEY -e PUBLISHABLE_KEY -e SECRET_KEY \
+            -v "$PWD":/work -w /work "$PLAYWRIGHT_IMAGE" \
+            npm run test:e2e
 
       - name: Upload Playwright report (real routes)
         if: failure()
@@ -133,8 +145,30 @@ jobs:
     name: e2e-mock
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    container:
+      # PLAYWRIGHT_IMAGE (2 of 2): must equal the env value above.
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      # Non-root user 1001 = the runner's uid, so the checkout is writable; --ipc=host for Chromium.
+      options: --user 1001 --ipc=host --init
     steps:
       - uses: actions/checkout@v5
+
+      - name: Check the Playwright image tag matches package-lock.json
+        env:
+          IMAGE_TAG: ${{ env.PLAYWRIGHT_IMAGE }}
+        run: |
+          v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
+          case "$IMAGE_TAG" in
+            *":v$v-"*) ;;
+            *) echo "::error::env.PLAYWRIGHT_IMAGE ($IMAGE_TAG) does not match locked @playwright/test $v. Update ci.yml."; exit 1 ;;
+          esac
+          # The e2e-mock container.image line is a second copy of the tag; it must be identical.
+          copy="$(sed -n 's/^ *image: *\(mcr\.microsoft\.com\/playwright:[^ ]*\) *$/\1/p' .github/workflows/ci.yml)"
+          if [ "$copy" != "$IMAGE_TAG" ]; then
+            echo "::error::container.image in ci.yml ('$copy') differs from env.PLAYWRIGHT_IMAGE ($IMAGE_TAG). Change both."; exit 1
+          fi
+          echo "Playwright $v matches $IMAGE_TAG in both places"
 
       - uses: actions/setup-node@v5
         with:
@@ -142,26 +176,6 @@ jobs:
           cache: npm
 
       - run: npm ci
-      # T-108: cache the browser download. Key = OS + the locked @playwright/test version.
-      # On a hit only the system libraries are installed; on a miss the full install runs.
-      - name: Read Playwright version
-        id: pw
-        run: |
-          v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
-          test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
-        id: pw-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install Playwright browser and system libraries
-        if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - name: Install Playwright system libraries (browser cached)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
       - name: Playwright e2e (mock mode)
         run: npm run test:e2e:mock
 
