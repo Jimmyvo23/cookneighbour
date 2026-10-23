@@ -73,14 +73,14 @@ Pending and rejected chefs exist so you can show they never appear in search.
 
 Nothing real is charged, sent or verified. Every item below is labelled **MOCK** in the code and the UI.
 
-| Area                                                        | What happens instead                                                                                                         |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Payments                                                    | The estimate shows labour, ingredients, travel fee and the platform fee (10 %), but no money moves. Stripe is not connected. |
-| Free first booking                                          | Chef labour is shown as free; nobody pays the chef (open question Q-1).                                                      |
-| Grocery receipts (option B)                                 | The chef uploads a receipt and the customer confirms the amount; the reimbursement is recorded, never collected.             |
-| SMS phone check                                             | `MOCK_SMS_ENABLED` in `src/lib/server/mock-sms.ts`: any 6-digit code is accepted. No SMS is sent.                            |
-| ID, food-handler certificate, police check, kitchen hygiene | Uploaded files are stored; the admin records a MOCK outcome. Nobody verifies anything.                                       |
-| UI without Supabase                                         | `NEXT_PUBLIC_API_MOCK=1` runs the screens on fake data and shows a "MOCK API" badge. Leave it blank for the real routes.     |
+| Area                                                        | What happens instead                                                                                                                                                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Payments                                                    | The estimate shows labour, ingredients, travel fee and the platform fee (10 %), but no money moves. Stripe is not connected.                                                                                       |
+| Free first booking                                          | Chef labour is shown as free; nobody pays the chef (open question Q-1).                                                                                                                                            |
+| Grocery receipts (option B)                                 | The chef uploads a receipt and the customer confirms the amount; the reimbursement is recorded, never collected.                                                                                                   |
+| SMS phone check                                             | `MOCK_SMS_ENABLED` in `src/lib/server/mock-sms.ts`: any 6-digit code is accepted. No SMS is sent.                                                                                                                  |
+| ID, food-handler certificate, police check, kitchen hygiene | Uploaded files are stored; the admin records a MOCK outcome. Nobody verifies anything.                                                                                                                             |
+| UI without Supabase                                         | `NEXT_PUBLIC_API_MOCK=1` runs the screens on fake data and shows a "MOCK API" badge. Leave it blank for the real routes. A production build or `next start` with the flag also needs `ALLOW_MOCK_BUILD=1` (T-118). |
 
 ## Demo script (CLAUDE.md section 12)
 
@@ -119,7 +119,7 @@ Set these three kinds of names in Vercel (Project > Settings > Environment Varia
 
 Do **not** set these on Vercel:
 
-- `NEXT_PUBLIC_API_MOCK`: leave it unset (or empty). `1` turns on the mock adapter and switches page guards off.
+- `NEXT_PUBLIC_API_MOCK`: leave it unset (or empty). `1` turns on the mock adapter and switches page guards off. Since T-118 the build refuses to start on Vercel if this name is set to any value, and the app ignores it there at runtime too (it looks for `VERCEL`, `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_REGION`, `NEXT_PUBLIC_VERCEL_ENV`). Still leave it unset.
 - `SEED_ADMIN_PASSWORD`, `SEED_DEMO_CHEF_PASSWORD`, `SEED_DEMO_CUSTOMER_PASSWORD`: used only by the seed script on your own machine.
 - `VERCEL`, `NODE_ENV`, `CI`: Vercel sets them. The app uses `VERCEL` to trust only Vercel's own IP headers and to refuse the public test pepper.
 
@@ -127,10 +127,10 @@ Only the two `NEXT_PUBLIC_SUPABASE_` names carry values into the browser bundle;
 
 ### Steps
 
-1. **Check the database.** The newest migration is `20261027100000`. Run `npx supabase migration list --linked` from the main folder; if any later migration appears, run `npx supabase db push --linked` first.
+1. **Check the database.** The newest migration is `20261027100000`. Run `npx supabase migration list --linked` from the repo folder; if any later migration appears, run `npx supabase db push --linked` first.
 2. **Create the project.** Vercel dashboard > Add New > Project > import the GitHub repo. Framework preset **Next.js**. Leave build command, output directory and install command on their defaults. Root directory: the repo root.
 3. **Add the four env vars** from the table, Production only, before pressing Deploy.
-4. **Production branch** (Settings > Git): `main`. After the first deploy open a test pull request and confirm Vercel does **not** build it. If it does, turn previews off in the dashboard (Settings > Git, or an Ignored Build Step) and tell the Planner.
+4. **Production branch** (Settings > Git): `main`. After the first deploy open a test pull request and confirm Vercel does **not** build it. If it does, turn previews off in the dashboard (Settings > Git, or an Ignored Build Step) and tell the Planner. The `main` + `**` combination in `vercel.json` was not tried live: confirm it with this test pull request.
 5. **Supabase Auth URLs** (Supabase dashboard > Authentication > URL Configuration). The app signs in with email and password through its own routes; it sends no email links, so there are no callback pages. Still set:
    - **Site URL** = your Vercel production URL (`https://<project>.vercel.app`).
    - **Redirect URLs** = add `https://<project>.vercel.app/**`. Keep the existing local entry if you still run locally.
@@ -146,7 +146,7 @@ Only the two `NEXT_PUBLIC_SUPABASE_` names carry values into the browser bundle;
 7. **Smoke test** on the Vercel URL:
    - The home page and `/search` load with no console errors; the map shows tiles.
    - Search "Mississauga" + Vietnamese finds a seeded chef.
-   - Sign up a new customer; log out and log in again.
+   - Sign up a new customer (use made-up details, never real ones); log out and log in again.
    - Log in as the seeded customer: a booking estimate shows, and the MOCK labels are visible.
    - (The seeded demo emails are listed in `scripts/seed-data.ts`; the admin is `admin@example.com`. Passwords are the ones you set; none are in the repo.)
    - Log in as the seeded admin: the pending-chef queue and the free-trial blocks list open.
@@ -173,7 +173,7 @@ These are prototype limits, not bugs to hide. A real launch needs each one decid
 - **Sign-up says when an email is already registered** (409 `EMAIL_IN_USE`), so anyone can test whether an email has an account (T-053 LOW-8).
 - **Email confirmation is off** in the local Supabase config; fine for the demo, not for a launch.
 - **Chat topics are open, chat data is not.** There are no Realtime Authorization policies, so anyone can broadcast on a chat topic, but the app listens only to database changes that RLS filters. Turn on private channels before adding broadcast or presence.
-- **`NEXT_PUBLIC_API_MOCK=1` must never be set on a deployment.** It turns the page guards off and shows fake data (the API routes still check access).
+- **`NEXT_PUBLIC_API_MOCK=1` must never be set on a deployment.** It turns the page guards off and shows fake data (the API routes still check access). T-118 makes a Vercel build fail when it is set and ignores it at runtime on Vercel; other hosts have no such guard.
 - **Open security findings.** The T-053 review (`docs/security-review.md`) found no HIGH issues. MED-1, MED-2, MED-4, LOW-1 and LOW-2 are fixed (T-098, T-099, T-101); MED-3 is partly fixed (T-100, inline scripts still allowed); LOW-3 to LOW-7 are fixed by T-102 (LOW-6 only partly: bookings, admin, groceries, messages and storage removal still log database messages); the hosted minimum password length of 8 is a dashboard step for the project owner.
 - **The contact filter can refuse normal text.** Number runs and dotted words such as "1 2 3 4 5 6 7 8 9 10", "Mr.Ly" or "kitchen.ca" read as a phone number or web address in names, bios, dishes and intake notes; the form says why and the user rewords it. An old saved allergy profile that now fails the filter loads as empty and must be entered again.
 - **Older text is not re-checked for contact details.** Display names, chef bios, dishes and intake notes saved before T-101 keep any phone number or email they contain until they are edited.
