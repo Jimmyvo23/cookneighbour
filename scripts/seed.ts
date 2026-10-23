@@ -6,7 +6,9 @@
 //   add --verify                   check the seed result only (writes nothing)
 //
 // Idempotent: users are found by email, every other row is upserted by a fixed key, so it is safe
-// to run again. It refuses to run without an explicit target.
+// to run again. Placeholder photos (T-121) are uploaded insert-only under names that come from the
+// chef or dish key: a re-run finds the row's photo_path set and uploads nothing; a leftover object
+// from a run that died half way is adopted, never overwritten. It refuses to run without an explicit target.
 // Seed data is fictional. Verification statuses are MOCK values. Nothing is verified or charged.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -19,6 +21,12 @@ import {
   resolveDemoPasswords,
   stableUuid,
 } from "./seed-lib.ts";
+import {
+  ICON_CONTENT_TYPE,
+  ensurePhotoPath,
+  iconFor,
+  type PhotoStore,
+} from "./seed-photos.ts";
 import { checkPepper } from "../src/lib/domain/pepper-rule.ts";
 import { LOCAL_TEST_PEPPER } from "../src/lib/domain/local-test-pepper.ts";
 import {
@@ -153,6 +161,33 @@ function isoDay(offset: number): string {
 
 const DAYS_AHEAD = 21;
 
+/** Placeholder food icons drawn by scripts/make-seed-images.mjs (original art, no people). */
+function iconBytes(key: string): Buffer {
+  return readFileSync(
+    resolve(root, "scripts/seed-images", `${iconFor(key)}.png`),
+  );
+}
+
+/** Storage client of the service role, shaped for ensurePhotoPath. Never prints keys or storage text. */
+function photoStore(db: Db): PhotoStore {
+  return {
+    upload: async (bucket, path, bytes, options) => {
+      const { error } = await db.storage
+        .from(bucket)
+        .upload(path, bytes, options);
+      return {
+        error: error
+          ? {
+              message: error.message,
+              statusCode: (error as { statusCode?: string | number })
+                .statusCode,
+            }
+          : null,
+      };
+    },
+  };
+}
+
 interface DemoPasswords {
   chef: string;
   customer: string;
@@ -209,6 +244,7 @@ async function seed(
   console.log(`customers: ${customers.length}`);
 
   let dishCount = 0;
+  let photoCount = 0;
   for (const c of chefs) {
     const id = await ensureUser(db, c.email, demo.chef, "chef", c.displayName);
     must(
@@ -233,6 +269,32 @@ async function seed(
       ),
       `chef ${c.email}`,
     );
+    const store = photoStore(db);
+    const chefRow = must<{ photo_path: string | null } | null>(
+      await db.from("chefs").select("photo_path").eq("profile_id", id).single(),
+      `chef photo ${c.email}`,
+    );
+    const chefPhoto = await ensurePhotoPath({
+      store,
+      kind: "profile_photo",
+      ownerId: id,
+      key: `chef:${c.key}`,
+      bytes: iconBytes(`chef:${c.key}`),
+      contentType: ICON_CONTENT_TYPE,
+      currentPath: chefRow?.photo_path ?? null,
+    });
+    if (chefPhoto.action !== "kept") {
+      // Only fills an empty photo_path, so a photo a person set is never replaced.
+      must(
+        await db
+          .from("chefs")
+          .update({ photo_path: chefPhoto.path })
+          .eq("profile_id", id)
+          .is("photo_path", null),
+        `chef photo_path ${c.email}`,
+      );
+      photoCount++;
+    }
     const now = new Date().toISOString();
     must(
       await db.from("chef_private").upsert(
@@ -272,6 +334,37 @@ async function seed(
       `dishes ${c.email}`,
     );
     dishCount += dishRows.length;
+    const dishPhotos = must<{ id: string; photo_path: string | null }[] | null>(
+      await db.from("dishes").select("id, photo_path").eq("chef_id", id),
+      `dish photos ${c.email}`,
+    );
+    const current = new Map(
+      (dishPhotos ?? []).map((r) => [
+        r.id as string,
+        r.photo_path as string | null,
+      ]),
+    );
+    for (const row of dishRows) {
+      const photo = await ensurePhotoPath({
+        store,
+        kind: "dish_photo",
+        ownerId: id,
+        key: `dish:${c.key}:${row.name}`,
+        bytes: iconBytes(`dish:${c.key}:${row.name}`),
+        contentType: ICON_CONTENT_TYPE,
+        currentPath: current.get(row.id) ?? null,
+      });
+      if (photo.action === "kept") continue;
+      must(
+        await db
+          .from("dishes")
+          .update({ photo_path: photo.path })
+          .eq("id", row.id)
+          .is("photo_path", null),
+        `dish photo_path ${c.email}`,
+      );
+      photoCount++;
+    }
 
     const days = [];
     for (let i = 1; i <= DAYS_AHEAD; i++) {
@@ -289,7 +382,7 @@ async function seed(
     );
   }
   console.log(
-    `chefs: ${chefs.length} (dishes: ${dishCount}, availability: next ${DAYS_AHEAD} days)`,
+    `chefs: ${chefs.length} (dishes: ${dishCount}, availability: next ${DAYS_AHEAD} days, photos set this run: ${photoCount})`,
   );
 }
 
@@ -312,7 +405,7 @@ async function verify(db: Db) {
   const { data: rows, error } = await db
     .from("chefs")
     .select(
-      "profile_id, status, cuisines, service_postal_prefix, location_options, chef_home_enabled",
+      "profile_id, status, photo_path, cuisines, service_postal_prefix, location_options, chef_home_enabled",
     )
     .in("profile_id", chefIds);
   if (error) die(`verify chefs: ${error.message}`);
@@ -330,6 +423,10 @@ async function verify(db: Db) {
     problems.push(
       "no approved Vietnamese chef in Mississauga offering both locations",
     );
+  // A-20: search hides an approved chef without a photo, so a seed without photos is broken.
+  const noPhoto = list.filter((c) => c.status === "approved" && !c.photo_path);
+  if (noPhoto.length)
+    problems.push(`${noPhoto.length} approved chef(s) have no photo_path`);
   if (!list.some((c) => c.status === "pending"))
     problems.push("no pending chef");
   if (!list.some((c) => c.status === "rejected"))
@@ -351,6 +448,12 @@ async function verify(db: Db) {
     .select("id", { count: "exact", head: true })
     .in("chef_id", chefIds);
   if (!count) problems.push("no dishes");
+  const { count: bare } = await db
+    .from("dishes")
+    .select("id", { count: "exact", head: true })
+    .in("chef_id", chefIds)
+    .is("photo_path", null);
+  if (bare) problems.push(`${bare} seeded dish(es) have no photo_path`);
   if (problems.length) die(`verify failed: ${problems.join("; ")}`);
   console.log(
     `verify ok: ${list.length} chefs, ${viet.length} approved Vietnamese in Mississauga, ${count} dishes`,
