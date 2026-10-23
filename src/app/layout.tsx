@@ -1,18 +1,28 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Atkinson_Hyperlegible_Next,
+  Libre_Caslon_Text,
+} from "next/font/google";
 import "./globals.css";
 import { AccountBar } from "@/components/AccountBar";
 import { SkipLink, SkipTarget } from "@/components/SkipLink";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Fonts are downloaded at build time and served from our own domain (CSP stays 'self').
+// Both are free under the SIL Open Font License 1.1.
+// Headings: Libre Caslon Text, a classic book serif. Body: Atkinson Hyperlegible Next, drawn by the
+// Braille Institute so letters are hard to confuse; good for older readers and English learners.
+const heading = Libre_Caslon_Text({
+  variable: "--font-heading",
   subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const body = Atkinson_Hyperlegible_Next({
+  variable: "--font-body",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -24,15 +34,41 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${heading.variable} ${body.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <SkipLink />
         {/* usePathname() in AccountBar needs a Suspense boundary on routes with dynamic segments
             (/admin/chefs/[id]); the bar streams in after the page shell. */}
-        <Suspense fallback={null}>
-          <AccountBar />
-        </Suspense>
+        <header className="site-header">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
+            <p className="inline-flex min-h-11 items-center gap-2 font-display text-xl font-bold text-link">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 32 32"
+                className="size-7 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {/* A simple cooking pot with a lid and two puffs of steam: drawn for this project. */}
+                <path d="M6 15h20v6a6 6 0 0 1-6 6h-8a6 6 0 0 1-6-6z" />
+                <path d="M3 15h3M26 15h3" />
+                <path d="M9 12.5c0-1.6 1.2-2.2 3.8-2.2h6.4c2.6 0 3.8.6 3.8 2.2" />
+                <path
+                  d="M13 7c-1-1.4 1-2.4 0-4M19 7c-1-1.4 1-2.4 0-4"
+                  stroke="var(--gold)"
+                />
+              </svg>
+              CookNeighbour
+            </p>
+            <Suspense fallback={null}>
+              <AccountBar />
+            </Suspense>
+          </div>
+        </header>
         <SkipTarget />
         {children}
       </body>

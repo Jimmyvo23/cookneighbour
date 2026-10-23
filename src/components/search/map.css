@@ -11,17 +11,17 @@
   height: 36px;
   border-radius: 9999px;
   border: 3px solid #ffffff;
-  background: #065f46;
+  background: #8e1f26;
   color: #ffffff;
   font:
-    700 14px/1 Arial,
-    Helvetica,
+    700 14px/1 var(--font-body),
+    system-ui,
     sans-serif;
   box-shadow: 0 1px 4px rgb(0 0 0 / 50%);
 }
 .cn-pin.cn-pin-active span {
-  background: #1e1b4b;
-  border-color: #fde047;
+  background: #2b211c;
+  border-color: #e3b54f;
   transform: scale(1.15);
 }
 .cn-pin:focus-visible span,

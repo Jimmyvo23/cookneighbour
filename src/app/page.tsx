@@ -3,17 +3,12 @@ import { pageTitle } from "@/lib/app-info";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-        {pageTitle()}
-      </h1>
-      <p className="max-w-md text-base text-zinc-600 dark:text-zinc-400">
+    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+      <h1 className="text-4xl sm:text-5xl">{pageTitle()}</h1>
+      <p className="max-w-md text-lg text-muted">
         Placeholder home page. Features arrive in later tasks.
       </p>
-      <Link
-        href="/search"
-        className="inline-flex min-h-11 items-center rounded-md bg-emerald-800 px-5 font-semibold text-white hover:bg-emerald-900"
-      >
+      <Link href="/search" className="btn">
         Find a home cook
       </Link>
     </main>

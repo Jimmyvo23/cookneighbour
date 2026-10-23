@@ -1,26 +1,301 @@
 @import "tailwindcss";
 
+/*
+ * "Grandma's table" design tokens (T-069, Jimmy's choice 2026-10-23).
+ * A soft paper page, ink text, a deep red for actions and a gold for small touches, like a family
+ * recipe book. Light mode is cream paper; dark mode is a warm deep brown, never pure black.
+ *
+ * Every text and control pair below was measured against WCAG 2.2 AA (4.5:1 text, 3:1 controls and
+ * focus). The numbers are in .team/handoffs/T-069-frontend.md. Gold fill on paper is only about
+ * 2.4:1, so gold is decoration there and never carries text or meaning; gold text uses
+ * --goldtext, a darker gold.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* surfaces */
+  --paper: #fbf6ec;
+  --surface: #fffdf8;
+  --sunken: #f3eada;
+  /* text */
+  --ink: #2b211c;
+  --muted: #5e4f46;
+  /* lines: --line is decoration only; --edge (3:1) draws every control */
+  --line: #dccdb4;
+  --edge: #8a7560;
+  /* actions */
+  --primary: #8e1f26;
+  --primary-hover: #741820;
+  --on-primary: #fff8ee;
+  --link: #8e1f26;
+  --tint: #f6e6df; /* a faint red wash for a selected card */
+  /* gold */
+  --gold: #c99a2e;
+  --goldtext: #7a5a0e;
+  --on-gold: #2b211c;
+  --gold-wash: #f6ead0;
+  /* meaning */
+  --success: #2f6b3a;
+  --success-bg: #e6f0e3;
+  --warning: #7a4a00;
+  --warning-bg: #fbebc6;
+  --danger: #a3201f;
+  --danger-bg: #fbe4e0;
+  /* MOCK badge (always loud, always the same) */
+  --mock-bg: #fbebc6;
+  --mock-text: #4a2f00;
+  --mock-edge: #8a5a00;
+  /* focus ring */
+  --focus: #1f4e8c;
+  --shadow: 0 1px 2px rgb(74 47 20 / 8%), 0 6px 18px -6px rgb(74 47 20 / 18%);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper: #1f1612;
+    --surface: #2a1e19;
+    --sunken: #17100d;
+    --ink: #f3e8d6;
+    --muted: #cdbca6;
+    --line: #4a382e;
+    --edge: #93806e;
+    --primary: #a92f37;
+    --primary-hover: #bd3e45;
+    --on-primary: #fff6ea;
+    --link: #f0a39b;
+    --tint: #3b2420;
+    --gold: #e3b54f;
+    --goldtext: #e3b54f;
+    --on-gold: #1f1612;
+    --gold-wash: #3a2c14;
+    --success: #8fd19a;
+    --success-bg: #1f3224;
+    --warning: #f0c060;
+    --warning-bg: #3a2a0e;
+    --danger: #ff9c93;
+    --danger-bg: #401c19;
+    --mock-bg: #3a2a0e;
+    --mock-text: #fbe3a6;
+    --mock-edge: #e3b54f;
+    --focus: #8cb8f0;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 20px -8px rgb(0 0 0 / 50%);
+    color-scheme: dark;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-edge: var(--edge);
+  --color-primary: var(--primary);
+  --color-link: var(--link);
+  --color-gold: var(--gold);
+  --color-goldtext: var(--goldtext);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), Georgia, "Times New Roman", serif;
+}
+
+@layer base {
+  html {
+    background: var(--paper);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--gold);
+    color: var(--on-gold);
+  }
+  /* One focus ring for everything: 3:1 against paper and surface in both modes. */
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  main a:not([class*="btn"]) {
+    color: var(--link);
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+  main a:not([class*="btn"]):hover {
+    text-decoration-thickness: 2px;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--primary);
+  }
+  input::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
+  fieldset {
+    min-width: 0;
+  }
+  /* Scrollbars follow the paper. */
+  * {
+    scrollbar-color: var(--edge) var(--sunken);
+  }
+}
+
+@layer components {
+  /* Text inputs, selects and date inputs. */
+  .control {
+    min-height: 2.75rem;
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--edge);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 0.375rem 0.75rem;
+    font: inherit;
+    line-height: 1.4;
+  }
+  .control:hover:not(:disabled) {
+    border-color: var(--ink);
+  }
+  .control[aria-invalid="true"] {
+    border-color: var(--danger);
+    border-width: 2px;
+  }
+  .control:disabled {
+    background: var(--sunken);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+  .btn,
+  .btn-secondary {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .btn {
+    background: var(--primary);
+    color: var(--on-primary);
+    border: 2px solid var(--primary);
+    box-shadow: 0 1px 0 rgb(0 0 0 / 15%);
+  }
+  .btn:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--link);
+    border: 2px solid var(--link);
+  }
+  .btn-secondary:hover {
+    background: var(--tint);
+  }
+  .btn:disabled,
+  .btn-secondary:disabled,
+  .btn[aria-disabled="true"],
+  .btn-secondary[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  /* Raised surface for a card. */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow);
+  }
+  .hint {
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .error-text {
+    color: var(--danger);
+    font-size: 0.9375rem;
+    font-weight: 700;
+  }
+  .alert-box {
+    border: 1px solid var(--danger);
+    border-radius: 0.5rem;
+    background: var(--danger-bg);
+    color: var(--ink);
+    padding: 0.75rem 1rem;
+  }
+  /* MOCK badge: loud on purpose (PRODUCT.md principle 1). */
+  .mock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 2px solid var(--mock-edge);
+    border-radius: 0.375rem;
+    background: var(--mock-bg);
+    color: var(--mock-text);
+    padding: 0.125rem 0.625rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+  /* A small gold-washed label, for example "Chef's home only". */
+  .tag {
+    display: inline-block;
+    border: 1px solid var(--goldtext);
+    border-radius: 0.375rem;
+    background: var(--gold-wash);
+    color: var(--goldtext);
+    padding: 0 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+  /* The page title with a thin double rule in gold, like the head of a recipe card. */
+  .title-rule {
+    display: block;
+    width: 5rem;
+    height: 5px;
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--gold);
+    border-bottom: 1px solid var(--gold);
+  }
+  .site-header {
+    background: var(--surface);
+    border-bottom: 3px double var(--gold);
+  }
+  /* Fieldset group title in the serif. */
+  .group-title {
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 0;
+  }
 }

@@ -59,8 +59,7 @@ type Focus =
   | { kind: "field"; name: string }
   | { kind: "alert" };
 
-const inputCls =
-  "min-h-11 rounded-md border border-zinc-400 bg-white px-3 text-base text-zinc-900 aria-[invalid=true]:border-red-700 dark:bg-zinc-900 dark:text-zinc-100";
+const inputCls = "control";
 
 /** A labelled control with a hint and an error. `children` receives the props the control needs. */
 function Field({
@@ -88,14 +87,11 @@ function Field({
       .join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label}
       </label>
       {hint && (
-        <p
-          id={`${id}-hint`}
-          className="text-sm text-zinc-700 dark:text-zinc-300"
-        >
+        <p id={`${id}-hint`} className="hint">
           {hint}
         </p>
       )}
@@ -106,10 +102,7 @@ function Field({
         "data-field": name,
       })}
       {error && (
-        <p
-          id={`${id}-error`}
-          className="text-sm font-medium text-red-700 dark:text-red-400"
-        >
+        <p id={`${id}-error`} className="error-text">
           {error}
         </p>
       )}
@@ -346,26 +339,29 @@ export function SearchView() {
   const anywhere = !values.postalCode.trim() && !values.city.trim();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Find a home cook
-      </h1>
-      <p className="max-w-prose text-sm text-zinc-700 dark:text-zinc-300">
-        Everything is optional. Tell us where you are and what you would like to
-        eat, and we list approved home cooks, nearest first.
-      </p>
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:py-10">
+      <div className="flex flex-col gap-3">
+        <h1 className="text-3xl sm:text-4xl">
+          Find a home cook
+          <span className="title-rule" aria-hidden="true" />
+        </h1>
+        <p className="max-w-prose text-lg text-muted">
+          Everything is optional. Tell us where you are and what you would like
+          to eat, and we list approved home cooks, nearest first.
+        </p>
+      </div>
 
       <form
         ref={formRef}
         onSubmit={onSubmit}
         noValidate
         aria-label="Search for a chef"
-        className="flex flex-col gap-5 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700"
+        className="card flex flex-col gap-8 p-5 sm:p-8"
       >
         <FormAlert message={formError} id={alertId} />
 
         <fieldset className="flex flex-col gap-4">
-          <legend className="mb-1 text-lg font-semibold">Where</legend>
+          <legend className="group-title mb-3">Where</legend>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="Postal code"
@@ -415,13 +411,13 @@ export function SearchView() {
             </Field>
           </div>
           {anywhere && (
-            <p className="text-sm text-zinc-700 dark:text-zinc-300">
+            <p className="hint">
               With no postal code or city we list all approved chefs, best rated
               first, without distances.
             </p>
           )}
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium">
+            <legend className="font-bold">
               Where should the cooking happen?
             </legend>
             <label className="flex min-h-11 items-center gap-2">
@@ -445,7 +441,7 @@ export function SearchView() {
               />
               At the chef&apos;s home
             </label>
-            <p className="text-sm text-zinc-700 dark:text-zinc-300">
+            <p className="hint">
               {values.locationType === "customer_home"
                 ? 'Chefs who cannot reach you but cook at their own home are still listed, marked "Chef\'s home only".'
                 : "Only chefs whose kitchen an admin has approved are listed, wherever they are. The kitchen review is a MOCK check in this prototype."}
@@ -453,8 +449,8 @@ export function SearchView() {
           </fieldset>
         </fieldset>
 
-        <fieldset className="flex flex-col gap-4">
-          <legend className="mb-1 text-lg font-semibold">The food</legend>
+        <fieldset className="flex flex-col gap-4 border-t border-line pt-7">
+          <legend className="group-title mb-3 pt-0">The food</legend>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="Cuisine"
@@ -494,27 +490,19 @@ export function SearchView() {
             aria-describedby={`${alertId}-allergens-note${errors.avoidAllergens ? ` ${alertId}-allergens-error` : ""}`}
             className="flex flex-col gap-1"
           >
-            <legend className="text-sm font-medium">
-              Allergens to avoid (optional)
-            </legend>
-            <p
-              id={`${alertId}-allergens-note`}
-              className="text-sm text-zinc-700 dark:text-zinc-300"
-            >
+            <legend className="font-bold">Allergens to avoid (optional)</legend>
+            <p id={`${alertId}-allergens-note`} className="hint">
               We show chefs who have at least one dish without any allergen you
               tick. This is a shortcut, not an allergy guarantee: you will fill
               in an allergy form when you book. Diets such as vegetarian or
               halal are not supported yet.
             </p>
             {errors.avoidAllergens && (
-              <p
-                id={`${alertId}-allergens-error`}
-                className="text-sm font-medium text-red-700 dark:text-red-400"
-              >
+              <p id={`${alertId}-allergens-error`} className="error-text">
                 {errors.avoidAllergens}
               </p>
             )}
-            <div className="grid gap-x-4 sm:grid-cols-2">
+            <div className="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-3">
               {ALLERGEN_CHOICES.map((a) => (
                 <label
                   key={a.value}
@@ -540,8 +528,10 @@ export function SearchView() {
           </fieldset>
         </fieldset>
 
-        <fieldset className="flex flex-col gap-4">
-          <legend className="mb-1 text-lg font-semibold">Price and date</legend>
+        <fieldset className="flex flex-col gap-4 rounded-lg bg-sunken p-4 sm:p-5">
+          <legend className="mb-1 px-1 font-display text-lg font-bold text-muted">
+            Price and date
+          </legend>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field
               label="Lowest hourly rate ($)"
@@ -596,7 +586,7 @@ export function SearchView() {
               )}
             </Field>
           </div>
-          <p className="text-sm text-zinc-700 dark:text-zinc-300">
+          <p className="hint">
             The day filter shows chefs who marked that day as free and are not
             already booked on it. Same-day booking is not possible.
           </p>
@@ -617,15 +607,11 @@ export function SearchView() {
           id={`${alertId}-results`}
           ref={headingRef}
           tabIndex={-1}
-          className="text-xl font-semibold"
+          className="text-2xl"
         >
           Results
         </h2>
-        <p
-          role="status"
-          data-testid="results-status"
-          className="text-sm font-medium"
-        >
+        <p role="status" data-testid="results-status" className="font-bold">
           {results.kind === "loading" && "Searching..."}
           {ready &&
             (ready.items.length === 0
@@ -634,17 +620,12 @@ export function SearchView() {
         </p>
 
         {results.kind === "idle" && (
-          <p className="text-sm text-zinc-700 dark:text-zinc-300">
-            Press &quot;Find chefs&quot; to see results.
-          </p>
+          <p className="hint">Press &quot;Find chefs&quot; to see results.</p>
         )}
 
         {ready && ready.items.length === 0 && (
-          <div
-            data-testid="empty-state"
-            className="rounded-lg border border-zinc-300 p-4 text-sm dark:border-zinc-700"
-          >
-            <p className="font-medium">No approved chefs match.</p>
+          <div data-testid="empty-state" className="card p-5">
+            <p className="font-bold">No approved chefs match.</p>
             <ul className="mt-2 list-disc pl-5">
               <li>Remove the price, day or allergen filters.</li>
               <li>Try a bigger area, such as the whole city.</li>
@@ -681,10 +662,7 @@ export function SearchView() {
                 ))}
               </ol>
               {moreError && (
-                <p
-                  role="alert"
-                  className="text-sm font-medium text-red-700 dark:text-red-400"
-                >
+                <p role="alert" className="error-text">
                   {moreError}
                 </p>
               )}
@@ -726,7 +704,7 @@ export function SearchView() {
                           setActiveCity((c) => (c === city ? null : city))
                         }
                       />
-                      <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                      <p className="hint">
                         A number is how many of these chefs work around a city.
                         Pins are at the middle of the city&apos;s postal areas,
                         never at a home or kitchen.
@@ -735,7 +713,7 @@ export function SearchView() {
                       </p>
                       <div aria-live="polite" data-testid="map-selection">
                         {selectedPin ? (
-                          <div className="rounded-lg border-2 border-indigo-800 p-3 text-sm dark:border-indigo-300">
+                          <div className="rounded-lg border-2 border-primary bg-surface p-3">
                             <p className="font-semibold">
                               {selectedPin.city}: {selectedPin.items.length}{" "}
                               {selectedPin.items.length === 1
@@ -747,7 +725,7 @@ export function SearchView() {
                                 <li key={i.id}>
                                   <Link
                                     href={chefPath(i.id)}
-                                    className="text-emerald-800 underline dark:text-emerald-300"
+                                    className="underline"
                                   >
                                     {i.displayName}
                                   </Link>
@@ -756,17 +734,14 @@ export function SearchView() {
                             </ul>
                           </div>
                         ) : (
-                          <p className="text-sm">
+                          <p className="hint">
                             Select a pin to mark its chefs in the list.
                           </p>
                         )}
                       </div>
                     </>
                   ) : (
-                    <p
-                      role="status"
-                      className="rounded-lg border border-zinc-400 p-4 text-sm"
-                    >
+                    <p role="status" className="card p-4">
                       {prefixesFailed
                         ? "The map could not be set up. The list has everything you need."
                         : "Loading the map..."}
