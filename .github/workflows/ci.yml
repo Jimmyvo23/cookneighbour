@@ -54,6 +54,23 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Check the Playwright image tag matches package-lock.json
+        env:
+          IMAGE_TAG: ${{ env.PLAYWRIGHT_IMAGE }}
+        run: |
+          v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
+          case "$IMAGE_TAG" in
+            *":v$v-"*) ;;
+            *) echo "::error::env.PLAYWRIGHT_IMAGE ($IMAGE_TAG) does not match locked @playwright/test $v. Update ci.yml."; exit 1 ;;
+          esac
+          # The e2e-mock container.image line is a second copy of the tag; it must be identical.
+          copy="$(sed -n 's/^ *image: *\(mcr\.microsoft\.com\/playwright:[^ ]*\) *$/\1/p' .github/workflows/ci.yml)"
+          if [ "$copy" != "$IMAGE_TAG" ]; then
+            echo "::error::container.image in ci.yml ('$copy') differs from env.PLAYWRIGHT_IMAGE ($IMAGE_TAG). Change both."; exit 1
+          fi
+          echo "Playwright $v matches $IMAGE_TAG in both places"
+
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -96,17 +113,6 @@ jobs:
           npm run db:seed -- --local   # second run proves it is idempotent
           npm run db:seed -- --local --verify
 
-      - name: Check the Playwright image tag matches package-lock.json
-        env:
-          IMAGE_TAG: ${{ env.PLAYWRIGHT_IMAGE }}
-        run: |
-          v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
-          test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
-          case "$IMAGE_TAG" in
-            *":v$v-"*) echo "Playwright $v matches $IMAGE_TAG" ;;
-            *) echo "::error::Playwright image $IMAGE_TAG does not match locked @playwright/test $v. Update PLAYWRIGHT_IMAGE in ci.yml."; exit 1 ;;
-          esac
-
       # T-057: e2e against the REAL routes. The app is started by Playwright (inside the official image,
       # on the host network so it reaches the local Supabase on 127.0.0.1) with the local Supabase URL and
       # keys from `supabase status` (public local defaults, never repo secrets), a throwaway HASH_PEPPER
@@ -147,12 +153,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
-
-      - run: npm ci
       - name: Check the Playwright image tag matches package-lock.json
         env:
           IMAGE_TAG: ${{ env.PLAYWRIGHT_IMAGE }}
@@ -160,9 +160,22 @@ jobs:
           v="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
           test -n "$v" || { echo "::error::could not read @playwright/test version"; exit 1; }
           case "$IMAGE_TAG" in
-            *":v$v-"*) echo "Playwright $v matches $IMAGE_TAG" ;;
-            *) echo "::error::Playwright image $IMAGE_TAG does not match locked @playwright/test $v. Update PLAYWRIGHT_IMAGE in ci.yml."; exit 1 ;;
+            *":v$v-"*) ;;
+            *) echo "::error::env.PLAYWRIGHT_IMAGE ($IMAGE_TAG) does not match locked @playwright/test $v. Update ci.yml."; exit 1 ;;
           esac
+          # The e2e-mock container.image line is a second copy of the tag; it must be identical.
+          copy="$(sed -n 's/^ *image: *\(mcr\.microsoft\.com\/playwright:[^ ]*\) *$/\1/p' .github/workflows/ci.yml)"
+          if [ "$copy" != "$IMAGE_TAG" ]; then
+            echo "::error::container.image in ci.yml ('$copy') differs from env.PLAYWRIGHT_IMAGE ($IMAGE_TAG). Change both."; exit 1
+          fi
+          echo "Playwright $v matches $IMAGE_TAG in both places"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
       - name: Playwright e2e (mock mode)
         run: npm run test:e2e:mock
 
