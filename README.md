@@ -110,12 +110,12 @@ This is a prototype with **seed data only**. Nothing real is charged or verified
 
 Set these three kinds of names in Vercel (Project > Settings > Environment Variables, tick **Production** only).
 
-| Name                                   | Needed                      | Reaches the browser?   | Rule                                                                                                                                                                                                                     |
-| -------------------------------------- | --------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`             | Required, at **build** time | Yes (public by design) | The hosted project URL (`https://...supabase.co`). Also sets the Supabase host in the Content-Security-Policy, so it must exist before the build; if you add it later, redeploy.                                         |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Required, at **build** time | Yes (public by design) | The `sb_publishable_...` key only.                                                                                                                                                                                       |
-| `SUPABASE_SECRET_KEY`                  | Required, runtime           | **No**, server only    | The `sb_secret_...` key. Bypasses row-level security. Never give it a `NEXT_PUBLIC_` name.                                                                                                                               |
-| `HASH_PEPPER`                          | Required, runtime           | **No**, server only    | At least 32 characters (`openssl rand -hex 32`). **Never** the public test pepper: the app refuses it on Vercel. Use a new value, not your local one. Changing it later invalidates every stored phone and address hash. |
+| Name                                   | Needed                      | Reaches the browser?   | Rule                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------- | --------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Required, at **build** time | Yes (public by design) | The hosted project URL (`https://...supabase.co`). Also sets the Supabase host in the Content-Security-Policy, so it must exist before the build; if you add it later, redeploy.                                                                                                                                  |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Required, at **build** time | Yes (public by design) | The `sb_publishable_...` key only.                                                                                                                                                                                                                                                                                |
+| `SUPABASE_SECRET_KEY`                  | Required, runtime           | **No**, server only    | The `sb_secret_...` key. Bypasses row-level security. Never give it a `NEXT_PUBLIC_` name.                                                                                                                                                                                                                        |
+| `HASH_PEPPER`                          | Required, runtime           | **No**, server only    | There is ONE hosted pepper: a secret of at least 32 characters (`openssl rand -hex 32`), never the public test pepper (the app refuses it on Vercel). The same value goes into Vercel and into the environment you use for `--hosted` seeding. Changing it later invalidates every stored phone and address hash. |
 
 Do **not** set these on Vercel:
 
@@ -123,7 +123,7 @@ Do **not** set these on Vercel:
 - `SEED_ADMIN_PASSWORD`, `SEED_DEMO_CHEF_PASSWORD`, `SEED_DEMO_CUSTOMER_PASSWORD`: used only by the seed script on your own machine.
 - `VERCEL`, `NODE_ENV`, `CI`: Vercel sets them. The app uses `VERCEL` to trust only Vercel's own IP headers and to refuse the public test pepper.
 
-Only the two `NEXT_PUBLIC_` names are in the browser bundle; neither is a secret. A build with no env vars at all succeeds (checked on 2026-10-23), but the result has empty Supabase settings and a Content-Security-Policy without the Supabase host, so set the variables before the first production build.
+Only the two `NEXT_PUBLIC_SUPABASE_` names carry values into the browser bundle; neither is a secret. `NEXT_PUBLIC_API_MOCK` is also inlined, but as empty when unset (harmless). A build with no env vars at all succeeds (checked on 2026-10-23), but the result has empty Supabase settings and a Content-Security-Policy without the Supabase host, so set the variables before the first production build.
 
 ### Steps
 
@@ -133,17 +133,22 @@ Only the two `NEXT_PUBLIC_` names are in the browser bundle; neither is a secret
 4. **Production branch** (Settings > Git): `main`. After the first deploy open a test pull request and confirm Vercel does **not** build it. If it does, turn previews off in the dashboard (Settings > Git, or an Ignored Build Step) and tell the Planner.
 5. **Supabase Auth URLs** (Supabase dashboard > Authentication > URL Configuration). The app signs in with email and password through its own routes; it sends no email links, so there are no callback pages. Still set:
    - **Site URL** = your Vercel production URL (`https://<project>.vercel.app`).
-   - **Redirect URLs** = the same URL (add `https://<project>.vercel.app/**`). Keep the local entry if you still run it locally.
+   - **Redirect URLs** = add `https://<project>.vercel.app/**`. Keep the existing local entry if you still run locally.
    - **Sign In / Providers > Email:** leave "Confirm email" **off** for the demo (the app has no "check your email" step, and Supabase's built-in email sender allows only a few emails per hour).
    - Set the minimum password length to 8 (still an open step from the security review).
-6. **Re-seed the hosted database yourself** from your machine, with your own passwords in `.env.local` (`HASH_PEPPER` must be the same value you gave Vercel; `SEED_DEMO_CHEF_PASSWORD`, `SEED_DEMO_CUSTOMER_PASSWORD` at least 12 characters; `SEED_ADMIN_PASSWORD`):
-   `npm run db:seed -- --hosted`
-   Then `npm run db:check`.
+6. **Re-seed the hosted database yourself** from your machine. The environment the scripts read (for example `.env.local`) must hold the **hosted** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`, not a local-stack setup (`scripts/seed.ts` and `npm run db:check` use them). Also set:
+   - `HASH_PEPPER`: the same value you gave Vercel.
+   - `SEED_DEMO_CHEF_PASSWORD` and `SEED_DEMO_CUSTOMER_PASSWORD`: required by `--hosted`, at least 12 characters each.
+   - `SEED_ADMIN_PASSWORD`: needed to create the admin account (without it the admin is skipped, and the smoke test needs the admin).
+
+   Then run `npm run db:seed -- --hosted` and `npm run db:check`.
+
 7. **Smoke test** on the Vercel URL:
    - The home page and `/search` load with no console errors; the map shows tiles.
    - Search "Mississauga" + Vietnamese finds a seeded chef.
    - Sign up a new customer; log out and log in again.
    - Log in as the seeded customer: a booking estimate shows, and the MOCK labels are visible.
+   - (The seeded demo emails are listed in `scripts/seed-data.ts`; the admin is `admin@example.com`. Passwords are the ones you set; none are in the repo.)
    - Log in as the seeded admin: the pending-chef queue and the free-trial blocks list open.
    - Open a booking and send a chat message (checks Realtime).
    - Response headers include `Content-Security-Policy` and `X-Frame-Options: DENY`.
