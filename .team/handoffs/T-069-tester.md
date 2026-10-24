@@ -43,3 +43,41 @@ L6. Cosmetic: dish form labels "Description (optional)" and "Dish photo" are sma
 ## What the next agent needs
 - Frontend: fix M1 (and optionally L1, L2, L5); then push and I can re-run: e2e-mock once plus the `/search` Tab-order check at 375 px, lint, typecheck, vitest.
 - Reviewer: wait for M1 fix. L1 needs a policy decision.
+
+---
+
+# Recheck after Frontend fix round 1 (head fde7f6f)
+
+Verdict: PASS. M1 and L1 to L6 are fixed. No new blocking or Medium findings.
+
+## What I ran (results)
+- lint 0 problems, typecheck ok, vitest 3240 passed (3 expected fail) before my test; my new `src/app/error.tester.test.tsx` passes (1 test).
+- e2e-mock `--retries=0`, full suite: 381 passed (376 plus the 5 new `t069-fix1-mock.spec.ts` tests), 3.9 min. This includes the axe suite `t052` at 375/1280, light/dark.
+- Diff 26288ed..fde7f6f read in full (20 files, src only plus the new spec and handoffs). Scope: only the findings plus label class changes (`text-sm font-medium` to `font-bold`) in forms; no logic, text, role, id or handler changed. No scope growth beyond the listed L6 label sweep.
+
+## Checks
+- M1 PASS. Measured Tab order, 375 px: postal code, city, cuisine, radios, language, allergens, price fields, then Find chefs last (y 2984, lowest). 1280 px: Find chefs is the last stop, no `order-*` on it. The new Tab-order e2e exists and passes at both widths.
+- L1 PASS. Animations are now `iterations: 3`; none infinite; after 25 s `document.getAnimations()` is empty. Reduced motion was already verified in round 1 and the CSS is unchanged for that rule.
+- L2 PASS. Tagline colour #fff3dc, measured without text shadow against the actual pixels under the tagline (screenshot with text transparent): lightest pixel gives 4.81:1 at 375 px and 1280 px (median 5.85). Passes even without the shadow.
+- L3 PASS. New unit test: focus lands on the `role=alert` block (tabindex -1) on mount, Try again calls `reset`.
+- L4 PASS. New e2e tests for availability day buttons and allergy rows at 375 px pass.
+- L5 PASS. sr-only ", " present in `ResultCard.tsx:107` and `ChefDetailView.tsx:308`; text assertions green.
+- L6 PASS. Dish form (375 dark screenshot): all labels bold and same size, file button styled with the secondary button look. Price-and-date panel (light and dark, 375 and 1280, looked at the screenshots): labels aligned on one row, hints under the fields, readable, good contrast.
+
+## Builder choices I checked
+- Dark-mode Price-and-date panel: looks fine (above).
+- Hero text shadow: subtle, text clean at 375 and 1280 (light and dark), not needed for contrast.
+- Animations end after 3 cycles: confirmed.
+- 98.5% fallback font: layout shift on load is negligible (CLS 0.0017 on /search, measured with the layout-shift observer). `Atkinson Fallback` face loads. The Next dev warning about missing override values still prints, harmless.
+
+## Findings
+### Low
+L7. `src/components/search/SearchView.tsx` (button wrapper at the end of the form, `lg:col-start-3 lg:row-start-2`): at 1280 px the Find chefs button sits visually in the top row beside "The food", but it is the last Tab stop, so focus jumps from the date field back up to it. Submit-last is the usual form convention and the order is meaningful, so I do not block. Alternative is to accept as is.
+### Info
+- Dark Price-and-date panel has a small empty gap above the note line (the hint reserve space); cosmetic only.
+- Dark mode: Price-and-date panel is only slightly different from the card background; fine.
+- The `document-title` axe flake in `helpers.ts` is unchanged (did not appear in this run).
+
+## What the next agent needs
+- Reviewer: nothing blocking from Tester. Decide L7 (accept) and confirm the builder choices with Jimmy.
+- Tester added `src/app/error.tester.test.tsx` (unit test for L3). Committed locally, NOT pushed.
