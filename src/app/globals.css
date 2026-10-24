@@ -507,6 +507,112 @@
     filter: drop-shadow(0 18px 24px rgb(0 0 0 / 28%));
     animation: float 7s ease-in-out 3;
   }
+  /* T-126: the home hero. The drawn pot (SVG) holds the space; the 3D canvas fills the whole hero
+     behind the text and fades in over it, so nothing moves when it arrives. */
+  .hero-stage {
+    padding-bottom: 5rem;
+    min-height: 34rem;
+  }
+  .hero-art-cell {
+    display: flex;
+    min-height: 20rem;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 400ms ease-out;
+  }
+  .hero-stage:is(
+      [data-pot-state="playing"],
+      [data-pot-state="paused"],
+      [data-pot-state="rest"],
+      [data-pot-state="still"],
+      [data-pot-state="frozen"]
+    )
+    .hero-art-cell {
+    opacity: 0;
+  }
+  .pot-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .pot-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 400ms ease-out;
+  }
+  .hero-stage:is(
+      [data-pot-state="playing"],
+      [data-pot-state="paused"],
+      [data-pot-state="rest"],
+      [data-pot-state="still"],
+      [data-pot-state="frozen"]
+    )
+    .pot-canvas {
+    opacity: 1;
+  }
+  /* A soft shade behind the words so they read over any part of the cloth. */
+  .pot-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgb(70 8 16 / 55%) 0%,
+      rgb(70 8 16 / 20%) 50%,
+      transparent 70%
+    );
+  }
+  @media (min-width: 64rem) {
+    .pot-shade {
+      background: linear-gradient(
+        90deg,
+        rgb(70 8 16 / 55%) 0%,
+        rgb(70 8 16 / 25%) 40%,
+        transparent 62%
+      );
+    }
+  }
+  /* "I'm a home cook": a plain text link in the hero ink, not a second button. */
+  .hero .hero-cook-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    color: var(--hero-ink);
+    font-weight: 700;
+    font-size: 1.125rem;
+    text-underline-offset: 0.3em;
+    text-decoration-thickness: 1px;
+  }
+  .hero .hero-cook-link:hover {
+    text-decoration-thickness: 2px;
+  }
+  /* Pause/Play for the animation (WCAG 2.2.2). 44 px tall, cream text on a dark chip. */
+  .pot-toggle {
+    position: absolute;
+    right: 1rem;
+    bottom: 1.25rem;
+    z-index: 20;
+    display: inline-flex;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    align-items: center;
+    gap: 0.5rem;
+    border: 2px solid var(--hero-ink);
+    border-radius: 0.5rem;
+    background: rgb(40 0 6 / 70%);
+    color: var(--hero-ink);
+    padding: 0 0.875rem;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .pot-toggle:hover {
+    background: rgb(40 0 6 / 88%);
+  }
   /* The order slip: a recipe card laid over the cloth, with a stitched gold border. */
   .recipe-card {
     position: relative;
@@ -727,11 +833,6 @@
   .steam-3 {
     animation-delay: 1.8s;
   }
-  .sparkle {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: twinkle 3.4s ease-in-out 3;
-  }
   .section-rule {
     border: 0;
     border-top: 2px dashed var(--line);
@@ -756,12 +857,6 @@
       transform: translateY(-8px) rotate(0.8deg);
     }
   }
-  @keyframes twinkle {
-    50% {
-      opacity: 0.35;
-      transform: scale(0.6) rotate(20deg);
-    }
-  }
   /* Moves only, no fade: a fading card would read as low contrast to a checker mid-animation. */
   @keyframes rise {
     from {
@@ -778,7 +873,6 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-art,
   .steam,
-  .sparkle,
   .skeleton,
   .chef-card {
     animation: none !important;
@@ -786,6 +880,10 @@
   .steam {
     stroke-dashoffset: 0;
     opacity: 0.8;
+  }
+  .hero-art-cell,
+  .pot-canvas {
+    transition: none;
   }
   .btn-lg:hover,
   .chef-card:hover,
