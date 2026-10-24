@@ -218,6 +218,11 @@
     outline-offset: 2px;
     border-radius: 2px;
   }
+  /* The hero and bands are dark red: the blue ring would vanish there (WCAG 1.4.11), so use the cream ink. */
+  .hero :focus-visible,
+  .band :focus-visible {
+    outline-color: var(--hero-ink);
+  }
   main a:not([class*="btn"]) {
     color: var(--link);
     text-underline-offset: 0.2em;

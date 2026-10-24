@@ -57,3 +57,6 @@ next-env.d.ts
 **/.impeccable/live/deferred-svelte-component-accepts.json
 **/.impeccable/live/*.png
 # impeccable-ignore-end
+
+# Local screenshots from design checks
+.shots/

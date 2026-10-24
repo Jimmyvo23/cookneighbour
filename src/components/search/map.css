@@ -38,9 +38,12 @@
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  background: #b45309;
+  /* Bright orange (3.1:1 against the dark red pins); the white border plus the dark outer ring keep it 3:1+ against any map tile. */
+  background: #f97316;
   border: 3px solid #ffffff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 50%);
+  box-shadow:
+    0 0 0 2px #2b211c,
+    0 1px 4px rgb(0 0 0 / 50%);
 }
 /* Leaflet's default link blue is too light on its translucent white attribution bar. */
 .leaflet-container .leaflet-control-attribution,

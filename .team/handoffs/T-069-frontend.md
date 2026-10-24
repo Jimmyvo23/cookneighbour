@@ -100,3 +100,14 @@ Tests added: `e2e-mock/t069-fix1-mock.spec.ts` (5 tests).
 
 Builder choices for Jimmy to confirm: animations stop after 3 cycles (not a pause button); hero text now has a soft shadow; the 98.5% fallback size is an estimate.
 Info items not acted on: the `document-title` flake in `helpers.ts` (separate task), PRODUCT.md tagline clause.
+
+## Fix round 2 (after the Reviewer REQUEST CHANGES)
+
+- **R1 (Medium, fixed).** `src/app/globals.css` (new rule right after the base `:focus-visible`, about line 221): `.hero :focus-visible, .band :focus-visible { outline-color: var(--hero-ink); }`. Cream on the hero red is 7.42:1 in light mode; in dark mode `--hero-ink` `#fff4e0` on `#5e141c` is also well above 3:1. The only other focus rule, `.tile:has(:focus-visible)` (line ~586), is not inside `.hero` or `.band`. New test `e2e-mock/t069-focus-mock.spec.ts` (2 tests): Tab to "Find a home cook", read the computed outline colour and the hero background, assert at least 3:1, light and dark. Checked that the light-mode test fails with the old blue ring and passes with the fix.
+- **R2 (Low, fixed by loading the real italic).** `src/app/layout.tsx` heading font: `style: ["normal", "italic"]`. Fonts stay self-hosted by next/font. Cost: two extra latin woff2 files of about 19.6 KB and 10.7 KB (seen in the dev build output; I did not measure a production build). Screenshot shows a true italic tagline.
+- **R3 (Low, fixed).** `src/components/search/map.css` `.cn-origin span` (about line 41): `#b45309` to `#f97316` (3.1:1 against the `#8e1f26` pins), white border kept, plus a 2px dark ring `#2b211c` so the dot stands out from any map tile (bright orange alone is about 2.4:1 on a light tile, so the ring carries that contrast). Hint text "orange dot" in `SearchView.tsx:782` is still true, unchanged. Tile colour contrast is my estimate from the standard OSM tile background, not measured on a screenshot.
+- **Jimmy's decision (done).** `src/app/page.tsx`: removed the "Placeholder home page. Features arrive in later tasks." paragraph. Tagline and button kept. Checked screenshots at 375 and 1280 px: spacing is still balanced (title, rule, tagline, button, then the picture).
+- **R4 (done).** `.gitignore`: added `.shots/`.
+- Committed the Reviewer's `.team/handoffs/T-069-reviewer.md`.
+- Results: lint 0 errors, typecheck ok, prettier clean, vitest 3241 passed (3 expected fail), e2e-mock t052 a11y/panels/tester, search, search-t040 and t069-focus: 88 passed.
+- Builder choices for Jimmy to confirm: bright orange `#f97316` with a dark ring for the origin dot; real italic loaded (about 30 KB more fonts) instead of dropping the italic.

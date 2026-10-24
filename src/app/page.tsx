@@ -15,9 +15,6 @@ export default function Home() {
             <p className="hero-tagline max-w-xl">
               Home-cooked food from your own culture, made by a neighbour.
             </p>
-            <p className="max-w-md text-lg text-[var(--hero-ink)]">
-              Placeholder home page. Features arrive in later tasks.
-            </p>
             <Link href="/search" className="btn-gold btn-lg !w-auto">
               Find a home cook
             </Link>

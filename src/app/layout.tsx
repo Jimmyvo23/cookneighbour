@@ -18,6 +18,8 @@ const heading = Libre_Caslon_Text({
   variable: "--font-heading",
   subsets: ["latin"],
   weight: ["400", "700"],
+  // Real italic for the home-page tagline, so the browser does not fake a slant.
+  style: ["normal", "italic"],
   display: "swap",
 });
 
