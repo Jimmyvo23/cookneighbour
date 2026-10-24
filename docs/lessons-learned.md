@@ -77,6 +77,9 @@ Each of these reached the Tester or Reviewer at least once, except the rows mark
 - On macOS, `sed -i` needs an empty suffix: `sed -i '' 's/a/b/' file`. *(GNU-style `sed -i` failed during T-040.)*
 - If `gh pr checks <n> --watch` says "no checks reported" right after a push, or returns at once, use `gh run watch <run id> --exit-status` on the new run instead. *(T-073 round 2; again in T-084.)*
 
+- **Never run `vercel deploy` from the repo folder.** The CLI uploads the folder, and `.env.local` would go with it. Deploy from a clean `git archive` export, or let the GitHub connection build `main`. *(T-055, 2026-10-23.)*
+- **Give Jimmy one CLI command per message.** Pasting several at once ran them out of order during the deploy. *(T-055, 2026-10-23.)*
+
 ## 5. Supabase and secrets
 
 - **Parallel tasks with migrations need distinct timestamps in the brief.** T-098 and T-101 both used `20261026100000`; T-101 had to rename its file and renumber the contract.

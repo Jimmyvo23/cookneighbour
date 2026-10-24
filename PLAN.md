@@ -228,7 +228,12 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-117 | Dev-only audit: 5 high (GHSA-vfj7-8cjw-p6xm, braces via micromatch, fast-glob, `@next/eslint-plugin-next`, `eslint-config-next`), present on main before T-114 too; lint-time only, not shipped; `npm audit fix` offers only a `--force` downgrade of `eslint-config-next` to 14. Needs Jimmy's choice (wait for upstream, or an npm `overrides` entry) | backend | T-114 | todo |
 | T-118 | Before deploy (D-176): `NEXT_PUBLIC_API_MOCK` must not turn on the mock adapter or skip the server page guards in a Vercel build (`src/lib/api/client.ts`, `src/lib/server/page-guard.ts` and every other reader); plus the T-055 Reviewer README NITs | backend | T-055 | done |
 | T-119 | T-116 Reviewer LOW: Suspense loading fallbacks (`<p role="status">Loading...</p>`) render outside any landmark (`src/app/bookings/page.tsx:20-24`, chef and admin layouts, `chef/bookings`, `bookings/[id]`, `allergies`, `chefs/[id]`, `chefs/[id]/book`, admin pages), so axe `region` (best practice, not WCAG) can fire while a page guard resolves. Fix: one shared `PageLoading` in `<main>` with a test id, used by every fallback; one t052 case that scans a held fallback; then the t052 "Loading..." wait can use the test id. After deploy (D-178) | frontend | T-116 | todo |
-| T-120 | T-118 Reviewer INFO-1: the mock guard decides "production" from `NODE_ENV` (`next.config.ts:6`); a host that builds with `NODE_ENV=development` skips the `ALLOW_MOCK_BUILD` rule and fails closed only because Next's own build then fails. Export the config as `(phase) => config` and check `PHASE_PRODUCTION_BUILD` / `PHASE_PRODUCTION_SERVER`. After deploy (D-178) | backend | T-118 | todo |
+| T-120 | T-118 Reviewer INFO-1: the mock guard decides "production" from `NODE_ENV` (`next.config.ts:6`); a host that builds with `NODE_ENV=development` skips the `ALLOW_MOCK_BUILD` rule and fails closed only because Next's own build then fails. Export the config as `(phase) => config` and check `PHASE_PRODUCTION_BUILD` / `PHASE_PRODUCTION_SERVER`. After deploy (D-178) | backend | T-118 | done |
+| T-121 | Before the live smoke (D-180): the hosted seed uploads a placeholder food photo for each seeded chef and dish (search hides chefs without a photo); insert-only and idempotent; `--verify` checks `photo_path`; real-stack e2e of demo step 1 with a CI bite test | backend | T-055 | done |
+| T-122 | Flake: title race in `expectNoAxeViolations` (`document-title` before the route title arrives), about 2 in 12 local runs on main | tester | T-116 | todo |
+| T-123 | T-120 Reviewer INFO-1 (D-186): `next.config.ts` treats any Next phase not on its production list as non-production, so a future phase fails open. Count every phase except `PHASE_DEVELOPMENT_SERVER` and `PHASE_TEST` as production, with tests | backend | T-120 | todo |
+| T-124 | T-120 Reviewer INFO-2 (D-186): README line that `npm run typecheck` (`next typegen`) loads the config as a production build, so with `NEXT_PUBLIC_API_MOCK=1` in `.env.local` it needs `ALLOW_MOCK_BUILD=1`. Done in the notes PR | planner | T-120 | done |
+| T-125 | T-120 Reviewer INFO-3 (D-186): `src/lib/security-headers.ts:53` picks the looser dev CSP from `NODE_ENV`; decide it from the Next phase like the mock guard, with tests | backend | T-120 | todo |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -247,7 +252,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-052 | Accessibility pass (axe checks in Playwright) and fixes; include a manual screen-reader check that a 409 page alert is not read out twice when its status sentence arrives after the reload (T-083 NIT-B) | frontend | Phase 5 | done |
 | T-053 | Security and privacy review of the whole app | reviewer | T-050, T-051 | done |
 | T-054 | README: setup, mocks list, known limits (include: contact snapshot rows are never deleted after the D-52 window, T-074 N5; a retention job is a later decision; the free-trial limits from CLAUDE.md 6.6: cheap SIMs and several addresses can still evade it, real launch needs ID checks; T-060 limits: stored address hashes with accents, full-width or non-Latin letters are not recomputed until re-saved (D-135), U+200E/U+200F, U+00AD, U+180E, U+2061 and U+3164 are not refused, Cyrillic look-alikes and Arabic-Indic digits are not folded), demo script; §12 step 3 live chat works since T-094; T-053 limits (D-149); open legal risks | planner | T-053 | done |
-| T-069 | Impeccable `audit` then `polish` once across all pages before the mentor demo (D-43; WO-6 step from T-068); fixes go through the normal Tester and Reviewer gate | frontend | T-052 | todo |
+| T-069 | Impeccable `audit` then `polish` once across all pages before the mentor demo (D-43; WO-6 step from T-068); fixes go through the normal Tester and Reviewer gate. D-181: look "Grandma's table", all pages | frontend | T-052 | done |
 | T-055 | Vercel deploy (free tier, seed data only) — **separate Work Order WO-7** | backend | T-054 | in_progress |
 
 ## 5. Decisions log
@@ -431,6 +436,15 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-176 | 2026-10-23 | T-118 mock guard: "Yes, before deploy (Recommended)" | Jimmy |
 | D-177 | 2026-10-23 | Session pace: "Parallel"; WO-T115: "Approve (Recommended)"; WO-T116: "Approve (Recommended)"; window: "These 3 tasks (Recommended)" (T-118, T-115, T-116; then back to one at a time) | Jimmy |
 | D-178 | 2026-10-23 | T-118 builder choices (`ALLOW_MOCK_BUILD=1` for any production mock build; any non-blank flag refused on Vercel, even "0"): "Confirm both (Recommended)"; follow-ups: "Log both, after deploy (Recommended)" (T-119, T-120); next: "Notes PR, then I deploy (Recommended)" | Jimmy |
+| D-179 | 2026-10-23 | T-055 deploy steps: "can you do all this for me", then "Use the Vercel CLI" (Planner runs the CLI steps; Jimmy logs in and confirms each) | Jimmy |
+| D-180 | 2026-10-23 | Seeded chefs had no photos, so search showed none on the live site: "Seed adds photos (Recommended)" (T-121) | Jimmy |
+| D-181 | 2026-10-23 | T-069: "Yes, design pass now (Recommended)"; look "Grandma's table"; round 1 feedback "plain and simple... more eye catch and fun"; round 2 "Yes, do all pages" | Jimmy |
+| D-182 | 2026-10-23 | Session pace: "Parallel": T-069 first, T-120 beside it, until both are merged; then back to one at a time. WO-T120: "T-120, approve WO (Recommended)" | Jimmy |
+| D-183 | 2026-10-23 | Resumed session: pace "Keep parallel (Recommended)" | Jimmy |
+| D-184 | 2026-10-23 | Home page sentence "Placeholder home page. Features arrive in later tasks.": "Remove the sentence (Recommended)" | Jimmy |
+| D-185 | 2026-10-23 | T-069 builder choices (14, listed in the T-069 notes): "Confirm all (Recommended)"; T-120 builder choices (Vercel rule in every phase, `phase-export` non-production, T-105 CSP test loads the dev phase): "Confirm all (Recommended)" | Jimmy |
+| D-186 | 2026-10-23 | T-120 Reviewer notes as follow-ups: INFO-1, INFO-2 and INFO-3 all chosen (T-123, T-124, T-125) | Jimmy |
+| D-187 | 2026-10-23 | Next: "Notes PR, then live smoke (Recommended)" (one task at a time from here) | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -1046,3 +1060,24 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - t052:82 reproduced under load (2 of 18, 375 px dark): the route `metadata` title arrives after the h1, so axe ran before `<title>`. `axeClean` now waits for a non-empty title and for no visible "Loading..." before axe; `document-title` still runs. The `region` failure on `/bookings` was not reproduced; likely the Suspense fallback outside `<main>` -> T-119.
 - Local `--retries=0` repeats: 490/490 (9 specs x5), 205/205 (t052), full suite 376/376; Reviewer 417/417. Reviewer APPROVE 9853e56 (NITs: the two waits have no page label in their message; the "Loading..." wait depends on exact text).
 - Builder choices, not confirmed by Jimmy: one shared helper in `beforeEach`; t052 fixed with waits in the test instead of an app change.
+
+### T-121 — Seed uploads placeholder photos (done 2026-10-23, PR #231 merged 9af7d4b; no migration)
+- Live smoke found search empty: seeded chefs had no `photo_path`, and search lists only chefs with a photo (D-180). `scripts/seed-photos.ts` uploads four generated flat food icons (`scripts/seed-images/*`, 160x160, no people or text) for 12 chefs and 31 dishes, `upsert:false`, then sets `photo_path` only `where photo_path is null`; a chef's own photo is never replaced. `--verify` checks the photos. `e2e/seed-photos-real.spec.ts` checks demo step 1 on the real stack; CI clears the photos and expects the spec to fail (bite test).
+- Tester PASS eecd9d9 (run 1 sets 43 photos, run 2 sets 0; generator output byte-identical). Reviewer APPROVE. Hosted re-seeded by Jimmy with photos.
+- Builder choice, not confirmed by Jimmy: deterministic object names from a hash (WO said a new name per upload; no overwrite path, Reviewer accepted).
+
+### T-055 — Deploy (live 2026-10-23, WO-7; still open for the logged-in smoke and Reviewer sign-off)
+- Live at https://cookneighbour.vercel.app (Vercel Hobby project `jimmyvo23/cookneighbour`, GitHub connected, `main` auto-deploys, no preview builds; 4 env vars, Production only). Deployed with the Vercel CLI (D-179) from a `git archive` export, never from the repo folder. Supabase "Confirm email" was still on; Supabase rejects `example.com` sign-up emails.
+- Tester read-only smoke PASS (`.team/handoffs/T-055-tester-smoke.md`): MED-1 guarded pages answer HTTP 200 with the redirect in the streamed body (no data leaks); LOW-1 anonymous `/api/me` 401 console line vs the README "no console errors"; LOW-2 unknown chef page is 200 "Chef not found"; LOW-3 seeded rating "4.9 (14 reviews)" but no review rows. Also: sign-up with `example.com` shows a generic "Something went wrong" instead of a field error. All for Jimmy to decide.
+- Left: Jimmy's logged-in steps on the live site, then Reviewer sign-off.
+
+### T-069 — "Grandma's table" visual design (done 2026-10-23, PR #233 merged 03f5103; UI only, no migration)
+- All pages redesigned (D-181): Libre Caslon Text headings, Atkinson Hyperlegible Next body (self-hosted), red gingham hero bands, faint tablecloth, original SVG food art, cuisine chips and status pills, new 404 and error pages; MOCK badges and privacy unchanged.
+- Tester round 1 BLOCK (M1 search Tab order; L1-L6 motion, tagline contrast, error focus, 44 px targets, sr-only separators, form polish), fixed; recheck PASS 1cf0fb1 (381 e2e-mock). Reviewer REQUEST CHANGES: R1 Medium focus ring 1.06:1 on the light hero red; R2 fake italic; R3 map origin dot too close to the red pins; R4 `.shots/` in `.gitignore`. Fix round 2 (plus D-184, placeholder sentence removed) 5bd64b9; Tester recheck 2 PASS (ring at least 5.02:1 light, 7.27:1 dark on real pixels; dot 3.16:1 against pins); Reviewer APPROVE 9116f14. L7 (on desktop "Find chefs" is in the top row but the last Tab stop) accepted by the Reviewer.
+- Tests: `e2e-mock/t069-fix1-mock.spec.ts`, `t069-focus-mock.spec.ts`, `t069-recheck2-focus-mock.spec.ts`, `src/app/error.tester.test.tsx`. Reviewer INFO: an unused "gap pixel" sample in the recheck2 spec.
+- Builder choices confirmed by Jimmy (D-185): fonts; header name links home; smaller hero art on phones; "Price and date" always open; lighter dark-mode button outline; animations stop after 3 cycles; hero text shadow; 98.5% fallback font size (estimate); tagline; 404 and error text; chip and pill colours; tablecloth, bands and art with no people; orange map dot `#f97316` with a dark ring; real italic (19.6 KB).
+
+### T-120 — Mock guard decides production by Next phase (done 2026-10-23, PR #235 merged 9711e11; no migration)
+- `next.config.ts` exports `(phase) => config`; production = `PHASE_PRODUCTION_BUILD` or `PHASE_PRODUCTION_SERVER`; `NODE_ENV` is no longer read. `src/lib/mock-guard.ts` unchanged (D-178 rules stand).
+- Tester PASS f7ba72f; LOW-1 (no test that values other than exactly "1" are refused) fixed in d1fb266 with a bite check. Reviewer APPROVE d1fb266: INFO-1 -> T-123, INFO-2 -> T-124 (README line in this notes PR), INFO-3 -> T-125; NIT an unneeded cast at `src/lib/t118-mock-guard.test.ts:132`.
+- Builder choices confirmed by Jimmy (D-185).
