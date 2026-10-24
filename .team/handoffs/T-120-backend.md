@@ -22,3 +22,7 @@ From: backend  To: tester
 ## What the next agent needs
 - Builder choice: Vercel/mock-flag check still runs in every phase (as before), only the ALLOW_MOCK_BUILD rule depends on the phase.
 - Builder choice: `phase-export` is treated as non-production (not in Jimmy's list).
+
+## Fix round 1
+- Tester LOW-1: added `it.each` in `src/lib/t118-mock-guard.test.ts` (line 89, in `mockBuildProblem`) for ALLOW_MOCK_BUILD = "true", "yes", "0", " 1", "1 ", "", "2", "on": each must still be refused in a production build with mock=1.
+- Bite check: temporarily changed the check to `!env.ALLOW_MOCK_BUILD`; 7 of 8 new cases failed (the "" case is falsy so it passes either way). Restored `src/lib/mock-guard.ts` (no diff). Behaviour unchanged.

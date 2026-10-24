@@ -86,6 +86,17 @@ describe("mockBuildProblem", () => {
       ),
     ).toBeNull();
   });
+  it.each(["true", "yes", "0", " 1", "1 ", "", "2", "on"])(
+    "ALLOW_MOCK_BUILD=%j is not the opt-in (only exactly 1 is)",
+    (v) => {
+      expect(
+        mockBuildProblem(
+          { NEXT_PUBLIC_API_MOCK: "1", ALLOW_MOCK_BUILD: v },
+          { production: true },
+        ),
+      ).toMatch(/ALLOW_MOCK_BUILD/);
+    },
+  );
   it("leaves dev (not a production build) and mock-off builds alone", () => {
     expect(
       mockBuildProblem({ NEXT_PUBLIC_API_MOCK: "1" }, { production: false }),
