@@ -19,39 +19,25 @@ function Steam({ x = 0, y = 0 }: { x?: number; y?: number }) {
   );
 }
 
-/** The small pot in the site header, with steam that rises on a slow loop. */
+/**
+ * The small pot in the site header. Drawn small-first (T-126): one solid silhouette of lid, knob,
+ * body and two lugs, with a clear gap between lid and body, so it reads at 16, 24 and 36 px. It
+ * has one colour (currentColor) and no thin lines.
+ */
 export function PotMark({ className = "size-9" }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
       focusable="false"
-      viewBox="90 60 220 270"
+      viewBox="0 0 24 24"
+      fill="currentColor"
       className={className}
     >
-      <Steam />
-      <path
-        d="M118 205A82 38 0 0 1 282 205Z"
-        fill="var(--art-red)"
-        stroke="var(--art-red-dark)"
-        strokeWidth="6"
-        strokeLinejoin="round"
-      />
-      <circle cx="200" cy="165" r="12" fill="var(--art-gold)" />
-      <path
-        d="M110 205h180v50a55 55 0 0 1-55 55h-70a55 55 0 0 1-55-55z"
-        fill="var(--art-red)"
-        stroke="var(--art-red-dark)"
-        strokeWidth="6"
-        strokeLinejoin="round"
-      />
-      <rect
-        x="104"
-        y="198"
-        width="192"
-        height="14"
-        rx="7"
-        fill="var(--art-gold)"
-      />
+      <circle cx="12" cy="4.4" r="1.8" />
+      <path d="M3.5 11.2C3.5 8 7.2 6.6 12 6.6s8.5 1.4 8.5 4.6z" />
+      <path d="M4.5 12.8h15v5.2a3.6 3.6 0 0 1-3.6 3.6H8.1A3.6 3.6 0 0 1 4.5 18z" />
+      <rect x="0.8" y="13.6" width="3.7" height="2.4" rx="1.2" />
+      <rect x="19.5" y="13.6" width="3.7" height="2.4" rx="1.2" />
     </svg>
   );
 }
@@ -113,18 +99,7 @@ function Sprig({
   );
 }
 
-function Sparkle({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
-  return (
-    <path
-      className="sparkle"
-      transform={`translate(${x} ${y}) scale(${s})`}
-      d="M0-10L2.6-2.6L10 0L2.6 2.6L0 10L-2.6 2.6L-10 0L-2.6-2.6Z"
-      fill="var(--art-gold)"
-    />
-  );
-}
-
-/** The big picture in the hero: a pot on a plate, a wooden spoon, basil, sparkles. */
+/** The big picture in the hero: a pot on a plate, a wooden spoon, basil. It is the first paint and the fallback of the 3D pot (T-126). */
 export function HeroArt({ className = "" }: { className?: string }) {
   return (
     <svg
@@ -208,14 +183,6 @@ export function HeroArt({ className = "" }: { className?: string }) {
           strokeLinecap="round"
           opacity="0.55"
         />
-        {/* a gold heart on the pot */}
-        <path
-          d="M200 285c-17-12-27-21-27-32a13 13 0 0 1 27-5a13 13 0 0 1 27 5c0 11-10 20-27 32z"
-          fill="var(--art-gold)"
-          stroke="var(--art-red-dark)"
-          strokeWidth="3"
-          strokeLinejoin="round"
-        />
         <path
           d="M118 205A82 38 0 0 1 282 205Z"
           fill="var(--art-red)"
@@ -255,10 +222,6 @@ export function HeroArt({ className = "" }: { className?: string }) {
         transform="translate(360 330) scale(-1 1) rotate(-30)"
         leaves={4}
       />
-      <Sparkle x={62} y={120} s={1.2} />
-      <Sparkle x={338} y={60} s={0.9} />
-      <Sparkle x={110} y={60} s={0.7} />
-      <Sparkle x={372} y={250} s={0.7} />
     </svg>
   );
 }

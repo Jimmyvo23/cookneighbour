@@ -1,11 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-test("home page shows the prototype heading", async ({ page }) => {
+// T-126: the headline is the promise; the page title stays "CookNeighbour — prototype".
+test("home page shows the promise heading and the prototype badge", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(page).toHaveTitle("CookNeighbour — prototype");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "CookNeighbour — prototype",
+    "A home cook from your culture, in your kitchen or theirs.",
   );
+  await expect(
+    page.getByText("Prototype · nothing is real or charged"),
+  ).toBeVisible();
 });
 
 // T-100: the real-stack run also checks the headers (the live chat step in booking-real.spec.ts proves Realtime is not blocked).
