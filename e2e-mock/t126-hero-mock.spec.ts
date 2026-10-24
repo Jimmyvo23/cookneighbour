@@ -140,8 +140,9 @@ for (const size of SIZES) {
 
       // It is moving.
       const t1 = await readT(page);
-      await page.waitForTimeout(700);
-      expect(parseFloat(await readT(page))).toBeGreaterThan(parseFloat(t1));
+      await expect
+        .poll(async () => parseFloat(await readT(page)), { timeout: 10_000 })
+        .toBeGreaterThan(parseFloat(t1));
 
       // Keyboard: Tab to the button, press Enter. It is the last stop after the hero links.
       for (let i = 0; i < 30; i++) {
@@ -172,8 +173,9 @@ for (const size of SIZES) {
         "playing",
       );
       await expect(toggle).toHaveText("Pause animation");
-      await page.waitForTimeout(700);
-      expect(parseFloat(await readT(page))).toBeGreaterThan(parseFloat(frozen));
+      await expect
+        .poll(async () => parseFloat(await readT(page)), { timeout: 10_000 })
+        .toBeGreaterThan(parseFloat(frozen));
       expect(errors).toEqual([]);
       expect(await cspViolations(page)).toEqual([]);
     });
