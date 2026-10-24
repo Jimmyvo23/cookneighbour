@@ -10,7 +10,9 @@ async function cspFor(nodeEnv: string | undefined, supa?: string) {
   else vi.stubEnv("NODE_ENV", nodeEnv);
   if (supa) vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", supa);
   else vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
-  const cfg = (await import("../../next.config")).default;
+  // T-120: the config is a function of the Next phase; the CSP does not depend on it.
+  const make = (await import("../../next.config")).default;
+  const cfg = await make("phase-development-server");
   const rules = await cfg.headers!();
   return rules[0].headers.find((h) => h.key === "Content-Security-Policy")!
     .value;

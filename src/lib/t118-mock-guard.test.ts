@@ -86,6 +86,17 @@ describe("mockBuildProblem", () => {
       ),
     ).toBeNull();
   });
+  it.each(["true", "yes", "0", " 1", "1 ", "", "2", "on"])(
+    "ALLOW_MOCK_BUILD=%j is not the opt-in (only exactly 1 is)",
+    (v) => {
+      expect(
+        mockBuildProblem(
+          { NEXT_PUBLIC_API_MOCK: "1", ALLOW_MOCK_BUILD: v },
+          { production: true },
+        ),
+      ).toMatch(/ALLOW_MOCK_BUILD/);
+    },
+  );
   it("leaves dev (not a production build) and mock-off builds alone", () => {
     expect(
       mockBuildProblem({ NEXT_PUBLIC_API_MOCK: "1" }, { production: false }),
@@ -110,29 +121,67 @@ describe("mockBlockedFlag", () => {
 });
 
 describe("next.config.ts wiring", () => {
-  async function load(env: Record<string, string>) {
+  // T-120: the config is a function of the Next phase, not of NODE_ENV.
+  const BUILD = "phase-production-build";
+  const SERVER = "phase-production-server";
+  const DEV = "phase-development-server";
+  async function load(env: Record<string, string>, phase = BUILD) {
     vi.resetModules();
     for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
-    return (await import("../../next.config")).default;
+    const fn = (await import("../../next.config")).default;
+    return (fn as unknown as (p: string) => Promise<import("next").NextConfig>)(
+      phase,
+    );
   }
-  it("throws when Vercel and the mock flag are both set", async () => {
+  const LOCAL = { VERCEL: "", ALLOW_MOCK_BUILD: "" };
+  it("throws when Vercel and the mock flag are both set, in every phase", async () => {
+    for (const phase of [BUILD, SERVER, DEV, "phase-test"])
+      await expect(
+        load({ VERCEL: "1", NEXT_PUBLIC_API_MOCK: "1" }, phase),
+      ).rejects.toThrow(/NEXT_PUBLIC_API_MOCK/);
     await expect(
-      load({ VERCEL: "1", NEXT_PUBLIC_API_MOCK: "1" }),
-    ).rejects.toThrow(/NEXT_PUBLIC_API_MOCK/);
+      load({ VERCEL: "1", NEXT_PUBLIC_API_MOCK: "0", ALLOW_MOCK_BUILD: "1" }),
+    ).rejects.toThrow(/Vercel build/);
   });
-  it("throws in a production build or `next start` with mock=1 and no opt-in", async () => {
-    await expect(
-      load({
-        NODE_ENV: "production",
-        NEXT_PUBLIC_API_MOCK: "1",
-        VERCEL: "",
-        ALLOW_MOCK_BUILD: "",
-      }),
-    ).rejects.toThrow(/ALLOW_MOCK_BUILD/);
+  it.each(["production", "development", "test"])(
+    "refuses a production build or `next start` with mock=1 and no opt-in (NODE_ENV=%s)",
+    async (nodeEnv) => {
+      for (const phase of [BUILD, SERVER])
+        await expect(
+          load(
+            { NODE_ENV: nodeEnv, NEXT_PUBLIC_API_MOCK: "1", ...LOCAL },
+            phase,
+          ),
+        ).rejects.toThrow(/ALLOW_MOCK_BUILD/);
+    },
+  );
+  it("allows a production build with mock=1 and ALLOW_MOCK_BUILD=1", async () => {
+    for (const nodeEnv of ["production", "development"])
+      await expect(
+        load(
+          {
+            NODE_ENV: nodeEnv,
+            NEXT_PUBLIC_API_MOCK: "1",
+            VERCEL: "",
+            ALLOW_MOCK_BUILD: "1",
+          },
+          BUILD,
+        ),
+      ).resolves.toBeDefined();
   });
-  it("loads for dev with mock=1 and for Vercel with the flag blank", async () => {
+  it("leaves dev and test phases alone, even with NODE_ENV=production", async () => {
+    for (const phase of [DEV, "phase-test", "phase-export"])
+      for (const nodeEnv of ["production", "development"])
+        await expect(
+          load(
+            { NODE_ENV: nodeEnv, NEXT_PUBLIC_API_MOCK: "1", ...LOCAL },
+            phase,
+          ),
+        ).resolves.toBeDefined();
+  });
+  it("loads for a mock-off production build and for Vercel with the flag blank", async () => {
     await expect(
-      load({ NEXT_PUBLIC_API_MOCK: "1", VERCEL: "" }),
+      load({ NODE_ENV: "production", NEXT_PUBLIC_API_MOCK: "", ...LOCAL }),
     ).resolves.toBeDefined();
     const cfg = await load({ VERCEL: "1", NEXT_PUBLIC_API_MOCK: "" });
     expect(cfg.env?.NEXT_PUBLIC_MOCK_BLOCKED).toBe("1");
