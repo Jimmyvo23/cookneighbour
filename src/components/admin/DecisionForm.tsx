@@ -99,7 +99,7 @@ export function DecisionForm({
       noValidate
       data-testid="decision-form"
       aria-labelledby={`${uid}-h`}
-      className="flex flex-col gap-3 rounded-md border-2 border-zinc-500 p-3"
+      className="flex flex-col gap-3 rounded-md border-2 border-edge p-3"
     >
       <h3 id={`${uid}-h`} className="font-semibold">
         {heading}
@@ -170,7 +170,7 @@ export function DecisionForm({
           onChange={(e) => setNote(e.target.value)}
           aria-invalid={fields.note ? true : undefined}
           aria-describedby={fields.note ? `${uid}-ne` : undefined}
-          className="rounded-md border border-zinc-400 bg-white px-3 py-2 text-base text-zinc-900 aria-[invalid=true]:border-2 aria-[invalid=true]:border-red-700 dark:bg-zinc-900 dark:text-zinc-100"
+          className="control"
         />
         {fields.note && (
           <p id={`${uid}-ne`} className={errCls}>

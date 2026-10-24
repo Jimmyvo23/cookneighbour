@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { LoadingFallback } from "@/components/LoadingFallback";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { requireAdminPage } from "@/lib/server/page-guard";
 
@@ -25,13 +26,7 @@ async function Guarded({ children }: { children: React.ReactNode }) {
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <Suspense
-      fallback={
-        <p className="p-4" role="status">
-          Loading...
-        </p>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <Guarded>{children}</Guarded>
     </Suspense>
   );

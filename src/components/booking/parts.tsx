@@ -21,15 +21,12 @@ export function useDomId(key: string): string {
   return useContext(FieldScope) + fieldDomId(key);
 }
 
-export const inputCls =
-  "min-h-11 w-full rounded-md border border-zinc-400 bg-white px-3 text-base text-zinc-900 aria-[invalid=true]:border-red-700 aria-[invalid=true]:border-2 dark:bg-zinc-900 dark:text-zinc-100";
-export const errCls = "text-sm font-medium text-red-700 dark:text-red-400";
-export const warnBoxCls =
-  "rounded-md border-2 border-amber-700 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-50";
-export const dangerBoxCls =
-  "rounded-md border-2 border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100";
+export const inputCls = "control";
+export const errCls = "error-text";
+export const warnBoxCls = "notice p-3 text-sm";
+export const dangerBoxCls = "alert-box";
 export const infoBoxCls =
-  "rounded-md border border-zinc-400 bg-zinc-50 p-3 text-sm dark:border-zinc-600 dark:bg-zinc-900";
+  "rounded-md border border-edge bg-sunken p-3 text-sm ";
 
 /** A labelled text input with its error text tied to it. `errorKey` is the contract's dotted key. */
 export function Input({
@@ -51,14 +48,11 @@ export function Input({
       .join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label}
       </label>
       {hint && (
-        <p
-          id={`${id}-hint`}
-          className="text-sm text-zinc-700 dark:text-zinc-300"
-        >
+        <p id={`${id}-hint`} className="hint">
           {hint}
         </p>
       )}
@@ -97,14 +91,11 @@ export function TextArea({
       .join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label}
       </label>
       {hint && (
-        <p
-          id={`${id}-hint`}
-          className="text-sm text-zinc-700 dark:text-zinc-300"
-        >
+        <p id={`${id}-hint`} className="hint">
           {hint}
         </p>
       )}
@@ -152,14 +143,11 @@ export function Question({
       id={id}
       tabIndex={-1}
       aria-describedby={described}
-      className="flex flex-col gap-2 rounded-md border border-zinc-300 p-3 dark:border-zinc-700"
+      className="flex flex-col gap-2 rounded-xl border-2 border-line p-3 "
     >
       <legend className="px-1 text-base font-semibold">{legend}</legend>
       {hint && (
-        <p
-          id={`${id}-hint`}
-          className="text-sm text-zinc-700 dark:text-zinc-300"
-        >
+        <p id={`${id}-hint`} className="hint">
           {hint}
         </p>
       )}
@@ -200,7 +188,7 @@ export function Choice({
   const auto = useId();
   const cid = id ?? auto;
   return (
-    <div className="flex items-start gap-3">
+    <div className="-mx-2 flex min-h-11 items-start gap-3 rounded-xl px-2 py-2 transition-colors has-[:checked]:bg-tint">
       <input
         id={cid}
         type={type}
@@ -211,17 +199,14 @@ export function Choice({
         aria-invalid={invalid ? true : undefined}
         aria-describedby={description ? `${cid}-desc` : undefined}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 size-5 shrink-0 accent-emerald-800"
+        className="mt-1 size-5 shrink-0 accent-primary"
       />
       <div className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
-        <label htmlFor={cid} className="min-h-6 font-medium">
+        <label htmlFor={cid} className="-my-2 min-h-11 py-2 font-medium">
           {label}
         </label>
         {description && (
-          <div
-            id={`${cid}-desc`}
-            className="text-sm text-zinc-700 dark:text-zinc-300"
-          >
+          <div id={`${cid}-desc`} className="hint">
             {description}
           </div>
         )}
@@ -296,14 +281,12 @@ function Line({
 }) {
   return (
     <div
-      className={`flex flex-wrap justify-between gap-x-4 gap-y-0 py-1 ${strong ? "border-t border-zinc-400 pt-2 font-semibold" : ""}`}
+      className={`flex flex-wrap justify-between gap-x-4 gap-y-0 py-2 ${strong ? "mt-1 border-t-2 border-ink pt-3 font-display text-xl font-bold" : "border-b-2 border-dotted border-line"}`}
     >
       <dt className="[overflow-wrap:anywhere]">
         {label}
         {note && (
-          <span className="block text-sm font-normal text-zinc-700 dark:text-zinc-300">
-            {note}
-          </span>
+          <span className="block text-sm font-normal text-muted ">{note}</span>
         )}
       </dt>
       <dd className="tabular-nums">{value}</dd>
@@ -349,7 +332,7 @@ export function EstimateLines({
   const waived = e.freeTrialWaivedCents ?? 0;
   const money = (c: number) => formatDollars(c);
   return (
-    <div data-testid="estimate-block">
+    <div data-testid="estimate-block" className="receipt">
       <dl data-testid="estimate" className="flex flex-col">
         <Line
           label="Total cooking time"
@@ -416,7 +399,7 @@ export function EstimateLines({
           strong
         />
       </dl>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+      <div className="mt-3 flex flex-wrap items-center gap-2 hint">
         <MockBadge>MOCK</MockBadge>
         <span data-testid="platform-fee">
           Platform fee ({e.platformFeePercent}% of labour):{" "}
@@ -435,7 +418,7 @@ export function MockPayment() {
     <section
       aria-labelledby={`${hid}-pay-h`}
       data-testid="mock-payment"
-      className="flex flex-col gap-2 rounded-md border-2 border-amber-600 bg-amber-50 p-3 text-amber-950 dark:bg-amber-950 dark:text-amber-50"
+      className="flex flex-col gap-2 notice p-3"
     >
       <h2
         id={`${hid}-pay-h`}

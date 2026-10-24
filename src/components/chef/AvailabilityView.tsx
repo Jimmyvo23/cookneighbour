@@ -100,10 +100,7 @@ export function AvailabilityView() {
         <p role="status">Loading your availability...</p>
       )}
       {state.kind === "error" && (
-        <div
-          role="alert"
-          className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
-        >
+        <div role="alert" className="alert-box">
           {state.message}
         </div>
       )}
@@ -237,7 +234,7 @@ function Calendar({
         <table
           role="grid"
           aria-labelledby={headingId}
-          className="w-full table-fixed border-separate border-spacing-1"
+          className="-mx-2 w-[calc(100%+1rem)] table-fixed border-separate border-spacing-0.5"
         >
           <thead>
             <tr>
@@ -275,7 +272,7 @@ function Calendar({
                         />
                       ) : (
                         <span
-                          className="flex min-h-11 items-center justify-center text-sm text-zinc-600 line-through dark:text-zinc-400"
+                          className="flex min-h-11 items-center justify-center text-sm text-muted line-through "
                           aria-label={`${dayLabel(day)}, outside the days you can choose`}
                           role="img"
                         >
@@ -360,10 +357,10 @@ function DayButton({
       data-day={day}
       onClick={onToggle}
       onKeyDown={onKeyDown}
-      className={`flex min-h-11 w-full flex-col items-center justify-center rounded-md border-2 text-sm font-medium ${
+      className={`flex min-h-11 min-w-11 w-full flex-col items-center justify-center rounded-md border-2 text-sm font-medium ${
         selected
-          ? "border-emerald-950 bg-emerald-800 text-white"
-          : "border-zinc-400 bg-white text-zinc-900 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          ? "border-primary bg-primary text-[var(--on-primary)]"
+          : "border-edge bg-surface text-ink hover:bg-sunken "
       } ${day === today ? "underline underline-offset-4" : ""}`}
     >
       <span aria-hidden="true">

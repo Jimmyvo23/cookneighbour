@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { LoadingFallback } from "@/components/LoadingFallback";
 import { AdminChatView } from "@/components/admin/AdminEngagementViews";
 
 // The admin-only guard for this page is in src/app/admin/layout.tsx.
@@ -18,13 +19,7 @@ export default function Page({
   params,
 }: PageProps<"/admin/bookings/[id]/chat">) {
   return (
-    <Suspense
-      fallback={
-        <p className="p-4" role="status">
-          Loading...
-        </p>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <Chat params={params} />
     </Suspense>
   );

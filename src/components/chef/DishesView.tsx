@@ -3,6 +3,7 @@
 // Built against docs/api-contract.md section 5A. Validation reuses the server's pure rules
 // (src/lib/domain/dishes.ts through src/lib/chef/dishes.ts); the server stays the authority.
 import Link from "next/link";
+import { EmptyPlate } from "@/components/Ornaments";
 import { useEffect, useId, useRef, useState } from "react";
 import { apiFetch, isMockEnabled } from "@/lib/api/client";
 import type { ChefDishListResponse, Dish, MeResponse } from "@/lib/api/types";
@@ -79,10 +80,7 @@ export function DishesView() {
       <h1 className="text-2xl font-semibold tracking-tight">Your dishes</h1>
       {state.kind === "loading" && <p role="status">Loading your dishes...</p>}
       {state.kind === "error" && (
-        <div
-          role="alert"
-          className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
-        >
+        <div role="alert" className="alert-box">
           {state.message}
         </div>
       )}
@@ -139,10 +137,7 @@ function Menu({
       <p className={hintCls}>
         Add the dishes you cook. Customers will pick from your active dishes.
         You need at least one active dish with a photo to submit your{" "}
-        <Link
-          className="font-medium text-emerald-800 underline dark:text-emerald-300"
-          href="/chef/apply"
-        >
+        <Link className="font-medium underline" href="/chef/apply">
           application
         </Link>
         . Dishes are never deleted; deactivate one to hide it.
@@ -190,7 +185,12 @@ function Menu({
         <Notice message={message ?? toggle.notice} />
         <Alert id={toggle.alertId} message={toggle.error} />
         {dishes.length === 0 ? (
-          <p>You have no dishes yet. Choose &quot;Add a dish&quot; to start.</p>
+          <div className="flex items-center gap-4">
+            <EmptyPlate className="size-24 shrink-0" />
+            <p>
+              You have no dishes yet. Choose &quot;Add a dish&quot; to start.
+            </p>
+          </div>
         ) : (
           <ul className="flex flex-col gap-3">
             {dishes.map((d) => (
@@ -257,7 +257,7 @@ export function DishPhoto({
       role="img"
       aria-label={`No photo to show for ${dish.name}`}
       data-testid="dish-photo-fallback"
-      className="flex size-24 shrink-0 items-center justify-center rounded-md border border-dashed border-zinc-500 p-1 text-center text-xs text-zinc-700 dark:text-zinc-300"
+      className="flex size-24 shrink-0 items-center justify-center rounded-md border border-dashed border-edge p-1 text-center text-xs text-muted "
     >
       {dish.photoPath ? "Photo not available" : "No photo yet"}
     </div>
@@ -280,7 +280,7 @@ function DishCard({
     <li>
       <article
         aria-labelledby={nameId}
-        className={`${cardCls} ${dish.isActive ? "" : "bg-zinc-50 dark:bg-zinc-900"}`}
+        className={`${cardCls} ${dish.isActive ? "" : "bg-sunken "}`}
       >
         <div className="flex gap-3">
           <DishPhoto dish={dish} />
@@ -291,8 +291,8 @@ function DishCard({
                 data-testid="dish-status"
                 className={`ml-1 rounded-md border px-2 py-0.5 text-xs font-bold ${
                   dish.isActive
-                    ? "border-emerald-800 text-emerald-900 dark:text-emerald-200"
-                    : "border-zinc-600 text-zinc-800 dark:text-zinc-200"
+                    ? "border-primary text-success "
+                    : "border-edge text-muted "
                 }`}
               >
                 {dish.isActive ? "Active" : "Inactive"}
@@ -499,9 +499,7 @@ function DishEditor({
           hint={`How many days after cooking the meal should be eaten. ${LIMITS.shelfLifeDays[0]} to ${LIMITS.shelfLifeDays[1]}; 2 is the usual default. This is not food-safety advice.`}
         />
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium">
-            Allergens in this dish
-          </legend>
+          <legend className="font-bold">Allergens in this dish</legend>
           <p className={hintCls}>
             Tick every allergen this dish contains. Add any others below.
           </p>
@@ -533,7 +531,7 @@ function DishEditor({
           hint="Separate with commas, for example celery, lupin. Up to 14 allergens in total."
         />
         <div className="flex flex-col gap-1">
-          <label htmlFor={fileId} className="text-sm font-medium">
+          <label htmlFor={fileId} className="font-bold">
             Dish photo
           </label>
           <p id={fileHintId} className={hintCls}>
@@ -559,10 +557,7 @@ function DishEditor({
             className="min-h-11 text-base"
           />
           {e.photoPath && (
-            <p
-              id={`${fileId}-error`}
-              className="text-sm font-medium text-red-700 dark:text-red-400"
-            >
+            <p id={`${fileId}-error`} className="error-text">
               {e.photoPath}
             </p>
           )}

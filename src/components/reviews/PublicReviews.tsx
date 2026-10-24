@@ -100,7 +100,7 @@ export function PublicReviews({ chefId }: { chefId: string }) {
     <section
       aria-labelledby={`${hid}-h`}
       data-testid="public-reviews"
-      className="flex flex-col gap-3 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700"
+      className="card flex flex-col gap-3 p-4"
     >
       <h2 id={`${hid}-h`} className="text-lg font-semibold">
         Reviews
@@ -140,7 +140,7 @@ export function PublicReviews({ chefId }: { chefId: string }) {
                     key={r.id}
                     tabIndex={-1}
                     data-testid="public-review"
-                    className="flex flex-col gap-1 rounded-md border border-zinc-300 p-3 [overflow-wrap:anywhere] dark:border-zinc-700"
+                    className="flex flex-col gap-1 rounded-xl border-2 border-line p-3 [overflow-wrap:anywhere] "
                   >
                     <p className="font-semibold">{r.authorFirstName}</p>
                     <p>

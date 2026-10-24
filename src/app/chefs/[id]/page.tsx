@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { LoadingFallback } from "@/components/LoadingFallback";
 import { ChefDetailView } from "@/components/chefs/ChefDetailView";
 
 // Public page: anyone may open it, signed in or not. It reads nothing on the server; the browser
@@ -16,13 +17,7 @@ async function Chef({ params }: Pick<PageProps<"/chefs/[id]">, "params">) {
 
 export default function Page({ params }: PageProps<"/chefs/[id]">) {
   return (
-    <Suspense
-      fallback={
-        <p className="p-4" role="status">
-          Loading...
-        </p>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <Chef params={params} />
     </Suspense>
   );

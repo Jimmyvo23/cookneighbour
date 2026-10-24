@@ -187,10 +187,7 @@ export function GroceriesSection({
       <h2 id={`${hid}-h`} className="text-lg font-semibold">
         Groceries
       </h2>
-      {notice(
-        "groceries-notice",
-        "font-medium text-emerald-900 dark:text-emerald-300",
-      )}
+      {notice("groceries-notice", "font-medium text-success")}
       {loading && !list && <p role="status">Loading the groceries...</p>}
       {failed && (
         <div
@@ -218,7 +215,7 @@ export function GroceriesSection({
       )}
       {list && optionB && receipts && (
         <div
-          className="flex flex-col gap-4 border-t border-zinc-300 pt-4 dark:border-zinc-700"
+          className="flex flex-col gap-4 border-t border-line pt-4 "
           data-testid="receipts"
         >
           <h3 className="text-base font-semibold">Receipt</h3>
@@ -337,7 +334,7 @@ function ShoppingList({ list }: { list: ShoppingListResponse }) {
       </p>
       <ul
         aria-labelledby={`${hid}-h`}
-        className="flex flex-col divide-y divide-zinc-300 dark:divide-zinc-700"
+        className="flex flex-col divide-y divide-line "
       >
         {list.days.map((d) => (
           <li
@@ -492,7 +489,7 @@ function FileLink({ url }: { url: string | null }) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-emerald-800 underline dark:text-emerald-300"
+          className="font-medium underline"
         >
           View the receipt file (opens in a new tab)
         </a>
@@ -634,7 +631,7 @@ function UploadFields({
       </h4>
       <Alert id={sec.alertId} message={sec.error} />
       <div className="flex flex-col gap-1">
-        <label htmlFor={fileId} className="text-sm font-medium">
+        <label htmlFor={fileId} className="font-bold">
           Receipt file ({RECEIPT_ALLOWED_TEXT})
         </label>
         <input

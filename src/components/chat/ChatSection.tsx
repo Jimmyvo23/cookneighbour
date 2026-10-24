@@ -248,7 +248,7 @@ function ChatPanel({
               stick.current =
                 el.scrollHeight - el.scrollTop - el.clientHeight < 40;
             }}
-            className="max-h-96 overflow-y-auto rounded-md border border-zinc-300 p-3 dark:border-zinc-700"
+            className="max-h-96 overflow-y-auto rounded-xl border-2 border-line p-3 "
           >
             {chat.items.length === 0 ? (
               <p data-testid="chat-empty" className={hintCls}>
@@ -315,17 +315,13 @@ function ChatPanel({
                 }}
                 aria-describedby={`${counterId}${error ? ` ${errId}` : ""}`}
                 aria-invalid={error ? true : undefined}
-                className="min-h-24 w-full rounded-md border-2 border-zinc-500 bg-white p-2 text-base text-zinc-950 dark:bg-zinc-900 dark:text-zinc-50"
+                className="control min-h-24"
               />
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p
                   id={counterId}
                   data-testid="chat-count"
-                  className={
-                    over
-                      ? "text-sm font-semibold text-red-800 dark:text-red-300"
-                      : hintCls
-                  }
+                  className={over ? "error-text" : hintCls}
                 >
                   {count} of {MESSAGE_MAX_LENGTH} characters
                   {over ? ` (${count - MESSAGE_MAX_LENGTH} too many)` : ""}
@@ -369,8 +365,8 @@ function Bubble({
       <div
         className={`max-w-[85%] rounded-lg border px-3 py-2 ${
           m.mine
-            ? "border-emerald-800 bg-emerald-50 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50"
-            : "border-zinc-400 bg-white text-zinc-950 dark:bg-zinc-900 dark:text-zinc-50"
+            ? "border-primary bg-okbg text-ink "
+            : "border-edge bg-surface text-ink "
         } ${m.state !== "sent" ? "opacity-80" : ""}`}
       >
         <p className="text-sm font-semibold">

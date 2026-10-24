@@ -146,7 +146,7 @@ function CancelBooking({
   return (
     <div
       data-testid="cancel-booking"
-      className="flex flex-col gap-3 border-t border-zinc-300 pt-4 first:border-t-0 first:pt-0 dark:border-zinc-700"
+      className="flex flex-col gap-3 border-t border-line pt-4 first:border-t-0 first:pt-0 "
     >
       <h3 className="text-base font-semibold">Cancel this booking</h3>
       {!possible ? (
@@ -277,7 +277,7 @@ function ReportNoShow({
   return (
     <div
       data-testid="report-no-show"
-      className="flex flex-col gap-3 border-t border-zinc-300 pt-4 dark:border-zinc-700"
+      className="flex flex-col gap-3 border-t border-line pt-4 "
     >
       <h3 className="text-base font-semibold">The customer did not show up</h3>
       {!due ? (

@@ -10,6 +10,7 @@
 // customer once the chef accepts, and it is locked while that booking is accepted (409
 // `kitchen_in_use`). The payment is MOCK; nothing is charged or paid.
 import Link from "next/link";
+import { statusClass } from "@/components/chips";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ApiClientError, apiFetch } from "@/lib/api/client";
 import { RefusalProvider, useBookingRefusals } from "@/components/refusal";
@@ -63,7 +64,7 @@ import { GroceriesSection } from "@/components/booking/GroceriesSection";
 import { ChefPickups } from "@/components/booking/PickupSections";
 import { ChefEndSections } from "@/components/booking/ChefEndSections";
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
+const linkCls = "font-medium underline";
 
 type State =
   | { kind: "loading" }
@@ -205,7 +206,7 @@ function Ready({
         <h1 className="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]">
           Booking from {b.customer.displayName}
         </h1>
-        <p data-testid="status" className="text-lg font-semibold">
+        <p data-testid="status" className={`${statusClass(b.status)} text-lg`}>
           <span className="sr-only">Status: </span>
           {CHEF_STATUS_TEXT[b.status]}
         </p>
@@ -213,7 +214,7 @@ function Ready({
         {b.frozen && <FrozenNotice text={FROZEN_TEXT} />}
         {b.isFreeTrial && (
           <p data-testid="trial-label">
-            <span className="rounded-md border-2 border-emerald-800 px-2 py-0.5 text-sm font-bold text-emerald-900 dark:text-emerald-200">
+            <span className="rounded-md border-2 border-primary px-2 py-0.5 text-sm font-bold text-success ">
               Free first booking
             </span>{" "}
             <span className={hintCls}>
@@ -441,10 +442,7 @@ function Days({
       <h2 id={`${hid}-h`} className="text-lg font-semibold">
         Days and dishes
       </h2>
-      <ol
-        aria-label="Days"
-        className="flex flex-col divide-y divide-zinc-300 dark:divide-zinc-700"
-      >
+      <ol aria-label="Days" className="flex flex-col divide-y divide-line ">
         {b.days.map((d) => (
           <li
             key={d.dayNumber}
@@ -513,10 +511,7 @@ function Cooked({
   const sec = useSection();
   if (day.cookedAt)
     return (
-      <p
-        data-testid="cooked"
-        className="font-medium text-emerald-900 dark:text-emerald-300"
-      >
+      <p data-testid="cooked" className="font-medium text-success">
         Cooked on {formatWhen(day.cookedAt)}.
       </p>
     );

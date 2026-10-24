@@ -3,6 +3,8 @@
 // GET /api/bookings, grouped by what the chef has to do. A list never carries an address, phone
 // number or allergy text (contract section 7A): the customer's answers are on the request page.
 import Link from "next/link";
+import { statusClass } from "@/components/chips";
+import { EmptyPlate } from "@/components/Ornaments";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import type { BookingListResponse, BookingSummary } from "@/lib/api/types";
@@ -14,7 +16,7 @@ import { secondaryButtonCls } from "@/components/chef/parts";
 import { OnHoldMarker } from "@/components/booking/parts";
 import { CHEF_STATUS_TEXT, summaryAllDatesPast } from "@/lib/booking/changes";
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
+const linkCls = "font-medium underline";
 
 type State =
   | { kind: "loading" }
@@ -174,9 +176,12 @@ function Group({
         {title} <span className="font-normal">({items.length})</span>
       </h2>
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-700 dark:text-zinc-300">{empty}</p>
+        <div className="flex items-center gap-4">
+          <EmptyPlate className="size-20 shrink-0" />
+          <p className="hint">{empty}</p>
+        </div>
       ) : (
-        <ul className="flex flex-col divide-y divide-zinc-300 rounded-lg border border-zinc-300 dark:divide-zinc-700 dark:border-zinc-700">
+        <ul className="flex flex-col divide-y divide-line rounded-lg border border-line ">
           {items.map((b) => (
             <li key={b.id} data-testid="booking-item" className="p-4">
               <p className="font-semibold [overflow-wrap:anywhere]">
@@ -191,7 +196,7 @@ function Group({
                 </Link>
               </p>
               {b.status !== "requested" && (
-                <p className="text-sm font-medium">
+                <p className={`${statusClass(b.status)} text-sm`}>
                   {CHEF_STATUS_TEXT[b.status]}
                 </p>
               )}

@@ -11,17 +11,17 @@
   height: 36px;
   border-radius: 9999px;
   border: 3px solid #ffffff;
-  background: #065f46;
+  background: #8e1f26;
   color: #ffffff;
   font:
-    700 14px/1 Arial,
-    Helvetica,
+    700 14px/1 var(--font-body),
+    system-ui,
     sans-serif;
   box-shadow: 0 1px 4px rgb(0 0 0 / 50%);
 }
 .cn-pin.cn-pin-active span {
-  background: #1e1b4b;
-  border-color: #fde047;
+  background: #2b211c;
+  border-color: #e3b54f;
   transform: scale(1.15);
 }
 .cn-pin:focus-visible span,
@@ -38,9 +38,12 @@
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  background: #b45309;
+  /* Bright orange (3.1:1 against the dark red pins); the white border plus the dark outer ring keep it 3:1+ against any map tile. */
+  background: #f97316;
   border: 3px solid #ffffff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 50%);
+  box-shadow:
+    0 0 0 2px #2b211c,
+    0 1px 4px rgb(0 0 0 / 50%);
 }
 /* Leaflet's default link blue is too light on its translucent white attribution bar. */
 .leaflet-container .leaflet-control-attribution,
@@ -49,4 +52,12 @@
 }
 .leaflet-container .leaflet-control-attribution {
   background: rgb(255 255 255 / 92%);
+}
+
+/* The map sits in a rounded frame on the paper. */
+.leaflet-container {
+  border-radius: 1rem;
+  border: 2px solid var(--line);
+  background: var(--sunken);
+  font-family: var(--font-body), system-ui, sans-serif;
 }

@@ -47,20 +47,18 @@ export function AccountBar() {
     setMe(null);
     router.push("/");
   }
-  const cls = "inline-flex min-h-11 items-center px-2 font-medium underline";
+  const cls =
+    "inline-flex min-h-11 items-center px-2 font-medium text-link underline underline-offset-4 hover:decoration-2";
   return (
     <nav
       aria-label="Account"
-      className="flex items-center justify-end gap-2 px-4 pt-2 text-sm"
+      className="flex flex-wrap items-center justify-end gap-x-1 gap-y-0 text-[0.9375rem]"
     >
       {isMockEnabled() && (
         <MockBadge className="mr-auto">MOCK API — no real data</MockBadge>
       )}
       {logoutError && (
-        <span
-          role="alert"
-          className="font-medium text-red-700 dark:text-red-400"
-        >
+        <span role="alert" className="font-bold text-danger">
           {logoutError}
         </span>
       )}

@@ -17,7 +17,7 @@ export function Star({
       height={size}
       aria-hidden="true"
       focusable="false"
-      className="shrink-0 text-emerald-800 dark:text-emerald-300"
+      className="shrink-0 text-success "
     >
       <path
         d={PATH}

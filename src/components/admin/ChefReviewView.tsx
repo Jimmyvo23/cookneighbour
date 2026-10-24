@@ -153,10 +153,7 @@ export function ChefReviewView({ id }: { id: string }) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8 [overflow-wrap:anywhere]">
       <p>
-        <Link
-          href="/admin/chefs"
-          className="font-medium text-emerald-800 underline dark:text-emerald-300"
-        >
+        <Link href="/admin/chefs" className="font-medium underline">
           Back to the chef applications
         </Link>
       </p>
@@ -166,10 +163,7 @@ export function ChefReviewView({ id }: { id: string }) {
 
       {view.kind === "loading" && <p role="status">Loading application...</p>}
       {view.kind === "error" && (
-        <div
-          role="alert"
-          className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
-        >
+        <div role="alert" className="alert-box">
           {view.message}
         </div>
       )}
@@ -201,20 +195,14 @@ export function ChefReviewView({ id }: { id: string }) {
             {flash}
           </p>
           {linksStale && (
-            <p
-              data-testid="links-stale"
-              className="rounded-md border border-amber-700 bg-amber-50 p-3 text-sm text-amber-950"
-            >
+            <p data-testid="links-stale" className="notice p-3 text-sm">
               The file links could not be renewed and may have expired. This
               page will try again in a moment; you can also use &quot;Reload
               application and file links&quot;.
             </p>
           )}
           {warning && (
-            <p
-              role="alert"
-              className="rounded-md border border-amber-700 bg-amber-50 p-3 text-sm text-amber-950"
-            >
+            <p role="alert" className="notice p-3 text-sm">
               {warning}
             </p>
           )}

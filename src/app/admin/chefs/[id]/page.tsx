@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { LoadingFallback } from "@/components/LoadingFallback";
 import { ChefReviewView } from "@/components/admin/ChefReviewView";
 
 // The admin-only guard for this page is in src/app/admin/layout.tsx. The page reads nothing on the
@@ -17,13 +18,7 @@ async function Review({
 
 export default function Page({ params }: PageProps<"/admin/chefs/[id]">) {
   return (
-    <Suspense
-      fallback={
-        <p className="p-4" role="status">
-          Loading...
-        </p>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <Review params={params} />
     </Suspense>
   );

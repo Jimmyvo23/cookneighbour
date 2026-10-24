@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { LoadingFallback } from "@/components/LoadingFallback";
 import { ChefBookingView } from "@/components/booking/ChefBookingView";
 import { requireChefPage } from "@/lib/server/page-guard";
 
@@ -20,13 +21,7 @@ async function Guarded({
 
 export default function Page({ params }: PageProps<"/chef/bookings/[id]">) {
   return (
-    <Suspense
-      fallback={
-        <p className="p-4" role="status">
-          Loading...
-        </p>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <Guarded params={params} />
     </Suspense>
   );

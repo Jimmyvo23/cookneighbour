@@ -28,8 +28,8 @@ export function ChefNav() {
             aria-current={current ? "page" : undefined}
             className={`inline-flex min-h-11 items-center rounded-md border-2 px-4 font-medium ${
               current
-                ? "border-emerald-800 bg-emerald-800 text-white underline underline-offset-4"
-                : "border-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                ? "border-primary bg-primary text-[var(--on-primary)] underline underline-offset-4"
+                : "border-edge hover:bg-sunken "
             }`}
           >
             {l.label}

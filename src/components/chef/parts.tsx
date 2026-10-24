@@ -5,13 +5,10 @@ import { ApiClientError } from "@/lib/api/client";
 import { isStateRefusal, useReportRefusal } from "@/components/refusal";
 import { describeError, type FieldErrors } from "@/lib/chef/form";
 
-export const cardCls =
-  "flex flex-col gap-4 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700";
-export const hintCls = "text-sm text-zinc-700 dark:text-zinc-300";
-export const buttonCls =
-  "min-h-11 rounded-md bg-emerald-800 px-4 font-semibold text-white hover:bg-emerald-900 disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
-export const secondaryButtonCls =
-  "min-h-11 rounded-md border-2 border-emerald-800 px-4 font-semibold text-emerald-900 hover:bg-emerald-50 disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 dark:text-emerald-200 dark:hover:bg-emerald-950";
+export const cardCls = "card flex flex-col gap-4 p-4";
+export const hintCls = "hint";
+export const buttonCls = "btn";
+export const secondaryButtonCls = "btn-secondary";
 
 export function Section({
   title,
@@ -112,11 +109,7 @@ export function Alert({ id, message }: { id: string; message: string | null }) {
       id={id}
       tabIndex={-1}
       role="alert"
-      className={
-        message
-          ? "rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
-          : "sr-only"
-      }
+      className={message ? "alert-box" : "sr-only"}
     >
       {message}
     </div>
@@ -127,11 +120,7 @@ export function Notice({ message }: { message: string | null }) {
   return (
     <p
       role="status"
-      className={
-        message
-          ? "text-sm font-medium text-emerald-900 dark:text-emerald-300"
-          : "sr-only"
-      }
+      className={message ? "text-sm font-medium text-success" : "sr-only"}
     >
       {message}
     </p>
@@ -157,7 +146,7 @@ export function TextAreaField({
       .join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label}
       </label>
       {hint && (
@@ -171,14 +160,11 @@ export function TextAreaField({
         rows={4}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className="rounded-md border border-zinc-400 bg-white px-3 py-2 text-base text-zinc-900 aria-[invalid=true]:border-red-700 dark:bg-zinc-900 dark:text-zinc-100"
+        className="control"
         {...input}
       />
       {error && (
-        <p
-          id={`${id}-error`}
-          className="text-sm font-medium text-red-700 dark:text-red-400"
-        >
+        <p id={`${id}-error`} className="error-text">
           {error}
         </p>
       )}
@@ -206,7 +192,7 @@ export function CheckboxRow({
   return (
     <label
       htmlFor={id}
-      className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-400 px-3 py-2"
+      className="flex min-h-11 items-center gap-3 rounded-md border border-edge px-3 py-2"
     >
       <input
         id={id}

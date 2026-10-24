@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useState } from "react";
+import { PotMark } from "@/components/Ornaments";
 import { ApiClientError, formatRetry } from "@/lib/api/client";
 import type { FieldErrors } from "@/lib/validation/auth";
 
@@ -22,14 +23,11 @@ export function TextField({
       .join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label}
       </label>
       {hint && (
-        <p
-          id={`${id}-hint`}
-          className="text-sm text-zinc-600 dark:text-zinc-400"
-        >
+        <p id={`${id}-hint`} className="hint">
           {hint}
         </p>
       )}
@@ -38,14 +36,11 @@ export function TextField({
         name={name}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className="min-h-11 rounded-md border border-zinc-400 bg-white px-3 text-base text-zinc-900 aria-[invalid=true]:border-red-700 dark:bg-zinc-900 dark:text-zinc-100"
+        className="control"
         {...input}
       />
       {error && (
-        <p
-          id={`${id}-error`}
-          className="text-sm font-medium text-red-700 dark:text-red-400"
-        >
+        <p id={`${id}-error`} className="error-text">
           {error}
         </p>
       )}
@@ -65,11 +60,7 @@ export function FormAlert({
       id={id}
       tabIndex={-1}
       role="alert"
-      className={
-        message
-          ? "rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
-          : "sr-only"
-      }
+      className={message ? "alert-box" : "sr-only"}
     >
       {message}
     </div>
@@ -79,16 +70,14 @@ export function FormAlert({
 export function SubmitButton({
   busy,
   children,
+  className = "",
 }: {
   busy: boolean;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <button
-      type="submit"
-      disabled={busy}
-      className="min-h-11 rounded-md bg-emerald-800 px-4 font-semibold text-white hover:bg-emerald-900 disabled:opacity-60"
-    >
+    <button type="submit" disabled={busy} className={`btn ${className}`}>
       {busy ? "Please wait..." : children}
     </button>
   );
@@ -102,9 +91,12 @@ export function Page({
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-4 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      {children}
+    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-8 sm:py-12">
+      <h1>{title}</h1>
+      <div className="recipe-card relative mt-6 flex flex-col gap-5 p-6 sm:p-8">
+        <PotMark className="absolute -top-14 right-6 size-20" />
+        {children}
+      </div>
     </main>
   );
 }

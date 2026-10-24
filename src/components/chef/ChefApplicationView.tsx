@@ -50,7 +50,7 @@ import {
   useSection,
 } from "@/components/chef/parts";
 
-const linkCls = "font-medium text-emerald-800 underline dark:text-emerald-300";
+const linkCls = "font-medium underline";
 
 // Wording of the two acknowledgements: confirmed by Jimmy as the prototype wording (D-14). It is
 // still not legal text; the UI says so next to each statement.
@@ -113,10 +113,7 @@ export function ChefApplicationView() {
         <p role="status">Loading your application...</p>
       )}
       {state.kind === "error" && (
-        <div
-          role="alert"
-          className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
-        >
+        <div role="alert" className="alert-box">
           {state.message}
         </div>
       )}
@@ -174,10 +171,10 @@ function StatusPanel({ app }: { app: ChefApplication }) {
   const v = statusView(app);
   const tone =
     v.kind === "approved"
-      ? "border-emerald-700 bg-emerald-50 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-100"
+      ? "border-primary bg-okbg text-ink "
       : v.kind === "rejected"
-        ? "border-red-700 bg-red-50 text-red-950 dark:bg-red-950 dark:text-red-100"
-        : "border-zinc-400 bg-zinc-50 text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100";
+        ? "border-danger bg-badbg text-ink "
+        : "border-edge bg-sunken text-ink ";
   return (
     <section
       aria-labelledby="status-heading"
@@ -390,10 +387,7 @@ function ProfileSection({
             review)
           </CheckboxRow>
           {e.locationOptions && (
-            <p
-              id="field-locationOptions-error"
-              className="text-sm font-medium text-red-700 dark:text-red-400"
-            >
+            <p id="field-locationOptions-error" className="error-text">
               {e.locationOptions}
             </p>
           )}
@@ -416,7 +410,7 @@ function ProfilePhoto({
   setApp: Setter;
 }) {
   return (
-    <div className="flex flex-col gap-2 border-t border-zinc-300 pt-4 dark:border-zinc-700">
+    <div className="flex flex-col gap-2 border-t border-line pt-4 ">
       <h3 className="font-medium">Profile photo</h3>
       <p className={hintCls}>
         {app.photoPath ? "A profile photo is saved." : "No profile photo yet."}{" "}
@@ -589,7 +583,7 @@ function KitchenSection({
         <Notice message={addr.notice} />
       </form>
 
-      <div className="flex flex-col gap-2 border-t border-zinc-300 pt-4 dark:border-zinc-700">
+      <div className="flex flex-col gap-2 border-t border-line pt-4 ">
         <h3 id="kitchen-photos-heading" tabIndex={-1} className="font-medium">
           Kitchen photos ({paths.length} of 10)
         </h3>
@@ -657,7 +651,7 @@ function KitchenSection({
         />
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-zinc-300 pt-4 dark:border-zinc-700">
+      <div className="flex flex-col gap-2 border-t border-line pt-4 ">
         <h3 className="flex flex-wrap items-center gap-2 font-medium">
           Kitchen hygiene acknowledgement <MockBadge>MOCK</MockBadge>
         </h3>
@@ -891,7 +885,7 @@ function UploadControl({
       }}
     >
       <Alert id={s.alertId} message={s.error} />
-      <label htmlFor={inputId} className="text-sm font-medium">
+      <label htmlFor={inputId} className="font-bold">
         {label}
       </label>
       <p id={hintId} className={hintCls}>

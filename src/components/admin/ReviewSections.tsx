@@ -204,10 +204,10 @@ export function ApplicationSection({ detail }: { detail: AdminChefDetail }) {
 // ---------------------------------------------------------------------------
 function DocFile({ row }: { row: DocRow }) {
   return (
-    <li className="flex flex-col gap-2 rounded-md border border-zinc-300 p-3 dark:border-zinc-700">
+    <li className="flex flex-col gap-2 rounded-xl border-2 border-line p-3 ">
       <p className="font-medium">
         {row.label}{" "}
-        <span className="font-normal text-zinc-700 dark:text-zinc-300">
+        <span className="font-normal text-muted ">
           (file {fileName(row.path)})
         </span>
       </p>
@@ -219,23 +219,20 @@ function DocFile({ row }: { row: DocRow }) {
             <img
               src={row.url}
               alt={`${row.label} uploaded by the chef`}
-              className="max-h-72 w-full rounded-md border border-zinc-300 object-contain"
+              className="max-h-72 w-full rounded-xl border-2 border-line object-contain"
             />
           )}
           <a
             href={row.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-emerald-800 underline dark:text-emerald-300"
+            className="font-medium underline"
           >
             Open {row.label} in a new tab
           </a>
         </>
       ) : (
-        <p
-          data-testid="doc-unavailable"
-          className="rounded-md border border-amber-700 bg-amber-50 p-2 text-sm text-amber-950"
-        >
+        <p data-testid="doc-unavailable" className="notice p-2 text-sm">
           Not available: the application lists this file but the server could
           not give you a link to it, so it may be missing from storage. Try
           reloading. You cannot mark it verified until you have opened it.
@@ -308,13 +305,13 @@ function CheckSelect({
       .filter(Boolean)
       .join(" ") || undefined;
   return (
-    <li className="flex flex-col gap-1 rounded-md border border-zinc-300 p-3 dark:border-zinc-700">
+    <li className="flex flex-col gap-1 rounded-xl border-2 border-line p-3 ">
       <p className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{label}</span>
         <MockBadge>MOCK</MockBadge>
         <span>Now: {checkStatusLabel(current)}</span>
       </p>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="font-bold">
         {label} result to record
       </label>
       {hint && (
@@ -329,7 +326,7 @@ function CheckSelect({
         aria-invalid={error ? true : undefined}
         aria-describedby={described}
         onChange={(e) => onChange(e.target.value as MockCheckStatus)}
-        className="min-h-11 rounded-md border border-zinc-400 bg-white px-3 text-base text-zinc-900 aria-[invalid=true]:border-red-700 disabled:opacity-60 dark:bg-zinc-900 dark:text-zinc-100"
+        className="min-h-11 control disabled:opacity-60"
       >
         {STATUS_OPTIONS.map((o) => (
           <option key={o} value={o}>
@@ -338,10 +335,7 @@ function CheckSelect({
         ))}
       </select>
       {error && (
-        <p
-          id={`${id}-error`}
-          className="text-sm font-medium text-red-700 dark:text-red-400"
-        >
+        <p id={`${id}-error`} className="error-text">
           {error}
         </p>
       )}

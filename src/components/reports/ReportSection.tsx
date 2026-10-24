@@ -211,7 +211,7 @@ function ReportCard({ r }: { r: ReportView }) {
   return (
     <div
       data-testid="report-card"
-      className="flex flex-col gap-1 rounded-md border border-zinc-300 p-3 [overflow-wrap:anywhere] dark:border-zinc-700"
+      className="flex flex-col gap-1 rounded-xl border-2 border-line p-3 [overflow-wrap:anywhere] "
     >
       <p className="font-semibold" data-testid="report-status">
         <span className="sr-only">Status: </span>
@@ -328,7 +328,7 @@ function ReportForm({
         {error}
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor={catId} className="text-sm font-medium">
+        <label htmlFor={catId} className="font-bold">
           What is it about?
         </label>
         <select
@@ -353,7 +353,7 @@ function ReportForm({
         )}
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor={descId} className="text-sm font-medium">
+        <label htmlFor={descId} className="font-bold">
           What happened?
         </label>
         <textarea
@@ -366,14 +366,7 @@ function ReportForm({
           aria-describedby={`${countId}${fields.description ? ` ${descId}-error` : ""}`}
           className={`${inputCls} py-2`}
         />
-        <p
-          id={countId}
-          className={
-            over
-              ? "text-sm font-semibold text-red-800 dark:text-red-300"
-              : hintCls
-          }
-        >
+        <p id={countId} className={over ? "error-text" : hintCls}>
           {used} of {DESCRIPTION_MAX} characters
           {over ? ` (${used - DESCRIPTION_MAX} too many)` : ""}
         </p>

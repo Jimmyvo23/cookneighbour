@@ -180,7 +180,7 @@ export function ReviewSection({
             <button
               type="button"
               onClick={() => void load()}
-              className="min-h-11 rounded-md border-2 border-emerald-800 px-4 font-semibold text-emerald-900 hover:bg-emerald-50 dark:text-emerald-200 dark:hover:bg-emerald-950"
+              className="btn-secondary"
             >
               Try loading the reviews again
             </button>
@@ -215,7 +215,7 @@ function ReviewCard({
   return (
     <div
       data-testid={testId}
-      className="flex flex-col gap-1 rounded-md border border-zinc-300 p-3 [overflow-wrap:anywhere] dark:border-zinc-700"
+      className="flex flex-col gap-1 rounded-xl border-2 border-line p-3 [overflow-wrap:anywhere] "
     >
       <h3 className="font-semibold">{title}</h3>
       <p>
@@ -420,7 +420,7 @@ function ReviewForm({
                 onChange={() => setRating(n)}
                 className="peer absolute inset-0 size-full cursor-pointer opacity-0"
               />
-              <span className="flex min-h-11 min-w-14 items-center justify-center gap-1 rounded-md border-2 border-zinc-500 bg-white px-3 font-semibold peer-checked:border-emerald-800 peer-checked:bg-emerald-50 peer-checked:ring-2 peer-checked:ring-emerald-800 peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-800 dark:bg-zinc-900 dark:peer-checked:bg-emerald-950">
+              <span className="flex min-h-11 min-w-14 items-center justify-center gap-1 rounded-md border-2 border-edge bg-surface px-3 font-semibold peer-checked:border-primary peer-checked:bg-tint peer-checked:ring-2 peer-checked:ring-primary peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--focus)] ">
                 {n}
                 <Star filled={rating === n} size={16} />
                 <span className="sr-only">{n === 1 ? "star" : "stars"}</span>
@@ -436,7 +436,7 @@ function ReviewForm({
       </fieldset>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={commentId} className="text-sm font-medium">
+        <label htmlFor={commentId} className="font-bold">
           Comment (optional)
         </label>
         <textarea
@@ -452,11 +452,7 @@ function ReviewForm({
         <p
           id={countId}
           data-testid="review-count"
-          className={
-            over
-              ? "text-sm font-semibold text-red-800 dark:text-red-300"
-              : hintCls
-          }
+          className={over ? "error-text" : hintCls}
         >
           {used} of {COMMENT_MAX} characters
           {over ? ` (${used - COMMENT_MAX} too many)` : ""}

@@ -131,7 +131,7 @@ export function useBookingRefusals(
       // (T-083 NIT-B, T-052).
       aria-atomic="false"
       data-testid="refusal"
-      className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100"
+      className="alert-box"
     >
       {shownText}
       {last.shown === null ? null : (

@@ -126,14 +126,14 @@ export function ChefQueueView() {
       <h1 className="text-2xl font-semibold tracking-tight">
         Chef applications
       </h1>
-      <p className="text-sm text-zinc-700 dark:text-zinc-300">
+      <p className="hint">
         <MockBadge>MOCK</MockBadge> Every check result in this prototype is
         recorded by an admin by hand. Nothing is really verified.
       </p>
 
       <form
         aria-label="Filter applications"
-        className="flex flex-wrap items-end gap-4 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700"
+        className="card flex flex-wrap items-end gap-4 p-4"
         onSubmit={(e) => e.preventDefault()}
       >
         <div className="flex flex-col gap-1">
@@ -149,7 +149,7 @@ export function ChefQueueView() {
                 status: e.target.value as StatusFilter,
               })
             }
-            className="min-h-11 rounded-md border border-zinc-400 bg-white px-3 text-base text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+            className="control"
           >
             {STATUS_FILTERS.map((s) => (
               <option key={s.value} value={s.value}>
@@ -160,7 +160,7 @@ export function ChefQueueView() {
         </div>
         <label
           htmlFor="filter-checks"
-          className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-400 px-3 py-2"
+          className="flex min-h-11 items-center gap-3 rounded-md border border-edge px-3 py-2"
         >
           <input
             id="filter-checks"
@@ -242,25 +242,19 @@ const failedLabel = (k: string) => FAILED_LABELS[k] ?? k;
 function QueueItem({ item }: { item: AdminChefListItem }) {
   const homeOffered = item.locationOptions.includes("chef_home");
   return (
-    <li
-      data-testid="queue-item"
-      className="flex flex-col gap-2 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700"
-    >
+    <li data-testid="queue-item" className="card flex flex-col gap-2 p-4">
       <h2 className="text-lg font-semibold">
         <Link
           data-chef-link
           href={`/admin/chefs/${item.id}`}
-          className="text-emerald-800 underline dark:text-emerald-300"
+          className="underline"
         >
           {item.displayName}
           <span className="sr-only"> (open application)</span>
         </Link>
       </h2>
       {item.flagged && (
-        <p
-          data-testid="queue-flag"
-          className="rounded-md border border-amber-700 bg-amber-50 p-2 text-sm text-amber-950"
-        >
+        <p data-testid="queue-flag" className="notice p-2 text-sm">
           <strong>Needs a look:</strong> approved, but a check failed (
           <MockBadge>MOCK</MockBadge>{" "}
           {item.failedChecks.map(failedLabel).join(", ")}
