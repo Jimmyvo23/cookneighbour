@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// T-069 fix round 2 (R1), MOCK mode: the keyboard focus ring on the dark-red hero must have at least
+// T-069 fix round 2 (R1), MOCK mode: the keyboard focus ring on the clay hero must have at least
 // 3:1 contrast (WCAG 1.4.11) in light and dark mode. Everything is made up.
 function lum(rgb: number[]) {
   const [r, g, b] = rgb.map((v) => {

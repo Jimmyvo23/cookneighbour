@@ -3,7 +3,7 @@ import { blockStorage, hideDevOverlay, PNG } from "./helpers";
 
 // T-069 recheck 2 (Tester), MOCK mode: Tab through EVERY focusable element inside .hero and .band on
 // every page that has them (home, search, chef detail), light and dark, 375 and 1280 px, and measure
-// the real outline pixels against the real pixels behind them (the red cloth and the gingham squares).
+// the real outline pixels against the real pixels behind them (the clay wash behind them; the gingham pattern was removed in T-126 v2).
 // WCAG 1.4.11 needs 3:1. Everything is made up.
 const MAI = "00000000-0000-4000-8000-000000001001";
 const PAGES = ["/", "/search", `/chefs/${MAI}`];
