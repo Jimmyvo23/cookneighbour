@@ -1,0 +1,107 @@
+<style>
+.opt { border-radius:16px; overflow:hidden; border:1px solid #e6d6c4; background:#faf3ea; color:#2a1d15; margin: 6px 0 4px; }
+.opt .grid { display:grid; grid-template-columns: 1fr 1.25fr; }
+.opt .copy { padding: 26px; }
+.opt .copy.center { text-align:center; padding: 30px 26px 10px; }
+.opt .copy.center .brand { justify-content:center; }
+.opt .brand { display:flex; align-items:center; gap:8px; font: 800 17px/1 system-ui; margin-bottom: 14px; }
+.opt h4 { font: 800 32px/1.08 system-ui; letter-spacing:-.6px; margin:0 0 10px; }
+.opt p { font: 17px/1.5 system-ui; color:#5d4a3d; margin:0 0 18px; }
+.opt .btn { display:inline-block; color:#fff; font: 700 15px system-ui; padding: 13px 20px; border-radius: 10px; }
+.opt .link { display:inline-block; margin-left: 16px; font: 700 15px system-ui; color:#2a1d15; text-decoration: underline; text-underline-offset: 4px; }
+.opt .right { display:flex; flex-direction:column; justify-content:center; padding: 16px; }
+.opt .tip { font: 700 15px system-ui; text-align:center; margin: 4px 0 6px; color:#2a1d15; }
+.opt .scene { display:block; width:100%; height:auto; }
+.opt .art svg { display:block; width:100%; height:auto; }
+.opt .card { margin: 10px auto 14px; width: 86%; min-height: 64px; background:#fff; border-radius: 14px; box-shadow: 0 6px 20px rgb(0 0 0 / 10%); padding: 12px 16px; font: 15px/1.4 system-ui; color:#5d4a3d; }
+.opt .card b { color:#2a1d15; font-size: 17px; }
+.opt .demo { display:inline-block; margin-left: 8px; font: 800 11px system-ui; color:#4a2f00; background:#fbebc6; border:2px solid #8a5a00; border-radius: 6px; padding: 3px 8px; vertical-align: 2px; }
+.opt .mapl { font: 700 14px system-ui; fill:#5d4a3d; }
+.opt .pot { cursor:pointer; outline:none; }
+.opt .pot .lid { transform-box: fill-box; transform-origin: 85% 100%; transition: transform .45s cubic-bezier(.2,1.5,.4,1); }
+.opt .pot .steam { opacity:0; transition: opacity .3s .1s; }
+.opt .pot .bubble { opacity:0; transform: translateY(16px) scale(.6); transform-box: fill-box; transform-origin: center bottom; transition: transform .5s cubic-bezier(.2,1.5,.4,1) .08s, opacity .2s .08s; }
+.opt .pot:hover .lid, .opt .pot:focus-visible .lid, .opt .pot.on .lid { transform: translate(10px,-22px) rotate(18deg); }
+.opt .pot:hover .steam, .opt .pot:focus-visible .steam, .opt .pot.on .steam { opacity:1; }
+.opt .pot:hover .bubble, .opt .pot:focus-visible .bubble, .opt .pot.on .bubble { opacity:1; transform: none; }
+.opt .flame { transform-box: fill-box; transform-origin: center bottom; animation: flick 1.4s ease-in-out infinite alternate; }
+@keyframes flick { from { transform: scaleY(.85); } to { transform: scaleY(1.08); } }
+@media (prefers-reduced-motion: reduce) { .opt .flame { animation:none; } .opt .pot * { transition:none !important; } }
+.oa { --coral:#a5482a; --hob:#2b2d31; --flame:#3d8bff; --flame2:#8fc3ff; --teal:#3d6b5c; --clay:#c66a3d; --steel:#7a8793; }
+.oa .brand { color:#a5482a; } .oa .btn { background:#a5482a; } .oa .right { background:#fff6ec; }
+.ob { --coral:#d9573b; --hob:#2b2d31; --flame:#3d8bff; --flame2:#8fc3ff; --teal:#2f6f4f; --clay:#c66a3d; --steel:#7a8793; background:#f3f7f1; }
+.ob .scene { max-width: 720px; margin: 0 auto; }
+.ob .brand { color:#2f6f4f; } .ob .btn { background:#2f6f4f; } .ob .card { width: 60%; }
+.oc { --coral:#a5482a; --hob:#2b2d31; --flame:#3d8bff; --flame2:#8fc3ff; --teal:#3d6b5c; --clay:#c66a3d; --steel:#7a8793; }
+.oc .brand { color:#a5482a; } .oc .btn { background:#a5482a; } .oc .right { background:#f8ebdd; } .oc .art { background:#f3e4d3; }
+.optlabel { font: 800 20px system-ui; margin: 28px 0 2px; }
+.optnote { font: 15px/1.45 system-ui; color:#555; margin: 0 0 6px; }
+
+.table g { transform-box: fill-box; transform-origin: center; }
+.table .steamT { opacity:0; transform: translateY(10px); transition: opacity .4s, transform .9s ease-out; }
+.table .centre { transition: transform .9s cubic-bezier(.2,1.2,.4,1); }
+.table .chop { transform-origin: 0% 100%; transition: transform .5s cubic-bezier(.2,1.6,.4,1) .1s; }
+.table .spoon, .table .fork { transition: transform .5s cubic-bezier(.2,1.6,.4,1); }
+.art:hover .table .steamT { opacity:1; transform:none; }
+.art:hover .table .centre { transform: rotate(14deg); }
+.art:hover .table .bob { animation: bob .7s ease-in-out 2; }
+.art:hover .table .b2 { animation-delay: .12s; } .art:hover .table .b3 { animation-delay: .24s; }
+.art:hover .table .chop { transform: translate(18px,-14px) rotate(-12deg); }
+.art:hover .table .spoon { transform: translateX(-6px) rotate(-6deg); }
+.art:hover .table .fork { transform: translateX(6px) rotate(6deg); }
+@keyframes bob { 0%,100% { transform:none; } 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .table * { transition:none !important; animation:none !important; } }
+.opt .brand { cursor:pointer; }
+.opt .brand .lidL { transform-box: fill-box; transform-origin: 85% 100%; transition: transform .45s cubic-bezier(.2,1.6,.4,1); }
+.opt .brand .steamL { opacity:0; transition: opacity .3s .1s; }
+.opt .brand:hover .lidL { transform: translate(3px,-6px) rotate(16deg); }
+.opt .brand:hover .steamL { opacity:1; }
+.opt .badge { display:inline-block; font: 800 11px system-ui; color:#4a2f00; background:#fbebc6; border:2px solid #8a5a00; border-radius:6px; padding:2px 6px; margin-bottom:10px; }
+.opt .btn { background:#a5482a; } .opt .btn:hover { background:#8f3d22; }
+@media (max-width: 700px) {
+  .opt .grid { grid-template-columns: 1fr; }
+  .opt .left { display:flex; flex-direction:column; }
+  .opt .left .art { order:2; }
+  .opt .left .copy { order:1; padding:22px 18px; }
+  .opt h4 { font-size:28px; }
+  .opt .link { display:block; margin:14px 0 0; }
+}
+</style><h2>Demo: Version 2 home page (clay pot colours)</h2><p class="subtitle">Not the real site yet, just a demo of the spec. Try: hover the pot logo (lid pops), hover the table (steam, bowls bob), hover, click or Tab to a pot on the map (dish card shows).</p>
+<div class="opt oc"><div class="grid"><div class="left"><div class="art"><svg viewBox="0 0 400 210" class="table" role="img" aria-label="A family table seen from above with shared dishes, chopsticks, a spoon and a fork">
+<rect x="0" y="0" width="400" height="210" fill="#f3e4d3"/>
+<rect x="30" y="20" width="340" height="170" rx="22" fill="#e9c9a3"/>
+<g class="steamT"><path d="M186 52c-7-9 7-12 0-22M200 50c-7-9 7-12 0-22M214 52c-7-9 7-12 0-22" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+<g class="centre"><circle cx="200" cy="105" r="46" fill="#fff"/><circle cx="200" cy="105" r="34" fill="#f2b544"/><g fill="#f5e1cf"><circle cx="190" cy="98" r="6"/><circle cx="208" cy="112" r="6"/><circle cx="196" cy="116" r="5"/></g></g>
+<g class="bob b1"><circle cx="96" cy="70" r="28" fill="#fff"/><circle cx="96" cy="70" r="20" fill="#a5482a"/></g>
+<g class="bob b2"><circle cx="300" cy="62" r="22" fill="#fff"/><circle cx="300" cy="62" r="15" fill="#c66a3d"/></g>
+<g class="bob b3"><circle cx="304" cy="140" r="28" fill="#fff"/><circle cx="304" cy="140" r="20" fill="#3d6b5c"/></g>
+<g class="chop"><path d="M70 130l44 30M78 124l44 30" stroke="#8a5a2b" stroke-width="5" stroke-linecap="round"/></g>
+<g class="spoon"><path d="M136 168h40" stroke="#9aa3a8" stroke-width="6" stroke-linecap="round"/><ellipse cx="128" cy="168" rx="10" ry="7" fill="#9aa3a8"/></g>
+<g class="fork"><path d="M226 172h44" stroke="#9aa3a8" stroke-width="5" stroke-linecap="round"/><path d="M226 166v12M219 166v12" stroke="#9aa3a8" stroke-width="3" stroke-linecap="round"/></g>
+</svg></div><div class="copy "><div class="brand"><svg class="hp" width="30" height="30" viewBox="0 -8 52 56" aria-hidden="true" style="overflow:visible"><g class="steamL"><path d="M22 6c-3-4 3-5 0-9M30 5c-3-4 3-5 0-9" stroke="#c98a3a" stroke-width="3" fill="none" stroke-linecap="round"/></g><g class="lidL"><rect x="8" y="14" width="36" height="6" rx="3" fill="currentColor"/><rect x="22" y="9" width="8" height="6" rx="3" fill="currentColor"/></g><path d="M10 22h32v14a10 10 0 0 1-10 10H20a10 10 0 0 1-10-10Z" fill="currentColor"/><rect x="3" y="25" width="8" height="5" rx="2.5" fill="currentColor"/><rect x="41" y="25" width="8" height="5" rx="2.5" fill="currentColor"/><path d="M20 32c2 3 10 3 12 0" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>CookNeighbour</div><span class="badge">PROTOTYPE</span><h4>Miss your mom's cooking?</h4><p>A grandma or mom near you cooks the food you grew up with, in your kitchen or hers. For less than eating out every day.</p><span class="btn">Find a home cook</span><span class="link">I love to cook</span></div></div><div class="right"><p class="tip">Tap a pot on the map: who is cooking near you?</p><svg viewBox="0 0 520 330" class="scene"><rect width="520" height="330" fill="#f8ebdd"/>
+<path d="M0 262 C120 240 230 290 340 262 S470 250 520 268 V330 H0Z" fill="#bcd3f5"/>
+<text x="400" y="306" class="mapl" fill="#4d6aa8">Lake Ontario</text>
+<path d="M30 70 C150 110 230 60 360 120 S470 150 510 140" stroke="#ffffff" stroke-width="10" fill="none" stroke-linecap="round"/>
+<path d="M140 20 C160 120 170 200 200 250" stroke="#ffffff" stroke-width="10" fill="none" stroke-linecap="round"/>
+<path d="M330 30 C320 120 340 190 360 250" stroke="#ffffff" stroke-width="8" fill="none" stroke-linecap="round"/>
+<ellipse cx="420" cy="200" rx="38" ry="22" fill="#dfe8d8"/>
+<text x="150" y="246" class="mapl">Mississauga</text><text x="150" y="112" class="mapl">Brampton</text><text x="388" y="168" class="mapl">Toronto</text><ellipse cx="120" cy="216" rx="34" ry="8" fill="#e9d3bb"/><g class="pot" tabindex="0" role="button" aria-label="Pho bo by Chef Lan (demo)" data-card="1" transform="translate(120 214) scale(0.5) translate(-122 -194)">
+              <g><path class="flame" d="M96 196c-5-6 0-12 4-16 0 6 6 8 4 14-1 2-6 4-8 2Z" fill="var(--flame)"/><path class="flame" d="M118 196c-5-6 0-12 4-16 0 6 6 8 4 14-1 2-6 4-8 2Z" fill="var(--flame2)"/><path class="flame" d="M140 196c-5-6 0-12 4-16 0 6 6 8 4 14-1 2-6 4-8 2Z" fill="var(--flame)"/></g>
+              <rect x="70" y="110" width="104" height="84" rx="16" fill="var(--coral)"/>
+              <rect x="60" y="126" width="14" height="10" rx="5" fill="#8f3d22"/><rect x="170" y="126" width="14" height="10" rx="5" fill="#8f3d22"/>
+              <g class="steam"><path d="M104 92c-8-10 8-14 0-26M124 90c-8-10 8-14 0-26M144 92c-8-10 8-14 0-26" stroke="#bdbdbd" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+              <g class="lid"><rect x="64" y="100" width="116" height="14" rx="7" fill="#8f3d22"/><rect x="112" y="90" width="20" height="12" rx="6" fill="#8f3d22"/></g>
+              <g class="bubble"><circle cx="122" cy="44" r="38" fill="#fff"/><circle cx="122" cy="44" r="30" fill="#f6dfb4"/><path d="M100 40c7 5 14-5 22 0s15-5 22 0M100 50c7 5 14-5 22 0s15-5 22 0" stroke="#e6c27f" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="110" cy="30" rx="6" ry="3" fill="#6f9a6a"/><ellipse cx="134" cy="58" rx="6" ry="3" fill="#6f9a6a"/><rect x="126" y="26" width="10" height="7" rx="2" fill="#b0674a"/></g>
+              </g><ellipse cx="260" cy="130" rx="34" ry="8" fill="#e9d3bb"/><g class="pot" tabindex="0" role="button" aria-label="Chole and roti by Chef Harpreet (demo)" data-card="2" transform="translate(260 128) scale(0.45) translate(-386 -196)">
+              <g><path class="flame" d="M362 196c-5-6 0-12 4-16 0 6 6 8 4 14-1 2-6 4-8 2Z" fill="var(--flame)"/><path class="flame" d="M384 196c-5-6 0-12 4-16 0 6 6 8 4 14-1 2-6 4-8 2Z" fill="var(--flame2)"/><path class="flame" d="M406 196c-5-6 0-12 4-16 0 6 6 8 4 14-1 2-6 4-8 2Z" fill="var(--flame)"/></g>
+              <path d="M320 150h132c-4 30-30 46-66 46s-62-16-66-46Z" fill="var(--steel)"/>
+              <path d="M306 152c0-10 14-10 14-2M466 152c0-10-14-10-14-2" stroke="#5c6772" stroke-width="6" fill="none" stroke-linecap="round"/>
+              <g class="steam"><path d="M366 128c-8-10 8-14 0-26M386 126c-8-10 8-14 0-26M406 128c-8-10 8-14 0-26" stroke="#bdbdbd" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+              <g class="lid"><path d="M322 150c10-22 118-22 128 0Z" fill="#5c6772"/><rect x="376" y="126" width="20" height="10" rx="5" fill="#46505a"/></g>
+              <g class="bubble"><circle cx="386" cy="76" r="38" fill="#fff"/><circle cx="386" cy="76" r="30" fill="#d9822b"/><g fill="#f4d48a"><circle cx="374" cy="68" r="5"/><circle cx="390" cy="64" r="5"/><circle cx="398" cy="80" r="5"/><circle cx="380" cy="86" r="5"/><circle cx="388" cy="76" r="5"/></g><ellipse cx="372" cy="94" rx="6" ry="3" fill="#6f9a6a"/></g></g><ellipse cx="420" cy="214" rx="34" ry="8" fill="#e9d3bb"/><g class="pot" tabindex="0" role="button" aria-label="Brown stew fish by Chef Devon (demo)" data-card="3" transform="translate(420 212) scale(0.42) translate(-190 -212)">
+              <path class="flame" d="M150 206c-4-5 0-10 3-13 0 5 5 7 3 11-1 2-5 3-6 2Z" fill="var(--flame)"/>
+              <rect x="120" y="150" width="140" height="62" rx="20" fill="var(--teal)"/>
+              <rect x="108" y="166" width="16" height="12" rx="6" fill="#335a4d"/><rect x="256" y="166" width="16" height="12" rx="6" fill="#335a4d"/>
+              <g class="steam"><path d="M168 132c-8-10 8-14 0-26M190 130c-8-10 8-14 0-26M212 132c-8-10 8-14 0-26" stroke="#bdbdbd" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+              <g class="lid"><path d="M114 152c4-18 148-18 152 0Z" fill="#335a4d"/><rect x="180" y="128" width="20" height="10" rx="5" fill="#2c4f43"/></g>
+              <g class="bubble"><circle cx="190" cy="80" r="38" fill="#fff"/><circle cx="190" cy="80" r="30" fill="#a8532e"/><path d="M168 80c14-14 34-14 44 0-10 12-30 12-44 0Z" fill="#e7b48a"/><path d="M212 80l9-7v14Z" fill="#e7b48a"/><circle cx="178" cy="78" r="2.5" fill="#5b2a14"/><ellipse cx="196" cy="98" rx="5" ry="3" fill="#6f9a6a"/></g></g></svg><div class="card" aria-live="polite"><b>Neighbours are cooking.</b><br>Pick a pot to see the dish, the cook and how long it takes.</div></div></div></div><script>(function(){var cards={"1": "<b>Pho bo</b><span class=\"demo\">DEMO</span><br>Chef Lan (demo) \u00b7 Mississauga \u00b7 about 4 h", "2": "<b>Chole and roti</b><span class=\"demo\">DEMO</span><br>Chef Harpreet (demo) \u00b7 Brampton \u00b7 about 1.5 h", "3": "<b>Brown stew fish</b><span class=\"demo\">DEMO</span><br>Chef Devon (demo) \u00b7 Toronto \u00b7 about 1 h 10 min", "4": "<b>Ca kho to (caramelized fish in clay pot)</b><span class=\"demo\">DEMO</span><br>Chef Lan (demo) \u00b7 Mississauga \u00b7 about 1 h 15 min"};document.querySelectorAll('.opt').forEach(function(o){var card=o.querySelector('.card'),pots=o.querySelectorAll('.pot');function show(p){pots.forEach(function(x){x.classList.toggle('on',x===p);});card.innerHTML=cards[p.getAttribute('data-card')];}pots.forEach(function(p){['mouseenter','focus','click'].forEach(function(ev){p.addEventListener(ev,function(){show(p);});});p.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();show(p);}});});});})();</script>

@@ -3,7 +3,7 @@ import { blockStorage, hideDevOverlay, PNG } from "./helpers";
 
 // T-069 recheck 2 (Tester), MOCK mode: Tab through EVERY focusable element inside .hero and .band on
 // every page that has them (home, search, chef detail), light and dark, 375 and 1280 px, and measure
-// the real outline pixels against the real pixels behind them (the red cloth and the gingham squares).
+// the real outline pixels against the real pixels behind them (the clay wash behind them; the gingham pattern was removed in T-126 v2).
 // WCAG 1.4.11 needs 3:1. Everything is made up.
 const MAI = "00000000-0000-4000-8000-000000001001";
 const PAGES = ["/", "/search", `/chefs/${MAI}`];
@@ -55,7 +55,9 @@ async function sampler(page: Page) {
             .getImageData(px, py, 1, 1)
             .data.slice(0, 3),
         ),
-      [Math.round(x), Math.round(y)],
+      // floor, not round: pixel N covers N to N+1, so a point at 424.5 is in pixel 424 (T-126 v2: a
+      // fractional pot box exposed the old rounding, which sampled the ring's edge pixel).
+      [Math.floor(x), Math.floor(y)],
     );
   return { read, close: () => helper.close() };
 }
@@ -70,6 +72,21 @@ for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme });
         await page.goto(path);
         await expect(page.locator("h1").first()).toBeVisible();
+        // The header grows (about 59 px at 375) a moment after hydration, on main too. Measure the
+        // ring only once the layout holds still, or the sampler reads a stale position under load.
+        await page.waitForFunction(
+          () => {
+            const w = window as unknown as { __hdr?: number };
+            const now = document
+              .querySelector("header")
+              ?.getBoundingClientRect().height;
+            const same = w.__hdr === now;
+            w.__hdr = now;
+            return same;
+          },
+          null,
+          { polling: 250 },
+        );
         // Lists every focusable (tabbable) element inside the cloth, in DOM terms.
         const expected = await page.evaluate(
           () =>
@@ -89,7 +106,13 @@ for (const scheme of ["light", "dark"] as const) {
             const r = el.getBoundingClientRect();
             const cs = getComputedStyle(el);
             return {
-              name: el.tagName + (el.textContent ?? "").slice(0, 20),
+              // The home pots have no text, only an aria-label (T-126 v2), so name them by it.
+              name:
+                el.tagName +
+                (el.getAttribute("aria-label") ?? el.textContent ?? "").slice(
+                  0,
+                  30,
+                ),
               x: r.left,
               y: r.top,
               w: r.width,

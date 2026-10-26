@@ -1,37 +1,37 @@
 @import "tailwindcss";
 
 /*
- * "Grandma's table" design tokens (T-069, Jimmy's choice 2026-10-23).
- * A soft paper page, ink text, a deep red for actions and a gold for small touches, like a family
- * recipe book. Light mode is cream paper; dark mode is a warm deep brown, never pure black.
+ * Clay pot (kho to) design tokens (T-126 v2, Jimmy 2026-10-26). They replace the red "Grandma's
+ * table" values of T-069 and keep the same token names, so every page recolours from this file.
+ * Terracotta for actions, caramel for small touches, herb green, on warm paper. Calm on purpose:
+ * no gingham, stripes, lace or other pattern anywhere. Dark mode is "clay at night", never pure black.
  *
- * Every text and control pair below was measured against WCAG 2.2 AA (4.5:1 text, 3:1 controls and
- * focus). The numbers are in .team/handoffs/T-069-frontend.md. Gold fill on paper is only about
- * 2.4:1, so gold is decoration there and never carries text or meaning; gold text uses
- * --goldtext, a darker gold.
+ * Every text and control pair is measured against WCAG 2.2 AA (4.5:1 text, 3:1 controls and focus)
+ * by src/app/theme-contrast.test.ts. Caramel (--gold) on paper is only about 2.7:1, so it is
+ * decoration and never carries text; caramel text uses --goldtext, a darker brown.
  */
 :root {
   /* surfaces */
-  --paper: #fbf6ec;
-  --surface: #fffdf8;
+  --paper: #faf3ea;
+  --surface: #fffaf3;
   --sunken: #f3eada;
   /* text */
-  --ink: #2b211c;
-  --muted: #5e4f46;
+  --ink: #2a1d15;
+  --muted: #5d4a3d;
   /* lines: --line is decoration only; --edge (3:1) draws every control */
-  --line: #dccdb4;
+  --line: #e6d6c4;
   --edge: #8a7560;
   /* actions */
-  --primary: #8e1f26;
-  --primary-hover: #741820;
-  --on-primary: #fff8ee;
-  --link: #8e1f26;
-  --tint: #f6e6df; /* a faint red wash for a selected card */
+  --primary: #a5482a;
+  --primary-hover: #8f3d22;
+  --on-primary: #ffffff;
+  --link: #8f3d22;
+  --tint: #f6e6df; /* a faint clay wash for a selected card */
   /* gold */
-  --gold: #c99a2e;
-  --goldtext: #7a5a0e;
+  --gold: #c98a3a;
+  --goldtext: #7a4a12;
   --on-gold: #2b211c;
-  --gold-wash: #f6ead0;
+  --gold-wash: #f5e1cf;
   /* meaning */
   --success: #2f6b3a;
   --success-bg: #e6f0e3;
@@ -47,25 +47,39 @@
   --focus: #1f4e8c;
   --shadow: 0 1px 2px rgb(74 47 20 / 8%), 0 6px 18px -6px rgb(74 47 20 / 18%);
   /* round 2: saffron, herb green, tomato, and the hero tablecloth */
-  --btn-edge: #8e1f26;
+  --btn-edge: #a5482a;
   --saffron: #f2b632;
   --star: #9a5f00;
   --on-saffron: #2b211c;
-  --herb: #2d5a28;
+  --herb: #3d6b5c;
   --herb-wash: #e1eed3;
-  --hero: #9e1f2a;
-  --hero-ink: #fff8ee;
-  --hero-ink-soft: #fff3dc;
-  --gingham: rgb(255 255 255 / 10%);
+  --hero: #f8ebdd;
+  --hero-ink: #2a1d15;
+  --hero-ink-soft: #5d4a3d;
   --glow: 0 0 0 rgb(0 0 0 / 0%);
-  --art-red: #c8333b;
-  --art-red-dark: #7a1620;
+  --art-red: #a5482a;
+  --art-red-dark: #7a3418;
   --art-gold: #e2a829;
   --art-herb: #4c8a3f;
   --art-herb-dark: #2d5a28;
   --art-herb-light: #7fb36a;
   --art-cream: #fff4df;
-  --art-steam: #c58b1f;
+  --art-steam: #c98a3a;
+  /* the home map (T-126 v2) */
+  --map-land: var(--hero);
+  --map-lake: #bcd3f5;
+  --map-lake-ink: #2f4a7f;
+  --map-road: #fffaf3;
+  --map-park: #dfe8d8;
+  --map-shadow: #e9d3bb;
+  --map-steam: var(--gold);
+  --art-clay: #c66a3d;
+  --pot-lid-red: #7a3418;
+  --pot-herb-lid: #2c5246;
+  --pot-herb: #3d6b5c;
+  --pot-bubble-bg: #fffaf3;
+  --pot-bubble-fill: #c66a3d;
+  --table-top: #e9c9a3;
   --art-wood: #d9a066;
   --art-wood-dark: #8a5a2b;
   --art-plate: #fff1cf;
@@ -84,22 +98,22 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #1f1612;
-    --surface: #2a1e19;
+    --paper: #1e1611;
+    --surface: #2a1f18;
     --sunken: #17100d;
-    --ink: #f3e8d6;
-    --muted: #cdbca6;
+    --ink: #f5e9dc;
+    --muted: #cdb8a6;
     --line: #4a382e;
     --edge: #93806e;
-    --primary: #a92f37;
-    --primary-hover: #bd3e45;
-    --on-primary: #fff6ea;
-    --link: #f0a39b;
+    --primary: #e3825c;
+    --primary-hover: #f0956f;
+    --on-primary: #1e1611;
+    --link: #f0a07c;
     --tint: #3b2420;
-    --gold: #e3b54f;
-    --goldtext: #e3b54f;
+    --gold: #d9a05a;
+    --goldtext: #e8b872;
     --on-gold: #1f1612;
-    --gold-wash: #3a2c14;
+    --gold-wash: #3a271c;
     --success: #8fd19a;
     --success-bg: #1f3224;
     --warning: #f0c060;
@@ -109,27 +123,38 @@
     --mock-bg: #3a2a0e;
     --mock-text: #fbe3a6;
     --mock-edge: #e3b54f;
-    --focus: #8cb8f0;
+    --focus: #8fb8f0;
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 20px -8px rgb(0 0 0 / 50%);
-    --btn-edge: #e8938a;
+    --btn-edge: #e3825c;
     --saffron: #f2c14e;
     --star: #f2c14e;
     --on-saffron: #1f1612;
-    --herb: #bfe5a8;
+    --herb: #a9d3c2;
     --herb-wash: #26391f;
-    --hero: #5e141c;
-    --hero-ink: #fff4e0;
-    --hero-ink-soft: #ffd98a;
-    --gingham: rgb(255 196 100 / 9%);
-    --glow: 0 0 22px rgb(242 193 78 / 28%);
-    --art-red: #e0525a;
-    --art-red-dark: #4a0f16;
+    --hero: #2a1f18;
+    --hero-ink: #f5e9dc;
+    --hero-ink-soft: #cdb8a6;
+    --glow: 0 0 12px rgb(227 130 92 / 14%);
+    --art-red: #e3825c;
+    --art-red-dark: #4a1f12;
     --art-gold: #f2c14e;
     --art-herb: #6fb35e;
     --art-herb-dark: #1f3f1b;
     --art-herb-light: #9ed486;
     --art-cream: #fff4df;
-    --art-steam: #fff4df;
+    --art-steam: #f5e9dc;
+    --map-lake: #243b5a;
+    --map-lake-ink: #c9dcf7;
+    --map-road: #3a2c22;
+    --map-park: #33402f;
+    --map-shadow: #3a2c22;
+    --art-clay: #e9a07a;
+    --pot-lid-red: #b8603f;
+    --pot-herb-lid: #6fa08c;
+    --pot-herb: #a9d3c2;
+    --pot-bubble-bg: #f5e9dc;
+    --pot-bubble-fill: #e9a07a;
+    --table-top: #3a2a1f;
     --art-wood: #c8914f;
     --art-wood-dark: #5b3a18;
     --art-plate: #3b2a1a;
@@ -218,11 +243,6 @@
     outline-offset: 2px;
     border-radius: 2px;
   }
-  /* The hero and bands are dark red: the blue ring would vanish there (WCAG 1.4.11), so use the cream ink. */
-  .hero :focus-visible,
-  .band :focus-visible {
-    outline-color: var(--hero-ink);
-  }
   main a:not([class*="btn"]) {
     color: var(--link);
     text-underline-offset: 0.2em;
@@ -309,6 +329,7 @@
     cursor: pointer;
     transition:
       background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 160ms cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .btn {
@@ -426,7 +447,7 @@
   }
   .site-header {
     background: var(--surface);
-    border-bottom: 3px double var(--gold);
+    border-bottom: 1px solid var(--line);
   }
   /* Fieldset group title in the serif. */
   .group-title {
@@ -440,61 +461,30 @@
 
 /* ===== Round 2: the table is set (hero, recipe cards, motion) ===== */
 @layer components {
-  /* A red-and-white tablecloth with the gold double rule of a recipe card along its edge. */
+  /* A light clay wash, no pattern. Text on it uses --hero-ink (dark on light, light on dark). */
   .hero,
   .band {
     position: relative;
     background-color: var(--hero);
-    background-image:
-      repeating-linear-gradient(
-        0deg,
-        var(--gingham) 0 28px,
-        transparent 28px 56px
-      ),
-      repeating-linear-gradient(
-        90deg,
-        var(--gingham) 0 28px,
-        transparent 28px 56px
-      );
     color: var(--hero-ink);
-    padding: 2.5rem 0 7rem;
-  }
-  /* A scalloped lace edge hangs below the cloth. */
-  .hero::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    height: 14px;
-    background: radial-gradient(
-        circle at 50% 0,
-        var(--hero) 0 11px,
-        transparent 11.5px
-      )
-      0 0 / 28px 14px repeat-x;
+    padding: 2.5rem 0 3rem;
   }
   .band {
     border-radius: 1.25rem;
     padding: 1.5rem;
     box-shadow: var(--shadow);
-    border-bottom: 4px double var(--saffron);
+    border: 1px solid var(--line);
   }
   .hero h1,
   .hero-title {
     color: var(--hero-ink);
     font-size: clamp(2.5rem, 7vw, 4.75rem);
     line-height: 1.04;
-    text-shadow: 0 2px 0 rgb(0 0 0 / 18%);
   }
   .hero .title-rule {
     border-color: var(--saffron);
     width: 7rem;
     margin-top: 1rem;
-  }
-  .hero-tagline,
-  .hero p {
-    text-shadow: 0 1px 2px rgb(0 0 0 / 30%);
   }
   .hero-tagline {
     font-family: var(--font-display);
@@ -507,7 +497,7 @@
     filter: drop-shadow(0 18px 24px rgb(0 0 0 / 28%));
     animation: float 7s ease-in-out 3;
   }
-  /* The order slip: a recipe card laid over the cloth, with a stitched gold border. */
+  /* The order slip: a plain raised card (the stitched border was removed in T-126 v2). */
   .recipe-card {
     position: relative;
     background: var(--surface);
@@ -516,15 +506,6 @@
       var(--shadow),
       var(--glow),
       0 0 0 1px var(--line);
-  }
-  .recipe-card::before {
-    content: "";
-    position: absolute;
-    inset: 7px;
-    border: 2px dashed var(--gold);
-    border-radius: 0.9rem;
-    opacity: 0.7;
-    pointer-events: none;
   }
   .control-lg {
     min-height: 3.5rem;
@@ -550,6 +531,7 @@
   .btn-secondary {
     transition:
       background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 160ms cubic-bezier(0.22, 1, 0.36, 1),
       transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -776,6 +758,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn-secondary {
+    transition: none;
+  }
   .hero-art,
   .steam,
   .sparkle,
@@ -796,54 +782,14 @@
 }
 
 /* ===== Phase 2: every page ===== */
-:root {
-  --cloth: rgb(142 31 38 / 3.5%);
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --cloth: rgb(255 196 100 / 3.5%);
-  }
-}
 @layer base {
-  /* The whole site sits on a faint tablecloth. */
-  body {
-    background-image:
-      repeating-linear-gradient(
-        0deg,
-        var(--cloth) 0 28px,
-        transparent 28px 56px
-      ),
-      repeating-linear-gradient(
-        90deg,
-        var(--cloth) 0 28px,
-        transparent 28px 56px
-      );
-  }
-  /* Page titles are a red gingham ribbon, like a label sewn on the cloth. The search hero and the
-     home page set their own title (.hero-title). */
+  /* Page titles are plain headings: no ribbon, no pattern. The search hero and the home page set
+     their own title (.hero-title). */
   main h1:not(.hero-title) {
-    display: inline-block;
     align-self: flex-start;
     max-width: 100%;
-    background-color: var(--hero);
-    background-image:
-      repeating-linear-gradient(
-        0deg,
-        var(--gingham) 0 14px,
-        transparent 14px 28px
-      ),
-      repeating-linear-gradient(
-        90deg,
-        var(--gingham) 0 14px,
-        transparent 14px 28px
-      );
-    color: var(--hero-ink);
-    border-radius: 0.75rem;
-    border-bottom: 3px double var(--saffron);
-    padding: 0.4rem 1.25rem 0.5rem;
+    color: var(--ink);
     font-size: clamp(1.625rem, 4.5vw, 2.5rem);
-    text-shadow: 0 2px 0 rgb(0 0 0 / 18%);
-    box-shadow: var(--shadow);
     overflow-wrap: anywhere;
   }
 }
@@ -929,5 +875,334 @@
     background: var(--danger-bg);
     color: var(--ink);
     border-color: var(--danger);
+  }
+}
+
+/* ===== The happy-pot logo (T-126 v2) ===== */
+@layer components {
+  .pot-mark .pot-lid {
+    transform-box: fill-box;
+    transform-origin: 85% 100%;
+    transition: transform 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+  .pot-mark .pot-steam {
+    opacity: 0;
+    transition: opacity 0.3s 0.1s;
+  }
+  a:hover .pot-lid,
+  a:focus-visible .pot-lid {
+    transform: translate(3px, -6px) rotate(16deg);
+  }
+  a:hover .pot-steam,
+  a:focus-visible .pot-steam {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pot-mark .pot-lid {
+    transition: none;
+  }
+  .pot-mark .pot-steam {
+    transition: none;
+  }
+}
+
+/* ===== The home map: three DEMO pots (T-126 v2) ===== */
+@layer components {
+  .pot-map-hint {
+    margin: 0 0 0.5rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: var(--ink);
+  }
+  .pot-map-scene {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid var(--line);
+    background: var(--map-land);
+  }
+  .pot-map-art {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .pot-map-label {
+    font: 700 20px var(--font-sans);
+    fill: var(--muted);
+  }
+  .pot-map-lake-label {
+    fill: var(--map-lake-ink);
+  }
+  .pot-btn {
+    position: absolute;
+    width: var(--pot-w);
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    transform: translate(-50%, -50%);
+    padding: 0;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+  .pot-btn:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .pot-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .pot-art .pot-art-lid {
+    transform-box: fill-box;
+    transform-origin: 85% 100%;
+    transition: transform 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
+  }
+  .pot-art .pot-art-steam {
+    opacity: 0;
+    transition: opacity 0.3s 0.1s;
+  }
+  .pot-art .pot-art-bubble {
+    opacity: 0;
+    transform: translateY(16px) scale(0.6);
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    transition:
+      transform 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) 0.08s,
+      opacity 0.2s 0.08s;
+  }
+  /* A quiet hint on load: each closed pot lifts its lid once, one after the other. It never loops. */
+  .pot-btn:not(.is-open) .pot-art-lid {
+    animation: pot-nudge 0.9s ease-out both;
+  }
+  .pot-btn:nth-of-type(1) .pot-art-lid {
+    animation-delay: 0.6s;
+  }
+  .pot-btn:nth-of-type(2) .pot-art-lid {
+    animation-delay: 1s;
+  }
+  .pot-btn:nth-of-type(3) .pot-art-lid {
+    animation-delay: 1.4s;
+  }
+  @keyframes pot-nudge {
+    35% {
+      transform: translate(3px, -8px) rotate(10deg);
+    }
+  }
+  .pot-btn.is-open .pot-art-lid {
+    transform: translate(10px, -22px) rotate(18deg);
+  }
+  .pot-btn.is-open .pot-art-steam {
+    opacity: 1;
+  }
+  .pot-btn.is-open .pot-art-bubble {
+    opacity: 1;
+    transform: none;
+  }
+  .pot-card {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    margin: 0.75rem auto 0;
+    min-height: 10rem;
+    border: 1px solid var(--line);
+    border-radius: 0.875rem;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 0.75rem 1rem;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+  }
+  .pot-card-dish {
+    flex: none;
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+  .pot-card-text {
+    min-width: 0;
+  }
+  .pot-card b {
+    color: var(--ink);
+    font-size: 1.0625rem;
+  }
+  .pot-demo {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0 0.5rem;
+  }
+  .pot-card-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    font-weight: 700;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pot-art .pot-art-lid,
+  .pot-art .pot-art-steam,
+  .pot-art .pot-art-bubble {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ===== The home hero: words, map, table (T-126 v2) ===== */
+@layer components {
+  .home-hero {
+    display: grid;
+    gap: 1.75rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "copy"
+      "map"
+      "table";
+    align-items: start;
+  }
+  .home-copy {
+    grid-area: copy;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.875rem;
+  }
+  .home-map {
+    grid-area: map;
+    min-width: 0;
+  }
+  .home-table {
+    grid-area: table;
+    min-width: 0;
+  }
+  /* After `.hero h1` and more specific, so the home headline is not the big search-page size. */
+  .hero .home-title {
+    font-size: clamp(2.25rem, 5vw, 3.25rem);
+    line-height: 1.12;
+    overflow-wrap: break-word;
+  }
+  .home-proto {
+    font-size: 0.75rem;
+    padding: 0 0.5rem;
+  }
+  .home-price {
+    max-width: 34rem;
+    font-size: 1.125rem;
+    color: var(--hero-ink-soft);
+  }
+  .home-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.25rem;
+  }
+  .home-love {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+  }
+  .family-table {
+    display: block;
+    width: 100%;
+    max-width: 17rem;
+    height: auto;
+    margin-inline: auto;
+  }
+  .family-table g {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .family-table .ft-steam {
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+      opacity 0.4s,
+      transform 0.9s ease-out;
+  }
+  .family-table .ft-centre {
+    transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .family-table .ft-chop {
+    transform-origin: 0% 100%;
+    transition: transform 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) 0.1s;
+  }
+  .family-table .ft-spoon,
+  .family-table .ft-fork {
+    transition: transform 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+  .home-table:hover .ft-steam {
+    opacity: 1;
+    transform: none;
+  }
+  .home-table:hover .ft-centre {
+    transform: rotate(14deg);
+  }
+  .home-table:hover .ft-bob {
+    animation: ft-bob 0.7s ease-in-out 2;
+  }
+  .home-table:hover .ft-b2 {
+    animation-delay: 0.12s;
+  }
+  .home-table:hover .ft-b3 {
+    animation-delay: 0.24s;
+  }
+  .home-table:hover .ft-chop {
+    transform: translate(18px, -14px) rotate(-12deg);
+  }
+  .home-table:hover .ft-spoon {
+    transform: translateX(-6px) rotate(-6deg);
+  }
+  .home-table:hover .ft-fork {
+    transform: translateX(6px) rotate(6deg);
+  }
+  @keyframes ft-bob {
+    0%,
+    100% {
+      transform: none;
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  @media (min-width: 64rem) {
+    .home-hero {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+      grid-template-areas:
+        "copy map"
+        "table map";
+      column-gap: 2.5rem;
+      align-items: center;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .family-table * {
+    transition: none !important;
+    animation: none !important;
+  }
+  .home-table:hover .ft-chop,
+  .home-table:hover .ft-spoon,
+  .home-table:hover .ft-fork,
+  .home-table:hover .ft-centre {
+    transform: none;
+  }
+}
+
+@media (min-width: 23rem) {
+  .pot-card {
+    min-height: 8.5rem;
+  }
+}
+@media (min-width: 40rem) {
+  .pot-card {
+    min-height: 7.25rem;
   }
 }

@@ -33,6 +33,7 @@ import {
   SAVED_SEARCH_KEY,
   serializeForm,
   searchPoint,
+  searchPrefill,
   validateSearchForm,
   type FieldErrors,
   type SearchFormValues,
@@ -299,6 +300,21 @@ export function SearchView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
   }, []);
 
+  // A link such as /search?city=Mississauga&cuisine=Vietnamese (the home map card, T-126 v2) fills
+  // the form and runs the search once. It wins over the saved form. It waits for the city list so
+  // an unknown city can be ignored without an error.
+  const prefillDone = useRef(false);
+  useEffect(() => {
+    if (prefillDone.current || !prefixes || !today) return;
+    prefillDone.current = true;
+    const found = searchPrefill(window.location.search, cityNames(prefixes));
+    if (!found) return;
+    const v: SearchFormValues = { ...emptySearchForm(), ...found };
+    setValues(v); // eslint-disable-line react-hooks/set-state-in-effect -- fill once from the link
+    void runSearch(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once when the city list and clock are ready
+  }, [prefixes, today]);
+
   async function loadMore() {
     if (results.kind !== "ready" || !results.nextCursor || moreBusy) return;
     const { query, nextCursor, items } = results;
@@ -346,7 +362,7 @@ export function SearchView() {
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <div className="hero">
+      <div className="hero !pb-28">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-6 px-4 lg:grid-cols-[1.25fr_0.75fr]">
           <div className="flex flex-col gap-4">
             <h1>
