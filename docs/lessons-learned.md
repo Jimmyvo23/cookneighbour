@@ -28,6 +28,9 @@ The office only shows what agents report. Nothing updates on its own.
 - The Planner never trusts a report alone. It checks the handoff file, `gh pr view <n>` and the CI result itself.
 - **The Reviewer agent is read-only (no Write tool).** Do not ask it to write a handoff file; it puts the full review in its final message and its PR comment, and the Planner copies it into the notes PR (T-087).
 
+- **A Work Order that names a skill must have the agent really invoke it (D-189, T-069 / T-126).** The T-069 Work Order named Impeccable `audit` and `polish` but no `critique`, and the builder did them "by hand" from the guide files; the look still felt generic to Jimmy. Write "invoke the skill and paste its output in the handoff", include `critique` for any design work, and send back a handoff that says "by hand", "skipped" or shows no output.
+- **Check the plan against the spec line by line before writing the Work Order (T-126).** The spec said the card's fallback link searches for that city and cuisine; the plan wrote plain `/search`, the builder followed the plan, and only the critique caught it (P1). Every requirement in the spec needs a matching plan step and test.
+
 ## 3. Bugs reviews keep finding. Builders check these before handing off
 
 Each of these reached the Tester or Reviewer at least once, except the rows marked "(preventive)". Validate free text on the server too, not only in the form (T-033/T-059). Catching them in the builder's own check saves a full fix round.
