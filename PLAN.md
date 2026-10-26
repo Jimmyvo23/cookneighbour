@@ -473,6 +473,8 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-204 | 2026-10-26 | Live smoke found "Use my free first booking" ticked by default: "Start unticked (Recommended)" (T-131) | Jimmy |
 | D-205 | 2026-10-26 | Other smoke findings as backlog: "you recommend" -> Planner logged all three (T-132 old `<main>` regions, T-133 reviews 4.9 vs none, T-134 pending-chef documents). Also: the test booking was sent from "Use customer2 (Recommended)", keeping customer1 clean for the demo | Jimmy |
 | D-206 | 2026-10-26 | Close T-055 with a Reviewer sign-off of the live smoke: "Yes, Reviewer signs off (Recommended)" | Jimmy |
+| D-207 | 2026-10-26 | Older T-055 findings (MED-1 guarded pages HTTP 200 with an in-page redirect, LOW-1 the 401 console line, LOW-2 unknown chef page HTTP 200, the general sign-up error for a refused email): "Accept as known limits" (recorded in README Known limits) | Jimmy |
+| D-208 | 2026-10-26 | Unverified deploy items: "Check now with me". Hosted minimum password length was 6: Jimmy set it to 8, first with the strictest character rules, then "Back to length only (Recommended)" | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -1125,4 +1127,7 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Run by the Planner in Jimmy's Chrome (Claude in Chrome); Jimmy typed every password. 6 of 6 PASS: home map to chef page, the five estimate lines with MOCK labels, a booking request and chat from customer2, the chef side (allergies shown, address and phone hidden until accept, reply sent), the admin queue and free-trial blocks, and a pending chef showing "Chef not found" and absent from search. Details: `.team/handoffs/T-055-planner-smoke.md`.
 - Left on hosted: the customer2 request `7dafa77e` (expires Thu Oct 29) and two chat messages; customer1's free trial is unused.
 - Findings -> T-131 to T-134 (D-204, D-205). Reviewer sign-off: see the next notes entry.
+- Reviewer APPROVE (T-055 sign-off) on PR #240: no blocker. Its MEDIUM-1 (older findings never decided) is closed by D-207. Its LOW-1 (deploy items with no evidence) is closed by D-208, all checked on 2026-10-26: no Vercel preview builds (PR #240 commits have no Vercel status, `main` merges do); hosted minimum password 8, length only; Site URL `https://cookneighbour.vercel.app` with redirect `https://cookneighbour.vercel.app/**`; Confirm email off; a brand-new customer sign-up ("Smoke Test", Jimmy's own plus-address), then log out and log in again, worked ("Signed in as Smoke Test"). Its LOW-2 is explained: customer1 (L5B 1A1) and Chef Lan (L5B 2B2) share the L5B area, and distance is measured between area centres, so 0 km is correct. Its LOW-3 is the scope: this was a deploy smoke, not the full section 12 demo (accept, review, admin approval, second free trial and a 2-day free booking were left out to keep the demo data clean). Its LOW-4: fix T-131 and T-132 before the mentor demo.
+- Left on hosted: the "Smoke Test" customer account (Jimmy's own email; delete only if Jimmy asks).
+- **T-055 done** (2026-10-26).
 
