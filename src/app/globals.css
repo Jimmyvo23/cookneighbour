@@ -65,6 +65,16 @@
   --art-herb-light: #7fb36a;
   --art-cream: #fff4df;
   --art-steam: #c98a3a;
+  /* the home map (T-126 v2) */
+  --map-land: var(--hero);
+  --map-lake: #bcd3f5;
+  --map-lake-ink: #2f4a7f;
+  --map-road: #fffaf3;
+  --map-park: #dfe8d8;
+  --map-shadow: #e9d3bb;
+  --map-steel: #7a8793;
+  --map-steel-dark: #5c6772;
+  --map-steam: var(--gold);
   --art-wood: #d9a066;
   --art-wood-dark: #8a5a2b;
   --art-plate: #fff1cf;
@@ -128,6 +138,13 @@
     --art-herb-light: #9ed486;
     --art-cream: #fff4df;
     --art-steam: #f5e9dc;
+    --map-lake: #243b5a;
+    --map-lake-ink: #c9dcf7;
+    --map-road: #3a2c22;
+    --map-park: #33402f;
+    --map-shadow: #1e1611;
+    --map-steel: #8b97a3;
+    --map-steel-dark: #5f6b77;
     --art-wood: #c8914f;
     --art-wood-dark: #5b3a18;
     --art-plate: #3b2a1a;
@@ -880,5 +897,119 @@
   }
   .pot-mark .pot-steam {
     transition: none;
+  }
+}
+
+/* ===== The home map: three DEMO pots (T-126 v2) ===== */
+@layer components {
+  .pot-map-hint {
+    margin: 0 0 0.5rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: var(--ink);
+  }
+  .pot-map-scene {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid var(--line);
+    background: var(--map-land);
+  }
+  .pot-map-art {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .pot-map-label {
+    font: 700 20px var(--font-sans);
+    fill: var(--muted);
+  }
+  .pot-map-lake-label {
+    fill: var(--map-lake-ink);
+  }
+  .pot-btn {
+    position: absolute;
+    width: var(--pot-w);
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    transform: translate(-50%, -50%);
+    padding: 0;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    cursor: pointer;
+  }
+  .pot-btn:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .pot-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .pot-art .pot-art-lid {
+    transform-box: fill-box;
+    transform-origin: 85% 100%;
+    transition: transform 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
+  }
+  .pot-art .pot-art-steam {
+    opacity: 0;
+    transition: opacity 0.3s 0.1s;
+  }
+  .pot-art .pot-art-bubble {
+    opacity: 0;
+    transform: translateY(16px) scale(0.6);
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    transition:
+      transform 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) 0.08s,
+      opacity 0.2s 0.08s;
+  }
+  .pot-btn.is-open .pot-art-lid {
+    transform: translate(10px, -22px) rotate(18deg);
+  }
+  .pot-btn.is-open .pot-art-steam {
+    opacity: 1;
+  }
+  .pot-btn.is-open .pot-art-bubble {
+    opacity: 1;
+    transform: none;
+  }
+  .pot-card {
+    margin: 0.75rem auto 0;
+    min-height: 7.5rem;
+    border: 1px solid var(--line);
+    border-radius: 0.875rem;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 0.75rem 1rem;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+  }
+  .pot-card b {
+    color: var(--ink);
+    font-size: 1.0625rem;
+  }
+  .pot-demo {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0 0.5rem;
+  }
+  .pot-card-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    font-weight: 700;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pot-art .pot-art-lid,
+  .pot-art .pot-art-steam,
+  .pot-art .pot-art-bubble {
+    transition: none !important;
   }
 }

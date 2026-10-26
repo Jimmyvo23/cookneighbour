@@ -58,6 +58,8 @@ const TEXT_PAIRS: [string, string][] = [
   ["hero-ink", "hero"],
   ["hero-ink-soft", "hero"],
   ["mock-text", "mock-bg"],
+  ["map-lake-ink", "map-lake"],
+  ["muted", "hero"],
 ];
 
 function check(
