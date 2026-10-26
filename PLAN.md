@@ -239,6 +239,10 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-128 | T-126 follow-up (D-203): remove leftover decorations (`.title-rule`, dotted card underline, polaroid tape, `.stamp`, `.section-rule`, receipt torn edge, `.price-tag`) and the old ornate pot (`HeroArt`, heart, sparkles, sprigs) on the search and chef pages | frontend | T-126 | todo |
 | T-129 | T-126 Tester F-2 (D-203): at 375 px the header grows from 94 to 153 px about 285 ms after load on every page (layout shift); reserve its height | frontend | T-126 | todo |
 | T-130 | T-126 Reviewer tidy-ups (D-203): D-52 test asserts the expected UTC hours so a wrong Sunday fails; opening a pot on hover makes the live card announce several pots in a row; `searchPrefill` uses `TEXT_MAX` instead of a typed 40; scope `a:hover .pot-lid` to `.pot-mark` | frontend | T-126 | todo |
+| T-131 | Booking form: "Use my free first booking" starts unticked, so nobody spends the one free booking by accident (D-204, live smoke) | frontend | T-055 | todo |
+| T-132 | After client navigation the page kept old `<main>` regions in the DOM (3 seen live in the accessibility tree); check screen-reader impact and fix (D-205) | frontend | T-055 | todo |
+| T-133 | LOW-3: Chef Lan shows "4.9 out of 5 (14 reviews)" next to "No reviews yet"; seed real review rows or derive the rating from them (D-205) | backend | T-055 | todo |
+| T-134 | Seeded pending chefs have no uploaded documents, so the admin review has nothing to open; seed placeholder documents (D-205) | backend | T-055 | todo |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -466,6 +470,9 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-201 | 2026-10-26 | Merge PR #239: "Merge now (Recommended)" | Jimmy |
 | D-202 | 2026-10-26 | Next: "Notes PR, then smoke (Recommended)" | Jimmy |
 | D-203 | 2026-10-26 | T-126 follow-ups as backlog: "Remove leftover decorations" (T-128), "Header jump on phones" (T-129), "Small test/code tidy-ups" (T-130) | Jimmy |
+| D-204 | 2026-10-26 | Live smoke found "Use my free first booking" ticked by default: "Start unticked (Recommended)" (T-131) | Jimmy |
+| D-205 | 2026-10-26 | Other smoke findings as backlog: "you recommend" -> Planner logged all three (T-132 old `<main>` regions, T-133 reviews 4.9 vs none, T-134 pending-chef documents). Also: the test booking was sent from "Use customer2 (Recommended)", keeping customer1 clean for the demo | Jimmy |
+| D-206 | 2026-10-26 | Close T-055 with a Reviewer sign-off of the live smoke: "Yes, Reviewer signs off (Recommended)" | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -1113,4 +1120,9 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 
 ### T-127 — RLS test date-rot (done 2026-10-26, inside PR #239; tests only)
 - The four D-52 daylight-saving cases now use the next Toronto fall-back and spring-forward changes that are at least 8 days away; expected instants are still computed without the database. Tester and Reviewer: no assertion weakened. Other cases in that file still use fixed 2027 days (lesson added); T-130 adds an hour check.
+
+### T-055 — Logged-in live smoke (2026-10-26, on `b09359c`)
+- Run by the Planner in Jimmy's Chrome (Claude in Chrome); Jimmy typed every password. 6 of 6 PASS: home map to chef page, the five estimate lines with MOCK labels, a booking request and chat from customer2, the chef side (allergies shown, address and phone hidden until accept, reply sent), the admin queue and free-trial blocks, and a pending chef showing "Chef not found" and absent from search. Details: `.team/handoffs/T-055-planner-smoke.md`.
+- Left on hosted: the customer2 request `7dafa77e` (expires Thu Oct 29) and two chat messages; customer1's free trial is unused.
+- Findings -> T-131 to T-134 (D-204, D-205). Reviewer sign-off: see the next notes entry.
 
