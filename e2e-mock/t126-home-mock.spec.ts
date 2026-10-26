@@ -49,7 +49,7 @@ test("no sideways scroll at 320", async ({ page }) => {
   ).toBeLessThanOrEqual(320);
 });
 
-test("desktop puts the table above the words but keeps the DOM order", async ({
+test("desktop puts the table under the words, map on the right, DOM order kept", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -58,7 +58,8 @@ test("desktop puts the table above the words but keeps the DOM order", async ({
   const table = await box(".home-table");
   const copy = await box(".home-copy");
   const map = await box(".home-map");
-  expect(table.y).toBeLessThan(copy.y);
+  expect(table.y).toBeGreaterThan(copy.y);
+  expect(Math.abs(table.x - copy.x)).toBeLessThan(40);
   expect(map.x).toBeGreaterThan(copy.x);
   const dom = await page.evaluate(() =>
     Array.from(document.querySelector(".home-hero")!.children).map(
@@ -114,7 +115,7 @@ test("mock mode falls back to search", async ({ page }) => {
   await page.getByRole("button", { name: /Pho bo by Chef Lan/ }).click();
   await expect(page.getByTestId("pot-card").getByRole("link")).toHaveAttribute(
     "href",
-    "/search",
+    "/search?city=Mississauga&cuisine=Vietnamese",
   );
   await expect(page.getByTestId("pot-card").getByRole("link")).toHaveText(
     "Find a Vietnamese cook",
@@ -131,7 +132,7 @@ test("reduced motion: the lid does not animate", async ({ page }) => {
   expect(dur).toBe("0s");
 });
 
-for (const width of [320, 375, 1280]) {
+for (const width of [320, 375, 768, 1024, 1280]) {
   test(`the card keeps one height for every pot, ${width}px`, async ({
     page,
   }) => {
@@ -141,6 +142,8 @@ for (const width of [320, 375, 1280]) {
     const heights = [(await card.boundingBox())!.height];
     for (const name of [/Pho bo/, /Chole and roti/, /Brown stew fish/]) {
       await page.getByRole("button", { name }).click();
+      await expect(card.getByRole("link")).toBeVisible();
+      await page.waitForTimeout(300);
       heights.push((await card.boundingBox())!.height);
     }
     expect(new Set(heights.map(Math.round)).size).toBe(1);
@@ -186,4 +189,60 @@ test("search: the hero text is not covered by the search card", async ({
       .evaluate((el) => el.getBoundingClientRect().top);
     expect(textBottom).toBeLessThanOrEqual(cardTop);
   }
+});
+
+test("the headline fits on at most two lines at 1280", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  const h = await page.getByRole("heading", { level: 1 }).evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      height: el.getBoundingClientRect().height,
+      line: parseFloat(cs.lineHeight),
+    };
+  });
+  expect(h.height).toBeLessThanOrEqual(h.line * 2 + 1);
+});
+
+test("the pot link opens search with the city and cuisine filled and results loaded", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Pho bo by Chef Lan/ }).click();
+  await page.getByTestId("pot-card").getByRole("link").click();
+  await expect(page).toHaveURL(/\/search\?city=Mississauga&cuisine=Vietnamese/);
+  await expect(page.getByLabel("Or a city")).toHaveValue("Mississauga");
+  await expect(page.getByLabel("Cuisine")).toHaveValue("Vietnamese");
+  await expect(
+    page.getByText('Press "Find chefs" to see results.'),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("listitem").filter({ hasText: "Mai Tran" }).first(),
+  ).toBeVisible();
+});
+
+test("search ignores a bad city or cuisine in the link, with no error", async ({
+  page,
+}) => {
+  await page.goto("/search?city=Atlantis&cuisine=%00");
+  await expect(page.getByLabel("Or a city")).toHaveValue("");
+  await expect(page.getByLabel("Cuisine")).toHaveValue("");
+  await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(
+    0,
+  );
+});
+
+test("dark mode: the open Mississauga pot is visible against the map", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Pho bo by Chef Lan/ }).click();
+  const fills = await page.evaluate(() => {
+    const cs = getComputedStyle(document.documentElement);
+    return ["--pot-lid-red", "--pot-bubble-bg", "--map-shadow"].map((n) =>
+      cs.getPropertyValue(n).trim(),
+    );
+  });
+  expect(fills).toEqual(["#b8603f", "#f5e9dc", "#3a2c22"]);
 });

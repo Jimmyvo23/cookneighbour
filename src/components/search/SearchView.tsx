@@ -33,6 +33,7 @@ import {
   SAVED_SEARCH_KEY,
   serializeForm,
   searchPoint,
+  searchPrefill,
   validateSearchForm,
   type FieldErrors,
   type SearchFormValues,
@@ -298,6 +299,21 @@ export function SearchView() {
     void runSearch(saved, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
   }, []);
+
+  // A link such as /search?city=Mississauga&cuisine=Vietnamese (the home map card, T-126 v2) fills
+  // the form and runs the search once. It wins over the saved form. It waits for the city list so
+  // an unknown city can be ignored without an error.
+  const prefillDone = useRef(false);
+  useEffect(() => {
+    if (prefillDone.current || !prefixes || !today) return;
+    prefillDone.current = true;
+    const found = searchPrefill(window.location.search, cityNames(prefixes));
+    if (!found) return;
+    const v: SearchFormValues = { ...emptySearchForm(), ...found };
+    setValues(v); // eslint-disable-line react-hooks/set-state-in-effect -- fill once from the link
+    void runSearch(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once when the city list and clock are ready
+  }, [prefixes, today]);
 
   async function loadMore() {
     if (results.kind !== "ready" || !results.nextCursor || moreBusy) return;

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { FamilyTable } from "@/components/home/FamilyTable";
 import { PotMap } from "@/components/home/PotMap";
-import { PotMark } from "@/components/Ornaments";
 
 // T-126 v2 home page. DOM order is words, map, table; the grid places the table above the words on
 // wide screens with grid-template-areas, never with CSS `order`, so Tab order is the same at every
@@ -15,11 +14,7 @@ export default function Home() {
           aria-label="Welcome"
         >
           <div className="home-copy">
-            <p className="home-brand">
-              <PotMark className="size-8" />
-              CookNeighbour
-            </p>
-            <span className="mock-badge">PROTOTYPE</span>
+            <span className="mock-badge home-proto">PROTOTYPE</span>
             <h1 className="hero-title home-title">
               Miss your mom&apos;s cooking?
             </h1>

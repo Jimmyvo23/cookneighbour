@@ -56,7 +56,7 @@ describe("PotMap", () => {
       "Pick a pot to see the dish, the cook and how long it takes.",
     );
     expect(host!.textContent).toContain(
-      "Tap a pot on the map: who is cooking near you?",
+      "Tap or click a pot on the map: who is cooking near you?",
     );
     expect(card().getAttribute("aria-live")).toBe("polite");
   });
@@ -87,7 +87,8 @@ describe("PotMap", () => {
     const text = card().textContent!;
     expect(text).toContain("Chole and roti");
     expect(text).toContain("DEMO");
-    expect(text).toContain("Chef Harpreet (demo) · Brampton · about 1.5 h");
+    expect(text).toContain("Chef Harpreet · Brampton · about 1.5 h");
+    expect(text).not.toContain("(demo)");
   });
 
   it("second click keeps it open", async () => {
@@ -134,14 +135,18 @@ describe("PotMap", () => {
   it("falls back to search when the chef is missing", async () => {
     await mount(() => ok([]));
     await click(pot(0));
-    expect(cardLink()!.getAttribute("href")).toBe("/search");
+    expect(cardLink()!.getAttribute("href")).toBe(
+      "/search?city=Mississauga&cuisine=Vietnamese",
+    );
     expect(cardLink()!.textContent).toBe("Find a Vietnamese cook");
   });
 
   it("shows the search link at once while the lookup is slow", async () => {
     await mount(() => new Promise<Response>(() => {}));
     await click(pot(1));
-    expect(cardLink()!.getAttribute("href")).toBe("/search");
+    expect(cardLink()!.getAttribute("href")).toBe(
+      "/search?city=Brampton&cuisine=Indian",
+    );
     expect(cardLink()!.textContent).toBe("Find an Indian cook");
   });
 
@@ -149,7 +154,9 @@ describe("PotMap", () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     await mount(() => Promise.reject(new Error("offline")));
     await click(pot(2));
-    expect(cardLink()!.getAttribute("href")).toBe("/search");
+    expect(cardLink()!.getAttribute("href")).toBe(
+      "/search?city=Toronto&cuisine=Jamaican",
+    );
     expect(cardLink()!.textContent).toBe("Find a Jamaican cook");
     expect(err).not.toHaveBeenCalled();
   });
@@ -157,7 +164,9 @@ describe("PotMap", () => {
   it("falls back on a non-OK answer", async () => {
     await mount(() => new Response("{}", { status: 500 }));
     await click(pot(0));
-    expect(cardLink()!.getAttribute("href")).toBe("/search");
+    expect(cardLink()!.getAttribute("href")).toBe(
+      "/search?city=Mississauga&cuisine=Vietnamese",
+    );
   });
 
   it("fetches each lookup once", async () => {
@@ -177,6 +186,8 @@ describe("PotMap", () => {
     const fetchMock = await mount(() => ok([]));
     expect(fetchMock).not.toHaveBeenCalled();
     await click(pot(0));
-    expect(cardLink()!.getAttribute("href")).toBe("/search");
+    expect(cardLink()!.getAttribute("href")).toBe(
+      "/search?city=Mississauga&cuisine=Vietnamese",
+    );
   });
 });

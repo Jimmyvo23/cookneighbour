@@ -97,6 +97,18 @@ describe("clay-pot theme contrast", () => {
       3,
     );
   });
+  it("home map pots stand out from the land (3:1, non-text)", () => {
+    const pairs: [string, string][] = [
+      ["art-red", "hero"],
+      ["art-clay", "hero"],
+      ["herb", "hero"],
+      ["pot-lid-red", "hero"],
+      ["pot-herb-lid", "hero"],
+      ["pot-bubble-fill", "hero"],
+    ];
+    check(light, pairs, 3);
+    check(dark, [...pairs, ["pot-bubble-bg", "hero"]], 3);
+  });
   it("brand values are clay", () => {
     expect(light.primary).toBe("#a5482a");
     expect(light.paper).toBe("#faf3ea");

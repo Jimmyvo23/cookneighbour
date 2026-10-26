@@ -32,17 +32,67 @@ const torontoParts = (iso: string) => {
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
 };
 
-describe("D-52 window across daylight saving changes (Toronto 2026-11-01 and 2027-03-14)", () => {
-  // last visit day -> expected first hidden instant (UTC), i.e. 00:00 Toronto on last day + 8
+// T-127: the four cases used fixed dates (2026-10-24 ...). The database refuses a visit date in the
+// past, so the first case failed on 2026-10-25 and the others would follow. The cases are now built
+// from the NEXT two daylight-saving changes in Toronto (the first Sunday of November and the second
+// Sunday of March), so the test keeps exercising both edges and never goes stale. The expected UTC
+// instant is worked out from the Toronto wall clock with Intl, independent of the database.
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (day: string, n: number) => {
+  const d = new Date(`${day}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return isoDay(d);
+};
+const torontoToday = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(
+    new Date(),
+  );
+/** The nth Sunday (1-based) of a month, as YYYY-MM-DD. */
+const nthSunday = (year: number, month: number, n: number) => {
+  const first = new Date(Date.UTC(year, month - 1, 1, 12));
+  const offset = (7 - first.getUTCDay()) % 7;
+  return isoDay(
+    new Date(Date.UTC(year, month - 1, 1 + offset + 7 * (n - 1), 12)),
+  );
+};
+/** The first change of that kind whose day minus 8 is tomorrow or later (a visit day must not be past). */
+const nextChange = (kind: "fall" | "spring", today: string) => {
+  const year = Number(today.slice(0, 4));
+  for (let y = year; y <= year + 2; y++) {
+    const day = kind === "fall" ? nthSunday(y, 11, 1) : nthSunday(y, 3, 2);
+    if (addDays(day, -8) > today) return day;
+  }
+  throw new Error("no daylight-saving change found");
+};
+/** 00:00 Toronto on `day` as a UTC instant, found by trying both offsets and checking the wall clock. */
+const torontoMidnightUtc = (day: string) => {
+  for (const hours of [4, 5]) {
+    const t = new Date(`${day}T0${hours}:00:00.000Z`);
+    if (torontoParts(t.toISOString()) === `${day} 00:00:00`)
+      return t.toISOString();
+  }
+  throw new Error(`no Toronto midnight for ${day}`);
+};
+
+const today = torontoToday();
+const fall = nextChange("fall", today);
+const spring = nextChange("spring", today);
+
+describe(`D-52 window across daylight saving changes (next fall-back ${fall} and spring-forward ${spring}, Toronto)`, () => {
+  // last visit day -> expected first hidden instant, i.e. 00:00 Toronto on last day + 8
+  const make = (last: string): [string, string, string] => {
+    const hidden = addDays(last, 8);
+    return [last, `${hidden} 00:00:00`, torontoMidnightUtc(hidden)];
+  };
   const cases: [string, string, string][] = [
-    // ends on the fall-back day itself (still EDT at 00:00)
-    ["2026-10-24", "2026-11-01 00:00:00", "2026-11-01T04:00:00.000Z"],
+    // ends on the change day itself (fall-back: still EDT at 00:00)
+    make(addDays(fall, -8)),
     // window spans the fall-back change, ends in EST
-    ["2026-10-30", "2026-11-07 00:00:00", "2026-11-07T05:00:00.000Z"],
+    make(addDays(fall, -2)),
     // ends on the spring-forward day itself (still EST at 00:00)
-    ["2027-03-06", "2027-03-14 00:00:00", "2027-03-14T05:00:00.000Z"],
+    make(addDays(spring, -8)),
     // window spans the spring-forward change, ends in EDT
-    ["2027-03-10", "2027-03-18 00:00:00", "2027-03-18T04:00:00.000Z"],
+    make(addDays(spring, -4)),
   ];
   it.each(cases)(
     "last day %s hides at %s Toronto",

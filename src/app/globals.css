@@ -72,11 +72,13 @@
   --map-road: #fffaf3;
   --map-park: #dfe8d8;
   --map-shadow: #e9d3bb;
-  --map-steel: #7a8793;
-  --map-steel-dark: #5c6772;
   --map-steam: var(--gold);
   --art-clay: #c66a3d;
-  --table-floor: #f3e4d3;
+  --pot-lid-red: #7a3418;
+  --pot-herb-lid: #2c5246;
+  --pot-herb: #3d6b5c;
+  --pot-bubble-bg: #fffaf3;
+  --pot-bubble-fill: #c66a3d;
   --table-top: #e9c9a3;
   --art-wood: #d9a066;
   --art-wood-dark: #8a5a2b;
@@ -132,7 +134,7 @@
     --hero: #2a1f18;
     --hero-ink: #f5e9dc;
     --hero-ink-soft: #cdb8a6;
-    --glow: 0 0 22px rgb(242 193 78 / 28%);
+    --glow: 0 0 12px rgb(227 130 92 / 14%);
     --art-red: #e3825c;
     --art-red-dark: #4a1f12;
     --art-gold: #f2c14e;
@@ -145,11 +147,13 @@
     --map-lake-ink: #c9dcf7;
     --map-road: #3a2c22;
     --map-park: #33402f;
-    --map-shadow: #1e1611;
-    --map-steel: #8b97a3;
-    --map-steel-dark: #5f6b77;
+    --map-shadow: #3a2c22;
     --art-clay: #e9a07a;
-    --table-floor: #241a14;
+    --pot-lid-red: #b8603f;
+    --pot-herb-lid: #6fa08c;
+    --pot-herb: #a9d3c2;
+    --pot-bubble-bg: #f5e9dc;
+    --pot-bubble-fill: #e9a07a;
     --table-top: #3a2a1f;
     --art-wood: #c8914f;
     --art-wood-dark: #5b3a18;
@@ -936,6 +940,8 @@
     border-radius: 0.5rem;
     background: transparent;
     cursor: pointer;
+    display: flex;
+    align-items: center;
   }
   .pot-btn:focus-visible {
     outline: 3px solid var(--focus);
@@ -965,6 +971,24 @@
       transform 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) 0.08s,
       opacity 0.2s 0.08s;
   }
+  /* A quiet hint on load: each closed pot lifts its lid once, one after the other. It never loops. */
+  .pot-btn:not(.is-open) .pot-art-lid {
+    animation: pot-nudge 0.9s ease-out both;
+  }
+  .pot-btn:nth-of-type(1) .pot-art-lid {
+    animation-delay: 0.6s;
+  }
+  .pot-btn:nth-of-type(2) .pot-art-lid {
+    animation-delay: 1s;
+  }
+  .pot-btn:nth-of-type(3) .pot-art-lid {
+    animation-delay: 1.4s;
+  }
+  @keyframes pot-nudge {
+    35% {
+      transform: translate(3px, -8px) rotate(10deg);
+    }
+  }
   .pot-btn.is-open .pot-art-lid {
     transform: translate(10px, -22px) rotate(18deg);
   }
@@ -976,8 +1000,11 @@
     transform: none;
   }
   .pot-card {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
     margin: 0.75rem auto 0;
-    min-height: 8.75rem;
+    min-height: 10rem;
     border: 1px solid var(--line);
     border-radius: 0.875rem;
     background: var(--surface);
@@ -986,6 +1013,14 @@
     color: var(--muted);
     font-size: 0.9375rem;
     line-height: 1.4;
+  }
+  .pot-card-dish {
+    flex: none;
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+  .pot-card-text {
+    min-width: 0;
   }
   .pot-card b {
     color: var(--ink);
@@ -1008,6 +1043,7 @@
   .pot-art .pot-art-steam,
   .pot-art .pot-art-bubble {
     transition: none !important;
+    animation: none !important;
   }
 }
 
@@ -1038,19 +1074,15 @@
     grid-area: table;
     min-width: 0;
   }
-  .home-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-family: var(--font-display);
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--primary);
-  }
-  .home-title {
-    font-size: clamp(2.125rem, 8vw, 3rem);
-    line-height: 1.08;
+  /* After `.hero h1` and more specific, so the home headline is not the big search-page size. */
+  .hero .home-title {
+    font-size: clamp(2.25rem, 5vw, 3.25rem);
+    line-height: 1.12;
     overflow-wrap: break-word;
+  }
+  .home-proto {
+    font-size: 0.75rem;
+    padding: 0 0.5rem;
   }
   .home-price {
     max-width: 34rem;
@@ -1074,10 +1106,9 @@
   .family-table {
     display: block;
     width: 100%;
-    max-width: 28rem;
+    max-width: 17rem;
     height: auto;
     margin-inline: auto;
-    border-radius: 1rem;
   }
   .family-table g {
     transform-box: fill-box;
@@ -1091,7 +1122,7 @@
       transform 0.9s ease-out;
   }
   .family-table .ft-centre {
-    transition: transform 0.9s cubic-bezier(0.2, 1.2, 0.4, 1);
+    transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .family-table .ft-chop {
     transform-origin: 0% 100%;
@@ -1139,8 +1170,8 @@
     .home-hero {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
       grid-template-areas:
-        "table map"
-        "copy map";
+        "copy map"
+        "table map";
       column-gap: 2.5rem;
       align-items: center;
     }
@@ -1156,5 +1187,16 @@
   .home-table:hover .ft-fork,
   .home-table:hover .ft-centre {
     transform: none;
+  }
+}
+
+@media (min-width: 23rem) {
+  .pot-card {
+    min-height: 8.5rem;
+  }
+}
+@media (min-width: 40rem) {
+  .pot-card {
+    min-height: 7.25rem;
   }
 }

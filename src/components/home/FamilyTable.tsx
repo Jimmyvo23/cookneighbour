@@ -9,7 +9,6 @@ export function FamilyTable({ className = "" }: { className?: string }) {
       aria-hidden="true"
       focusable="false"
     >
-      <rect width="400" height="210" fill="var(--table-floor)" />
       <rect
         x="30"
         y="20"
@@ -59,22 +58,22 @@ export function FamilyTable({ className = "" }: { className?: string }) {
       <g className="ft-spoon">
         <path
           d="M136 168h40"
-          stroke="var(--map-steel)"
+          stroke="var(--art-clay)"
           strokeWidth="6"
           strokeLinecap="round"
         />
-        <ellipse cx="128" cy="168" rx="10" ry="7" fill="var(--map-steel)" />
+        <ellipse cx="128" cy="168" rx="10" ry="7" fill="var(--art-clay)" />
       </g>
       <g className="ft-fork">
         <path
           d="M226 172h44"
-          stroke="var(--map-steel)"
+          stroke="var(--art-clay)"
           strokeWidth="5"
           strokeLinecap="round"
         />
         <path
           d="M226 166v12M219 166v12"
-          stroke="var(--map-steel)"
+          stroke="var(--art-clay)"
           strokeWidth="3"
           strokeLinecap="round"
         />

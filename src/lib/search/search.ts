@@ -380,3 +380,34 @@ export function cityNames(prefixes: readonly PostalPrefix[]): string[] {
     a.localeCompare(b),
   );
 }
+
+/**
+ * Values from a link such as `/search?city=Mississauga&cuisine=Vietnamese` (the home map card,
+ * T-126 v2). Only a known city (matched ignoring case) and a plain cuisine of 1 to 40 characters
+ * are used; anything else is ignored without an error. Returns null when nothing is usable.
+ */
+export function searchPrefill(
+  search: string,
+  cities: readonly string[],
+): { city?: string; cuisine?: string } | null {
+  const params = new URLSearchParams(search);
+  const one = (name: string): string | null => {
+    const all = params.getAll(name);
+    return all.length === 1 ? all[0].trim() : null;
+  };
+  const out: { city?: string; cuisine?: string } = {};
+  const city = one("city");
+  if (city) {
+    const hit = cities.find((c) => c.toLowerCase() === city.toLowerCase());
+    if (hit) out.city = hit;
+  }
+  const cuisine = one("cuisine");
+  if (
+    cuisine &&
+    cuisine.length <= 40 &&
+    !/[\u0000-\u001f\u007f]/.test(cuisine)
+  ) {
+    out.cuisine = cuisine;
+  }
+  return out.city || out.cuisine ? out : null;
+}
