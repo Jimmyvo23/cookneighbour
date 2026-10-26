@@ -19,38 +19,47 @@ function Steam({ x = 0, y = 0 }: { x?: number; y?: number }) {
   );
 }
 
-/** The small pot in the site header, with steam that rises on a slow loop. */
+/**
+ * The logo: a happy pot (T-126 v2). A round pot with two handles, a lid with a knob and a small
+ * smile; no letters, so it works in any language. It is drawn in currentColor, so the parent sets
+ * the colour. On hover or focus of the brand link the lid tips up and two caramel steam lines appear
+ * (rules in globals.css; none of it moves under prefers-reduced-motion).
+ */
 export function PotMark({ className = "size-9" }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
       focusable="false"
-      viewBox="90 60 220 270"
-      className={className}
+      viewBox="0 -8 52 56"
+      className={`pot-mark text-primary ${className}`}
+      style={{ overflow: "visible" }}
     >
-      <Steam />
+      <g className="pot-steam">
+        <path
+          d="M22 6c-3-4 3-5 0-9M30 5c-3-4 3-5 0-9"
+          stroke="var(--gold)"
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+        />
+      </g>
+      <g className="pot-lid">
+        <rect x="8" y="14" width="36" height="6" rx="3" fill="currentColor" />
+        <rect x="22" y="9" width="8" height="6" rx="3" fill="currentColor" />
+      </g>
       <path
-        d="M118 205A82 38 0 0 1 282 205Z"
-        fill="var(--art-red)"
-        stroke="var(--art-red-dark)"
-        strokeWidth="6"
-        strokeLinejoin="round"
+        d="M10 22h32v14a10 10 0 0 1-10 10H20a10 10 0 0 1-10-10Z"
+        fill="currentColor"
       />
-      <circle cx="200" cy="165" r="12" fill="var(--art-gold)" />
+      <rect x="3" y="25" width="8" height="5" rx="2.5" fill="currentColor" />
+      <rect x="41" y="25" width="8" height="5" rx="2.5" fill="currentColor" />
       <path
-        d="M110 205h180v50a55 55 0 0 1-55 55h-70a55 55 0 0 1-55-55z"
-        fill="var(--art-red)"
-        stroke="var(--art-red-dark)"
-        strokeWidth="6"
-        strokeLinejoin="round"
-      />
-      <rect
-        x="104"
-        y="198"
-        width="192"
-        height="14"
-        rx="7"
-        fill="var(--art-gold)"
+        data-part="smile"
+        d="M20 32c2 3 10 3 12 0"
+        stroke="var(--surface)"
+        strokeWidth="2.6"
+        fill="none"
+        strokeLinecap="round"
       />
     </svg>
   );

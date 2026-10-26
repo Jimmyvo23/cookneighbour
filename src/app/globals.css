@@ -853,3 +853,32 @@
     border-color: var(--danger);
   }
 }
+
+/* ===== The happy-pot logo (T-126 v2) ===== */
+@layer components {
+  .pot-mark .pot-lid {
+    transform-box: fill-box;
+    transform-origin: 85% 100%;
+    transition: transform 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+  .pot-mark .pot-steam {
+    opacity: 0;
+    transition: opacity 0.3s 0.1s;
+  }
+  a:hover .pot-lid,
+  a:focus-visible .pot-lid {
+    transform: translate(3px, -6px) rotate(16deg);
+  }
+  a:hover .pot-steam,
+  a:focus-visible .pot-steam {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pot-mark .pot-lid {
+    transition: none;
+  }
+  .pot-mark .pot-steam {
+    transition: none;
+  }
+}
