@@ -104,10 +104,19 @@ describe("clay-pot theme contrast", () => {
       ["herb", "hero"],
       ["pot-lid-red", "hero"],
       ["pot-herb-lid", "hero"],
+      ["pot-herb", "hero"],
       ["pot-bubble-fill", "hero"],
     ];
     check(light, pairs, 3);
     check(dark, [...pairs, ["pot-bubble-bg", "hero"]], 3);
+  });
+  it("dark map shadow is pinned (decoration, deliberately subtle)", () => {
+    // The pot's ground shadow only has to read as "a bit darker than the land", so it is pinned
+    // to the value Jimmy saw (T-126 fix 1) instead of a 3:1 rule; 3:1 would make it a black blob.
+    expect(dark["map-shadow"]).toBe("#3a2c22");
+    expect(dark["pot-bubble-bg"]).toBe("#f5e9dc");
+    expect(dark["pot-bubble-fill"]).toBe("#e9a07a");
+    expect(dark["pot-herb"]).toBe("#a9d3c2");
   });
   it("brand values are clay", () => {
     expect(light.primary).toBe("#a5482a");

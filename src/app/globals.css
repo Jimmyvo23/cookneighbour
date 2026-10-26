@@ -329,6 +329,7 @@
     cursor: pointer;
     transition:
       background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 160ms cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .btn {
@@ -530,6 +531,7 @@
   .btn-secondary {
     transition:
       background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 160ms cubic-bezier(0.22, 1, 0.36, 1),
       transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -756,6 +758,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn-secondary {
+    transition: none;
+  }
   .hero-art,
   .steam,
   .sparkle,
