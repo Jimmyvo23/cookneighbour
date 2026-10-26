@@ -103,6 +103,11 @@ test("customer: neutral 'waiting for a check', also at 375 px and in dark mode",
   await page.setViewportSize({ width: 375, height: 800 });
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(note).toBeVisible();
+  // T-126 v2: the button text flips to dark ink at once while the 160 ms background transition is
+  // still fading to the light clay, so axe measured a half-way colour. Let the transitions end first.
+  await page.evaluate(() =>
+    Promise.all(document.getAnimations().map((a) => a.finished)),
+  );
   expect(await scrollsSideways(page)).toBe(false);
   await expectNoAxeViolations(page);
 });

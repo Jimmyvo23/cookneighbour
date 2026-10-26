@@ -72,6 +72,21 @@ for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme });
         await page.goto(path);
         await expect(page.locator("h1").first()).toBeVisible();
+        // The header grows (about 59 px at 375) a moment after hydration, on main too. Measure the
+        // ring only once the layout holds still, or the sampler reads a stale position under load.
+        await page.waitForFunction(
+          () => {
+            const w = window as unknown as { __hdr?: number };
+            const now = document
+              .querySelector("header")
+              ?.getBoundingClientRect().height;
+            const same = w.__hdr === now;
+            w.__hdr = now;
+            return same;
+          },
+          null,
+          { polling: 250 },
+        );
         // Lists every focusable (tabbable) element inside the cloth, in DOM terms.
         const expected = await page.evaluate(
           () =>
