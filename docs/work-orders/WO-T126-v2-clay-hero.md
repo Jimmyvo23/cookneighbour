@@ -2,7 +2,7 @@
 
 Task: T-126 v2 (frontend). Issue #237 (retitled). New branch `feature/T-126-v2-clay-hero`, worktree `../CookNeighbour-wt-T126v2`. The old 3D direction (PR #238) was closed on 2026-10-26 (Jimmy: "Close, keep branch").
 
-Spec: `docs/superpowers/specs/2026-10-26-hero-logo-design.md`. Plan (6 tasks, test-first): `docs/superpowers/plans/2026-10-26-t126-v2-hero-logo.md`. Approved look: the demo `demo-v2-home-b.html` (Jimmy: "like it"), copied into `docs/design/t126-v2/`.
+Spec: `docs/superpowers/specs/2026-10-26-hero-logo-design.md`. Plan (6 tasks, test-first): `docs/superpowers/plans/2026-10-26-t126-v2-hero-logo.md`. Approved look: the demo `docs/design/t126-v2/demo-v2-home.html` with screenshots `demob-*.png` (Jimmy: "like it").
 
 | Agent | Task | Plan (100 words or fewer) | Effort | Risk |
 |---|---|---|---|---|
