@@ -234,6 +234,15 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-123 | T-120 Reviewer INFO-1 (D-186): `next.config.ts` treats any Next phase not on its production list as non-production, so a future phase fails open. Count every phase except `PHASE_DEVELOPMENT_SERVER` and `PHASE_TEST` as production, with tests | backend | T-120 | todo |
 | T-124 | T-120 Reviewer INFO-2 (D-186): README line that `npm run typecheck` (`next typegen`) loads the config as a production build, so with `NEXT_PUBLIC_API_MOCK=1` in `.env.local` it needs `ALLOW_MOCK_BUILD=1`. Done in the notes PR | planner | T-120 | done |
 | T-125 | T-120 Reviewer INFO-3 (D-186): `src/lib/security-headers.ts:53` picks the looser dev CSP from `NODE_ENV`; decide it from the Next phase like the mock guard, with tests | backend | T-120 | todo |
+| T-126 | Version 2 home page (D-188 to D-203): clay-pot colours, happy-pot logo, drawn GTA map with three seeded demo pots and a live card that links to the chef, quieter family-table drawing, gingham and patterns removed site-wide | frontend | T-069 | done |
+| T-127 | RLS test date-rot: `tests/rls/contact-privacy-tester.test.ts` used the fixed day 2026-10-24, which passed into the past and failed CI. Dates are now computed from the next Toronto daylight-saving change (fixed inside PR #239, D-198) | frontend | T-126 | done |
+| T-128 | T-126 follow-up (D-203): remove leftover decorations (`.title-rule`, dotted card underline, polaroid tape, `.stamp`, `.section-rule`, receipt torn edge, `.price-tag`) and the old ornate pot (`HeroArt`, heart, sparkles, sprigs) on the search and chef pages | frontend | T-126 | todo |
+| T-129 | T-126 Tester F-2 (D-203): at 375 px the header grows from 94 to 153 px about 285 ms after load on every page (layout shift); reserve its height | frontend | T-126 | todo |
+| T-130 | T-126 Reviewer tidy-ups (D-203): D-52 test asserts the expected UTC hours so a wrong Sunday fails; opening a pot on hover makes the live card announce several pots in a row; `searchPrefill` uses `TEXT_MAX` instead of a typed 40; scope `a:hover .pot-lid` to `.pot-mark` | frontend | T-126 | todo |
+| T-131 | Booking form: "Use my free first booking" starts unticked, so nobody spends the one free booking by accident (D-204, live smoke) | frontend | T-055 | todo |
+| T-132 | After client navigation the page kept old `<main>` regions in the DOM (3 seen live in the accessibility tree); check screen-reader impact and fix (D-205) | frontend | T-055 | todo |
+| T-133 | LOW-3: Chef Lan shows "4.9 out of 5 (14 reviews)" next to "No reviews yet"; seed real review rows or derive the rating from them (D-205) | backend | T-055 | todo |
+| T-134 | Seeded pending chefs have no uploaded documents, so the admin review has nothing to open; seed placeholder documents (D-205) | backend | T-055 | todo |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -445,6 +454,27 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-185 | 2026-10-23 | T-069 builder choices (14, listed in the T-069 notes): "Confirm all (Recommended)"; T-120 builder choices (Vercel rule in every phase, `phase-export` non-production, T-105 CSP test loads the dev phase): "Confirm all (Recommended)" | Jimmy |
 | D-186 | 2026-10-23 | T-120 Reviewer notes as follow-ups: INFO-1, INFO-2 and INFO-3 all chosen (T-123, T-124, T-125) | Jimmy |
 | D-187 | 2026-10-23 | Next: "Notes PR, then live smoke (Recommended)" (one task at a time from here) | Jimmy |
+| D-188 | 2026-10-24 | Pace for that session: "Parallel" (T-055 smoke beside T-126 planning) | Jimmy |
+| D-189 | 2026-10-24 | After asking "so you did not use the skill fully?": a Work Order that names a skill must have the agent really invoke it and paste its output; design work includes the Impeccable `critique` and 2-3 directions with screenshots before building. "By hand" is sent back | Jimmy |
+| D-190 | 2026-10-24 | T-126 first direction: "I kinda like the current one, but I want more 3D and animations... surprise me", then "Real 3D pot (Recommended)", then "maybe open it fully and stir it, smoke goes up"; WO-T126 (3D) approved. Built as PR #238 | Jimmy |
+| D-191 | 2026-10-24 to 2026-10-26 | Brainstorm restarted for Version 2: "dont use the real photo" (copyright, brands use drawings); drawn Airbnb-like soft style; hero option C, GTA map with pots ("hands are weird", replaced by option 5 "one table, many cultures" with hover motion); headline "Miss your mom's cooking?"; logo "1 Happy pot"; design summary: "Yes, write the spec" | Jimmy |
+| D-192 | 2026-10-26 | "Save whatever is live right now as Version 1": tag v1.0.0 and Release on eef2eab (docs/versions.md) | Jimmy |
+| D-193 | 2026-10-26 | Colours: coral and teal "looks like I am copying Air b and b. I want something unique... grandma kitchen in Vietnam"; four Vietnamese-kitchen palettes with pattern strips: "i hate this design and colors", reason "Too busy / patterns"; calm versions: picked "4" (clay pot / kho tộ: terracotta #a5482a, caramel #c98a3a, herb #3d6b5c) | Jimmy |
+| D-194 | 2026-10-26 | Clay-pot demo of the hero (map, table, happy pot): "like it" | Jimmy |
+| D-195 | 2026-10-26 | Spec answers: old 3D PR #238 "Close, keep branch"; gingham "Remove everywhere"; phone order "Words, map, then table"; card "Yes, link to chef" | Jimmy |
+| D-196 | 2026-10-26 | Build plan: "yes"; WO-T126v2 frontend, tester and reviewer: "Approve (Recommended)" each; card words "See Chef Lan" / "Find a Vietnamese cook": "Use these (Recommended)" | Jimmy |
+| D-197 | 2026-10-26 | Impeccable critique of the build (dual-agent, 22/32, three P1): fix scope "P1 + P2"; table "Keep, make it quieter"; dark mode "Yes, show me after the fix" | Jimmy |
+| D-198 | 2026-10-26 | CI date-rot in an unrelated RLS test: "Fix in this PR (Recommended)" (T-127) | Jimmy |
+| D-199 | 2026-10-26 | After fix round 1, opened the screenshots (light, dark, phone, prefilled search): "cool. go for it" (look and dark mode approved; Tester starts) | Jimmy |
+| D-200 | 2026-10-26 | The 18 T-126 builder and critique choices listed by the Reviewer (in the T-126 notes): "Confirm all (Recommended)" | Jimmy |
+| D-201 | 2026-10-26 | Merge PR #239: "Merge now (Recommended)" | Jimmy |
+| D-202 | 2026-10-26 | Next: "Notes PR, then smoke (Recommended)" | Jimmy |
+| D-203 | 2026-10-26 | T-126 follow-ups as backlog: "Remove leftover decorations" (T-128), "Header jump on phones" (T-129), "Small test/code tidy-ups" (T-130) | Jimmy |
+| D-204 | 2026-10-26 | Live smoke found "Use my free first booking" ticked by default: "Start unticked (Recommended)" (T-131) | Jimmy |
+| D-205 | 2026-10-26 | Other smoke findings as backlog: "you recommend" -> Planner logged all three (T-132 old `<main>` regions, T-133 reviews 4.9 vs none, T-134 pending-chef documents). Also: the test booking was sent from "Use customer2 (Recommended)", keeping customer1 clean for the demo | Jimmy |
+| D-206 | 2026-10-26 | Close T-055 with a Reviewer sign-off of the live smoke: "Yes, Reviewer signs off (Recommended)" | Jimmy |
+| D-207 | 2026-10-26 | Older T-055 findings (MED-1 guarded pages HTTP 200 with an in-page redirect, LOW-1 the 401 console line, LOW-2 unknown chef page HTTP 200, the general sign-up error for a refused email): "Accept as known limits" (recorded in README Known limits) | Jimmy |
+| D-208 | 2026-10-26 | Unverified deploy items: "Check now with me". Hosted minimum password length was 6: Jimmy set it to 8, first with the strictest character rules, then "Back to length only (Recommended)" | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -1081,3 +1111,23 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - `next.config.ts` exports `(phase) => config`; production = `PHASE_PRODUCTION_BUILD` or `PHASE_PRODUCTION_SERVER`; `NODE_ENV` is no longer read. `src/lib/mock-guard.ts` unchanged (D-178 rules stand).
 - Tester PASS f7ba72f; LOW-1 (no test that values other than exactly "1" are refused) fixed in d1fb266 with a bite check. Reviewer APPROVE d1fb266: INFO-1 -> T-123, INFO-2 -> T-124 (README line in this notes PR), INFO-3 -> T-125; NIT an unneeded cast at `src/lib/t118-mock-guard.test.ts:132`.
 - Builder choices confirmed by Jimmy (D-185).
+
+### T-126 — Version 2 home page: clay-pot hero, happy-pot logo, calm site (done 2026-10-26, PR #239 merged b09359c; UI only, no migration)
+- Direction history: D-190 (3D pot, PR #238 closed unmerged, branch `feature/T-126-3d-hero` kept), D-191, D-193 to D-195. Spec `docs/superpowers/specs/2026-10-26-hero-logo-design.md`, plan `docs/superpowers/plans/2026-10-26-t126-v2-hero-logo.md`, Work Order `docs/work-orders/WO-T126-v2-clay-hero.md`, approved demo `docs/design/t126-v2/`.
+- Built: clay-pot tokens in light and dark, with a contrast unit test (`src/app/theme-contrast.test.ts`); gingham, cloth, lace and the h1 ribbon removed site-wide; happy-pot `PotMark` and `src/app/icon.svg` (favicon.ico removed); `DEMO_POTS` pinned to `scripts/seed-data.ts` by a test; `PotMap` (three pot buttons, aria-live card, chef link via `GET /api/chefs`, fallback `/search?city=&cuisine=` that prefills and runs the search); `FamilyTable`; new `page.tsx`.
+- Impeccable really invoked: Frontend ran `context` + `detect` (0 anti-patterns, 6 advisory bounce-easing notes kept for the lid pop); Planner ran the `critique` with two isolated sub-agents (22/32, P1 headline size, P1 dark pots, P1 fallback link; snapshot `.impeccable/critique/2026-10-26T15-01-13Z__src-app-page-tsx.md`). Fix round 1 did P1 + P2, the quieter table and T-127 (D-197, D-198). The detector's browser overlay could not run because the CSP blocks its script (expected).
+- Tester PASS (b94569c, +36 mock e2e in `e2e-mock/t126-tester-mock.spec.ts`, bite tests). F-1 (dark `.btn` text flipped before its background faded; axe saw mid-way contrast) fixed in the app in fix round 2 (80062dd); F-4 dark pot token pins added; F-2 -> T-129. Reviewer APPROVE on 80062dd (comment on #239, text in `.team/handoffs/T-126-reviewer.md`): LOW and NIT items -> T-130; INFO desktop table under the words (confirmed in D-200).
+- Builder choices confirmed by Jimmy (D-200): card link words; prefilled search wins over the saved form; hint "Tap or click a pot…"; card shows "Chef Lan" without "(demo)" (DEMO badge stays); hero logo line removed, smaller PROTOTYPE badge above the headline; desktop table under the words, no frame, at most 17rem, clay spoon, fork and Brampton pot; one lid lift per pot on load (none with reduced motion); pots 18-19% of the map, bubble 1.6x, dish picture in the card; new `--map-*`, `--art-clay`, `--table-top` and `--pot-*` tokens (dark lake #243b5a, dark bubble ring cream); simplified dish bubbles and two-wisp steam; header and band borders 1px, stitched recipe-card border removed (other decorations -> T-128); dark button glow reduced; bouncy lid easing kept; PROTOTYPE uses the MOCK badge style; MOCK mode skips the chef lookup; search keeps its 7rem bottom padding; favicon.ico -> icon.svg.
+- Deploy: `main` auto-deployed, Vercel success; live shows "Miss your mom's cooking?". Not yet tagged as v2.0.0 (ask Jimmy, release rule).
+
+### T-127 — RLS test date-rot (done 2026-10-26, inside PR #239; tests only)
+- The four D-52 daylight-saving cases now use the next Toronto fall-back and spring-forward changes that are at least 8 days away; expected instants are still computed without the database. Tester and Reviewer: no assertion weakened. Other cases in that file still use fixed 2027 days (lesson added); T-130 adds an hour check.
+
+### T-055 — Logged-in live smoke (2026-10-26, on `b09359c`)
+- Run by the Planner in Jimmy's Chrome (Claude in Chrome); Jimmy typed every password. 6 of 6 PASS: home map to chef page, the five estimate lines with MOCK labels, a booking request and chat from customer2, the chef side (allergies shown, address and phone hidden until accept, reply sent), the admin queue and free-trial blocks, and a pending chef showing "Chef not found" and absent from search. Details: `.team/handoffs/T-055-planner-smoke.md`.
+- Left on hosted: the customer2 request `7dafa77e` (expires Thu Oct 29) and two chat messages; customer1's free trial is unused.
+- Findings -> T-131 to T-134 (D-204, D-205). Reviewer sign-off: see the next notes entry.
+- Reviewer APPROVE (T-055 sign-off) on PR #240: no blocker. Its MEDIUM-1 (older findings never decided) is closed by D-207. Its LOW-1 (deploy items with no evidence) is closed by D-208, all checked on 2026-10-26: no Vercel preview builds (PR #240 commits have no Vercel status, `main` merges do); hosted minimum password 8, length only; Site URL `https://cookneighbour.vercel.app` with redirect `https://cookneighbour.vercel.app/**`; Confirm email off; a brand-new customer sign-up ("Smoke Test", Jimmy's own plus-address), then log out and log in again, worked ("Signed in as Smoke Test"). Its LOW-2 is explained: customer1 (L5B 1A1) and Chef Lan (L5B 2B2) share the L5B area, and distance is measured between area centres, so 0 km is correct. Its LOW-3 is the scope: this was a deploy smoke, not the full section 12 demo (accept, review, admin approval, second free trial and a 2-day free booking were left out to keep the demo data clean). Its LOW-4: fix T-131 and T-132 before the mentor demo.
+- Left on hosted: the "Smoke Test" customer account (Jimmy's own email; delete only if Jimmy asks).
+- **T-055 done** (2026-10-26).
+
