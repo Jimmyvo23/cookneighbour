@@ -492,7 +492,7 @@
     filter: drop-shadow(0 18px 24px rgb(0 0 0 / 28%));
     animation: float 7s ease-in-out 3;
   }
-  /* The order slip: a recipe card laid over the cloth, with a stitched gold border. */
+  /* The order slip: a plain raised card (the stitched border was removed in T-126 v2). */
   .recipe-card {
     position: relative;
     background: var(--surface);
@@ -501,15 +501,6 @@
       var(--shadow),
       var(--glow),
       0 0 0 1px var(--line);
-  }
-  .recipe-card::before {
-    content: "";
-    position: absolute;
-    inset: 7px;
-    border: 2px dashed var(--gold);
-    border-radius: 0.9rem;
-    opacity: 0.7;
-    pointer-events: none;
   }
   .control-lg {
     min-height: 3.5rem;
@@ -986,7 +977,7 @@
   }
   .pot-card {
     margin: 0.75rem auto 0;
-    min-height: 7.5rem;
+    min-height: 8.75rem;
     border: 1px solid var(--line);
     border-radius: 0.875rem;
     background: var(--surface);
@@ -1057,7 +1048,7 @@
     color: var(--primary);
   }
   .home-title {
-    font-size: clamp(2.125rem, 8vw, 3.5rem);
+    font-size: clamp(2.125rem, 8vw, 3rem);
     line-height: 1.08;
     overflow-wrap: break-word;
   }

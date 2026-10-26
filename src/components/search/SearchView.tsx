@@ -346,7 +346,7 @@ export function SearchView() {
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <div className="hero">
+      <div className="hero !pb-28">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-6 px-4 lg:grid-cols-[1.25fr_0.75fr]">
           <div className="flex flex-col gap-4">
             <h1>

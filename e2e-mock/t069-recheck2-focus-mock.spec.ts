@@ -55,7 +55,9 @@ async function sampler(page: Page) {
             .getImageData(px, py, 1, 1)
             .data.slice(0, 3),
         ),
-      [Math.round(x), Math.round(y)],
+      // floor, not round: pixel N covers N to N+1, so a point at 424.5 is in pixel 424 (T-126 v2: a
+      // fractional pot box exposed the old rounding, which sampled the ring's edge pixel).
+      [Math.floor(x), Math.floor(y)],
     );
   return { read, close: () => helper.close() };
 }
@@ -89,7 +91,13 @@ for (const scheme of ["light", "dark"] as const) {
             const r = el.getBoundingClientRect();
             const cs = getComputedStyle(el);
             return {
-              name: el.tagName + (el.textContent ?? "").slice(0, 20),
+              // The home pots have no text, only an aria-label (T-126 v2), so name them by it.
+              name:
+                el.tagName +
+                (el.getAttribute("aria-label") ?? el.textContent ?? "").slice(
+                  0,
+                  30,
+                ),
               x: r.left,
               y: r.top,
               w: r.width,

@@ -131,6 +131,22 @@ test("reduced motion: the lid does not animate", async ({ page }) => {
   expect(dur).toBe("0s");
 });
 
+for (const width of [320, 375, 1280]) {
+  test(`the card keeps one height for every pot, ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/");
+    const card = page.getByTestId("pot-card");
+    const heights = [(await card.boundingBox())!.height];
+    for (const name of [/Pho bo/, /Chole and roti/, /Brown stew fish/]) {
+      await page.getByRole("button", { name }).click();
+      heights.push((await card.boundingBox())!.height);
+    }
+    expect(new Set(heights.map(Math.round)).size).toBe(1);
+  });
+}
+
 test("pots have 44 px targets", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await page.goto("/");
@@ -152,3 +168,22 @@ for (const scheme of ["light", "dark"] as const) {
     await expectNoAxeViolations(page);
   });
 }
+
+test("search: the hero text is not covered by the search card", async ({
+  page,
+}) => {
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/search");
+    await expect(page.locator(".hero p").last()).toBeVisible();
+    const textBottom = await page
+      .locator(".hero p")
+      .last()
+      .evaluate((el) => el.getBoundingClientRect().bottom);
+    const cardTop = await page
+      .locator(".recipe-card")
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().top);
+    expect(textBottom).toBeLessThanOrEqual(cardTop);
+  }
+});

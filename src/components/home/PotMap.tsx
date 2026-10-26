@@ -158,13 +158,13 @@ function MapArt() {
         <path d="M330 30 C320 120 340 190 360 250" strokeWidth="8" />
       </g>
       <ellipse cx="420" cy="200" rx="38" ry="22" fill="var(--map-park)" />
-      <text x="150" y="246" className="pot-map-label">
+      <text x="120" y="240" textAnchor="middle" className="pot-map-label">
         Mississauga
       </text>
-      <text x="150" y="112" className="pot-map-label">
+      <text x="260" y="158" textAnchor="middle" className="pot-map-label">
         Brampton
       </text>
-      <text x="388" y="168" className="pot-map-label">
+      <text x="420" y="238" textAnchor="middle" className="pot-map-label">
         Toronto
       </text>
       <ellipse cx="120" cy="216" rx="34" ry="8" fill="var(--map-shadow)" />
