@@ -71,4 +71,50 @@ describe("LoveToCookLink", () => {
     await mount();
     expect(link()?.getAttribute("href")).toBe("/signup");
   });
+  it("customer and admin render no anchor at all (no empty link)", async () => {
+    for (const role of ["customer", "admin"]) {
+      apiFetch.mockResolvedValue(me(role));
+      await mount();
+      expect(host!.querySelectorAll("a").length).toBe(0);
+      expect(host!.textContent).toBe("");
+      act(() => root?.unmount());
+      host?.remove();
+    }
+  });
+  it("chef still in onboarding (any chef profile) goes to /chef/apply", async () => {
+    apiFetch.mockResolvedValue({
+      profile: { role: "chef", displayName: "X" },
+      chef: { status: "pending" },
+    });
+    await mount();
+    expect(link()?.getAttribute("href")).toBe("/chef/apply");
+  });
+  it("renders exactly one real, focusable anchor with an href for visitors and chefs", async () => {
+    for (const m of [null, me("chef")]) {
+      apiFetch.mockResolvedValue(m);
+      await mount();
+      const anchors = host!.querySelectorAll("a");
+      expect(anchors.length).toBe(1);
+      expect(anchors[0].getAttribute("href")).toMatch(/^\//);
+      expect(anchors[0].hasAttribute("tabindex")).toBe(false);
+      expect(anchors[0].getAttribute("aria-hidden")).toBeNull();
+      act(() => root?.unmount());
+      host?.remove();
+    }
+  });
+  it("calls /api/me once", async () => {
+    apiFetch.mockResolvedValue(null);
+    await mount();
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(apiFetch).toHaveBeenCalledWith("/api/me");
+  });
+  it("unmount before the session answers does not throw or update", async () => {
+    let resolve!: (v: unknown) => void;
+    apiFetch.mockReturnValue(new Promise((r) => (resolve = r)));
+    await mount();
+    act(() => root?.unmount());
+    root = null;
+    await act(async () => resolve(me("customer")));
+    expect(host!.textContent).toBe("");
+  });
 });
