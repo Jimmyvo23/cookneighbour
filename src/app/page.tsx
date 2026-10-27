@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FamilyTable } from "@/components/home/FamilyTable";
+import { LoveToCookLink } from "@/components/home/LoveToCookLink";
 import { PotMap } from "@/components/home/PotMap";
 
 // T-126 v2 home page. DOM order is words, map, table; the grid places the table above the words on
@@ -26,9 +27,7 @@ export default function Home() {
               <Link href="/search" className="btn btn-lg !w-auto">
                 Find a home cook
               </Link>
-              <Link href="/signup" className="home-love">
-                I love to cook
-              </Link>
+              <LoveToCookLink />
             </div>
           </div>
           <div className="home-map">
