@@ -243,6 +243,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | T-132 | After client navigation the page kept old `<main>` regions in the DOM (3 seen live in the accessibility tree); check screen-reader impact and fix (D-205) | frontend | T-055 | todo |
 | T-133 | LOW-3: Chef Lan shows "4.9 out of 5 (14 reviews)" next to "No reviews yet"; seed real review rows or derive the rating from them (D-205) | backend | T-055 | todo |
 | T-134 | Seeded pending chefs have no uploaded documents, so the admin review has nothing to open; seed placeholder documents (D-205) | backend | T-055 | todo |
+| T-136 | Logged-in "I love to cook" bounced home: chef -> `/chef/apply`, hidden for customer and admin (D-209) | frontend | T-126 | done |
 
 ### Phase 5 — Engagement (WO-5)
 | ID | Task | Owner | Depends on | State |
@@ -475,6 +476,7 @@ IDs start at **T-020** because T-001–T-019 were used for the Agent Team Kit (D
 | D-206 | 2026-10-26 | Close T-055 with a Reviewer sign-off of the live smoke: "Yes, Reviewer signs off (Recommended)" | Jimmy |
 | D-207 | 2026-10-26 | Older T-055 findings (MED-1 guarded pages HTTP 200 with an in-page redirect, LOW-1 the 401 console line, LOW-2 unknown chef page HTTP 200, the general sign-up error for a refused email): "Accept as known limits" (recorded in README Known limits) | Jimmy |
 | D-208 | 2026-10-26 | Unverified deploy items: "Check now with me". Hosted minimum password length was 6: Jimmy set it to 8, first with the strictest character rules, then "Back to length only (Recommended)" | Jimmy |
+| D-209 | 2026-10-27 | Bug: logged in, "I love to cook" went back home. Asked "When someone is logged in, what should 'I love to cook' do?": "Depends on role (Recommended)" (signed out `/signup`, chef its chef page, customer and admin hidden). The Planner then found there is no `/chef` page, so the chef link goes to `/chef/apply` (stated in the Work Order Jimmy approved: "Approve (Recommended)") | Jimmy |
 
 ## 6. Open questions and risks (do not decide alone)
 From CLAUDE.md §13:
@@ -1131,3 +1133,8 @@ Tasks T-056, T-025, T-027, T-026, T-030, T-028, T-029, T-057 merged. Hosted Supa
 - Left on hosted: the "Smoke Test" customer account (Jimmy's own email; delete only if Jimmy asks).
 - **T-055 done** (2026-10-26).
 
+### T-136 — "I love to cook" for logged-in users (done 2026-10-27, PR #241 merged a6f1e73; UI only, no migration)
+- Bug from Jimmy on the live site: logged in, "I love to cook" went back home. Cause: the link went to `/signup`, and `redirectFor` (`src/lib/auth/route-guard.ts`) sends signed-in users on `/signup` home. The bounce rule stays.
+- Fix (D-209): new client component `src/components/home/LoveToCookLink.tsx` reads `/api/me`: signed out (and while loading or on error) `/signup`, chef `/chef/apply`, customer and admin no link. `src/app/page.tsx` stays a Server Component.
+- Tester PASS: 11 unit tests (5 added), bite tests failed as expected, full unit suite 3297 passed, e2e-mock t126 21 passed, CI green. Not tested on hosted with a real session.
+- Reviewer APPROVE on PR #241, no HIGH or MEDIUM. LOWs: the link reads the role once, so after logging out on `/` it is stale until a refresh; customers and admins briefly see the signed-out link while the session loads (accepted in the WO). NITs: `/api/me` called twice on home; component could keep only the role.
